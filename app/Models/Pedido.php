@@ -79,6 +79,13 @@ class Pedido extends Model
         return $this->hasMany(HistorialEstadoPedido::class, 'pedido_id');
     }
 
-    // hasMany Pago, hasMany Vale (como pedido_origen) se agregan en
-    // el Bloque 9 (pagos y vales).
+    public function pagos()
+    {
+        return $this->hasMany(Pago::class, 'pedido_id');
+    }
+
+    public function valesOrigen()
+    {
+        return $this->hasMany(Vale::class, 'pedido_origen_id');
+    }
 }

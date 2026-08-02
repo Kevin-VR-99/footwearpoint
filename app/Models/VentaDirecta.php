@@ -53,5 +53,8 @@ class VentaDirecta extends Model
         return $this->hasMany(VentaDirectaDetalle::class, 'venta_directa_id');
     }
 
-    // hasMany Pago, hasMany ValeMovimiento se agregan en el Bloque 9.
+    public function pagos()
+    {
+        return $this->hasMany(Pago::class, 'venta_directa_id');
+    }
 }
