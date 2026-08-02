@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class MovimientoStock extends Model
+{
+    protected $table = 'movimientos_stock';
+
+    // Esta tabla solo tiene created_at, no updated_at.
+    // Además es un historial inmutable: nunca se edita un registro ya creado.
+    const UPDATED_AT = null;
+
+    protected $fillable = [
+        'distribuidora_id',
+        'stock_local_id',
+        'tipo',
+        'cantidad',
+        'existencia_anterior',
+        'existencia_posterior',
+        'venta_detalle_id',
+        'registrado_por_staff_id',
+        'motivo',
+    ];
+
+    public function distribuidora()
+    {
+        return $this->belongsTo(Distribuidora::class, 'distribuidora_id');
+    }
+
+    public function stockLocal()
+    {
+        return $this->belongsTo(StockLocal::class, 'stock_local_id');
+    }
+
+    public function registradoPor()
+    {
+        return $this->belongsTo(DistribuidoraStaff::class, 'registrado_por_staff_id');
+    }
+
+    // belongsTo VentaDirectaDetalle se agrega en el Bloque 7 (ventas directas).
+}
