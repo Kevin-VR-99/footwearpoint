@@ -47,5 +47,8 @@ class Variante extends Model
         return $this->hasMany(DisponibilidadVarianteCampana::class, 'variante_id');
     }
 
-    // hasMany StockLocal se agrega en el Bloque 5 (stock).
+    public function stockLocal()
+    {
+        return $this->hasMany(StockLocal::class, 'variante_id');
+    }
 }

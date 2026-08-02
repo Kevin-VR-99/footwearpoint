@@ -35,7 +35,33 @@ class Usuario extends Model
         return $this->hasMany(AceptacionLegal::class, 'usuario_id');
     }
 
-    // Más relaciones (distribuidora_staff, revendedores, clientes_directos,
-    // notificaciones, dispositivos_fcm, auditorias) se agregan en bloques
-    // posteriores, cuando ya existan esos modelos.
+    public function membresiasStaff()
+    {
+        return $this->hasMany(DistribuidoraStaff::class, 'usuario_id');
+    }
+
+    public function revendedor()
+    {
+        return $this->hasOne(Revendedor::class, 'usuario_id');
+    }
+
+    public function clientesDirectos()
+    {
+        return $this->hasMany(ClienteDirecto::class, 'usuario_id');
+    }
+
+    public function notificaciones()
+    {
+        return $this->hasMany(Notificacion::class, 'usuario_id');
+    }
+
+    public function dispositivosFcm()
+    {
+        return $this->hasMany(DispositivoFcm::class, 'usuario_id');
+    }
+
+    public function auditorias()
+    {
+        return $this->hasMany(Auditoria::class, 'usuario_id');
+    }
 }

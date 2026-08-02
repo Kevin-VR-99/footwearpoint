@@ -54,5 +54,8 @@ class PedidoDetalle extends Model
         return $this->hasMany(PedidoClientePrivado::class, 'pedido_detalle_id');
     }
 
-    // hasMany SolicitudCambio se agrega en el Bloque 9 (vales y cambios).
+    public function solicitudesCambio()
+    {
+        return $this->hasMany(SolicitudCambio::class, 'pedido_detalle_id');
+    }
 }

@@ -38,5 +38,8 @@ class CicloCompra extends Model
         return $this->belongsTo(ConfiguracionCiclo::class, 'configuracion_ciclo_id');
     }
 
-    // hasMany Pedido se agrega en el Bloque 8 (pedidos).
+    public function pedidos()
+    {
+        return $this->hasMany(Pedido::class, 'ciclo_compra_id');
+    }
 }

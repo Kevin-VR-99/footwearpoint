@@ -57,6 +57,68 @@ class Distribuidora extends Model
         return $this->hasOne(Sucursal::class, 'distribuidora_id')->where('es_principal', true);
     }
 
-    // Más relaciones (staff, revendedores, clientes, marcas, pedidos, etc.)
-    // se agregan en bloques posteriores, cuando ya existan esos modelos.
+    public function staff()
+    {
+        return $this->hasMany(DistribuidoraStaff::class, 'distribuidora_id');
+    }
+
+    public function revendedoresAfiliados()
+    {
+        return $this->hasMany(RevendedorDistribuidora::class, 'distribuidora_id');
+    }
+
+    public function clientesDirectos()
+    {
+        return $this->hasMany(ClienteDirecto::class, 'distribuidora_id');
+    }
+
+    public function marcas()
+    {
+        return $this->hasMany(Marca::class, 'distribuidora_id');
+    }
+
+    public function categoriasProducto()
+    {
+        return $this->hasMany(CategoriaProducto::class, 'distribuidora_id');
+    }
+
+    public function campanas()
+    {
+        return $this->hasMany(Campana::class, 'distribuidora_id');
+    }
+
+    public function productos()
+    {
+        return $this->hasMany(Producto::class, 'distribuidora_id');
+    }
+
+    public function ciclosCompra()
+    {
+        return $this->hasMany(CicloCompra::class, 'distribuidora_id');
+    }
+
+    public function pedidos()
+    {
+        return $this->hasMany(Pedido::class, 'distribuidora_id');
+    }
+
+    public function ventasDirectas()
+    {
+        return $this->hasMany(VentaDirecta::class, 'distribuidora_id');
+    }
+
+    public function vales()
+    {
+        return $this->hasMany(Vale::class, 'distribuidora_id');
+    }
+
+    public function importacionesCatalogo()
+    {
+        return $this->hasMany(ImportacionCatalogo::class, 'distribuidora_id');
+    }
+
+    public function productosDestacados()
+    {
+        return $this->hasMany(ProductoDestacado::class, 'distribuidora_id');
+    }
 }
