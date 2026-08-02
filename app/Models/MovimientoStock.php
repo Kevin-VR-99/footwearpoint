@@ -39,5 +39,8 @@ class MovimientoStock extends Model
         return $this->belongsTo(DistribuidoraStaff::class, 'registrado_por_staff_id');
     }
 
-    // belongsTo VentaDirectaDetalle se agrega en el Bloque 7 (ventas directas).
+    public function ventaDetalle()
+    {
+        return $this->belongsTo(VentaDirectaDetalle::class, 'venta_detalle_id');
+    }
 }
