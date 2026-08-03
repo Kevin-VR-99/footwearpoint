@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             PlanSuscripcionSeeder::class,
             RolesPermissionsSeeder::class,
             DemoDistribuidoraSeeder::class,
+            DemoCatalogoSeeder::class,
         ]);
     }
 }
