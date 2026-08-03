@@ -12,6 +12,8 @@ class DatabaseSeeder extends Seeder
             TallaSeeder::class,
             ColorSeeder::class,
             PlanSuscripcionSeeder::class,
+            RolesPermissionsSeeder::class,
+            DemoDistribuidoraSeeder::class,
         ]);
     }
 }
