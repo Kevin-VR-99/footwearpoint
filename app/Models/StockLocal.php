@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToTenant;
 
 class StockLocal extends Model
 {
+    use BelongsToTenant;
     protected $table = 'stock_local';
 
     // Esta tabla solo tiene updated_at, no created_at.

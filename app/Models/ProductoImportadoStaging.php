@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToTenant;
 
 class ProductoImportadoStaging extends Model
 {
+    use BelongsToTenant;
     protected $table = 'productos_importados_staging';
 
     protected $fillable = [

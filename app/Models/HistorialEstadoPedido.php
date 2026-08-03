@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToTenant;
 
 class HistorialEstadoPedido extends Model
 {
+    use BelongsToTenant;
     protected $table = 'historial_estados_pedido';
 
     // Esta tabla solo tiene created_at, no updated_at.

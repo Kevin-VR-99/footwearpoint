@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToTenant;
 
 class RevendedorDistribuidora extends Model
 {
+    use BelongsToTenant;
     protected $table = 'revendedor_distribuidora';
 
     protected $fillable = [

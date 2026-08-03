@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToTenant;
 
 class Suscripcion extends Model
 {
+    use BelongsToTenant;
     protected $table = 'suscripciones';
 
     protected $fillable = [

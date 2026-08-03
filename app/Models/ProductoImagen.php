@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToTenant;
 
 class ProductoImagen extends Model
 {
+    use BelongsToTenant;
     protected $table = 'producto_imagenes';
 
     // Esta tabla solo tiene created_at, no updated_at.

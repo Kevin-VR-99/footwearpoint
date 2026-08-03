@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToTenant;
 
 class VentaDirectaDetalle extends Model
 {
+    use BelongsToTenant;
     protected $table = 'venta_directa_detalle';
 
     // Esta tabla no tiene columnas de timestamps.

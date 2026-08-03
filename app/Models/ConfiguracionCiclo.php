@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\BelongsToTenant;
 
 class ConfiguracionCiclo extends Model
 {
+    use BelongsToTenant;
     protected $table = 'configuraciones_ciclo';
 
     protected $fillable = [
