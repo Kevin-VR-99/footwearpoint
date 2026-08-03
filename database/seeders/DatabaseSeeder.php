@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             RolesPermissionsSeeder::class,
             DemoDistribuidoraSeeder::class,
             DemoCatalogoSeeder::class,
+            DemoContactosSeeder::class,
         ]);
     }
 }
