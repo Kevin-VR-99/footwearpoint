@@ -7,6 +7,7 @@ use App\Models\StockLocal;
 use App\Models\Usuario;
 use App\Models\Variante;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -39,12 +40,43 @@ class VentaDirectaTest extends TestCase
         return [$publicacion, $variante];
     }
 
-    private function cargarStock(int $varianteId, int $cantidad): void
+    private function existenciaActual(int $varianteId): int
     {
-        $this->postJson('/api/stock/entradas', [
-            'variante_id' => $varianteId,
-            'cantidad' => $cantidad,
-        ])->assertCreated();
+        return (int) ($this->getJson("/api/stock?variante_id={$varianteId}")
+            ->json('data.0.cantidad_disponible') ?? 0);
+    }
+
+    /**
+     * Deja la existencia en un valor exacto, sin importar lo que haya sembrado
+     * el seeder demo de la Fase 0 (que sí siembra stock_local). Usa los propios
+     * endpoints de E6, así que ninguna prueba escribe en la base a mano.
+     */
+    private function ponerStockEn(int $varianteId, int $cantidad): void
+    {
+        $actual = $this->existenciaActual($varianteId);
+
+        if ($actual > $cantidad) {
+            $this->postJson('/api/stock/ajustes', [
+                'variante_id' => $varianteId,
+                'tipo' => 'ajuste_negativo',
+                'cantidad' => $actual - $cantidad,
+                'motivo' => 'Preparacion de prueba',
+            ])->assertCreated();
+        } elseif ($actual < $cantidad) {
+            $this->postJson('/api/stock/entradas', [
+                'variante_id' => $varianteId,
+                'cantidad' => $cantidad - $actual,
+            ])->assertCreated();
+        }
+    }
+
+    private function existenciaEnBase(int $varianteId): int
+    {
+        $stock = StockLocal::withoutGlobalScopes()
+            ->where('variante_id', $varianteId)
+            ->firstOrFail();
+
+        return (int) $stock->cantidad_disponible;
     }
 
     public function test_una_venta_descuenta_stock_y_deja_movimiento_ligado_al_detalle(): void
@@ -52,7 +84,7 @@ class VentaDirectaTest extends TestCase
         $this->autenticarComoEmpleado();
         [$publicacion, $variante] = $this->publicacionConVariante();
 
-        $this->cargarStock($variante->id, 10);
+        $this->ponerStockEn($variante->id, 10);
 
         $respuesta = $this->postJson('/api/ventas-directas', [
             'metodo_pago' => 'efectivo',
@@ -77,8 +109,7 @@ class VentaDirectaTest extends TestCase
         $this->assertSame($base, $respuesta->json('data.desglose_iva.base_gravable'));
         $this->assertSame(round($esperado - $base, 2), $respuesta->json('data.desglose_iva.iva'));
 
-        $stock = StockLocal::withoutGlobalScopes()->where('variante_id', $variante->id)->firstOrFail();
-        $this->assertSame(7, (int) $stock->cantidad_disponible);
+        $this->assertSame(7, $this->existenciaEnBase($variante->id));
 
         $this->assertDatabaseHas('movimientos_stock', [
             'tipo' => 'venta',
@@ -94,7 +125,7 @@ class VentaDirectaTest extends TestCase
         $this->autenticarComoEmpleado();
         [$publicacion, $variante] = $this->publicacionConVariante();
 
-        $this->cargarStock($variante->id, 5);
+        $this->ponerStockEn($variante->id, 5);
 
         $respuesta = $this->postJson('/api/ventas-directas', [
             'metodo_pago' => 'efectivo',
@@ -125,7 +156,13 @@ class VentaDirectaTest extends TestCase
         $this->autenticarComoEmpleado();
         [$publicacion, $variante] = $this->publicacionConVariante();
 
-        $this->cargarStock($variante->id, 2);
+        $this->ponerStockEn($variante->id, 2);
+
+        // Se cuentan las filas ANTES en vez de asumir cero: el seeder de la
+        // Fase 0 puede sembrar datos y no queremos depender de eso.
+        $ventasAntes = DB::table('ventas_directas')->count();
+        $pagosAntes = DB::table('pagos')->count();
+        $movimientosVentaAntes = DB::table('movimientos_stock')->where('tipo', 'venta')->count();
 
         $this->postJson('/api/ventas-directas', [
             'metodo_pago' => 'efectivo',
@@ -136,12 +173,14 @@ class VentaDirectaTest extends TestCase
 
         // La transacción completa se revirtió: ni venta, ni pago, ni movimiento
         // de venta, ni existencia tocada.
-        $this->assertDatabaseCount('ventas_directas', 0);
-        $this->assertDatabaseCount('pagos', 0);
-        $this->assertDatabaseMissing('movimientos_stock', ['tipo' => 'venta']);
+        $this->assertSame($ventasAntes, DB::table('ventas_directas')->count());
+        $this->assertSame($pagosAntes, DB::table('pagos')->count());
+        $this->assertSame(
+            $movimientosVentaAntes,
+            DB::table('movimientos_stock')->where('tipo', 'venta')->count()
+        );
 
-        $stock = StockLocal::withoutGlobalScopes()->where('variante_id', $variante->id)->firstOrFail();
-        $this->assertSame(2, (int) $stock->cantidad_disponible);
+        $this->assertSame(2, $this->existenciaEnBase($variante->id));
     }
 
     public function test_si_una_linea_falla_no_se_descuenta_ninguna_otra(): void
@@ -158,8 +197,8 @@ class VentaDirectaTest extends TestCase
             $this->markTestSkipped('El seeder no dejó dos variantes del mismo producto.');
         }
 
-        $this->cargarStock($primera->id, 10);
-        $this->cargarStock($segunda->id, 1);
+        $this->ponerStockEn($primera->id, 10);
+        $this->ponerStockEn($segunda->id, 1);
 
         $this->postJson('/api/ventas-directas', [
             'metodo_pago' => 'efectivo',
@@ -169,8 +208,10 @@ class VentaDirectaTest extends TestCase
             ],
         ])->assertStatus(409);
 
-        $stockPrimera = StockLocal::withoutGlobalScopes()->where('variante_id', $primera->id)->firstOrFail();
-        $this->assertSame(10, (int) $stockPrimera->cantidad_disponible);
+        // La primera línea alcanzaba de sobra, pero la segunda no: ninguna
+        // de las dos debe haberse descontado.
+        $this->assertSame(10, $this->existenciaEnBase($primera->id));
+        $this->assertSame(1, $this->existenciaEnBase($segunda->id));
     }
 
     public function test_la_misma_variante_repetida_en_dos_lineas_es_rechazada(): void
