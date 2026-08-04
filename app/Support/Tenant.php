@@ -9,10 +9,11 @@ class Tenant
 {
     protected static ?int $overrideId = null;
 
-    // Devuelve el id de la distribuidora del usuario que inició sesión,
-    // buscando su membresía en distribuidora_staff. Si es admin_general
-    // (no tiene fila en distribuidora_staff) o nadie inició sesión, regresa
-    // null — y null significa "sin restricción" en el Global Scope.
+    // Caché por petición: sin esto, CADA consulta Eloquent de la app
+    // dispara una consulta extra a distribuidora_staff.
+    protected static ?int $cacheUsuarioId = null;
+    protected static ?int $cacheDistribuidoraId = null;
+
     public static function id(): ?int
     {
         if (static::$overrideId !== null) {
@@ -25,16 +26,26 @@ class Tenant
             return null;
         }
 
-        $staff = DistribuidoraStaff::where('usuario_id', $usuario->id)
+        if (static::$cacheUsuarioId === (int) $usuario->id) {
+            return static::$cacheDistribuidoraId;
+        }
+
+        // withoutGlobalScopes es OBLIGATORIO: esta es la consulta que resuelve
+        // el tenant, así que no puede pasar por el TenantScope — se llamaría
+        // a sí misma sin parar hasta agotar la memoria.
+        $staff = DistribuidoraStaff::withoutGlobalScopes()
+            ->where('usuario_id', $usuario->id)
             ->where('estado', 'activo')
             ->first();
 
-        return $staff?->distribuidora_id;
+        static::$cacheUsuarioId = (int) $usuario->id;
+        static::$cacheDistribuidoraId = $staff !== null
+            ? (int) $staff->distribuidora_id
+            : null;
+
+        return static::$cacheDistribuidoraId;
     }
 
-    // Para usar en Seeders o comandos de consola, donde no hay usuario
-    // autenticado pero sí sabemos a qué distribuidora pertenece lo que se
-    // está creando.
     public static function forzar(?int $distribuidoraId, callable $callback)
     {
         $anterior = static::$overrideId;
@@ -45,5 +56,13 @@ class Tenant
         } finally {
             static::$overrideId = $anterior;
         }
+    }
+
+    // Necesario en pruebas, donde varios usuarios inician sesión en el
+    // mismo proceso.
+    public static function olvidarCache(): void
+    {
+        static::$cacheUsuarioId = null;
+        static::$cacheDistribuidoraId = null;
     }
 }
