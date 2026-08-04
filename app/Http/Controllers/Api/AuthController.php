@@ -13,6 +13,11 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Http\Requests\Auth\AceptarLegalesRequest;
 use App\Models\AceptacionLegal;
+use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -174,5 +179,50 @@ class AuthController extends Controller
             'data'    => $aceptadas,
             'message' => 'Documentos legales aceptados correctamente.',
         ], 201);
+    }
+
+    public function forgotPassword(ForgotPasswordRequest $request)
+    {
+        $status = Password::broker('users')->sendResetLink(
+            $request->only('email')
+        );
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return response()->json([
+                'message' => 'Se ha enviado el enlace de recuperación al correo.',
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'No se pudo enviar el enlace de recuperación.',
+            'error'   => __($status),
+        ], 422);
+    }
+
+    public function resetPassword(ResetPasswordRequest $request)
+    {
+        $status = Password::broker('users')->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user, $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                ])->setRememberToken(Str::random(60));
+
+                $user->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            return response()->json([
+                'message' => 'Contraseña restablecida correctamente.',
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'No se pudo restablecer la contraseña.',
+            'error'   => __($status),
+        ], 422);
     }
 }

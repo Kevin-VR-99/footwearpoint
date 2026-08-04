@@ -14,4 +14,7 @@ Route::prefix('auth')->group(function () {
 
     Route::post('/register-empleado', [AuthController::class, 'registerEmpleado'])
         ->middleware(['auth:sanctum', 'team', 'role:admin_distribuidora']);
+
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 });
