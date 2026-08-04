@@ -23,9 +23,13 @@ Route::get('/dashboard', function () {
     return view('dashboard-temp');
 })->name('dashboard')->middleware('auth');
 
-Route::get('/admin', function () {
-    return 'Dashboard admin general (pendiente)';
-})->name('admin.dashboard')->middleware('auth');
+Route::livewire('/admin', 'admin.distribuidoras-index')
+    ->name('admin.dashboard')
+    ->middleware('auth');
+
+Route::livewire('/admin/planes', 'admin.planes-index')
+    ->name('admin.planes')
+    ->middleware('auth');
 
 Route::livewire('/forgot-password', 'auth.forgot-password')
     ->name('password.request')
