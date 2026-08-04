@@ -17,6 +17,15 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public string $filtroEstado = '';
     public string $mensaje = '';
 
+    // Asignar suscripción
+    public bool $mostrarSuscripcion = false;
+    public ?int $distribuidoraSuscripcionId = null;
+    public string $distribuidoraSuscripcionNombre = '';
+    public string $plan_id = '';
+    public string $lineas_extra_contratadas = '0';
+    public string $meses = '1';
+    public bool $renovacion_automatica = true;
+
     public function mount()
     {
         if (!Auth::check()) {
@@ -39,6 +48,13 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         }
 
         return $query->get();
+    }
+
+    public function getPlanesActivosProperty()
+    {
+        return PlanSuscripcion::where('activo', true)
+            ->orderBy('precio_base_mensual')
+            ->get();
     }
 
     public function aprobar(int $id)
@@ -157,6 +173,71 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         $estado = $d->marketplace_visible ? 'visible' : 'oculta';
         $this->mensaje = "Marketplace: «{$d->nombre_comercial}» ahora está {$estado}.";
     }
+
+    public function abrirSuscripcion(int $id)
+    {
+        $d = Distribuidora::findOrFail($id);
+
+        if (!in_array($d->estado, ['activa', 'suspendida'])) {
+            $this->mensaje = 'Solo se puede asignar suscripción a distribuidoras activas o suspendidas.';
+            return;
+        }
+
+        $this->distribuidoraSuscripcionId = $d->id;
+        $this->distribuidoraSuscripcionNombre = $d->nombre_comercial;
+        $this->plan_id = '';
+        $this->lineas_extra_contratadas = '0';
+        $this->meses = '1';
+        $this->renovacion_automatica = true;
+        $this->mostrarSuscripcion = true;
+    }
+
+    public function cancelarSuscripcion()
+    {
+        $this->mostrarSuscripcion = false;
+        $this->distribuidoraSuscripcionId = null;
+    }
+
+    public function guardarSuscripcion()
+    {
+        $this->validate([
+            'plan_id'                  => 'required|exists:planes_suscripcion,id',
+            'lineas_extra_contratadas' => 'nullable|integer|min:0',
+            'meses'                    => 'required|integer|min:1|max:24',
+        ]);
+
+        $distribuidora = Distribuidora::findOrFail($this->distribuidoraSuscripcionId);
+        $plan = PlanSuscripcion::findOrFail($this->plan_id);
+
+        if (!$plan->activo) {
+            $this->mensaje = 'El plan seleccionado no está activo.';
+            return;
+        }
+
+        Suscripcion::withoutGlobalScopes()
+            ->where('distribuidora_id', $distribuidora->id)
+            ->where('estado', 'activa')
+            ->update([
+                'estado'    => 'cancelada',
+                'fecha_fin' => now()->toDateString(),
+            ]);
+
+        Suscripcion::withoutGlobalScopes()->create([
+            'distribuidora_id'              => $distribuidora->id,
+            'plan_id'                       => $plan->id,
+            'fecha_inicio'                  => now()->toDateString(),
+            'fecha_fin'                     => now()->addMonths((int) $this->meses)->toDateString(),
+            'estado'                        => 'activa',
+            'precio_base_contratado'        => $plan->precio_base_mensual,
+            'lineas_incluidas_contratadas'  => $plan->lineas_incluidas,
+            'precio_linea_extra_contratado' => $plan->precio_linea_extra,
+            'lineas_extra_contratadas'      => (int) $this->lineas_extra_contratadas,
+            'renovacion_automatica'         => $this->renovacion_automatica,
+        ]);
+
+        $this->mensaje = "Suscripción «{$plan->nombre}» asignada a «{$distribuidora->nombre_comercial}».";
+        $this->cancelarSuscripcion();
+    }
 };
 ?>
 
@@ -171,6 +252,59 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     @if ($mensaje)
         <div class="mb-4 rounded-lg bg-green-50 text-green-700 text-sm p-3">
             {{ $mensaje }}
+        </div>
+    @endif
+
+    @if ($mostrarSuscripcion)
+        <div class="mb-6 bg-white rounded-xl border border-slate-200 p-5">
+            <h3 class="font-semibold mb-1">Asignar plan</h3>
+            <p class="text-sm text-slate-500 mb-4">{{ $distribuidoraSuscripcionNombre }}</p>
+
+            <form wire:submit="guardarSuscripcion" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Plan</label>
+                    <select wire:model="plan_id" class="w-full rounded-lg border-slate-300">
+                        <option value="">Selecciona un plan</option>
+                        @foreach ($this->planesActivos as $plan)
+                            <option value="{{ $plan->id }}">
+                                {{ $plan->nombre }} — ${{ number_format($plan->precio_base_mensual, 2) }}
+                                ({{ $plan->lineas_incluidas }} líneas)
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('plan_id') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1">Líneas extra</label>
+                    <input type="number" min="0" wire:model="lineas_extra_contratadas"
+                           class="w-full rounded-lg border-slate-300">
+                    @error('lineas_extra_contratadas') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1">Meses</label>
+                    <input type="number" min="1" max="24" wire:model="meses"
+                           class="w-full rounded-lg border-slate-300">
+                    @error('meses') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                <div class="flex items-center gap-2 pt-6">
+                    <input type="checkbox" wire:model="renovacion_automatica"
+                           class="rounded border-slate-300 text-blue-600">
+                    <span class="text-sm">Renovación automática</span>
+                </div>
+
+                <div class="md:col-span-2 flex gap-2">
+                    <button type="submit" class="rounded-lg bg-[#111E38] text-white text-sm px-4 py-2">
+                        Asignar
+                    </button>
+                    <button type="button" wire:click="cancelarSuscripcion"
+                            class="rounded-lg border border-slate-200 text-sm px-4 py-2">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
         </div>
     @endif
 
@@ -234,6 +368,10 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                             @if ($d->estado === 'suspendida')
                                 <button wire:click="reactivar({{ $d->id }})"
                                         class="text-xs text-blue-700 hover:underline">Reactivar</button>
+                            @endif
+                            @if (in_array($d->estado, ['activa', 'suspendida']))
+                                <button wire:click="abrirSuscripcion({{ $d->id }})"
+                                        class="text-xs text-indigo-700 hover:underline">Asignar plan</button>
                             @endif
                         </td>
                     </tr>
