@@ -46,3 +46,6 @@ Route::livewire('/empleados/registrar', 'auth.register-empleado')
 Route::livewire('/legales', 'auth.aceptar-legales')
     ->name('legales.aceptar')
     ->middleware('auth');
+
+Route::livewire('/marketplace', 'marketplace.index')
+    ->name('marketplace');
