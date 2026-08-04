@@ -11,6 +11,7 @@ use App\Models\Sucursal;
 use App\Models\Suscripcion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Http\Requests\Admin\AsignarSuscripcionRequest;
 
 class DistribuidoraController extends Controller
 {
@@ -158,5 +159,54 @@ class DistribuidoraController extends Controller
             'data'    => $distribuidora,
             'message' => 'Distribuidora reactivada correctamente.',
         ]);
+    }
+
+    public function asignarSuscripcion(AsignarSuscripcionRequest $request, int $id)
+    {
+        $distribuidora = Distribuidora::findOrFail($id);
+
+        if (!in_array($distribuidora->estado, ['activa', 'suspendida'])) {
+            return response()->json([
+                'message' => 'Solo se puede asignar suscripción a distribuidoras activas o suspendidas.',
+            ], 422);
+        }
+
+        $plan = PlanSuscripcion::findOrFail($request->plan_id);
+
+        if (!$plan->activo) {
+            return response()->json([
+                'message' => 'El plan seleccionado no está activo.',
+            ], 422);
+        }
+
+        $meses = $request->input('meses', 1);
+        $lineasExtra = $request->input('lineas_extra_contratadas', 0);
+
+        // Cerrar suscripción activa anterior (si existe)
+        Suscripcion::withoutGlobalScopes()
+            ->where('distribuidora_id', $distribuidora->id)
+            ->where('estado', 'activa')
+            ->update([
+                'estado'    => 'cancelada',
+                'fecha_fin' => now()->toDateString(),
+            ]);
+
+        $suscripcion = Suscripcion::withoutGlobalScopes()->create([
+            'distribuidora_id'              => $distribuidora->id,
+            'plan_id'                       => $plan->id,
+            'fecha_inicio'                  => now()->toDateString(),
+            'fecha_fin'                     => now()->addMonths($meses)->toDateString(),
+            'estado'                        => 'activa',
+            'precio_base_contratado'        => $plan->precio_base_mensual,
+            'lineas_incluidas_contratadas'  => $plan->lineas_incluidas,
+            'precio_linea_extra_contratado' => $plan->precio_linea_extra,
+            'lineas_extra_contratadas'      => $lineasExtra,
+            'renovacion_automatica'         => $request->boolean('renovacion_automatica', true),
+        ]);
+
+        return response()->json([
+            'data'    => $suscripcion->load('plan'),
+            'message' => 'Suscripción asignada correctamente.',
+        ], 201);
     }
 }

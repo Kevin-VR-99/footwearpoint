@@ -30,4 +30,6 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'team', 'role:admin_general'
     Route::post('/planes-suscripcion', [PlanSuscripcionController::class, 'store']);
     Route::put('/planes-suscripcion/{id}', [PlanSuscripcionController::class, 'update']);
     Route::delete('/planes-suscripcion/{id}', [PlanSuscripcionController::class, 'destroy']);
+
+    Route::post('/distribuidoras/{id}/suscripcion', [DistribuidoraController::class, 'asignarSuscripcion']);
 });
