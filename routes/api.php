@@ -42,3 +42,4 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'team', 'role:admin_general'
 require __DIR__.'/api/distribuidora.php';
 require __DIR__.'/api/marketplace.php';
 require __DIR__.'/api/vales.php';
+require __DIR__.'/api/notificaciones.php';

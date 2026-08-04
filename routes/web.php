@@ -53,3 +53,7 @@ Route::livewire('/vales', 'vales.index')
 
 Route::livewire('/marketplace', 'marketplace.index')
     ->name('marketplace');
+
+Route::livewire('/notificaciones', 'notificaciones.index')
+    ->name('notificaciones.index')
+    ->middleware('auth');
