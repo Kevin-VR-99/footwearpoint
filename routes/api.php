@@ -9,6 +9,12 @@ Route::get('/ping', function () {
     return response()->json(['status' => 'ok']);
 });
 
+require __DIR__.'/api/distribuidora.php';
+
+// Paquete C - stock local, venta directa y ciclos de compra
+require __DIR__.'/api/stock.php';
+require __DIR__.'/api/ventas-directas.php';
+
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
@@ -39,4 +45,3 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'team', 'role:admin_general'
     Route::patch('/marketplace/config', [DistribuidoraController::class, 'marketplaceConfig']);
 });
 
-require __DIR__.'/api/distribuidora.php';
