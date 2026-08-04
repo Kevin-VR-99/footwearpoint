@@ -9,6 +9,9 @@ Route::prefix('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])
         ->middleware('auth:sanctum');
 
+    Route::post('/aceptar-legales', [AuthController::class, 'aceptarLegales'])
+        ->middleware('auth:sanctum');
+
     Route::post('/register-empleado', [AuthController::class, 'registerEmpleado'])
         ->middleware(['auth:sanctum', 'team', 'role:admin_distribuidora']);
 });

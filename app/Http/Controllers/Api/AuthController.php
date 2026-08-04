@@ -11,6 +11,8 @@ use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use App\Http\Requests\Auth\AceptarLegalesRequest;
+use App\Models\AceptacionLegal;
 
 class AuthController extends Controller
 {
@@ -139,5 +141,38 @@ class AuthController extends Controller
                 'line'    => $e->getLine(),
             ], 500);
         }
+    }
+
+    public function aceptarLegales(AceptarLegalesRequest $request)
+    {
+        $usuario = $request->user();
+        $ip = $request->ip();
+
+        $aceptadas = [];
+
+        foreach ($request->documentos as $doc) {
+            $aceptacion = AceptacionLegal::firstOrCreate(
+                [
+                    'usuario_id'     => $usuario->id,
+                    'tipo_documento' => $doc['tipo_documento'],
+                    'version'        => $doc['version'],
+                ],
+                [
+                    'fecha_aceptacion' => now(),
+                    'ip_origen'        => $ip,
+                ]
+            );
+
+            $aceptadas[] = [
+                'tipo_documento'   => $aceptacion->tipo_documento,
+                'version'          => $aceptacion->version,
+                'fecha_aceptacion' => $aceptacion->fecha_aceptacion,
+            ];
+        }
+
+        return response()->json([
+            'data'    => $aceptadas,
+            'message' => 'Documentos legales aceptados correctamente.',
+        ], 201);
     }
 }
