@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\DistribuidoraStaff;
 use App\Models\HistorialEstadoPedido;
 use App\Models\Pedido;
+use Illuminate\Support\Facades\Auth;
 
 class CambiarEstadoPedidoService
 {
@@ -27,19 +29,34 @@ class CambiarEstadoPedidoService
             'pedido_id' => $pedido->id,
             'estado_anterior' => $estadoAnterior,
             'estado_nuevo' => $nuevoEstado,
-            'cambiado_por_staff_id' => $staffId,
+            'cambiado_por_staff_id' => $staffId ?? $this->staffIdActual(),
             'comentario' => $comentario,
         ]);
 
         return $pedido;
     }
 
-    // Aplica el mismo cambio a todos los pedidos de un ciclo de golpe —
-    // la usa Paquete C al cerrar/solicitar/recibir un ciclo completo.
     public function cambiarParaCiclo(iterable $pedidos, string $nuevoEstado, ?int $staffId = null, ?string $comentario = null): void
     {
+        $staffId = $staffId ?? $this->staffIdActual();
+
         foreach ($pedidos as $pedido) {
             $this->cambiar($pedido, $nuevoEstado, $staffId, $comentario);
         }
+    }
+
+    // Si nadie pasó un staff_id a mano, lo busca solo a partir del usuario
+    // que inició sesión (mismo patrón que App\Support\Tenant::id()).
+    protected function staffIdActual(): ?int
+    {
+        $usuario = Auth::user();
+
+        if (! $usuario) {
+            return null;
+        }
+
+        return DistribuidoraStaff::where('usuario_id', $usuario->id)
+            ->where('estado', 'activo')
+            ->value('id');
     }
 }
