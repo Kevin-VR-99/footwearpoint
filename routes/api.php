@@ -2,8 +2,12 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Admin\DistribuidoraController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Admin\PlanSuscripcionController;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/ping', function () {
+    return response()->json(['status' => 'ok']);
+});
 
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
@@ -32,6 +36,8 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'team', 'role:admin_general'
     Route::delete('/planes-suscripcion/{id}', [PlanSuscripcionController::class, 'destroy']);
 
     Route::post('/distribuidoras/{id}/suscripcion', [DistribuidoraController::class, 'asignarSuscripcion']);
-
     Route::patch('/marketplace/config', [DistribuidoraController::class, 'marketplaceConfig']);
 });
+
+// Rutas de otros paquetes (main)
+require __DIR__.'/api/distribuidora.php';
