@@ -38,3 +38,7 @@ Route::livewire('/reset-password/{token}', 'auth.reset-password')
 Route::livewire('/empleados/registrar', 'auth.register-empleado')
     ->name('empleados.registrar')
     ->middleware('auth');
+
+Route::livewire('/legales', 'auth.aceptar-legales')
+    ->name('legales.aceptar')
+    ->middleware('auth');
