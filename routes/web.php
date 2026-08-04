@@ -27,14 +27,10 @@ Route::get('/admin', function () {
     return 'Dashboard admin general (pendiente)';
 })->name('admin.dashboard')->middleware('auth');
 
-Route::get('/forgot-password', function () {
-    return 'Recuperar contraseña (pendiente)';
-})->name('password.request');
+Route::livewire('/forgot-password', 'auth.forgot-password')
+    ->name('password.request')
+    ->middleware('guest');
 
-// Necesaria para que Laravel genere el enlace del correo de reset
-Route::get('/reset-password/{token}', function (string $token) {
-    return response()->json([
-        'message' => 'Ruta de reset (solo para generar el enlace).',
-        'token'   => $token,
-    ]);
-})->name('password.reset');
+Route::livewire('/reset-password/{token}', 'auth.reset-password')
+    ->name('password.reset')
+    ->middleware('guest');
