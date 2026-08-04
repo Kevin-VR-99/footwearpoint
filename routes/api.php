@@ -32,4 +32,6 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'team', 'role:admin_general'
     Route::delete('/planes-suscripcion/{id}', [PlanSuscripcionController::class, 'destroy']);
 
     Route::post('/distribuidoras/{id}/suscripcion', [DistribuidoraController::class, 'asignarSuscripcion']);
+
+    Route::patch('/marketplace/config', [DistribuidoraController::class, 'marketplaceConfig']);
 });

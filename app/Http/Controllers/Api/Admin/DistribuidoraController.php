@@ -12,6 +12,7 @@ use App\Models\Suscripcion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Admin\AsignarSuscripcionRequest;
+use App\Http\Requests\Admin\MarketplaceConfigRequest;
 
 class DistribuidoraController extends Controller
 {
@@ -208,5 +209,30 @@ class DistribuidoraController extends Controller
             'data'    => $suscripcion->load('plan'),
             'message' => 'Suscripción asignada correctamente.',
         ], 201);
+    }
+
+    public function marketplaceConfig(MarketplaceConfigRequest $request)
+    {
+        $distribuidora = Distribuidora::findOrFail($request->distribuidora_id);
+
+        if ($distribuidora->estado !== 'activa' && $request->boolean('marketplace_visible')) {
+            return response()->json([
+                'message' => 'Solo distribuidoras activas pueden ser visibles en el marketplace.',
+            ], 422);
+        }
+
+        $distribuidora->update([
+            'marketplace_visible' => $request->boolean('marketplace_visible'),
+        ]);
+
+        return response()->json([
+            'data' => [
+                'id'                   => $distribuidora->id,
+                'nombre_comercial'     => $distribuidora->nombre_comercial,
+                'estado'               => $distribuidora->estado,
+                'marketplace_visible'  => $distribuidora->marketplace_visible,
+            ],
+            'message' => 'Configuración de marketplace actualizada.',
+        ]);
     }
 }
