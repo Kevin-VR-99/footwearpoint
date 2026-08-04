@@ -47,5 +47,9 @@ Route::livewire('/legales', 'auth.aceptar-legales')
     ->name('legales.aceptar')
     ->middleware('auth');
 
+Route::livewire('/vales', 'vales.index')
+    ->name('vales.index')
+    ->middleware('auth');
+
 Route::livewire('/marketplace', 'marketplace.index')
     ->name('marketplace');
