@@ -15,21 +15,21 @@ class PlanSuscripcionSeeder extends Seeder
                 'descripcion' => 'Ideal para distribuidoras pequeñas o que recién empiezan.',
                 'precio_base_mensual' => 299.00,
                 'lineas_incluidas' => 2,
-                'precio_linea_extra' => 99.00,
+                'precio_linea_extra' => 150.00,
             ],
             [
                 'nombre' => 'Pro',
                 'descripcion' => 'Recomendado para distribuidoras medianas.',
                 'precio_base_mensual' => 599.00,
                 'lineas_incluidas' => 5,
-                'precio_linea_extra' => 99.00,
+                'precio_linea_extra' => 150.00,
             ],
             [
                 'nombre' => 'Enterprise',
                 'descripcion' => 'Para distribuidoras grandes o con muchas marcas.',
                 'precio_base_mensual' => 999.00,
                 'lineas_incluidas' => 10,
-                'precio_linea_extra' => 89.00,
+                'precio_linea_extra' => 150.00,
             ],
         ];
 
