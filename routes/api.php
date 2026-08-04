@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Admin\DistribuidoraController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\Admin\PlanSuscripcionController;
 
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
@@ -23,4 +24,10 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'team', 'role:admin_general'
     Route::post('/distribuidoras/{id}/aprobar', [DistribuidoraController::class, 'aprobar']);
     Route::post('/distribuidoras/{id}/suspender', [DistribuidoraController::class, 'suspender']);
     Route::post('/distribuidoras/{id}/reactivar', [DistribuidoraController::class, 'reactivar']);
+
+    Route::get('/planes-suscripcion', [PlanSuscripcionController::class, 'index']);
+    Route::get('/planes-suscripcion/{id}', [PlanSuscripcionController::class, 'show']);
+    Route::post('/planes-suscripcion', [PlanSuscripcionController::class, 'store']);
+    Route::put('/planes-suscripcion/{id}', [PlanSuscripcionController::class, 'update']);
+    Route::delete('/planes-suscripcion/{id}', [PlanSuscripcionController::class, 'destroy']);
 });
