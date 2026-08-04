@@ -1,17 +1,26 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+Route::post('/logout', function () {
+    Auth::logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+
+    return redirect()->route('login');
+})->name('logout')->middleware('auth');
 
 Route::livewire('/login', 'auth.login')
     ->name('login')
     ->middleware('guest');
 
 Route::get('/dashboard', function () {
-    return 'Dashboard distribuidora (pendiente)';
+    return view('dashboard-temp');
 })->name('dashboard')->middleware('auth');
 
 Route::get('/admin', function () {
