@@ -39,5 +39,4 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'team', 'role:admin_general'
     Route::patch('/marketplace/config', [DistribuidoraController::class, 'marketplaceConfig']);
 });
 
-// Rutas de otros paquetes (main)
 require __DIR__.'/api/distribuidora.php';
