@@ -9,7 +9,6 @@ Route::get('/ping', function () {
     return response()->json(['status' => 'ok']);
 });
 
- feature/paquete-c-stock-ventas
 require __DIR__.'/api/distribuidora.php';
 
 // Paquete C - stock local, venta directa y ciclos de compra
@@ -46,4 +45,3 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'team', 'role:admin_general'
     Route::patch('/marketplace/config', [DistribuidoraController::class, 'marketplaceConfig']);
 });
 
-main
