@@ -8,4 +8,18 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /*
+     * Paleta de FootwearPoint, tomada de los mockups reales
+     * (seccion 1.4 del Plan de Tareas). Usar estos tokens en vez de
+     * escribir el hexadecimal a mano: bg-marca-sidebar, text-marca-primario...
+     */
+    --color-marca-sidebar: #111E38;   /* fondo del menu lateral */
+    --color-marca-oscuro: #1E2F52;    /* insignias y acentos oscuros */
+    --color-marca-primario: #2563EB;  /* botones y enlaces (5.17:1 sobre blanco) */
+    --color-marca-fondo: #F5F6FA;     /* fondo de pagina */
+
+    /* Texto del menu lateral inactivo, ya aclarado para pasar 4.5:1
+       sobre #111E38 (antes #738298 medÃ­a ~3.8-4.2:1). */
+    --color-marca-menu-inactivo: #94A3B8;
 }

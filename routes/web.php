@@ -57,3 +57,8 @@ Route::livewire('/marketplace', 'marketplace.index')
 Route::livewire('/notificaciones', 'notificaciones.index')
     ->name('notificaciones.index')
     ->middleware('auth');
+
+// Paquete C - stock local, punto de venta y ciclos de compra
+Route::livewire('/stock', 'stock.index')
+    ->name('stock.index')
+    ->middleware('auth');
