@@ -46,3 +46,14 @@ Route::livewire('/empleados/registrar', 'auth.register-empleado')
 Route::livewire('/legales', 'auth.aceptar-legales')
     ->name('legales.aceptar')
     ->middleware('auth');
+
+Route::livewire('/vales', 'vales.index')
+    ->name('vales.index')
+    ->middleware('auth');
+
+Route::livewire('/marketplace', 'marketplace.index')
+    ->name('marketplace');
+
+Route::livewire('/notificaciones', 'notificaciones.index')
+    ->name('notificaciones.index')
+    ->middleware('auth');
