@@ -1,24 +1,5 @@
 @import 'tailwindcss';
 
-
-@theme {
-  --color-fp-sidebar: #111E38;
-  --color-fp-primary: #2563EB;
-  --color-fp-page: #F5F6FA;
-  --color-fp-text-muted: #64748B;
-
-  /* Insignias de estado — 4 familias, ya con el contraste corregido a ≥4.5:1 */
-  --color-fp-badge-gris-bg: #F1F5F9;
-  --color-fp-badge-gris-text: #334155;
-  --color-fp-badge-azul-bg: #DBEAFE;
-  --color-fp-badge-azul-text: #1D4ED8;
-  --color-fp-badge-verde-bg: #DCFCE7;
-  --color-fp-badge-verde-text: #166534;
-  --color-fp-badge-rojo-bg: #FEE2E2;
-  --color-fp-badge-rojo-text: #B91C1C;
-}
-
-
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
@@ -27,4 +8,26 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Paleta FootwearPoint (sección 1.4) */
+    --color-fp-sidebar: #111E38;
+    --color-fp-accent: #1E2F52;
+    --color-fp-primary: #2563EB;
+    --color-fp-page: #F5F6FA;
+
+    /* Insignias — fondo claro + texto oscuro (≥ 4.5:1) */
+    --color-fp-badge-neutral-bg: #E2E8F0;
+    --color-fp-badge-neutral-fg: #334155;
+
+    --color-fp-badge-info-bg: #DBEAFE;
+    --color-fp-badge-info-fg: #1E3A8A;
+
+    --color-fp-badge-success-bg: #D1FAE5;
+    --color-fp-badge-success-fg: #065F46;
+
+    --color-fp-badge-warning-bg: #FFEDD5;
+    --color-fp-badge-warning-fg: #9A3412;
+
+    --color-fp-badge-danger-bg: #FEE2E2;
+    --color-fp-badge-danger-fg: #991B1B;
 }
