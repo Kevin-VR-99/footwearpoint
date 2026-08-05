@@ -9,6 +9,7 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 
+<<<<<<< HEAD
     /*
      * Paleta de FootwearPoint, tomada de los mockups reales
      * (seccion 1.4 del Plan de Tareas). Usar estos tokens en vez de
@@ -22,4 +23,27 @@
     /* Texto del menu lateral inactivo, ya aclarado para pasar 4.5:1
        sobre #111E38 (antes #738298 medÃ­a ~3.8-4.2:1). */
     --color-marca-menu-inactivo: #94A3B8;
+=======
+    /* Paleta FootwearPoint (sección 1.4) */
+    --color-fp-sidebar: #111E38;
+    --color-fp-accent: #1E2F52;
+    --color-fp-primary: #2563EB;
+    --color-fp-page: #F5F6FA;
+
+    /* Insignias — fondo claro + texto oscuro (≥ 4.5:1) */
+    --color-fp-badge-neutral-bg: #E2E8F0;
+    --color-fp-badge-neutral-fg: #334155;
+
+    --color-fp-badge-info-bg: #DBEAFE;
+    --color-fp-badge-info-fg: #1E3A8A;
+
+    --color-fp-badge-success-bg: #D1FAE5;
+    --color-fp-badge-success-fg: #065F46;
+
+    --color-fp-badge-warning-bg: #FFEDD5;
+    --color-fp-badge-warning-fg: #9A3412;
+
+    --color-fp-badge-danger-bg: #FEE2E2;
+    --color-fp-badge-danger-fg: #991B1B;
+>>>>>>> b8f09480e0a80b7bb2d6e7e2142b3a416760bde5
 }
