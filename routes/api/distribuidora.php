@@ -1,30 +1,32 @@
 <?php
 
+use App\Http\Controllers\Api\Distribuidora\ClienteDirectoController;
 use App\Http\Controllers\Api\Distribuidora\ConfiguracionCicloController;
 use App\Http\Controllers\Api\Distribuidora\ConfiguracionDistribuidoraController;
 use App\Http\Controllers\Api\Distribuidora\PerfilController;
+use App\Http\Controllers\Api\Distribuidora\RevendedorController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Paquete B — Bloque 1: Configuración de la Distribuidora (E3-01, E3-05, E3-06)
+| Paquete B — Configuración de la Distribuidora (E3)
 |--------------------------------------------------------------------------
 |
-| Convención de la sección 1.9: este archivo se agrega a routes/api.php con
-| require, NO se pegan estas rutas directamente ahí, para evitar que dos
-| personas choquen en el mismo archivo compartido.
+| Bloque 1: perfil, config general, ciclos de compra (E3-01, E3-06, E3-05).
+| Bloque 2: revendedores y clientes directos.
 |
-| Recordatorio para quien mergee esto: agregar en routes/api.php
+| Empleados (E3-03) queda PENDIENTE a propósito: hay un cruce sin resolver
+| con Paquete A (POST /api/auth/register-empleado ya crea distribuidora_staff).
+| No agregar esas rutas hasta confirmar con el equipo.
+|
+| Recordatorio: en routes/api.php debe existir
 |   require __DIR__.'/api/distribuidora.php';
-|
-| Asume que 'role:admin_distribuidora' y el middleware que fija
-| setPermissionsTeamId() (spatie/laravel-permission con teams, sección 1.8)
-| ya existen desde Fase 0.
 */
 
 Route::prefix('distribuidora')
     ->middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora'])
     ->group(function () {
+        // --- Bloque 1 ---
         Route::get('perfil', [PerfilController::class, 'show']);
         Route::patch('perfil', [PerfilController::class, 'update']);
 
@@ -36,4 +38,15 @@ Route::prefix('distribuidora')
         Route::get('ciclos-config/{ciclo}', [ConfiguracionCicloController::class, 'show']);
         Route::patch('ciclos-config/{ciclo}', [ConfiguracionCicloController::class, 'update']);
         Route::delete('ciclos-config/{ciclo}', [ConfiguracionCicloController::class, 'destroy']);
+
+        // --- Bloque 2 ---
+        Route::get('revendedores', [RevendedorController::class, 'index']);
+        Route::post('revendedores', [RevendedorController::class, 'store']);
+        Route::get('revendedores/{revendedor}', [RevendedorController::class, 'show']);
+        Route::patch('revendedores/{revendedor}', [RevendedorController::class, 'update']);
+
+        Route::get('clientes-directos', [ClienteDirectoController::class, 'index']);
+        Route::post('clientes-directos', [ClienteDirectoController::class, 'store']);
+        Route::get('clientes-directos/{cliente}', [ClienteDirectoController::class, 'show']);
+        Route::patch('clientes-directos/{cliente}', [ClienteDirectoController::class, 'update']);
     });
