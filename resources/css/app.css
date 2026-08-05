@@ -1,5 +1,24 @@
 @import 'tailwindcss';
 
+
+@theme {
+  --color-fp-sidebar: #111E38;
+  --color-fp-primary: #2563EB;
+  --color-fp-page: #F5F6FA;
+  --color-fp-text-muted: #64748B;
+
+  /* Insignias de estado — 4 familias, ya con el contraste corregido a ≥4.5:1 */
+  --color-fp-badge-gris-bg: #F1F5F9;
+  --color-fp-badge-gris-text: #334155;
+  --color-fp-badge-azul-bg: #DBEAFE;
+  --color-fp-badge-azul-text: #1D4ED8;
+  --color-fp-badge-verde-bg: #DCFCE7;
+  --color-fp-badge-verde-text: #166534;
+  --color-fp-badge-rojo-bg: #FEE2E2;
+  --color-fp-badge-rojo-text: #B91C1C;
+}
+
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
