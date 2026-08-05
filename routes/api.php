@@ -45,3 +45,5 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'tenant.team', 'role:admin_g
 require __DIR__.'/api/marketplace.php';
 require __DIR__.'/api/vales.php';
 require __DIR__.'/api/notificaciones.php';
+// Paquete D - pedidos
+require __DIR__.'/api/pedidos.php';
