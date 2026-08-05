@@ -349,7 +349,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
         <div class="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-5 py-3 border-b border-slate-100">
                 <input type="search" wire:model.live.debounce.300ms="busqueda"
-                       class="w-full rounded-lg border-slate-300 text-sm focus:border-marca-primario focus:ring-marca-primario"
+                       class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
                        placeholder="Buscar por SKU, código de catálogo, modelo, talla o color…">
             </div>
 
@@ -384,7 +384,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                                 <td class="px-4 py-3 text-right text-slate-600">{{ $fila['disponible'] }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <button type="button" wire:click="agregar('{{ $fila['clave'] }}')"
-                                            class="rounded-lg bg-marca-primario text-white px-3 py-1.5 text-xs font-medium hover:bg-blue-700">
+                                            class="rounded-lg bg-fp-primary text-white px-3 py-1.5 text-xs font-medium hover:bg-blue-700">
                                         Agregar
                                     </button>
                                 </td>
@@ -438,7 +438,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                             {{-- wire:model.live: lo que el servidor corrija se ve aquí de inmediato. --}}
                             <input type="number" min="1" max="{{ $linea['disponible'] }}"
                                    wire:model.live="lineas.{{ $clave }}.cantidad"
-                                   class="w-16 rounded-lg border-slate-300 text-sm text-center focus:border-marca-primario focus:ring-marca-primario">
+                                   class="w-16 rounded-lg border-slate-300 text-sm text-center focus:border-fp-primary focus:ring-fp-primary">
 
                             <div class="text-right w-20">
                                 <p class="text-sm font-medium text-slate-900">
@@ -476,7 +476,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Método de pago</label>
                         <select wire:model="metodo_pago"
-                                class="w-full rounded-lg border-slate-300 text-sm focus:border-marca-primario focus:ring-marca-primario">
+                                class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
                             <option value="efectivo">Efectivo</option>
                             <option value="transferencia">Transferencia</option>
                             <option value="tarjeta">Tarjeta</option>
@@ -488,7 +488,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Cliente (opcional)</label>
                         <select wire:model="cliente_directo_id"
-                                class="w-full rounded-lg border-slate-300 text-sm focus:border-marca-primario focus:ring-marca-primario">
+                                class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
                             <option value="">— Venta de mostrador —</option>
                             @foreach ($this->clientes as $cliente)
                                 <option value="{{ $cliente->id }}">{{ $cliente->nombre }}</option>
@@ -497,7 +497,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     </div>
 
                     <button type="button" wire:click="cobrar" wire:loading.attr="disabled"
-                            class="w-full rounded-lg bg-marca-primario text-white px-4 py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                            class="w-full rounded-lg bg-fp-primary text-white px-4 py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
                         <span wire:loading.remove wire:target="cobrar">
                             Cobrar ${{ number_format($this->total, 2) }}
                         </span>

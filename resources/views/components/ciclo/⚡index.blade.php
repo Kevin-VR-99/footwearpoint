@@ -165,7 +165,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         <div class="w-full sm:w-72">
             <label class="block text-sm font-medium text-slate-700 mb-1">Ciclo</label>
             <select wire:model.live="cicloId"
-                    class="w-full rounded-lg border-slate-300 text-sm focus:border-marca-primario focus:ring-marca-primario">
+                    class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
                 @foreach ($this->ciclos as $opcion)
                     <option value="{{ $opcion->id }}">{{ $opcion->nombre }} — {{ $opcion->estado }}</option>
                 @endforeach
@@ -226,7 +226,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
             @if ($this->accion)
                 <div class="mt-5 pt-5 border-t border-slate-100 flex flex-wrap items-center gap-4">
                     <button type="button" wire:click="{{ $this->accion[0] }}" wire:loading.attr="disabled"
-                            class="rounded-lg bg-marca-primario text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                            class="rounded-lg bg-fp-primary text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
                         {{ $this->accion[1] }}
                     </button>
                     <p class="text-xs text-slate-500 flex-1 min-w-[16rem]">{{ $this->accion[2] }}</p>

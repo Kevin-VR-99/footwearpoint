@@ -16,24 +16,6 @@ Route::get('/', function () {
 Route::livewire('/marketplace', 'marketplace.index')
     ->name('marketplace');
 
-<<<<<<< HEAD
-Route::livewire('/notificaciones', 'notificaciones.index')
-    ->name('notificaciones.index')
-    ->middleware('auth');
-
-// Paquete C - stock local, punto de venta y ciclos de compra
-Route::livewire('/stock', 'stock.index')
-    ->name('stock.index')
-    ->middleware('auth');
-
-Route::livewire('/punto-venta', 'punto-venta.index')
-    ->name('punto-venta.index')
-    ->middleware('auth');
-
-Route::livewire('/ciclo', 'ciclo.index')
-    ->name('ciclo.index')
-    ->middleware('auth');
-=======
 /*
 |--------------------------------------------------------------------------
 | Invitados (guest)
@@ -72,8 +54,8 @@ Route::middleware('auth')->group(function () {
 
     // Registro de empleado: solo admin_distribuidora (el componente también valida)
     Route::livewire('/empleados/registrar', 'auth.register-empleado')
-    ->name('empleados.registrar')
-    ->middleware(['team', 'role:admin_distribuidora']);
+        ->name('empleados.registrar')
+        ->middleware(['team', 'role:admin_distribuidora']);
 
     Route::livewire('/legales', 'auth.aceptar-legales')
         ->name('legales.aceptar');
@@ -84,6 +66,16 @@ Route::middleware('auth')->group(function () {
 
     Route::livewire('/notificaciones', 'notificaciones.index')
         ->name('notificaciones.index');
+
+    // Panel distribuidora (Paquete C)
+    Route::livewire('/stock', 'stock.index')
+        ->name('stock.index');
+
+    Route::livewire('/punto-venta', 'punto-venta.index')
+        ->name('punto-venta.index');
+
+    Route::livewire('/ciclo', 'ciclo.index')
+        ->name('ciclo.index');
 });
 
 /*
@@ -99,4 +91,3 @@ Route::middleware(['auth', 'team', 'role:admin_general'])->group(function () {
     Route::livewire('/admin/planes', 'admin.planes-index')
         ->name('admin.planes');
 });
->>>>>>> b8f09480e0a80b7bb2d6e7e2142b3a416760bde5
