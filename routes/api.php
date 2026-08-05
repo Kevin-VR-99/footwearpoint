@@ -10,7 +10,7 @@ Route::get('/ping', function () {
 });
 
 require __DIR__.'/api/distribuidora.php';
-
+require __DIR__.'/api/catalogo.php';
 // Paquete C - stock local, venta directa y ciclos de compra
 require __DIR__.'/api/stock.php';
 require __DIR__.'/api/ventas-directas.php';
