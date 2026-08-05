@@ -14,6 +14,7 @@ require __DIR__.'/api/distribuidora.php';
 // Paquete C - stock local, venta directa y ciclos de compra
 require __DIR__.'/api/stock.php';
 require __DIR__.'/api/ventas-directas.php';
+require __DIR__.'/api/ciclos.php';
 
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
