@@ -54,8 +54,8 @@ Route::middleware('auth')->group(function () {
 
     // Registro de empleado: solo admin_distribuidora (el componente también valida)
     Route::livewire('/empleados/registrar', 'auth.register-empleado')
-    ->name('empleados.registrar')
-    ->middleware(['team', 'role:admin_distribuidora']);
+        ->name('empleados.registrar')
+        ->middleware(['team', 'role:admin_distribuidora']);
 
     Route::livewire('/legales', 'auth.aceptar-legales')
         ->name('legales.aceptar');
@@ -66,6 +66,16 @@ Route::middleware('auth')->group(function () {
 
     Route::livewire('/notificaciones', 'notificaciones.index')
         ->name('notificaciones.index');
+
+    // Panel distribuidora (Paquete C)
+    Route::livewire('/stock', 'stock.index')
+        ->name('stock.index');
+
+    Route::livewire('/punto-venta', 'punto-venta.index')
+        ->name('punto-venta.index');
+
+    Route::livewire('/ciclo', 'ciclo.index')
+        ->name('ciclo.index');
 });
 
 /*

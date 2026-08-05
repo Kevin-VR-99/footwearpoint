@@ -1,67 +1,80 @@
-@props([
-    'estado' => '',
-    'etiqueta' => null,
-])
+@props(['estado'])
+
+{{--
+    Insignia de estado COMPARTIDA por todos los paquetes (seccion 1.4:
+    "nadie vuelve a escribir su propia insignia de estado").
+
+    Un solo significado por color, segun la seccion 4 del archivo de
+    correcciones de mockups:
+      gris  = borrador / descartado
+      azul  = toda la familia "en proceso"
+      verde = resuelto positivamente (entregado)
+      rojo  = requiere atencion
+      ambar = en transito
+
+    Uso:
+      <x-ui.insignia-estado :estado="$pedido->estado" />
+      <x-ui.insignia-estado :estado="$ciclo->estado" />
+--}}
 
 @php
-    $clave = \Illuminate\Support\Str::of((string) $estado)
-        ->lower()
-        ->replace(' ', '_')
-        ->toString();
+    $mapa = [
+        // --- Estados de pedido (pedidos.estado) ---
+        'borrador' => ['gris', 'Borrador'],
+        'descartado' => ['gris', 'Descartado'],
 
-    /*
-     | Mapeo único (doc §1.4 / correcciones §4):
-     | gris = borrador/descartado | azul = en proceso
-     | verde = entregado/activo   | ámbar/rojo = atención
-     */
-    $familia = match (true) {
-        in_array($clave, [
-            'borrador', 'descartado', 'archivada', 'archivado',
-            'inactivo', 'agotado', 'finalizada', 'finalizado',
-        ], true) => 'neutral',
+        'colocado' => ['azul', 'Colocado'],
+        'en_revision' => ['azul', 'En revision'],
+        'confirmado' => ['azul', 'Confirmado'],
+        'parcialmente_disponible' => ['azul', 'Parcialmente disponible'],
+        'incluido_en_ciclo' => ['azul', 'Incluido en ciclo'],
+        'solicitado_fabrica' => ['azul', 'Solicitado a fabrica'],
+        'recibido_distribuidora' => ['azul', 'Recibido'],
+        'listo_entrega' => ['azul', 'Listo para entrega'],
 
-        in_array($clave, [
-            'entregado', 'entregada', 'completada', 'completado',
-            'activo', 'activa', 'aprobada', 'aprobado', 'aplicado',
-        ], true) => 'success',
+        'entregado' => ['verde', 'Entregado'],
 
-        in_array($clave, [
-            'cancelado', 'cancelada', 'rechazada', 'rechazado',
-            'bloqueado', 'bloqueada', 'fallido', 'anulada', 'anulado',
-            'suspendida', 'suspendido',
-        ], true) => 'danger',
+        'rechazado' => ['rojo', 'Rechazado'],
+        'no_surtido' => ['rojo', 'No surtido'],
+        'vencido_recoleccion' => ['rojo', 'Vencido sin recoger'],
 
-        in_array($clave, [
-            'vencido', 'vencida', 'en_transito', 'pendiente',
-            'requiere_atencion',
-        ], true) => 'warning',
+        // --- Estados de ciclo de compra (ciclos_compra.estado) ---
+        'abierto' => ['azul', 'Abierto'],
+        'cerrado' => ['gris', 'Cerrado'],
+        'solicitado' => ['azul', 'Solicitado'],
+        'recibido' => ['azul', 'Recibido'],
+        'finalizado' => ['verde', 'Finalizado'],
 
-        in_array($clave, [
-            'confirmado', 'confirmada', 'colocado', 'colocada',
-            'en_proceso', 'enproceso', 'en_importacion', 'en_revision',
-            'en_recoleccion', 'listo_recoleccion', 'solicitado',
-            'abierto', 'recibido', 'autorizada', 'enviada_fabrica',
-        ], true) => 'info',
+        // --- Compartido por pedidos y ciclos ---
+        'en_transito' => ['ambar', 'En transito'],
 
-        default => 'info',
-    };
+        // --- Estados de venta directa (ventas_directas.estado) ---
+        'completada' => ['verde', 'Completada'],
+        'anulada' => ['rojo', 'Anulada'],
 
-    $clases = match ($familia) {
-        'neutral' => 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg',
-        'success' => 'bg-fp-badge-success-bg text-fp-badge-success-fg',
-        'warning' => 'bg-fp-badge-warning-bg text-fp-badge-warning-fg',
-        'danger'  => 'bg-fp-badge-danger-bg text-fp-badge-danger-fg',
-        default   => 'bg-fp-badge-info-bg text-fp-badge-info-fg',
-    };
+        // --- Estados de vale (vales.estado) ---
+        'activo' => ['verde', 'Activo'],
+        'agotado' => ['gris', 'Agotado'],
+        'vencido' => ['ambar', 'Vencido'],
+        'bloqueado' => ['rojo', 'Bloqueado'],
+    ];
 
-    $texto = $etiqueta ?? \Illuminate\Support\Str::of($clave)
-        ->replace('_', ' ')
-        ->title()
-        ->toString();
+    $colores = [
+        'gris'  => 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg',
+        'azul'  => 'bg-fp-badge-info-bg text-fp-badge-info-fg',
+        'verde' => 'bg-fp-badge-success-bg text-fp-badge-success-fg',
+        'ambar' => 'bg-fp-badge-warning-bg text-fp-badge-warning-fg',
+        'rojo'  => 'bg-fp-badge-danger-bg text-fp-badge-danger-fg',
+    ];
+
+    // Un estado desconocido se pinta en gris y muestra su valor crudo,
+    // para que se note en pantalla en vez de fallar en silencio.
+    [$familia, $texto] = $mapa[$estado] ?? ['gris', $estado];
 @endphp
 
 <span {{ $attributes->merge([
-    'class' => "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {$clases}",
+    'class' => 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium '
+        . ($colores[$familia] ?? $colores['gris']),
 ]) }}>
     {{ $texto }}
 </span>
