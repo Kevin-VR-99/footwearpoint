@@ -8,6 +8,8 @@ use App\Models\Pedido;
 use App\Support\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Http\Requests\Pedido\StorePedidoRequest;
+use App\Services\Pedido\CrearPedidoBorradorAction;
 
 class PedidoController extends Controller
 {
@@ -45,5 +47,15 @@ class PedidoController extends Controller
         return response()->json([
             'data' => new PedidoResource($pedido),
         ]);
+    }
+
+    public function store(StorePedidoRequest $request, CrearPedidoBorradorAction $accion): JsonResponse
+    {
+        $pedido = $accion->ejecutar($request->validated());
+
+        return response()->json([
+            'data'    => new PedidoResource($pedido),
+            'message' => 'Pedido borrador creado correctamente.',
+        ], 201);
     }
 }

@@ -15,4 +15,5 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empl
     ->group(function () {
         Route::get('/pedidos', [PedidoController::class, 'index']);
         Route::get('/pedidos/{id}', [PedidoController::class, 'show']);
+        Route::post('/pedidos', [PedidoController::class, 'store']);
     });
