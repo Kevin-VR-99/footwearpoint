@@ -62,3 +62,11 @@ Route::livewire('/notificaciones', 'notificaciones.index')
 Route::livewire('/stock', 'stock.index')
     ->name('stock.index')
     ->middleware('auth');
+
+Route::livewire('/punto-venta', 'punto-venta.index')
+    ->name('punto-venta.index')
+    ->middleware('auth');
+
+Route::livewire('/ciclo', 'ciclo.index')
+    ->name('ciclo.index')
+    ->middleware('auth');
