@@ -34,6 +34,9 @@ Route::middleware('guest')->group(function () {
 });
 
 require __DIR__.'/web/distribuidora.php';
+require __DIR__.'/web/catalogo.php';
+
+
 
 /*
 |--------------------------------------------------------------------------
@@ -97,13 +100,11 @@ Route::middleware('auth')->group(function () {
     | Usar route() para respetar /footwearpoint/public
     |--------------------------------------------------------------------------
     */
+
     Route::get('/distribuidora', function () {
         return redirect()->route('dashboard');
     })->name('distribuidora.inicio');
 
-    Route::get('/distribuidora/catalogo', function () {
-        return redirect()->route('dashboard');
-    })->name('distribuidora.catalogo');
 
     Route::get('/distribuidora/pedidos', function () {
         return redirect()->route('pedidos.index');
