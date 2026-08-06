@@ -48,9 +48,8 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('login');
     })->name('logout');
 
-    Route::get('/dashboard', function () {
-        return view('dashboard-temp');
-    })->name('dashboard');
+    Route::livewire('/dashboard', 'dashboard.index')
+        ->name('dashboard');
 
     Route::livewire('/legales', 'auth.aceptar-legales')
         ->name('legales.aceptar');
@@ -90,31 +89,40 @@ Route::middleware('auth')->group(function () {
     /*
     |--------------------------------------------------------------------------
     | Alias del menú layouts.distribuidora (Kevin / B)
+    | Usar route() para respetar /footwearpoint/public
     |--------------------------------------------------------------------------
     */
-    Route::redirect('/distribuidora', '/dashboard')
-        ->name('distribuidora.inicio');
+    Route::get('/distribuidora', function () {
+        return redirect()->route('dashboard');
+    })->name('distribuidora.inicio');
 
-    Route::get('/distribuidora/catalogo', fn () => redirect('/dashboard'))
-        ->name('distribuidora.catalogo');
+    Route::get('/distribuidora/catalogo', function () {
+        return redirect()->route('dashboard');
+    })->name('distribuidora.catalogo');
 
-    Route::get('/distribuidora/pedidos', fn () => redirect()->route('pedidos.index'))
-        ->name('distribuidora.pedidos');
+    Route::get('/distribuidora/pedidos', function () {
+        return redirect()->route('pedidos.index');
+    })->name('distribuidora.pedidos');
 
-    Route::get('/distribuidora/ciclos', fn () => redirect()->route('ciclo.index'))
-        ->name('distribuidora.ciclos');
+    Route::get('/distribuidora/ciclos', function () {
+        return redirect()->route('ciclo.index');
+    })->name('distribuidora.ciclos');
 
-    Route::get('/distribuidora/stock', fn () => redirect()->route('stock.index'))
-        ->name('distribuidora.stock');
+    Route::get('/distribuidora/stock', function () {
+        return redirect()->route('stock.index');
+    })->name('distribuidora.stock');
 
-    Route::get('/distribuidora/vales', fn () => redirect()->route('vales.index'))
-        ->name('distribuidora.vales');
+    Route::get('/distribuidora/vales', function () {
+        return redirect()->route('vales.index');
+    })->name('distribuidora.vales');
 
-    Route::get('/distribuidora/reportes', fn () => redirect('/dashboard'))
-        ->name('distribuidora.reportes');
+    Route::get('/distribuidora/reportes', function () {
+        return redirect()->route('dashboard');
+    })->name('distribuidora.reportes');
 
-    Route::get('/distribuidora/configuracion', fn () => redirect('/dashboard'))
-        ->name('distribuidora.configuracion');
+    Route::get('/distribuidora/configuracion', function () {
+        return redirect()->route('dashboard');
+    })->name('distribuidora.configuracion');
 });
 
 /*
