@@ -12,6 +12,7 @@ use App\Http\Requests\Pedido\StorePedidoRequest;
 use App\Services\Pedido\CrearPedidoBorradorAction;
 use App\Http\Requests\Pedido\AgregarLineaPedidoRequest;
 use App\Services\Pedido\AgregarLineaPedidoAction;
+use App\Services\Pedido\EnviarPedidoAction;
 
 class PedidoController extends Controller
 {
@@ -75,5 +76,18 @@ class PedidoController extends Controller
             'data'    => new PedidoResource($pedido),
             'message' => 'Línea agregada al pedido.',
         ], 201);
+    }
+
+    public function enviar(int $id, EnviarPedidoAction $accion): JsonResponse
+    {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+
+        $pedido = Pedido::query()->findOrFail($id);
+        $pedido = $accion->ejecutar($pedido);
+
+        return response()->json([
+            'data'    => new PedidoResource($pedido),
+            'message' => 'Pedido enviado correctamente.',
+        ]);
     }
 }
