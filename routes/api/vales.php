@@ -14,4 +14,5 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empl
     ->group(function () {
         Route::get('/vales', [ValeController::class, 'index']);
         Route::post('/vales', [ValeController::class, 'store']);
+        Route::post('/vales/{id}/aplicar', [ValeController::class, 'aplicar']);
     });
