@@ -3,9 +3,12 @@
 use App\Models\ConfiguracionCiclo;
 use App\Models\ConfiguracionDistribuidora;
 use App\Models\Distribuidora;
+use App\Models\DistribuidoraStaff;
+use App\Models\RevendedorDistribuidora;
 use App\Services\Distribuidora\ActualizarConfiguracionDistribuidoraAction;
 use App\Services\Distribuidora\ActualizarPerfilDistribuidoraAction;
 use App\Services\Distribuidora\ConfiguracionCicloAction;
+use App\Services\Distribuidora\GestionarRevendedorAction;
 use App\Support\Tenant;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -53,6 +56,20 @@ new #[Layout('layouts::distribuidora')] class extends Component {
         5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo',
     ];
 
+    // --- Empleados (E3-03) — solo lectura y activar/desactivar. El alta
+    // con cuenta y contraseña vive en /empleados/registrar (Paquete A). ---
+    public $empleados = [];
+
+    // --- Revendedores (afiliación) ---
+    public $revendedores = [];
+    public ?int $revendedorEditandoId = null;
+    public bool $mostrandoFormularioRevendedor = false;
+    public string $revendedor_nombre = '';
+    public ?string $revendedor_telefono = null;
+    public ?string $revendedor_email = null;
+    public ?string $revendedor_codigo_interno = null;
+    public string $revendedor_estado = 'activo';
+
     /**
      * Se cargan los datos actuales al abrir la pantalla — igual que el
      * GET que ya probamos por curl, pero aquí se llama directo al modelo
@@ -83,11 +100,101 @@ new #[Layout('layouts::distribuidora')] class extends Component {
         }
 
         $this->cargarCiclos();
+        $this->cargarEmpleados();
+        $this->cargarRevendedores();
     }
 
     private function cargarCiclos(): void
     {
         $this->ciclos = ConfiguracionCiclo::with('diasRecepcion')->orderByDesc('activa')->get();
+    }
+
+    private function cargarEmpleados(): void
+    {
+        $this->empleados = DistribuidoraStaff::with('usuario')->where('tipo', 'empleado')->get();
+    }
+
+    private function cargarRevendedores(): void
+    {
+        $this->revendedores = RevendedorDistribuidora::with('revendedor')->get();
+    }
+
+    /**
+     * Único cambio permitido aquí sobre un empleado: activo/inactivo.
+     * Nada de crear cuentas ni tocar contraseñas (eso es Paquete A).
+     */
+    public function toggleEstadoEmpleado(int $id): void
+    {
+        $empleado = DistribuidoraStaff::findOrFail($id);
+        $empleado->estado = $empleado->estado === 'activo' ? 'inactivo' : 'activo';
+        $empleado->save();
+
+        $this->cargarEmpleados();
+    }
+
+    public function abrirFormularioAfiliarRevendedor(): void
+    {
+        $this->revendedorEditandoId = null;
+        $this->revendedor_nombre = '';
+        $this->revendedor_telefono = null;
+        $this->revendedor_email = null;
+        $this->revendedor_codigo_interno = null;
+        $this->revendedor_estado = 'activo';
+        $this->mostrandoFormularioRevendedor = true;
+    }
+
+    public function abrirFormularioEditarRevendedor(int $id): void
+    {
+        $afiliacion = RevendedorDistribuidora::with('revendedor')->findOrFail($id);
+
+        $this->revendedorEditandoId = $afiliacion->id;
+        $this->revendedor_nombre = $afiliacion->revendedor->nombre;
+        $this->revendedor_telefono = $afiliacion->revendedor->telefono;
+        $this->revendedor_email = $afiliacion->revendedor->email;
+        $this->revendedor_codigo_interno = $afiliacion->codigo_interno;
+        $this->revendedor_estado = $afiliacion->estado;
+        $this->mostrandoFormularioRevendedor = true;
+    }
+
+    public function cancelarFormularioRevendedor(): void
+    {
+        $this->mostrandoFormularioRevendedor = false;
+        $this->revendedorEditandoId = null;
+    }
+
+    /**
+     * Mismas reglas que GuardarRevendedorRequest (Bloque 2).
+     */
+    public function guardarRevendedor(): void
+    {
+        $datos = $this->validate([
+            'revendedor_nombre'         => ['required', 'string', 'max:150'],
+            'revendedor_telefono'       => ['nullable', 'string', 'max:30'],
+            'revendedor_email'          => ['nullable', 'email', 'max:190'],
+            'revendedor_codigo_interno' => ['nullable', 'string', 'max:60'],
+        ]);
+
+        $payload = [
+            'nombre'         => $datos['revendedor_nombre'],
+            'telefono'       => $datos['revendedor_telefono'],
+            'email'          => $datos['revendedor_email'],
+            'codigo_interno' => $datos['revendedor_codigo_interno'],
+            'estado'         => $this->revendedor_estado,
+        ];
+
+        $accion = app(GestionarRevendedorAction::class);
+
+        if ($this->revendedorEditandoId) {
+            $accion->actualizar(RevendedorDistribuidora::findOrFail($this->revendedorEditandoId), $payload);
+        } else {
+            $accion->afiliar($payload);
+        }
+
+        $this->mostrandoFormularioRevendedor = false;
+        $this->revendedorEditandoId = null;
+        $this->cargarRevendedores();
+
+        $this->dispatch('guardado', mensaje: 'Revendedor guardado correctamente.');
     }
 
     /**
@@ -247,6 +354,13 @@ new #[Layout('layouts::distribuidora')] class extends Component {
             class="pb-3 text-sm font-medium {{ $pestanaActiva === 'ciclos' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}"
         >
             Ciclos de Compra
+        </button>
+        <button
+            type="button"
+            wire:click="$set('pestanaActiva', 'usuarios')"
+            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'usuarios' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}"
+        >
+            Usuarios y Revendedores
         </button>
     </div>
 
@@ -463,5 +577,146 @@ new #[Layout('layouts::distribuidora')] class extends Component {
                 </div>
             </form>
         @endif
+    </div>
+
+    {{-- Pestaña: Usuarios y Revendedores --}}
+    <div x-show="$wire.pestanaActiva === 'usuarios'" class="space-y-6">
+
+        {{-- Empleados: solo lectura + activar/desactivar. El alta con
+             cuenta vive en /empleados/registrar (Paquete A). --}}
+        <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-sm font-semibold text-slate-700">Empleados</h2>
+                <a href="{{ route('empleados.registrar') }}" class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
+                    + Invitar empleado
+                </a>
+            </div>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-slate-500 border-b">
+                        <th class="py-2">Nombre</th>
+                        <th class="py-2">Correo</th>
+                        <th class="py-2">Teléfono</th>
+                        <th class="py-2">Estado</th>
+                        <th class="py-2"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($empleados as $empleado)
+                        <tr class="border-b last:border-0">
+                            <td class="py-2">{{ $empleado->usuario->nombre }}</td>
+                            <td class="py-2">{{ $empleado->usuario->email }}</td>
+                            <td class="py-2">{{ $empleado->usuario->telefono }}</td>
+                            <td class="py-2">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $empleado->estado === 'activo' ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
+                                    {{ $empleado->estado === 'activo' ? 'Activo' : 'Inactivo' }}
+                                </span>
+                            </td>
+                            <td class="py-2 text-right">
+                                <button type="button" wire:click="toggleEstadoEmpleado({{ $empleado->id }})" class="text-fp-primary text-xs font-medium">
+                                    {{ $empleado->estado === 'activo' ? 'Desactivar' : 'Activar' }}
+                                </button>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Revendedores: afiliar/editar (sin cuenta con login este sprint) --}}
+        <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
+            @if (! $mostrandoFormularioRevendedor)
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-semibold text-slate-700">Revendedores</h2>
+                    <button type="button" wire:click="abrirFormularioAfiliarRevendedor" class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
+                        + Afiliar revendedor
+                    </button>
+                </div>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-slate-500 border-b">
+                            <th class="py-2">Nombre</th>
+                            <th class="py-2">Teléfono</th>
+                            <th class="py-2">Correo</th>
+                            <th class="py-2">Estado</th>
+                            <th class="py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($revendedores as $afiliacion)
+                            <tr class="border-b last:border-0">
+                                <td class="py-2">{{ $afiliacion->revendedor->nombre }}</td>
+                                <td class="py-2">{{ $afiliacion->revendedor->telefono }}</td>
+                                <td class="py-2">{{ $afiliacion->revendedor->email }}</td>
+                                <td class="py-2">
+                                    @php
+                                        $colorEstado = match ($afiliacion->estado) {
+                                            'activo' => 'bg-fp-badge-success-bg text-fp-badge-success-fg',
+                                            'suspendido' => 'bg-fp-badge-warning-bg text-fp-badge-warning-fg',
+                                            default => 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg',
+                                        };
+                                    @endphp
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $colorEstado }}">
+                                        {{ ucfirst($afiliacion->estado) }}
+                                    </span>
+                                </td>
+                                <td class="py-2 text-right">
+                                    <button type="button" wire:click="abrirFormularioEditarRevendedor({{ $afiliacion->id }})" class="text-fp-primary text-xs font-medium">
+                                        Editar
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @else
+                <form wire:submit="guardarRevendedor" class="space-y-4">
+                    <h2 class="text-sm font-semibold text-slate-700">
+                        {{ $revendedorEditandoId ? 'Editar revendedor' : 'Afiliar nuevo revendedor' }}
+                    </h2>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                            <input type="text" wire:model="revendedor_nombre" class="w-full rounded-md border-slate-300">
+                            @error('revendedor_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Código interno</label>
+                            <input type="text" wire:model="revendedor_codigo_interno" class="w-full rounded-md border-slate-300">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+                            <input type="text" wire:model="revendedor_telefono" placeholder="+52 55 1234 5678" class="w-full rounded-md border-slate-300">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
+                            <input type="email" wire:model="revendedor_email" class="w-full rounded-md border-slate-300">
+                            @error('revendedor_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    @if ($revendedorEditandoId)
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
+                            <select wire:model="revendedor_estado" class="w-full rounded-md border-slate-300 max-w-xs">
+                                <option value="activo">Activo</option>
+                                <option value="suspendido">Suspendido</option>
+                                <option value="inactivo">Inactivo (desafiliado)</option>
+                            </select>
+                        </div>
+                    @endif
+
+                    <div class="flex gap-2">
+                        <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled" wire:target="guardarRevendedor">
+                            Guardar
+                        </button>
+                        <button type="button" wire:click="cancelarFormularioRevendedor" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            @endif
+        </div>
     </div>
 </div>
