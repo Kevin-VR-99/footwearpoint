@@ -33,6 +33,8 @@ Route::middleware('guest')->group(function () {
         ->name('password.reset');
 });
 
+require __DIR__.'/web/distribuidora.php';
+
 /*
 |--------------------------------------------------------------------------
 | Autenticados
