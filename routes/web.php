@@ -35,7 +35,7 @@ Route::middleware('guest')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Autenticados
+| Autenticados — panel distribuidora
 |--------------------------------------------------------------------------
 */
 
@@ -52,22 +52,15 @@ Route::middleware('auth')->group(function () {
         return view('dashboard-temp');
     })->name('dashboard');
 
-    // Registro de empleado: solo admin_distribuidora (el componente también valida)
+    Route::livewire('/legales', 'auth.aceptar-legales')
+        ->name('legales.aceptar');
+
+    // Solo admin_distribuidora
     Route::livewire('/empleados/registrar', 'auth.register-empleado')
         ->name('empleados.registrar')
         ->middleware(['tenant.team', 'role:admin_distribuidora']);
 
-    Route::livewire('/legales', 'auth.aceptar-legales')
-        ->name('legales.aceptar');
-
-    // Panel distribuidora (Paquete E)
-    Route::livewire('/vales', 'vales.index')
-        ->name('vales.index');
-
-    Route::livewire('/notificaciones', 'notificaciones.index')
-        ->name('notificaciones.index');
-
-    // Panel distribuidora (Paquete C)
+    // Paquete C
     Route::livewire('/stock', 'stock.index')
         ->name('stock.index');
 
@@ -76,11 +69,57 @@ Route::middleware('auth')->group(function () {
 
     Route::livewire('/ciclo', 'ciclo.index')
         ->name('ciclo.index');
+
+    // Paquete D — orden: index → crear → {id}
+    Route::livewire('/pedidos', 'pedidos.index')
+        ->name('pedidos.index');
+
+    Route::livewire('/pedidos/crear', 'pedidos.create')
+        ->name('pedidos.create');
+
+    Route::livewire('/pedidos/{id}', 'pedidos.show')
+        ->name('pedidos.show');
+
+    // Paquete E
+    Route::livewire('/vales', 'vales.index')
+        ->name('vales.index');
+
+    Route::livewire('/notificaciones', 'notificaciones.index')
+        ->name('notificaciones.index');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Alias del menú layouts.distribuidora (Kevin / B)
+    |--------------------------------------------------------------------------
+    */
+    Route::redirect('/distribuidora', '/dashboard')
+        ->name('distribuidora.inicio');
+
+    Route::get('/distribuidora/catalogo', fn () => redirect('/dashboard'))
+        ->name('distribuidora.catalogo');
+
+    Route::get('/distribuidora/pedidos', fn () => redirect()->route('pedidos.index'))
+        ->name('distribuidora.pedidos');
+
+    Route::get('/distribuidora/ciclos', fn () => redirect()->route('ciclo.index'))
+        ->name('distribuidora.ciclos');
+
+    Route::get('/distribuidora/stock', fn () => redirect()->route('stock.index'))
+        ->name('distribuidora.stock');
+
+    Route::get('/distribuidora/vales', fn () => redirect()->route('vales.index'))
+        ->name('distribuidora.vales');
+
+    Route::get('/distribuidora/reportes', fn () => redirect('/dashboard'))
+        ->name('distribuidora.reportes');
+
+    Route::get('/distribuidora/configuracion', fn () => redirect('/dashboard'))
+        ->name('distribuidora.configuracion');
 });
 
 /*
 |--------------------------------------------------------------------------
-| Admin general (Paquete A) — E17-01
+| Admin general (Paquete A)
 |--------------------------------------------------------------------------
 */
 
