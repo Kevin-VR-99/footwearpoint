@@ -7,14 +7,13 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class extends Component
-{
+new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class extends Component {
     public string $filtro_estado = '';
     public string $filtro_tipo = '';
 
     public function mount()
     {
-        if (! Auth::check()) {
+        if (!Auth::check()) {
             return $this->redirect(route('login'), navigate: true);
         }
 
@@ -48,6 +47,11 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
             <h2 class="text-2xl font-bold text-slate-900">Pedidos</h2>
             <p class="text-sm text-slate-500 mt-1">Listado de pedidos de la distribuidora</p>
         </div>
+
+        <a href="{{ route('pedidos.create') }}"
+           class="inline-flex items-center justify-center rounded-lg bg-[#2563EB] text-white text-sm font-medium px-4 py-2 hover:bg-blue-700 shrink-0">
+            Nuevo pedido
+        </a>
     </div>
 
     <div class="mb-4 flex flex-wrap gap-3">

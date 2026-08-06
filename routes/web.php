@@ -70,9 +70,12 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/ciclo', 'ciclo.index')
         ->name('ciclo.index');
 
-    // Paquete D
+    // Paquete D — orden: index → crear → {id}
     Route::livewire('/pedidos', 'pedidos.index')
         ->name('pedidos.index');
+
+    Route::livewire('/pedidos/crear', 'pedidos.create')
+        ->name('pedidos.create');
 
     Route::livewire('/pedidos/{id}', 'pedidos.show')
         ->name('pedidos.show');
@@ -87,7 +90,6 @@ Route::middleware('auth')->group(function () {
     /*
     |--------------------------------------------------------------------------
     | Alias del menú layouts.distribuidora (Kevin / B)
-    | Evita "Route [distribuidora.*] not defined"
     |--------------------------------------------------------------------------
     */
     Route::redirect('/distribuidora', '/dashboard')
