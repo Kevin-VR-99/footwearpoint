@@ -67,6 +67,13 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/notificaciones', 'notificaciones.index')
         ->name('notificaciones.index');
 
+    // Panel distribuidora (Paquete D)
+    Route::livewire('/pedidos', 'pedidos.index')
+        ->name('pedidos.index');
+
+    Route::livewire('/pedidos/{id}', 'pedidos.show')
+        ->name('pedidos.show');
+
     // Panel distribuidora (Paquete C)
     Route::livewire('/stock', 'stock.index')
         ->name('stock.index');
