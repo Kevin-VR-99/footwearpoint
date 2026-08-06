@@ -86,6 +86,9 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/notificaciones', 'notificaciones.index')
         ->name('notificaciones.index');
 
+    Route::livewire('/reportes', 'reportes.index')
+        ->name('reportes.index');
+
     /*
     |--------------------------------------------------------------------------
     | Alias del menú layouts.distribuidora (Kevin / B)
@@ -117,7 +120,7 @@ Route::middleware('auth')->group(function () {
     })->name('distribuidora.vales');
 
     Route::get('/distribuidora/reportes', function () {
-        return redirect()->route('dashboard');
+        return redirect()->route('reportes.index');
     })->name('distribuidora.reportes');
 
     Route::get('/distribuidora/configuracion', function () {

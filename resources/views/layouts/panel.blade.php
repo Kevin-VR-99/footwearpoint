@@ -45,6 +45,10 @@
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('notificaciones.*') ? 'bg-white/15' : '' }}">
                     Notificaciones
                 </a>
+                <a href="{{ route('reportes.index') }}"
+                    class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('reportes.*') ? 'bg-white/15' : '' }}">
+                    Reportes
+                </a>
             </nav>
 
             <div class="p-4 border-t border-white/10 text-sm">
