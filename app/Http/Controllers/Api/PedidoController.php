@@ -13,6 +13,7 @@ use App\Services\Pedido\CrearPedidoBorradorAction;
 use App\Http\Requests\Pedido\AgregarLineaPedidoRequest;
 use App\Services\Pedido\AgregarLineaPedidoAction;
 use App\Services\Pedido\EnviarPedidoAction;
+use App\Services\Pedido\QuitarLineaPedidoAction;
 
 class PedidoController extends Controller
 {
@@ -88,6 +89,19 @@ class PedidoController extends Controller
         return response()->json([
             'data'    => new PedidoResource($pedido),
             'message' => 'Pedido enviado correctamente.',
+        ]);
+    }
+
+    public function quitarLinea(int $pedidoId, int $lineaId, QuitarLineaPedidoAction $accion): JsonResponse
+    {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+
+        $pedido = Pedido::query()->findOrFail($pedidoId);
+        $pedido = $accion->ejecutar($pedido, $lineaId);
+
+        return response()->json([
+            'data'    => new PedidoResource($pedido),
+            'message' => 'Línea eliminada del pedido.',
         ]);
     }
 }

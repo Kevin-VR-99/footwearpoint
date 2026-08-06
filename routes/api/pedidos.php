@@ -18,4 +18,5 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empl
         Route::post('/pedidos', [PedidoController::class, 'store']);
         Route::post('/pedidos/{id}/lineas', [PedidoController::class, 'agregarLinea']);
         Route::post('/pedidos/{id}/enviar', [PedidoController::class, 'enviar']);
+        Route::delete('/pedidos/{pedidoId}/lineas/{lineaId}', [PedidoController::class, 'quitarLinea']);
     });
