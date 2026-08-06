@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\Api\Catalogo\CampanaController;
 use App\Http\Controllers\Api\Catalogo\CategoriaProductoController;
+use App\Http\Controllers\Api\Catalogo\DisponibilidadVarianteCampanaController;
 use App\Http\Controllers\Api\Catalogo\ImagenProductoCampanaController;
 use App\Http\Controllers\Api\Catalogo\MarcaController;
 use App\Http\Controllers\Api\Catalogo\ProductoCampanaController;
 use App\Http\Controllers\Api\Catalogo\ProductoController;
+use App\Http\Controllers\Api\Catalogo\VarianteController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -16,8 +18,8 @@ use Illuminate\Support\Facades\Route;
 | Bloque 3a: marcas y categorías.
 | Bloque 3b: campañas y productos.
 | Bloque 3c: producto-campana (precios/publicación) e imágenes.
-| (Bloque 3d-3e: variantes, disponibilidad, catálogo consultable —
-| pendiente.)
+| Bloque 3d: variantes y disponibilidad-variante-campana.
+| (Bloque 3e: GET /api/catalogo consultable — pendiente, el último.)
 |
 | Recordatorio: en routes/api.php debe existir
 |   require __DIR__.'/api/catalogo.php';
@@ -56,4 +58,15 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora'])->
     Route::post('producto-campana/{productoCampana}/imagenes', [ImagenProductoCampanaController::class, 'store']);
     Route::patch('producto-campana/imagenes/{imagen}/principal', [ImagenProductoCampanaController::class, 'marcarPrincipal']);
     Route::delete('producto-campana/imagenes/{imagen}', [ImagenProductoCampanaController::class, 'destroy']);
+
+    // --- Bloque 3d ---
+    Route::get('variantes', [VarianteController::class, 'index']);
+    Route::post('variantes', [VarianteController::class, 'store']);
+    Route::get('variantes/{variante}', [VarianteController::class, 'show']);
+    Route::patch('variantes/{variante}', [VarianteController::class, 'update']);
+
+    Route::get('disponibilidad-variante-campana', [DisponibilidadVarianteCampanaController::class, 'index']);
+    Route::post('disponibilidad-variante-campana', [DisponibilidadVarianteCampanaController::class, 'store']);
+    Route::get('disponibilidad-variante-campana/{disponibilidadVarianteCampana}', [DisponibilidadVarianteCampanaController::class, 'show']);
+    Route::patch('disponibilidad-variante-campana/{disponibilidadVarianteCampana}', [DisponibilidadVarianteCampanaController::class, 'update']);
 });
