@@ -14,6 +14,7 @@
     --color-fp-accent: #1E2F52;
     --color-fp-primary: #2563EB;
     --color-fp-page: #F5F6FA;
+    --color-fp-text-muted: #64748B;
 
     /* Insignias: fondo claro + texto oscuro (>= 4.5:1) */
     --color-fp-badge-neutral-bg: #E2E8F0;
