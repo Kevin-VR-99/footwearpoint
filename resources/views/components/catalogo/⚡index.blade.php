@@ -488,7 +488,10 @@ new #[Layout('layouts::distribuidora')] class extends Component {
                                         {{ $producto->activo ? 'Activo' : 'Inactivo' }}
                                     </span>
                                 </td>
-                                <td class="py-2 text-right">
+                                <td class="py-2 text-right space-x-3">
+                                    <a href="{{ route('catalogo.producto.detalle', $producto) }}" class="text-fp-primary text-xs font-medium">
+                                        Variantes
+                                    </a>
                                     <button type="button" wire:click="abrirFormularioEditarProducto({{ $producto->id }})" class="text-fp-primary text-xs font-medium">
                                         Editar
                                     </button>
