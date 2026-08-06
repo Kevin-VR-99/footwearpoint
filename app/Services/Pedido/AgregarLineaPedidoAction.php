@@ -9,6 +9,7 @@ use App\Models\ProductoCampana;
 use App\Models\Variante;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\DisponibilidadVarianteCampana;
 
 class AgregarLineaPedidoAction
 {
@@ -47,6 +48,37 @@ class AgregarLineaPedidoAction
             ]);
         }
 
+        $disponibilidad = DisponibilidadVarianteCampana::query()
+            ->where('producto_campana_id', $pc->id)
+            ->where('variante_id', $variante->id)
+            ->first();
+
+        if (! $disponibilidad) {
+            throw ValidationException::withMessages([
+                'variante_id' => ['Esta variante no tiene disponibilidad registrada en la campaña.'],
+            ]);
+        }
+
+        if ($disponibilidad->estado !== 'disponible') {
+            throw ValidationException::withMessages([
+                'variante_id' => ['La variante no está disponible en catálogo (estado: ' . $disponibilidad->estado . ').'],
+            ]);
+        }
+
+        // Solo productos de campaña publicados en campaña activa
+        if (! $pc->publicado) {
+            throw ValidationException::withMessages([
+                'producto_campana_id' => ['El producto de campaña no está publicado.'],
+            ]);
+        }
+
+        $pc->loadMissing('campana');
+        if ($pc->campana && $pc->campana->estado !== 'activa') {
+            throw ValidationException::withMessages([
+                'producto_campana_id' => ['La campaña no está activa.'],
+            ]);
+        }
+
         $cantidad = (int) $datos['cantidad'];
         $precio = isset($datos['precio_unitario'])
             ? round((float) $datos['precio_unitario'], 2)
@@ -69,8 +101,17 @@ class AgregarLineaPedidoAction
             ?? (string) $variante->color_id;
 
         return DB::transaction(function () use (
-            $pedido, $pc, $variante, $cantidad, $precio, $subtotalLinea,
-            $anticipoRequerido, $productoNombre, $modelo, $talla, $color
+            $pedido,
+            $pc,
+            $variante,
+            $cantidad,
+            $precio,
+            $subtotalLinea,
+            $anticipoRequerido,
+            $productoNombre,
+            $modelo,
+            $talla,
+            $color
         ) {
             PedidoDetalle::create([
                 'distribuidora_id'     => $pedido->distribuidora_id,
