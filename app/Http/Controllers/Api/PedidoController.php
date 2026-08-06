@@ -10,6 +10,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Http\Requests\Pedido\StorePedidoRequest;
 use App\Services\Pedido\CrearPedidoBorradorAction;
+use App\Http\Requests\Pedido\AgregarLineaPedidoRequest;
+use App\Services\Pedido\AgregarLineaPedidoAction;
 
 class PedidoController extends Controller
 {
@@ -56,6 +58,22 @@ class PedidoController extends Controller
         return response()->json([
             'data'    => new PedidoResource($pedido),
             'message' => 'Pedido borrador creado correctamente.',
+        ], 201);
+    }
+
+    public function agregarLinea(
+        int $id,
+        AgregarLineaPedidoRequest $request,
+        AgregarLineaPedidoAction $accion
+    ): JsonResponse {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+
+        $pedido = Pedido::query()->findOrFail($id);
+        $pedido = $accion->ejecutar($pedido, $request->validated());
+
+        return response()->json([
+            'data'    => new PedidoResource($pedido),
+            'message' => 'Línea agregada al pedido.',
         ], 201);
     }
 }
