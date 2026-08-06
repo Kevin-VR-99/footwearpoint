@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ClienteDirecto;
 use App\Models\ConfiguracionCiclo;
 use App\Models\ConfiguracionDistribuidora;
 use App\Models\Distribuidora;
@@ -8,6 +9,7 @@ use App\Models\RevendedorDistribuidora;
 use App\Services\Distribuidora\ActualizarConfiguracionDistribuidoraAction;
 use App\Services\Distribuidora\ActualizarPerfilDistribuidoraAction;
 use App\Services\Distribuidora\ConfiguracionCicloAction;
+use App\Services\Distribuidora\GestionarClienteDirectoAction;
 use App\Services\Distribuidora\GestionarRevendedorAction;
 use App\Support\Tenant;
 use Livewire\Attributes\Layout;
@@ -70,6 +72,16 @@ new #[Layout('layouts::distribuidora')] class extends Component {
     public ?string $revendedor_codigo_interno = null;
     public string $revendedor_estado = 'activo';
 
+    // --- Clientes Directos ---
+    public $clientesDirectos = [];
+    public ?int $clienteEditandoId = null;
+    public bool $mostrandoFormularioCliente = false;
+    public string $cliente_nombre = '';
+    public ?string $cliente_telefono = null;
+    public ?string $cliente_email = null;
+    public ?string $cliente_direccion_contacto = null;
+    public string $cliente_estado = 'activo';
+
     /**
      * Se cargan los datos actuales al abrir la pantalla — igual que el
      * GET que ya probamos por curl, pero aquí se llama directo al modelo
@@ -102,11 +114,17 @@ new #[Layout('layouts::distribuidora')] class extends Component {
         $this->cargarCiclos();
         $this->cargarEmpleados();
         $this->cargarRevendedores();
+        $this->cargarClientesDirectos();
     }
 
     private function cargarCiclos(): void
     {
         $this->ciclos = ConfiguracionCiclo::with('diasRecepcion')->orderByDesc('activa')->get();
+    }
+
+    private function cargarClientesDirectos(): void
+    {
+        $this->clientesDirectos = ClienteDirecto::all();
     }
 
     private function cargarEmpleados(): void
@@ -195,6 +213,71 @@ new #[Layout('layouts::distribuidora')] class extends Component {
         $this->cargarRevendedores();
 
         $this->dispatch('guardado', mensaje: 'Revendedor guardado correctamente.');
+    }
+
+    public function abrirFormularioCrearCliente(): void
+    {
+        $this->clienteEditandoId = null;
+        $this->cliente_nombre = '';
+        $this->cliente_telefono = null;
+        $this->cliente_email = null;
+        $this->cliente_direccion_contacto = null;
+        $this->cliente_estado = 'activo';
+        $this->mostrandoFormularioCliente = true;
+    }
+
+    public function abrirFormularioEditarCliente(int $id): void
+    {
+        $cliente = ClienteDirecto::findOrFail($id);
+
+        $this->clienteEditandoId = $cliente->id;
+        $this->cliente_nombre = $cliente->nombre;
+        $this->cliente_telefono = $cliente->telefono;
+        $this->cliente_email = $cliente->email;
+        $this->cliente_direccion_contacto = $cliente->direccion_contacto;
+        $this->cliente_estado = $cliente->estado;
+        $this->mostrandoFormularioCliente = true;
+    }
+
+    public function cancelarFormularioCliente(): void
+    {
+        $this->mostrandoFormularioCliente = false;
+        $this->clienteEditandoId = null;
+    }
+
+    /**
+     * Mismas reglas que GuardarClienteDirectoRequest (Bloque 2).
+     */
+    public function guardarCliente(): void
+    {
+        $datos = $this->validate([
+            'cliente_nombre'             => ['required', 'string', 'max:150'],
+            'cliente_telefono'           => ['nullable', 'string', 'max:30'],
+            'cliente_email'              => ['nullable', 'email', 'max:190'],
+            'cliente_direccion_contacto' => ['nullable', 'string', 'max:300'],
+        ]);
+
+        $payload = [
+            'nombre'             => $datos['cliente_nombre'],
+            'telefono'           => $datos['cliente_telefono'],
+            'email'              => $datos['cliente_email'],
+            'direccion_contacto' => $datos['cliente_direccion_contacto'],
+            'estado'             => $this->cliente_estado,
+        ];
+
+        $accion = app(GestionarClienteDirectoAction::class);
+
+        if ($this->clienteEditandoId) {
+            $accion->actualizar(ClienteDirecto::findOrFail($this->clienteEditandoId), $payload);
+        } else {
+            $accion->crear($payload);
+        }
+
+        $this->mostrandoFormularioCliente = false;
+        $this->clienteEditandoId = null;
+        $this->cargarClientesDirectos();
+
+        $this->dispatch('guardado', mensaje: 'Cliente directo guardado correctamente.');
     }
 
     /**
@@ -361,6 +444,13 @@ new #[Layout('layouts::distribuidora')] class extends Component {
             class="pb-3 text-sm font-medium {{ $pestanaActiva === 'usuarios' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}"
         >
             Usuarios y Revendedores
+        </button>
+        <button
+            type="button"
+            wire:click="$set('pestanaActiva', 'clientes')"
+            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'clientes' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}"
+        >
+            Clientes Directos
         </button>
     </div>
 
@@ -718,5 +808,97 @@ new #[Layout('layouts::distribuidora')] class extends Component {
                 </form>
             @endif
         </div>
+    </div>
+
+    {{-- Pestaña: Clientes Directos --}}
+    <div x-show="$wire.pestanaActiva === 'clientes'">
+        @if (! $mostrandoFormularioCliente)
+            <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-semibold text-slate-700">Clientes Directos</h2>
+                    <button type="button" wire:click="abrirFormularioCrearCliente" class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
+                        + Nuevo cliente
+                    </button>
+                </div>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-slate-500 border-b">
+                            <th class="py-2">Nombre</th>
+                            <th class="py-2">Teléfono</th>
+                            <th class="py-2">Correo</th>
+                            <th class="py-2">Estado</th>
+                            <th class="py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($clientesDirectos as $cliente)
+                            <tr class="border-b last:border-0">
+                                <td class="py-2">{{ $cliente->nombre }}</td>
+                                <td class="py-2">{{ $cliente->telefono }}</td>
+                                <td class="py-2">{{ $cliente->email }}</td>
+                                <td class="py-2">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $cliente->estado === 'activo' ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
+                                        {{ $cliente->estado === 'activo' ? 'Activo' : 'Inactivo' }}
+                                    </span>
+                                </td>
+                                <td class="py-2 text-right">
+                                    <button type="button" wire:click="abrirFormularioEditarCliente({{ $cliente->id }})" class="text-fp-primary text-xs font-medium">
+                                        Editar
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <form wire:submit="guardarCliente" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
+                <h2 class="text-sm font-semibold text-slate-700">
+                    {{ $clienteEditandoId ? 'Editar cliente directo' : 'Nuevo cliente directo' }}
+                </h2>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                    <input type="text" wire:model="cliente_nombre" class="w-full rounded-md border-slate-300">
+                    @error('cliente_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+                        <input type="text" wire:model="cliente_telefono" placeholder="+52 55 1234 5678" class="w-full rounded-md border-slate-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
+                        <input type="email" wire:model="cliente_email" class="w-full rounded-md border-slate-300">
+                        @error('cliente_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Dirección de contacto</label>
+                    <input type="text" wire:model="cliente_direccion_contacto" class="w-full rounded-md border-slate-300">
+                </div>
+
+                @if ($clienteEditandoId)
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
+                        <select wire:model="cliente_estado" class="w-full rounded-md border-slate-300 max-w-xs">
+                            <option value="activo">Activo</option>
+                            <option value="inactivo">Inactivo</option>
+                        </select>
+                    </div>
+                @endif
+
+                <div class="flex gap-2">
+                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled" wire:target="guardarCliente">
+                        Guardar
+                    </button>
+                    <button type="button" wire:click="cancelarFormularioCliente" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        @endif
     </div>
 </div>
