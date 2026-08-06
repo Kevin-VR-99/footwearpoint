@@ -6,6 +6,7 @@ use App\Models\DistribuidoraStaff;
 use App\Models\HistorialEstadoPedido;
 use App\Models\Pedido;
 use Illuminate\Support\Facades\Auth;
+use App\Services\Notificacion\NotificarCambioEstadoPedidoAction;
 
 class CambiarEstadoPedidoService
 {
@@ -32,6 +33,9 @@ class CambiarEstadoPedidoService
             'cambiado_por_staff_id' => $staffId ?? $this->staffIdActual(),
             'comentario' => $comentario,
         ]);
+
+        app(NotificarCambioEstadoPedidoAction::class)
+            ->ejecutar($pedido, $estadoAnterior, $nuevoEstado);
 
         return $pedido;
     }
