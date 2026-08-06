@@ -10,6 +10,8 @@ use App\Services\Vale\EmitirValeAction;
 use App\Support\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Http\Requests\Vale\AplicarValeRequest;
+use App\Services\Vale\AplicarValeAction;
 
 class ValeController extends Controller
 {
@@ -46,5 +48,18 @@ class ValeController extends Controller
             'data'    => new ValeResource($vale),
             'message' => 'Vale emitido correctamente.',
         ], 201);
+    }
+
+    public function aplicar(int $id, AplicarValeRequest $request, AplicarValeAction $accion): JsonResponse
+    {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+
+        $vale = Vale::query()->findOrFail($id);
+        $vale = $accion->ejecutar($vale, $request->validated());
+
+        return response()->json([
+            'data'    => new ValeResource($vale),
+            'message' => 'Vale aplicado correctamente.',
+        ]);
     }
 }

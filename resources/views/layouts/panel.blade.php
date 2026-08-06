@@ -26,19 +26,28 @@
                 <a href="{{ route('stock.index') }}"
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('stock.*') ? 'bg-white/15' : '' }}">
                     Stock
-                </a>                <a href="{{ route('punto-venta.index') }}"
+                </a> <a href="{{ route('punto-venta.index') }}"
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('punto-venta.*') ? 'bg-white/15' : '' }}">
                     Punto de Venta
-                </a>                <a href="{{ route('ciclo.index') }}"
+                </a> <a href="{{ route('ciclo.index') }}"
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('ciclo.*') ? 'bg-white/15' : '' }}">
                     Ciclo de compra
-                </a>                <a href="{{ route('vales.index') }}"
+                </a>
+                <a href="{{ route('pedidos.index') }}"
+                    class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('pedidos.*') ? 'bg-white/15' : '' }}">
+                    Pedidos
+                </a>
+                <a href="{{ route('vales.index') }}"
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('vales.*') ? 'bg-white/15' : '' }}">
                     Vales
                 </a>
                 <a href="{{ route('notificaciones.index') }}"
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('notificaciones.*') ? 'bg-white/15' : '' }}">
                     Notificaciones
+                </a>
+                <a href="{{ route('reportes.index') }}"
+                    class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('reportes.*') ? 'bg-white/15' : '' }}">
+                    Reportes
                 </a>
             </nav>
 
