@@ -17,7 +17,10 @@ class SetTenantTeam
     // esa lógica.
     public function handle(Request $request, Closure $next): Response
     {
-        app(PermissionRegistrar::class)->setPermissionsTeamId(Tenant::id());
+        // Tenant::id() regresa null para admin_general (no tiene fila en
+        // distribuidora_staff) — pero model_has_roles.team_id es parte de su
+        // llave primaria, y MySQL no permite NULL ahí. 0 = "sin distribuidora".
+        app(PermissionRegistrar::class)->setPermissionsTeamId(Tenant::id() ?? 0);
 
         return $next($request);
     }

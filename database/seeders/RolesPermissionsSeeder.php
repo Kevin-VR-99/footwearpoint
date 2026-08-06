@@ -14,7 +14,7 @@ class RolesPermissionsSeeder extends Seeder
 
         // admin_general es global: no pertenece a ninguna distribuidora,
         // por eso se crea sin equipo (team_id = null).
-        $registrar->setPermissionsTeamId(null);
+        $registrar->setPermissionsTeamId(0);
 
         Role::firstOrCreate([
             'name' => 'admin_general',

@@ -55,7 +55,7 @@ Route::middleware('auth')->group(function () {
     // Registro de empleado: solo admin_distribuidora (el componente también valida)
     Route::livewire('/empleados/registrar', 'auth.register-empleado')
         ->name('empleados.registrar')
-        ->middleware(['team', 'role:admin_distribuidora']);
+        ->middleware(['tenant.team', 'role:admin_distribuidora']);
 
     Route::livewire('/legales', 'auth.aceptar-legales')
         ->name('legales.aceptar');
@@ -84,7 +84,7 @@ Route::middleware('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'team', 'role:admin_general'])->group(function () {
+Route::middleware(['auth', 'tenant.team', 'role:admin_general'])->group(function () {
     Route::livewire('/admin', 'admin.distribuidoras-index')
         ->name('admin.dashboard');
 
