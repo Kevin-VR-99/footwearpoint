@@ -14,8 +14,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class extends Component
-{
+new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class extends Component {
     public string $tipo = 'cliente_directo';
     public string $propietario_id = '';
     public string $sucursal_id = '';
@@ -32,7 +31,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
     public function mount()
     {
-        if (! Auth::check()) {
+        if (!Auth::check()) {
             return $this->redirect(route('login'), navigate: true);
         }
 
@@ -40,8 +39,24 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             abort(403, 'No se pudo determinar la distribuidora.');
         }
 
-        $primera = Sucursal::query()->orderBy('id')->value('id');
-        $this->sucursal_id = $primera ? (string) $primera : '';
+        $continuar = request()->query('continuar');
+        if ($continuar) {
+            $pedido = Pedido::query()->where('estado', 'borrador')->find($continuar);
+
+            if ($pedido) {
+                $this->pedidoId = $pedido->id;
+                $this->tipo = $pedido->tipo;
+                $this->propietario_id = (string) ($pedido->cliente_directo_id ?? ($pedido->revendedor_distribuidora_id ?? ''));
+                $this->sucursal_id = (string) ($pedido->sucursal_id ?? '');
+                $this->observaciones = (string) ($pedido->observaciones ?? '');
+                $this->mensaje = 'Continuando captura del borrador ' . $pedido->folio;
+            }
+        }
+
+        if ($this->sucursal_id === '') {
+            $primera = Sucursal::query()->orderBy('id')->value('id');
+            $this->sucursal_id = $primera ? (string) $primera : '';
+        }
     }
 
     public function updatedTipo()
@@ -61,10 +76,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
     public function getRevendedoresProperty()
     {
-        return RevendedorDistribuidora::query()
-            ->with('revendedor')
-            ->orderBy('id')
-            ->get();
+        return RevendedorDistribuidora::query()->with('revendedor')->orderBy('id')->get();
     }
 
     public function getSucursalesProperty()
@@ -76,13 +88,8 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
     {
         return ProductoCampana::query()
             ->where('publicado', true)
-            ->whereHas('campana', fn ($q) => $q->where('estado', 'activa'))
-            ->with([
-                'producto',
-                'disponibilidadPorVariante' => fn ($q) => $q->where('estado', 'disponible'),
-                'disponibilidadPorVariante.variante.talla',
-                'disponibilidadPorVariante.variante.color',
-            ])
+            ->whereHas('campana', fn($q) => $q->where('estado', 'activa'))
+            ->with(['producto', 'disponibilidadPorVariante' => fn($q) => $q->where('estado', 'disponible'), 'disponibilidadPorVariante.variante.talla', 'disponibilidadPorVariante.variante.color'])
             ->orderBy('id')
             ->get();
     }
@@ -100,7 +107,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
     public function getPedidoProperty(): ?Pedido
     {
-        if (! $this->pedidoId) {
+        if (!$this->pedidoId) {
             return null;
         }
 
@@ -130,7 +137,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             ]);
 
             $this->pedidoId = $pedido->id;
-            $this->mensaje = 'Borrador creado: '.$pedido->folio;
+            $this->mensaje = 'Borrador creado: ' . $pedido->folio;
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo crear.';
         } catch (\Throwable $e) {
@@ -143,7 +150,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         $this->mensaje = '';
         $this->errorMsg = '';
 
-        if (! $this->pedidoId) {
+        if (!$this->pedidoId) {
             $this->errorMsg = 'Primero crea el borrador.';
 
             return;
@@ -177,14 +184,14 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         $this->mensaje = '';
         $this->errorMsg = '';
 
-        if (! $this->pedidoId) {
+        if (!$this->pedidoId) {
             return;
         }
 
         try {
             $pedido = Pedido::query()->findOrFail($this->pedidoId);
             $pedido = $accion->ejecutar($pedido);
-            $this->mensaje = 'Pedido enviado: '.$pedido->folio;
+            $this->mensaje = 'Pedido enviado: ' . $pedido->folio;
 
             return $this->redirect(route('pedidos.show', $pedido->id), navigate: true);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -204,14 +211,16 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
     </div>
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">{{ $mensaje }}</div>
+        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
+            {{ $mensaje }}</div>
     @endif
     @if ($errorMsg)
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">{{ $errorMsg }}</div>
+        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">{{ $errorMsg }}
+        </div>
     @endif
 
     {{-- Cabecera --}}
-    @if (! $pedidoId)
+    @if (!$pedidoId)
         <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4 max-w-xl">
             <h3 class="font-semibold text-slate-800">1. Datos del pedido</h3>
 
@@ -236,7 +245,8 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                     <select wire:model="propietario_id" class="w-full rounded-lg border-slate-300 text-sm">
                         <option value="">— Selecciona —</option>
                         @foreach ($this->revendedores as $r)
-                            <option value="{{ $r->id }}">{{ $r->revendedor?->nombre ?? ('Afiliación #'.$r->id) }}</option>
+                            <option value="{{ $r->id }}">{{ $r->revendedor?->nombre ?? 'Afiliación #' . $r->id }}
+                            </option>
                         @endforeach
                     </select>
                 @endif
@@ -246,7 +256,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 <label class="block text-sm text-slate-600 mb-1">Sucursal</label>
                 <select wire:model="sucursal_id" class="w-full rounded-lg border-slate-300 text-sm">
                     @foreach ($this->sucursales as $s)
-                        <option value="{{ $s->id }}">{{ $s->nombre ?? ('Sucursal #'.$s->id) }}</option>
+                        <option value="{{ $s->id }}">{{ $s->nombre ?? 'Sucursal #' . $s->id }}</option>
                     @endforeach
                 </select>
             </div>
@@ -257,7 +267,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             </div>
 
             <button type="button" wire:click="crearBorrador" wire:loading.attr="disabled"
-                    class="rounded-lg bg-[#2563EB] text-white text-sm font-medium px-4 py-2 hover:bg-blue-700 disabled:opacity-60">
+                class="rounded-lg bg-[#2563EB] text-white text-sm font-medium px-4 py-2 hover:bg-blue-700 disabled:opacity-60">
                 Crear borrador
             </button>
         </div>
@@ -272,7 +282,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 </p>
             </div>
             <button type="button" wire:click="enviar" wire:loading.attr="disabled"
-                    class="rounded-lg bg-emerald-600 text-white text-sm font-medium px-4 py-2 hover:bg-emerald-700 disabled:opacity-60">
+                class="rounded-lg bg-emerald-600 text-white text-sm font-medium px-4 py-2 hover:bg-emerald-700 disabled:opacity-60">
                 Enviar pedido
             </button>
         </div>
@@ -286,7 +296,8 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                     <option value="">— Selecciona —</option>
                     @foreach ($this->catalogo as $pc)
                         <option value="{{ $pc->id }}">
-                            {{ $pc->producto?->nombre }} — {{ $pc->codigo_catalogo }} (${{ number_format((float) $pc->precio_mayorista, 2) }})
+                            {{ $pc->producto?->nombre }} — {{ $pc->codigo_catalogo }}
+                            (${{ number_format((float) $pc->precio_mayorista, 2) }})
                         </option>
                     @endforeach
                 </select>
@@ -309,11 +320,11 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             <div>
                 <label class="block text-sm text-slate-600 mb-1">Cantidad</label>
                 <input type="number" min="1" wire:model="cantidad"
-                       class="w-32 rounded-lg border-slate-300 text-sm" />
+                    class="w-32 rounded-lg border-slate-300 text-sm" />
             </div>
 
             <button type="button" wire:click="agregarLinea" wire:loading.attr="disabled"
-                    class="rounded-lg bg-[#2563EB] text-white text-sm font-medium px-4 py-2 hover:bg-blue-700 disabled:opacity-60">
+                class="rounded-lg bg-[#2563EB] text-white text-sm font-medium px-4 py-2 hover:bg-blue-700 disabled:opacity-60">
                 Agregar línea
             </button>
         </div>

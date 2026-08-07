@@ -8,15 +8,14 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] class extends Component
-{
+new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] class extends Component {
     public int $pedidoId;
     public string $mensaje = '';
     public string $errorMsg = '';
 
     public function mount(int $id)
     {
-        if (! Auth::check()) {
+        if (!Auth::check()) {
             return $this->redirect(route('login'), navigate: true);
         }
 
@@ -60,18 +59,21 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 <x-ui.insignia-estado :estado="$this->pedido->estado" />
                 <span class="text-sm text-slate-500">
                     {{ $this->pedido->tipo === 'cliente_directo' ? 'Cliente' : 'Revendedor' }}:
-                    {{ $this->pedido->clienteDirecto?->nombre
-                        ?? $this->pedido->revendedorAfiliacion?->revendedor?->nombre
-                        ?? '—' }}
+                    {{ $this->pedido->clienteDirecto?->nombre ?? ($this->pedido->revendedorAfiliacion?->revendedor?->nombre ?? '—') }}
                 </span>
             </div>
         </div>
 
         @if ($this->pedido->estado === 'borrador')
-            <button type="button" wire:click="enviar" wire:loading.attr="disabled"
-                    class="rounded-lg bg-[#2563EB] text-white text-sm font-medium px-4 py-2 hover:bg-blue-700 disabled:opacity-60">
-                Enviar pedido
-            </button>
+            <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Este pedido sigue en borrador.
+                Para agregar o quitar productos usa la captura continua:
+                <a href="{{ route('pedidos.create') }}?continuar={{ $this->pedido->id }}"
+                    class="font-medium text-[#2563EB] hover:underline">
+                    Continuar editando
+                </a>
+                (o implementamos el alta de líneas aquí mismo).
+            </div>
         @endif
     </div>
 
@@ -134,8 +136,10 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                         <td class="px-4 py-3">{{ $l->talla }}</td>
                         <td class="px-4 py-3">{{ $l->color }}</td>
                         <td class="px-4 py-3 text-right">{{ $l->cantidad }}</td>
-                        <td class="px-4 py-3 text-right tabular-nums">${{ number_format((float) $l->precio_unitario, 2) }}</td>
-                        <td class="px-4 py-3 text-right tabular-nums">${{ number_format((float) $l->subtotal, 2) }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums">
+                            ${{ number_format((float) $l->precio_unitario, 2) }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums">${{ number_format((float) $l->subtotal, 2) }}
+                        </td>
                     </tr>
                 @empty
                     <tr>
