@@ -5,9 +5,8 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Paquete E — Vales versión simple (E12) — solo emisión y listado
+| Paquete E — Vales (emisión, listado y aplicar)
 |--------------------------------------------------------------------------
-| NO incluye POST /api/vales/{folio}/aplicar (depende de C/D).
 */
 
 Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado'])
