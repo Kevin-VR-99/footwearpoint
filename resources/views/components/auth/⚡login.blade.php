@@ -7,8 +7,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] class extends Component
-{
+new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] class extends Component {
     public string $email = '';
     public string $password = '';
     public bool $remember = false;
@@ -16,16 +15,39 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
     protected function rules(): array
     {
         return [
-            'email'    => ['required', 'email'],
+            'email' => ['required', 'email'],
             'password' => ['required', 'string'],
         ];
+    }
+
+    public function mount()
+    {
+        if (!Auth::check()) {
+            return;
+        }
+
+        $usuario = Auth::user();
+
+        $staff = \App\Models\DistribuidoraStaff::withoutGlobalScopes()->where('usuario_id', $usuario->id)->where('estado', 'activo')->first();
+
+        if ($staff) {
+            setPermissionsTeamId($staff->distribuidora_id);
+        } else {
+            setPermissionsTeamId(0);
+        }
+
+        if ($usuario->hasRole('admin_general')) {
+            return $this->redirect(route('admin.dashboard'), navigate: true);
+        }
+
+        return $this->redirect(route('dashboard'), navigate: true);
     }
 
     protected function messages(): array
     {
         return [
-            'email.required'    => 'El correo es obligatorio.',
-            'email.email'       => 'El correo no es válido.',
+            'email.required' => 'El correo es obligatorio.',
+            'email.email' => 'El correo no es válido.',
             'password.required' => 'La contraseña es obligatoria.',
         ];
     }
@@ -49,9 +71,7 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         Auth::login($usuario, $this->remember);
         session()->regenerate();
 
-        $staff = \App\Models\DistribuidoraStaff::withoutGlobalScopes()
-            ->where('usuario_id', $usuario->id)
-            ->first();
+        $staff = \App\Models\DistribuidoraStaff::withoutGlobalScopes()->where('usuario_id', $usuario->id)->first();
 
         if ($staff) {
             setPermissionsTeamId($staff->distribuidora_id);
@@ -77,13 +97,9 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
     <form wire:submit="login" class="space-y-5">
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-            <input
-                type="email"
-                wire:model="email"
+            <input type="email" wire:model="email"
                 class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600"
-                placeholder="correo@ejemplo.com"
-                autofocus
-            >
+                placeholder="correo@ejemplo.com" autofocus>
             @error('email')
                 <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
             @enderror
@@ -91,12 +107,9 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
 
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-            <input
-                type="password"
-                wire:model="password"
+            <input type="password" wire:model="password"
                 class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600"
-                placeholder="••••••••"
-            >
+                placeholder="••••••••">
             @error('password')
                 <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
             @enderror
@@ -104,7 +117,8 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
 
         <div class="flex items-center justify-between">
             <label class="flex items-center gap-2 text-sm text-slate-600">
-                <input type="checkbox" wire:model="remember" class="rounded border-slate-300 text-blue-600 focus:ring-blue-600">
+                <input type="checkbox" wire:model="remember"
+                    class="rounded border-slate-300 text-blue-600 focus:ring-blue-600">
                 Recordarme
             </label>
 
@@ -113,11 +127,9 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
             </a>
         </div>
 
-        <button
-            type="submit"
+        <button type="submit"
             class="w-full rounded-lg bg-[#111E38] text-white font-medium py-2.5 hover:bg-[#1E2F52] transition"
-            wire:loading.attr="disabled"
-        >
+            wire:loading.attr="disabled">
             <span wire:loading.remove>Entrar</span>
             <span wire:loading>Entrando...</span>
         </button>
