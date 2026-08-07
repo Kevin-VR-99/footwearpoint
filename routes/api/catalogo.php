@@ -10,7 +10,7 @@ use App\Http\Controllers\Api\Catalogo\ProductoCampanaController;
 use App\Http\Controllers\Api\Catalogo\ProductoController;
 use App\Http\Controllers\Api\Catalogo\VarianteController;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Api\Catalogo\LineaController;
 /*
 |--------------------------------------------------------------------------
 | Paquete B — Catálogo (E4) — COMPLETO
@@ -68,6 +68,11 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora'])->
     Route::post('disponibilidad-variante-campana', [DisponibilidadVarianteCampanaController::class, 'store']);
     Route::get('disponibilidad-variante-campana/{disponibilidadVarianteCampana}', [DisponibilidadVarianteCampanaController::class, 'show']);
     Route::patch('disponibilidad-variante-campana/{disponibilidadVarianteCampana}', [DisponibilidadVarianteCampanaController::class, 'update']);
+
+    Route::get('lineas', [LineaController::class, 'index']);
+    Route::post('lineas', [LineaController::class, 'store']);
+    Route::get('lineas/{linea}', [LineaController::class, 'show']);
+    Route::patch('lineas/{linea}', [LineaController::class, 'update']);
 });
 
 // --- Bloque 3e: catálogo consultable — uso diario, admin_distribuidora Y empleado ---
