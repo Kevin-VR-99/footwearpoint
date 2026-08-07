@@ -26,22 +26,34 @@ class GuardarVarianteRequest extends FormRequest
             $reglas['producto_id'] = [
                 'required',
                 'integer',
-                // productos SÍ es de tu tenant, se acota a mano igual que antes.
                 Rule::exists('productos', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
             ];
 
-            // tallas y colores son catálogos GLOBALES (sin distribuidora_id,
-            // sembrados en Fase 0) — aquí SÍ se usa el "exists" corto normal,
-            // porque no hay ningún tenant que acotar: cualquier distribuidora
-            // puede usar cualquier talla/color del catálogo compartido.
             $reglas['talla_id'] = ['required', 'integer', 'exists:tallas,id'];
-            $reglas['color_id'] = ['required', 'integer', 'exists:colores,id'];
+
+            // CORRECCIÓN: antes esto solo dependía de la regla CHECK de la
+            // base de datos (uq_variante_combinacion), que sí bloqueaba el
+            // duplicado pero con un error 500 crudo, no un 422 limpio como
+            // pide la sección 1.7. Ahora se valida aquí explícitamente.
+            $reglas['color_id'] = [
+                'required',
+                'integer',
+                'exists:colores,id',
+                Rule::unique('variantes')->where(function ($query) {
+                    return $query->where('producto_id', $this->input('producto_id'))
+                        ->where('talla_id', $this->input('talla_id'))
+                        ->where('distribuidora_id', Tenant::id());
+                }),
+            ];
         }
-        // producto_id/talla_id/color_id NO se aceptan en edición: cambiar la
-        // combinación de una variante ya creada rompería su sku (decisión
-        // provisional mía) — si la combinación está mal, se borra y se crea
-        // de nuevo.
 
         return $reglas;
+    }
+
+    public function messages(): array
+    {
+        return [
+            'color_id.unique' => 'Ya existe una variante con esa combinación de talla y color para este producto.',
+        ];
     }
 }

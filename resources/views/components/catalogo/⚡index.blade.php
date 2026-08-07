@@ -1,10 +1,16 @@
 <?php
 
 use App\Exceptions\OperacionInvalidaException;
+use App\Models\Campana;
 use App\Models\CategoriaProducto;
 use App\Models\Marca;
+use App\Models\Producto;
+use App\Services\Catalogo\GestionarCampanaAction;
 use App\Services\Catalogo\GestionarCategoriaProductoAction;
 use App\Services\Catalogo\GestionarMarcaAction;
+use App\Services\Catalogo\GestionarProductoAction;
+use App\Support\Tenant;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -40,10 +46,63 @@ new #[Layout('layouts::distribuidora')] class extends Component {
     public ?string $categoria_descripcion = null;
     public bool $categoria_activa = true;
 
+    // --- Campañas ---
+    public $campanas = [];
+    public ?int $campanaEditandoId = null;
+    public bool $mostrandoFormularioCampana = false;
+    public ?int $campana_marca_id = null;
+    public string $campana_nombre = '';
+    public ?string $campana_fecha_inicio = null;
+    public ?string $campana_fecha_fin = null;
+
+    // Traducción local de estado -> [texto, variante] para el componente
+    // compartido <x-ui.insignia-estado>. El componente compartido YA NO
+    // hace esta traducción automática (lo cambiaron mientras
+    // trabajábamos), así que cada quien la resuelve por su cuenta ahora.
+    private const CAMPANA_ESTADOS = [
+        'borrador'        => ['Borrador', 'neutral'],
+        'en_importacion'  => ['En importación', 'info'],
+        'en_revision'     => ['En revisión', 'info'],
+        'activa'          => ['Activa', 'success'],
+        'finalizada'      => ['Finalizada', 'neutral'],
+        'archivada'       => ['Archivada', 'neutral'],
+    ];
+    private const ORDEN_ESTADOS_CAMPANA = [
+        'borrador', 'en_importacion', 'en_revision', 'activa', 'finalizada', 'archivada',
+    ];
+    public array $campanaEstadosNombres = [];
+    public array $ordenEstadosCampana = [];
+
+    // --- Productos ---
+    public $productos = [];
+    public ?int $productoEditandoId = null;
+    public bool $mostrandoFormularioProducto = false;
+    public string $producto_modelo = '';
+    public string $producto_nombre = '';
+    public ?string $producto_descripcion = null;
+    public ?int $producto_marca_id = null;
+    public ?int $producto_categoria_id = null;
+    public bool $producto_activo = true;
+
     public function mount(): void
     {
+        $this->campanaEstadosNombres = self::CAMPANA_ESTADOS;
+        $this->ordenEstadosCampana = self::ORDEN_ESTADOS_CAMPANA;
+
         $this->cargarMarcas();
         $this->cargarCategorias();
+        $this->cargarCampanas();
+        $this->cargarProductos();
+    }
+
+    private function cargarCampanas(): void
+    {
+        $this->campanas = Campana::with('marca')->latest()->get();
+    }
+
+    private function cargarProductos(): void
+    {
+        $this->productos = Producto::with(['marca', 'categoria'])->latest()->get();
     }
 
     private function cargarMarcas(): void
@@ -188,6 +247,176 @@ new #[Layout('layouts::distribuidora')] class extends Component {
 
         $this->dispatch('guardado', mensaje: 'Categoría guardada correctamente.');
     }
+
+    // ============ CAMPAÑAS ============
+
+    public function abrirFormularioCrearCampana(): void
+    {
+        $this->campanaEditandoId = null;
+        $this->campana_marca_id = null;
+        $this->campana_nombre = '';
+        $this->campana_fecha_inicio = null;
+        $this->campana_fecha_fin = null;
+        $this->errorNegocio = null;
+        $this->mostrandoFormularioCampana = true;
+    }
+
+    public function cancelarFormularioCampana(): void
+    {
+        $this->mostrandoFormularioCampana = false;
+        $this->campanaEditandoId = null;
+        $this->errorNegocio = null;
+    }
+
+    /**
+     * Solo CREA campañas aquí (no edición de datos básicos por ahora —
+     * el foco de esta pantalla es crear + avanzar estado). Mismas reglas
+     * que GuardarCampanaRequest (Bloque 3b), incluida la validación de
+     * marca_id acotada al tenant.
+     */
+    public function guardarCampana(): void
+    {
+        $this->errorNegocio = null;
+
+        $datos = $this->validate([
+            'campana_marca_id'     => [
+                'required', 'integer',
+                Rule::exists('marcas', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
+            ],
+            'campana_nombre'       => ['required', 'string', 'max:150'],
+            'campana_fecha_inicio' => ['nullable', 'date'],
+            'campana_fecha_fin'    => ['nullable', 'date', 'after_or_equal:campana_fecha_inicio'],
+        ]);
+
+        $payload = [
+            'marca_id'     => $datos['campana_marca_id'],
+            'nombre'       => $datos['campana_nombre'],
+            'fecha_inicio' => $datos['campana_fecha_inicio'],
+            'fecha_fin'    => $datos['campana_fecha_fin'],
+        ];
+
+        app(GestionarCampanaAction::class)->crear($payload);
+
+        $this->mostrandoFormularioCampana = false;
+        $this->cargarCampanas();
+
+        $this->dispatch('guardado', mensaje: 'Campaña creada correctamente.');
+    }
+
+    /**
+     * Avanza la campaña al SIGUIENTE estado de la secuencia (un solo
+     * paso). La Action ya valida esto — aquí solo se atrapa el error de
+     * negocio por si acaso (ej. dos personas cambiando el estado a la vez).
+     */
+    public function avanzarEstadoCampana(int $id): void
+    {
+        $this->errorNegocio = null;
+        $campana = Campana::findOrFail($id);
+        $indiceActual = array_search($campana->estado, self::ORDEN_ESTADOS_CAMPANA, true);
+        $siguiente = self::ORDEN_ESTADOS_CAMPANA[$indiceActual + 1] ?? null;
+
+        if (! $siguiente) {
+            return; // ya está en el último estado, no hay botón visible de todas formas
+        }
+
+        try {
+            app(GestionarCampanaAction::class)->actualizar($campana, ['estado' => $siguiente]);
+        } catch (OperacionInvalidaException $e) {
+            $this->errorNegocio = $e->getMessage();
+            return;
+        }
+
+        $this->cargarCampanas();
+        $this->dispatch('guardado', mensaje: "Campaña avanzada a '{$siguiente}'.");
+    }
+
+    // ============ PRODUCTOS ============
+
+    public function abrirFormularioCrearProducto(): void
+    {
+        $this->productoEditandoId = null;
+        $this->producto_modelo = '';
+        $this->producto_nombre = '';
+        $this->producto_descripcion = null;
+        $this->producto_marca_id = null;
+        $this->producto_categoria_id = null;
+        $this->producto_activo = true;
+        $this->mostrandoFormularioProducto = true;
+    }
+
+    public function abrirFormularioEditarProducto(int $id): void
+    {
+        $producto = Producto::findOrFail($id);
+
+        $this->productoEditandoId = $producto->id;
+        $this->producto_modelo = $producto->modelo;
+        $this->producto_nombre = $producto->nombre;
+        $this->producto_descripcion = $producto->descripcion;
+        $this->producto_categoria_id = $producto->categoria_id;
+        $this->producto_activo = (bool) $producto->activo;
+        // marca_id NO se carga para edición: el Form Request tampoco la
+        // acepta ahí (no se puede cambiar de marca después de creado).
+        $this->mostrandoFormularioProducto = true;
+    }
+
+    public function cancelarFormularioProducto(): void
+    {
+        $this->mostrandoFormularioProducto = false;
+        $this->productoEditandoId = null;
+    }
+
+    /**
+     * Mismas reglas que GuardarProductoRequest (Bloque 3b).
+     */
+    public function guardarProducto(): void
+    {
+        $esCreacion = ! $this->productoEditandoId;
+
+        $reglas = [
+            'producto_modelo'       => ['required', 'string', 'max:120'],
+            'producto_nombre'       => ['required', 'string', 'max:200'],
+            'producto_descripcion'  => ['nullable', 'string'],
+            'producto_categoria_id' => [
+                'required', 'integer',
+                Rule::exists('categorias_producto', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
+            ],
+        ];
+
+        if ($esCreacion) {
+            $reglas['producto_marca_id'] = [
+                'required', 'integer',
+                Rule::exists('marcas', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
+            ];
+        }
+
+        $datos = $this->validate($reglas);
+
+        $accion = app(GestionarProductoAction::class);
+
+        if ($esCreacion) {
+            $accion->crear([
+                'marca_id'     => $datos['producto_marca_id'],
+                'categoria_id' => $datos['producto_categoria_id'],
+                'modelo'       => $datos['producto_modelo'],
+                'nombre'       => $datos['producto_nombre'],
+                'descripcion'  => $datos['producto_descripcion'],
+            ]);
+        } else {
+            $accion->actualizar(Producto::findOrFail($this->productoEditandoId), [
+                'categoria_id' => $datos['producto_categoria_id'],
+                'modelo'       => $datos['producto_modelo'],
+                'nombre'       => $datos['producto_nombre'],
+                'descripcion'  => $datos['producto_descripcion'],
+                'activo'       => $this->producto_activo,
+            ]);
+        }
+
+        $this->mostrandoFormularioProducto = false;
+        $this->productoEditandoId = null;
+        $this->cargarProductos();
+
+        $this->dispatch('guardado', mensaje: 'Producto guardado correctamente.');
+    }
 };
 ?>
 
@@ -226,12 +455,231 @@ new #[Layout('layouts::distribuidora')] class extends Component {
         </button>
     </div>
 
-    {{-- Pestañas Productos y Campañas: siguiente paso, todavía no construidas --}}
-    <div x-show="$wire.pestanaActiva === 'productos'" class="text-sm text-fp-text-muted">
-        (Siguiente paso — todavía no construida.)
+    {{-- Pestaña: Productos --}}
+    <div x-show="$wire.pestanaActiva === 'productos'">
+        @if (! $mostrandoFormularioProducto)
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-semibold text-slate-700">Productos</h2>
+                    <button type="button" wire:click="abrirFormularioCrearProducto" class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
+                        + Agregar Producto
+                    </button>
+                </div>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-slate-500 border-b">
+                            <th class="py-2">Código / Modelo</th>
+                            <th class="py-2">Nombre</th>
+                            <th class="py-2">Marca</th>
+                            <th class="py-2">Categoría</th>
+                            <th class="py-2">Estado</th>
+                            <th class="py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($productos as $producto)
+                            <tr class="border-b last:border-0">
+                                <td class="py-2">{{ $producto->modelo }}</td>
+                                <td class="py-2">{{ $producto->nombre }}</td>
+                                <td class="py-2">{{ $producto->marca->nombre ?? '—' }}</td>
+                                <td class="py-2">{{ $producto->categoria->nombre ?? '—' }}</td>
+                                <td class="py-2">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $producto->activo ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
+                                        {{ $producto->activo ? 'Activo' : 'Inactivo' }}
+                                    </span>
+                                </td>
+                                <td class="py-2 text-right space-x-3">
+                                    <a href="{{ route('catalogo.producto.detalle', $producto) }}" class="text-fp-primary text-xs font-medium">
+                                        Variantes
+                                    </a>
+                                    <button type="button" wire:click="abrirFormularioEditarProducto({{ $producto->id }})" class="text-fp-primary text-xs font-medium">
+                                        Editar
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+                <p class="text-xs text-fp-text-muted mt-4">
+                    Los precios, variantes e imágenes de cada producto se gestionan dentro de sus publicaciones por campaña (siguiente paso).
+                </p>
+            </div>
+        @else
+            <form wire:submit="guardarProducto" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
+                <h2 class="text-sm font-semibold text-slate-700">
+                    {{ $productoEditandoId ? 'Editar producto' : 'Agregar Nuevo Producto' }}
+                </h2>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nombre del Producto</label>
+                    <input type="text" wire:model="producto_nombre" placeholder="Ej. Air Max Running Pro 2024" class="w-full rounded-md border-slate-300">
+                    @error('producto_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Código / Modelo</label>
+                    <input type="text" wire:model="producto_modelo" placeholder="Ej. AM-RUN-2024-BLK" class="w-full rounded-md border-slate-300">
+                    @error('producto_modelo') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
+                    <textarea wire:model="producto_descripcion" rows="2" class="w-full rounded-md border-slate-300"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    @if (! $productoEditandoId)
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Marca</label>
+                            <select wire:model="producto_marca_id" class="w-full rounded-md border-slate-300">
+                                <option value="">Seleccionar marca</option>
+                                @foreach ($marcas as $marca)
+                                    @if ($marca->activa)
+                                        <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
+                                    @endif
+                                @endforeach
+                            </select>
+                            @error('producto_marca_id') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                        </div>
+                    @endif
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Categoría</label>
+                        <select wire:model="producto_categoria_id" class="w-full rounded-md border-slate-300">
+                            <option value="">Seleccionar categoría</option>
+                            @foreach ($categorias as $categoria)
+                                @if ($categoria->activa)
+                                    <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
+                                @endif
+                            @endforeach
+                        </select>
+                        @error('producto_categoria_id') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                @if ($productoEditandoId)
+                    <div>
+                        <label class="flex items-center gap-2 text-sm text-slate-700">
+                            <input type="checkbox" wire:model="producto_activo" class="rounded border-slate-300">
+                            Producto activo
+                        </label>
+                    </div>
+                @endif
+
+                <div class="flex gap-2">
+                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled" wire:target="guardarProducto">
+                        Guardar Producto
+                    </button>
+                    <button type="button" wire:click="cancelarFormularioProducto" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        @endif
     </div>
-    <div x-show="$wire.pestanaActiva === 'campanas'" class="text-sm text-fp-text-muted">
-        (Siguiente paso — todavía no construida.)
+
+    {{-- Pestaña: Campañas --}}
+    <div x-show="$wire.pestanaActiva === 'campanas'">
+        @if ($errorNegocio)
+            <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">
+                {{ $errorNegocio }}
+            </div>
+        @endif
+
+        @if (! $mostrandoFormularioCampana)
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-semibold text-slate-700">Campañas</h2>
+                    <button type="button" wire:click="abrirFormularioCrearCampana" class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
+                        + Nueva campaña
+                    </button>
+                </div>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-slate-500 border-b">
+                            <th class="py-2">Nombre</th>
+                            <th class="py-2">Marca</th>
+                            <th class="py-2">Vigencia</th>
+                            <th class="py-2">Estado</th>
+                            <th class="py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($campanas as $campana)
+                            @php
+                                [$textoEstado, $varianteEstado] = $campanaEstadosNombres[$campana->estado] ?? [$campana->estado, 'neutral'];
+                                $indiceActual = array_search($campana->estado, $ordenEstadosCampana, true);
+                                $siguienteEstado = $ordenEstadosCampana[$indiceActual + 1] ?? null;
+                            @endphp
+                            <tr class="border-b last:border-0">
+                                <td class="py-2">{{ $campana->nombre }}</td>
+                                <td class="py-2">{{ $campana->marca->nombre ?? '—' }}</td>
+                                <td class="py-2">
+                                    {{ $campana->fecha_inicio?->format('d/m/Y') ?? '—' }} – {{ $campana->fecha_fin?->format('d/m/Y') ?? '—' }}
+                                </td>
+                                <td class="py-2">
+                                    <x-ui.insignia-estado :texto="$textoEstado" :variante="$varianteEstado" />
+                                </td>
+                                <td class="py-2 text-right">
+                                    @if ($siguienteEstado)
+                                        <button type="button" wire:click="avanzarEstadoCampana({{ $campana->id }})" class="text-fp-primary text-xs font-medium">
+                                            Avanzar a "{{ $campanaEstadosNombres[$siguienteEstado][0] }}"
+                                        </button>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <form wire:submit="guardarCampana" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
+                <h2 class="text-sm font-semibold text-slate-700">Nueva campaña</h2>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Marca</label>
+                    <select wire:model="campana_marca_id" class="w-full rounded-md border-slate-300">
+                        <option value="">Seleccionar marca</option>
+                        @foreach ($marcas as $marca)
+                            @if ($marca->activa)
+                                <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
+                            @endif
+                        @endforeach
+                    </select>
+                    @error('campana_marca_id') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nombre de la campaña</label>
+                    <input type="text" wire:model="campana_nombre" placeholder="Ej. Otoño Invierno 2026" class="w-full rounded-md border-slate-300">
+                    @error('campana_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de inicio</label>
+                        <input type="date" wire:model="campana_fecha_inicio" class="w-full rounded-md border-slate-300">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de fin</label>
+                        <input type="date" wire:model="campana_fecha_fin" class="w-full rounded-md border-slate-300">
+                        @error('campana_fecha_fin') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                <p class="text-xs text-fp-text-muted">
+                    La campaña siempre inicia en estado "Borrador" — el estado se avanza después, desde la lista.
+                </p>
+
+                <div class="flex gap-2">
+                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled" wire:target="guardarCampana">
+                        Guardar
+                    </button>
+                    <button type="button" wire:click="cancelarFormularioCampana" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        @endif
     </div>
 
     {{-- Pestaña: Marcas --}}
