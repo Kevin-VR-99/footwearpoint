@@ -7,14 +7,13 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class extends Component
-{
+new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class extends Component {
     public string $desde = '';
     public string $hasta = '';
 
     public function mount()
     {
-        if (! Auth::check()) {
+        if (!Auth::check()) {
             return $this->redirect(route('login'), navigate: true);
         }
 
@@ -25,10 +24,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
 
     public function getResumenProperty(): array
     {
-        return app(ResumenOperativoAction::class)->ejecutar(
-            $this->desde !== '' ? $this->desde : null,
-            $this->hasta !== '' ? $this->hasta : null,
-        );
+        return app(ResumenOperativoAction::class)->ejecutar($this->desde !== '' ? $this->desde : null, $this->hasta !== '' ? $this->hasta : null);
     }
 };
 ?>
@@ -50,7 +46,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
         <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
             <p class="text-xs text-slate-500">Pedidos</p>
             <p class="text-2xl font-semibold">{{ $this->resumen['pedidos']['total'] }}</p>
@@ -81,7 +77,6 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                 <tr>
                     <th class="px-4 py-2">Estado</th>
                     <th class="px-4 py-2 text-right">Cantidad</th>
-                    <th class="px-4 py-2 text-right">Monto</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -91,16 +86,77 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                             <x-ui.insignia-estado :estado="$fila['estado']" />
                         </td>
                         <td class="px-4 py-3 text-right tabular-nums">{{ $fila['cantidad'] }}</td>
-                        <td class="px-4 py-3 text-right tabular-nums">
-                            ${{ number_format($fila['monto'], 2) }}
-                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="3" class="px-4 py-8 text-center text-slate-500">Sin datos</td>
+                        <td colspan="2" class="px-4 py-8 text-center text-slate-500">Sin datos</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
+    </div>
+
+    <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b font-medium text-slate-800">
+            Detalle de pedidos
+            <span class="text-xs font-normal text-slate-500">(máx. 100 del periodo)</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-50 text-left text-slate-500">
+                    <tr>
+                        <th class="px-4 py-2">Folio</th>
+                        <th class="px-4 py-2">Quién</th>
+                        <th class="px-4 py-2">Fecha</th>
+                        <th class="px-4 py-2">Estado</th>
+                        <th class="px-4 py-2">Descripción</th>
+                        <th class="px-4 py-2 text-right">Total</th>
+                        <th class="px-4 py-2"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse ($this->resumen['pedidos']['lista'] ?? [] as $pedido)
+                        <tr class="align-top">
+                            <td class="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
+                                {{ $pedido['folio'] ?? '#' . $pedido['id'] }}
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="text-slate-800">{{ $pedido['quien'] }}</div>
+                                <div class="text-xs text-slate-400">{{ $pedido['tipo'] }}</div>
+                                @if (!empty($pedido['capturado_por']))
+                                    <div class="text-xs text-slate-400">Capturó: {{ $pedido['capturado_por'] }}</div>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-slate-600">
+                                {{ $pedido['fecha'] ?? '—' }}
+                            </td>
+                            <td class="px-4 py-3">
+                                <x-ui.insignia-estado :estado="$pedido['estado']" />
+                            </td>
+                            <td class="px-4 py-3 text-slate-600 max-w-xs">
+                                <span class="line-clamp-3" title="{{ $pedido['descripcion'] }}">
+                                    {{ $pedido['descripcion'] }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+                                ${{ number_format($pedido['total'], 2) }}
+                            </td>
+                            <td class="px-4 py-3 text-right whitespace-nowrap">
+                                <a href="{{ route('pedidos.show', $pedido['id']) }}"
+                                    class="text-fp-primary text-xs font-medium hover:underline">
+                                    Ver pedido
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="px-4 py-8 text-center text-slate-500">
+                                No hay pedidos en el periodo.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
