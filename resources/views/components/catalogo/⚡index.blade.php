@@ -447,7 +447,7 @@ new #[Layout('layouts.panel')] class extends Component {
         </button>
         <button type="button" wire:click="$set('pestanaActiva', 'marcas')"
             class="pb-3 text-sm font-medium {{ $pestanaActiva === 'marcas' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
-            Marcas
+            Líneas
         </button>
         <button type="button" wire:click="$set('pestanaActiva', 'categorias')"
             class="pb-3 text-sm font-medium {{ $pestanaActiva === 'categorias' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
