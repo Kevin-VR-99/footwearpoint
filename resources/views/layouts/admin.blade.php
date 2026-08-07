@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,6 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
+
 <body class="min-h-screen bg-slate-100 text-slate-800 antialiased">
     <div class="min-h-screen flex">
         {{-- Sidebar --}}
@@ -18,12 +20,16 @@
 
             <nav class="flex-1 p-3 space-y-1">
                 <a href="{{ route('admin.dashboard') }}"
-                   class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('admin.dashboard') ? 'bg-white/15' : '' }}">
+                    class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('admin.dashboard') ? 'bg-white/15' : '' }}">
                     Distribuidoras
                 </a>
                 <a href="{{ route('admin.planes') }}"
-                   class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('admin.planes') ? 'bg-white/15' : '' }}">
+                    class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('admin.planes') ? 'bg-white/15' : '' }}">
                     Planes
+                </a>
+                <a href="{{ route('marketplace') }}"
+                    class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" target="_blank">
+                    Marketplace público
                 </a>
             </nav>
 
@@ -44,4 +50,5 @@
 
     @livewireScripts
 </body>
+
 </html>

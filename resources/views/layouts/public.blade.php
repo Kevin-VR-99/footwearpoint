@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,6 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
+
 <body class="min-h-screen bg-[#F5F6FA] text-slate-800 antialiased">
     <header class="bg-[#111E38] text-white">
         <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -14,10 +16,32 @@
                 <h1 class="text-lg font-bold">FootwearPoint</h1>
                 <p class="text-xs text-white/60">Directorio de distribuidoras</p>
             </div>
-            <a href="{{ route('login') }}"
-               class="text-sm px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition">
-                Iniciar sesión
-            </a>
+            @auth
+                @php
+                    setPermissionsTeamId(0);
+                    $esAdminGeneral = auth()->user()->hasRole('admin_general');
+                    if (!$esAdminGeneral) {
+                        $staff = \App\Models\DistribuidoraStaff::withoutGlobalScopes()
+                            ->where('usuario_id', auth()->id())
+                            ->where('estado', 'activo')
+                            ->first();
+                        if ($staff) {
+                            setPermissionsTeamId($staff->distribuidora_id);
+                        }
+                    }
+                    $destino = $esAdminGeneral ? route('admin.dashboard') : route('dashboard');
+                    $textoBoton = $esAdminGeneral ? 'Ir al panel admin' : 'Ir al panel';
+                @endphp
+                <a href="{{ $destino }}"
+                    class="text-sm px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition">
+                    {{ $textoBoton }}
+                </a>
+            @else
+                <a href="{{ route('login') }}"
+                    class="text-sm px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition">
+                    Iniciar sesión
+                </a>
+            @endauth
         </div>
     </header>
 
@@ -33,4 +57,5 @@
 
     @livewireScripts
 </body>
+
 </html>
