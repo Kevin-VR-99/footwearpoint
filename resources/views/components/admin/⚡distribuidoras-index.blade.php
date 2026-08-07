@@ -12,8 +12,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extends Component
-{
+new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extends Component {
     public string $filtroEstado = '';
     public string $mensaje = '';
 
@@ -41,7 +40,13 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     public function getDistribuidorasProperty()
     {
-        $query = Distribuidora::query()->orderByDesc('id');
+        $query = Distribuidora::query()
+            ->with([
+                'suscripciones' => function ($q) {
+                    $q->where('estado', 'activa')->latest('id');
+                },
+            ])
+            ->orderByDesc('id');
 
         if ($this->filtroEstado !== '') {
             $query->where('estado', $this->filtroEstado);
@@ -52,9 +57,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     public function getPlanesActivosProperty()
     {
-        return PlanSuscripcion::where('activo', true)
-            ->orderBy('precio_base_mensual')
-            ->get();
+        return PlanSuscripcion::where('activo', true)->orderBy('precio_base_mensual')->get();
     }
 
     public function aprobar(int $id)
@@ -66,8 +69,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             return;
         }
 
-        $plan = PlanSuscripcion::where('nombre', 'Básico')->first()
-            ?? PlanSuscripcion::first();
+        $plan = PlanSuscripcion::where('nombre', 'Básico')->first() ?? PlanSuscripcion::first();
 
         if (!$plan) {
             $this->mensaje = 'No hay planes configurados.';
@@ -76,58 +78,58 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
         DB::transaction(function () use ($distribuidora, $plan) {
             $distribuidora->update([
-                'estado'           => 'activa',
+                'estado' => 'activa',
                 'fecha_aprobacion' => now(),
             ]);
 
             Sucursal::withoutGlobalScopes()->firstOrCreate(
                 [
                     'distribuidora_id' => $distribuidora->id,
-                    'es_principal'     => true,
+                    'es_principal' => true,
                 ],
                 [
-                    'nombre'    => 'Sucursal Principal',
+                    'nombre' => 'Sucursal Principal',
                     'direccion' => $distribuidora->direccion_publica ?? 'Sin dirección',
-                    'telefono'  => $distribuidora->telefono_publico,
-                    'activa'    => true,
-                ]
+                    'telefono' => $distribuidora->telefono_publico,
+                    'activa' => true,
+                ],
             );
 
             ConfiguracionDistribuidora::withoutGlobalScopes()->firstOrCreate(
                 ['distribuidora_id' => $distribuidora->id],
                 [
-                    'anticipo_por_producto'    => 100.00,
-                    'dias_solicitud_cambio'    => 12,
-                    'dias_gestion_devolucion'  => 20,
-                    'dias_vigencia_vale'       => 90,
+                    'anticipo_por_producto' => 100.0,
+                    'dias_solicitud_cambio' => 12,
+                    'dias_gestion_devolucion' => 20,
+                    'dias_vigencia_vale' => 90,
                     'dias_maximos_recoleccion' => 5,
-                    'moneda'                   => 'MXN',
-                    'zona_horaria'             => 'America/Mexico_City',
-                ]
+                    'moneda' => 'MXN',
+                    'zona_horaria' => 'America/Mexico_City',
+                ],
             );
 
             ConfiguracionCiclo::withoutGlobalScopes()->firstOrCreate(
                 ['distribuidora_id' => $distribuidora->id],
                 [
-                    'dia_cierre'             => 5,
-                    'hora_cierre'            => '18:00:00',
-                    'dia_solicitud_fabrica'  => 5,
+                    'dia_cierre' => 5,
+                    'hora_cierre' => '18:00:00',
+                    'dia_solicitud_fabrica' => 5,
                     'dias_estimados_llegada' => 5,
-                    'activa'                 => true,
-                ]
+                    'activa' => true,
+                ],
             );
 
             Suscripcion::withoutGlobalScopes()->create([
-                'distribuidora_id'              => $distribuidora->id,
-                'plan_id'                       => $plan->id,
-                'fecha_inicio'                  => now()->toDateString(),
-                'fecha_fin'                     => now()->addMonth()->toDateString(),
-                'estado'                        => 'activa',
-                'precio_base_contratado'        => $plan->precio_base_mensual,
-                'lineas_incluidas_contratadas'  => $plan->lineas_incluidas,
+                'distribuidora_id' => $distribuidora->id,
+                'plan_id' => $plan->id,
+                'fecha_inicio' => now()->toDateString(),
+                'fecha_fin' => now()->addMonth()->toDateString(),
+                'estado' => 'activa',
+                'precio_base_contratado' => $plan->precio_base_mensual,
+                'lineas_incluidas_contratadas' => $plan->lineas_incluidas,
                 'precio_linea_extra_contratado' => $plan->precio_linea_extra,
-                'lineas_extra_contratadas'      => 0,
-                'renovacion_automatica'         => true,
+                'lineas_extra_contratadas' => 0,
+                'renovacion_automatica' => true,
             ]);
         });
 
@@ -176,7 +178,11 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     public function abrirSuscripcion(int $id)
     {
-        $d = Distribuidora::findOrFail($id);
+        $d = Distribuidora::with([
+            'suscripciones' => function ($q) {
+                $q->where('estado', 'activa')->latest('id');
+            },
+        ])->findOrFail($id);
 
         if (!in_array($d->estado, ['activa', 'suspendida'])) {
             $this->mensaje = 'Solo se puede asignar suscripción a distribuidoras activas o suspendidas.';
@@ -185,10 +191,23 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
         $this->distribuidoraSuscripcionId = $d->id;
         $this->distribuidoraSuscripcionNombre = $d->nombre_comercial;
-        $this->plan_id = '';
-        $this->lineas_extra_contratadas = '0';
-        $this->meses = '1';
-        $this->renovacion_automatica = true;
+
+        $activa = $d->suscripciones->first();
+
+        if ($activa) {
+            // Ya tiene plan: precargar datos para cambiar
+            $this->plan_id = (string) $activa->plan_id;
+            $this->lineas_extra_contratadas = (string) $activa->lineas_extra_contratadas;
+            $this->meses = '1';
+            $this->renovacion_automatica = (bool) $activa->renovacion_automatica;
+        } else {
+            // No tiene plan: formulario vacío
+            $this->plan_id = '';
+            $this->lineas_extra_contratadas = '0';
+            $this->meses = '1';
+            $this->renovacion_automatica = true;
+        }
+
         $this->mostrarSuscripcion = true;
     }
 
@@ -201,9 +220,9 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public function guardarSuscripcion()
     {
         $this->validate([
-            'plan_id'                  => 'required|exists:planes_suscripcion,id',
+            'plan_id' => 'required|exists:planes_suscripcion,id',
             'lineas_extra_contratadas' => 'nullable|integer|min:0',
-            'meses'                    => 'required|integer|min:1|max:24',
+            'meses' => 'required|integer|min:1|max:24',
         ]);
 
         $distribuidora = Distribuidora::findOrFail($this->distribuidoraSuscripcionId);
@@ -218,21 +237,21 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             ->where('distribuidora_id', $distribuidora->id)
             ->where('estado', 'activa')
             ->update([
-                'estado'    => 'cancelada',
+                'estado' => 'cancelada',
                 'fecha_fin' => now()->toDateString(),
             ]);
 
         Suscripcion::withoutGlobalScopes()->create([
-            'distribuidora_id'              => $distribuidora->id,
-            'plan_id'                       => $plan->id,
-            'fecha_inicio'                  => now()->toDateString(),
-            'fecha_fin'                     => now()->addMonths((int) $this->meses)->toDateString(),
-            'estado'                        => 'activa',
-            'precio_base_contratado'        => $plan->precio_base_mensual,
-            'lineas_incluidas_contratadas'  => $plan->lineas_incluidas,
+            'distribuidora_id' => $distribuidora->id,
+            'plan_id' => $plan->id,
+            'fecha_inicio' => now()->toDateString(),
+            'fecha_fin' => now()->addMonths((int) $this->meses)->toDateString(),
+            'estado' => 'activa',
+            'precio_base_contratado' => $plan->precio_base_mensual,
+            'lineas_incluidas_contratadas' => $plan->lineas_incluidas,
             'precio_linea_extra_contratado' => $plan->precio_linea_extra,
-            'lineas_extra_contratadas'      => (int) $this->lineas_extra_contratadas,
-            'renovacion_automatica'         => $this->renovacion_automatica,
+            'lineas_extra_contratadas' => (int) $this->lineas_extra_contratadas,
+            'renovacion_automatica' => $this->renovacion_automatica,
         ]);
 
         $this->mensaje = "Suscripción «{$plan->nombre}» asignada a «{$distribuidora->nombre_comercial}».";
@@ -272,26 +291,32 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                             </option>
                         @endforeach
                     </select>
-                    @error('plan_id') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    @error('plan_id')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium mb-1">Líneas extra</label>
                     <input type="number" min="0" wire:model="lineas_extra_contratadas"
-                           class="w-full rounded-lg border-slate-300">
-                    @error('lineas_extra_contratadas') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                        class="w-full rounded-lg border-slate-300">
+                    @error('lineas_extra_contratadas')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium mb-1">Meses</label>
                     <input type="number" min="1" max="24" wire:model="meses"
-                           class="w-full rounded-lg border-slate-300">
-                    @error('meses') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                        class="w-full rounded-lg border-slate-300">
+                    @error('meses')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="flex items-center gap-2 pt-6">
                     <input type="checkbox" wire:model="renovacion_automatica"
-                           class="rounded border-slate-300 text-blue-600">
+                        class="rounded border-slate-300 text-blue-600">
                     <span class="text-sm">Renovación automática</span>
                 </div>
 
@@ -300,7 +325,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         Asignar
                     </button>
                     <button type="button" wire:click="cancelarSuscripcion"
-                            class="rounded-lg border border-slate-200 text-sm px-4 py-2">
+                        class="rounded-lg border border-slate-200 text-sm px-4 py-2">
                         Cancelar
                     </button>
                 </div>
@@ -310,12 +335,12 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     <div class="mb-4 flex gap-2 flex-wrap">
         <button wire:click="$set('filtroEstado', '')"
-                class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === '' ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200' }}">
+            class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === '' ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200' }}">
             Todas
         </button>
         @foreach (['pendiente', 'activa', 'suspendida', 'rechazada'] as $estado)
             <button wire:click="$set('filtroEstado', '{{ $estado }}')"
-                    class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === $estado ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200' }}">
+                class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === $estado ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200' }}">
                 {{ ucfirst($estado) }}
             </button>
         @endforeach
@@ -341,7 +366,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                             <div class="text-xs text-slate-400">{{ $d->slug }}</div>
                         </td>
                         <td class="px-4 py-3">
-                            <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium
+                            <span
+                                class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium
                                 {{ $d->estado === 'activa' ? 'bg-green-100 text-green-700' : '' }}
                                 {{ $d->estado === 'pendiente' ? 'bg-amber-100 text-amber-700' : '' }}
                                 {{ $d->estado === 'suspendida' ? 'bg-red-100 text-red-700' : '' }}
@@ -352,26 +378,35 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         </td>
                         <td class="px-4 py-3">
                             <button wire:click="toggleMarketplace({{ $d->id }})"
-                                    class="text-xs {{ $d->marketplace_visible ? 'text-green-600' : 'text-slate-400' }}">
+                                class="text-xs {{ $d->marketplace_visible ? 'text-green-600' : 'text-slate-400' }}">
                                 {{ $d->marketplace_visible ? 'Visible' : 'Oculta' }}
                             </button>
                         </td>
                         <td class="px-4 py-3 space-x-2">
                             @if ($d->estado === 'pendiente')
                                 <button wire:click="aprobar({{ $d->id }})"
-                                        class="text-xs text-green-700 hover:underline">Aprobar</button>
+                                    class="text-xs text-green-700 hover:underline">Aprobar</button>
                             @endif
                             @if ($d->estado === 'activa')
                                 <button wire:click="suspender({{ $d->id }})"
-                                        class="text-xs text-red-600 hover:underline">Suspender</button>
+                                    class="text-xs text-red-600 hover:underline">Suspender</button>
                             @endif
                             @if ($d->estado === 'suspendida')
                                 <button wire:click="reactivar({{ $d->id }})"
-                                        class="text-xs text-blue-700 hover:underline">Reactivar</button>
+                                    class="text-xs text-blue-700 hover:underline">Reactivar</button>
                             @endif
                             @if (in_array($d->estado, ['activa', 'suspendida']))
+                                @php
+                                    $tienePlan = $d->suscripciones->where('estado', 'activa')->isNotEmpty();
+                                @endphp
                                 <button wire:click="abrirSuscripcion({{ $d->id }})"
-                                        class="text-xs text-indigo-700 hover:underline">Asignar plan</button>
+                                    class="text-xs text-indigo-700 hover:underline">
+                                    @if ($tienePlan)
+                                        Cambiar plan
+                                    @else
+                                        Asignar plan
+                                    @endif
+                                </button>
                             @endif
                         </td>
                     </tr>
