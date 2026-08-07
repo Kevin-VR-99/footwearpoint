@@ -33,10 +33,16 @@ Route::middleware('guest')->group(function () {
         ->name('password.reset');
 });
 
+/*
+|--------------------------------------------------------------------------
+| Paquete B — config y catálogo (registran distribuidora.configuracion
+| y distribuidora.catalogo). Deben ir ANTES de cualquier alias con el
+| mismo nombre de ruta.
+|--------------------------------------------------------------------------
+*/
+
 require __DIR__.'/web/distribuidora.php';
 require __DIR__.'/web/catalogo.php';
-
-
 
 /*
 |--------------------------------------------------------------------------
@@ -96,15 +102,17 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Alias del menú layouts.distribuidora (Kevin / B)
+    | Alias del menú layouts.distribuidora
     | Usar route() para respetar /footwearpoint/public
+    |
+    | NO volver a registrar el nombre distribuidora.configuracion ni
+    | distribuidora.catalogo: ya los define Paquete B arriba.
     |--------------------------------------------------------------------------
     */
 
     Route::get('/distribuidora', function () {
         return redirect()->route('dashboard');
     })->name('distribuidora.inicio');
-
 
     Route::get('/distribuidora/pedidos', function () {
         return redirect()->route('pedidos.index');
@@ -126,9 +134,14 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('reportes.index');
     })->name('distribuidora.reportes');
 
+    // URLs amigables (sin name) → pantallas reales de B
     Route::get('/distribuidora/configuracion', function () {
-        return redirect()->route('dashboard');
-    })->name('distribuidora.configuracion');
+        return redirect()->route('distribuidora.configuracion');
+    });
+
+    Route::get('/distribuidora/catalogo', function () {
+        return redirect()->route('distribuidora.catalogo');
+    });
 });
 
 /*

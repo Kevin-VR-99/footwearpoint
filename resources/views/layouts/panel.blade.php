@@ -23,13 +23,19 @@
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('dashboard') ? 'bg-white/15' : '' }}">
                     Inicio
                 </a>
+                <a href="{{ route('distribuidora.catalogo') }}"
+                    class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'bg-white/15' : '' }}">
+                    Catálogo
+                </a>
                 <a href="{{ route('stock.index') }}"
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('stock.*') ? 'bg-white/15' : '' }}">
                     Stock
-                </a> <a href="{{ route('punto-venta.index') }}"
+                </a>
+                <a href="{{ route('punto-venta.index') }}"
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('punto-venta.*') ? 'bg-white/15' : '' }}">
                     Punto de Venta
-                </a> <a href="{{ route('ciclo.index') }}"
+                </a>
+                <a href="{{ route('ciclo.index') }}"
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('ciclo.*') ? 'bg-white/15' : '' }}">
                     Ciclo de compra
                 </a>
@@ -49,8 +55,11 @@
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('reportes.*') ? 'bg-white/15' : '' }}">
                     Reportes
                 </a>
+                <a href="{{ route('distribuidora.configuracion') }}"
+                    class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('distribuidora.configuracion') ? 'bg-white/15' : '' }}">
+                    Configuración
+                </a>
             </nav>
-
             <div class="p-4 border-t border-white/10 text-sm">
                 <p class="text-white/70 truncate">{{ auth()->user()->nombre ?? '' }}</p>
                 <form method="POST" action="{{ route('logout') }}" class="mt-2">
