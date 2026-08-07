@@ -159,4 +159,66 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             </table>
         </div>
     </div>
+    <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b font-medium text-slate-800">
+            Detalle de ventas (punto de venta)
+            <span class="text-xs font-normal text-slate-500">(máx. 100 del periodo)</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-50 text-left text-slate-500">
+                    <tr>
+                        <th class="px-4 py-2">Folio</th>
+                        <th class="px-4 py-2">Quién</th>
+                        <th class="px-4 py-2">Fecha</th>
+                        <th class="px-4 py-2">Estado</th>
+                        <th class="px-4 py-2">Descripción</th>
+                        <th class="px-4 py-2 text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse ($this->resumen['ventas_directas']['lista'] ?? [] as $venta)
+                        <tr class="align-top">
+                            <td class="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
+                                {{ $venta['folio'] ?? '#' . $venta['id'] }}
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="text-slate-800">{{ $venta['quien'] }}</div>
+                                @if (!empty($venta['sucursal']))
+                                    <div class="text-xs text-slate-400">{{ $venta['sucursal'] }}</div>
+                                @endif
+                                @if (!empty($venta['capturado_por']))
+                                    <div class="text-xs text-slate-400">Registró: {{ $venta['capturado_por'] }}</div>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-slate-600">
+                                {{ $venta['fecha'] ?? '—' }}
+                            </td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
+                                    {{ ($venta['estado'] ?? '') === 'completada' ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
+                                    {{ ucfirst($venta['estado'] ?? '—') }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-slate-600 max-w-xs">
+                                <span class="line-clamp-3" title="{{ $venta['descripcion'] }}">
+                                    {{ $venta['descripcion'] }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+                                ${{ number_format($venta['total'], 2) }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">
+                                No hay ventas directas en el periodo.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
