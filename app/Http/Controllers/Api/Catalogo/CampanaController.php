@@ -13,12 +13,14 @@ class CampanaController extends Controller
 {
     public function index(): AnonymousResourceCollection
     {
-        return CampanaResource::collection(Campana::all());
+        return CampanaResource::collection(
+            Campana::with('lineas')->latest()->get()
+        );
     }
 
     public function show(Campana $campana): CampanaResource
     {
-        return new CampanaResource($campana);
+        return new CampanaResource($campana->load('lineas'));
     }
 
     public function store(GuardarCampanaRequest $request, GestionarCampanaAction $accion): CampanaResource

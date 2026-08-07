@@ -27,9 +27,10 @@ class CatalogoController extends Controller
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora del usuario autenticado.');
 
         $productosCampana = ProductoCampana::where('publicado', true)
-            ->whereHas('campana', fn ($query) => $query->where('estado', 'activa'))
+            ->whereHas('campana', fn($query) => $query->where('estado', 'activa'))
             ->with([
                 'producto.marca',
+                'producto.linea',
                 'producto.categoria',
                 'imagenes',
                 'disponibilidadPorVariante.variante.talla',

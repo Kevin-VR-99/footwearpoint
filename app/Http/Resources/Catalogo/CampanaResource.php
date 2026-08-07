@@ -17,6 +17,11 @@ class CampanaResource extends JsonResource
             'fecha_inicio' => $this->fecha_inicio,
             'fecha_fin'    => $this->fecha_fin,
             'estado'       => $this->estado,
+            'lineas'       => $this->whenLoaded('lineas', fn () => $this->lineas->map(fn ($l) => [
+                'id'     => $l->id,
+                'nombre' => $l->nombre,
+                'activa' => (bool) $l->activa,
+            ])->values()),
         ];
     }
 }

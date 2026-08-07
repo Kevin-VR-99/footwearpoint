@@ -23,7 +23,10 @@ class CatalogoResource extends JsonResource
     public function toArray(Request $request): array
     {
         $puedeVerMayorista = $request->user()?->hasAnyRole([
-            'admin_general', 'admin_distribuidora', 'empleado', 'revendedor',
+            'admin_general',
+            'admin_distribuidora',
+            'empleado',
+            'revendedor',
         ]) ?? false;
 
         return [
@@ -32,20 +35,24 @@ class CatalogoResource extends JsonResource
                 'id'       => $this->producto->id,
                 'modelo'   => $this->producto->modelo,
                 'nombre'   => $this->producto->nombre,
-                'marca'    => [
+                'marca'    => $this->producto->marca ? [
                     'id'     => $this->producto->marca->id,
                     'nombre' => $this->producto->marca->nombre,
-                ],
-                'categoria' => [
+                ] : null,
+                'linea'    => $this->producto->linea ? [
+                    'id'     => $this->producto->linea->id,
+                    'nombre' => $this->producto->linea->nombre,
+                ] : null,
+                'categoria' => $this->producto->categoria ? [
                     'id'     => $this->producto->categoria->id,
                     'nombre' => $this->producto->categoria->nombre,
-                ],
+                ] : null,
             ],
             'codigo_catalogo'           => $this->codigo_catalogo,
             'precio_minorista_sugerido' => (float) $this->precio_minorista_sugerido,
             'precio_mayorista'          => $this->when($puedeVerMayorista, (float) $this->precio_mayorista),
             'imagenes' => ImagenProductoCampanaResource::collection($this->whenLoaded('imagenes')),
-            'variantes' => $this->disponibilidadPorVariante->map(fn ($disponibilidad) => [
+            'variantes' => $this->disponibilidadPorVariante->map(fn($disponibilidad) => [
                 'variante_id'            => $disponibilidad->variante_id,
                 'sku'                    => $disponibilidad->variante->sku,
                 'talla'                  => $disponibilidad->variante->talla->valor,

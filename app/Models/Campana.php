@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Model;
 
 class Campana extends Model
 {
     use BelongsToTenant;
+
     protected $table = 'campanas';
 
     protected $fillable = [
@@ -30,8 +31,14 @@ class Campana extends Model
         return $this->belongsTo(Distribuidora::class, 'distribuidora_id');
     }
 
+    /** @deprecated La campaña ya no se dueña por marca; se mantiene por datos legados */
     public function marca()
     {
         return $this->belongsTo(Marca::class, 'marca_id');
+    }
+
+    public function lineas()
+    {
+        return $this->hasMany(Linea::class, 'campana_id');
     }
 }

@@ -2,17 +2,19 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Model;
 
 class Producto extends Model
 {
     use BelongsToTenant;
+
     protected $table = 'productos';
 
     protected $fillable = [
         'distribuidora_id',
         'marca_id',
+        'linea_id',
         'categoria_id',
         'modelo',
         'nombre',
@@ -32,6 +34,11 @@ class Producto extends Model
     public function marca()
     {
         return $this->belongsTo(Marca::class, 'marca_id');
+    }
+
+    public function linea()
+    {
+        return $this->belongsTo(Linea::class, 'linea_id');
     }
 
     public function categoria()

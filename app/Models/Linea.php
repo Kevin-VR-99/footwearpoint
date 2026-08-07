@@ -5,16 +5,16 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
-class Marca extends Model
+class Linea extends Model
 {
     use BelongsToTenant;
 
-    protected $table = 'marcas';
+    protected $table = 'lineas';
 
     protected $fillable = [
         'distribuidora_id',
+        'campana_id',
         'nombre',
-        'logotipo_url',
         'descripcion',
         'activa',
     ];
@@ -28,20 +28,20 @@ class Marca extends Model
         return $this->belongsTo(Distribuidora::class, 'distribuidora_id');
     }
 
-    public function campanas()
+    public function campana()
     {
-        return $this->hasMany(Campana::class, 'marca_id');
+        return $this->belongsTo(Campana::class, 'campana_id');
     }
 
-    public function lineas()
+    public function marcas()
     {
-        return $this->belongsToMany(Linea::class, 'linea_marca', 'marca_id', 'linea_id')
+        return $this->belongsToMany(Marca::class, 'linea_marca', 'linea_id', 'marca_id')
             ->withPivot('distribuidora_id')
             ->withTimestamps();
     }
 
     public function productos()
     {
-        return $this->hasMany(Producto::class, 'marca_id');
+        return $this->hasMany(Producto::class, 'linea_id');
     }
 }
