@@ -25,16 +25,13 @@ class GuardarCampanaRequest extends FormRequest
             'fecha_fin'    => ['nullable', 'date', 'after_or_equal:fecha_inicio'],
         ];
 
+        // marca_id es legado y nullable: la campaña ya no se dueña por marca
+        // (relación real = Campaña → Líneas).
         if ($esCreacion) {
-            // IMPORTANTE (multi-tenencia, riesgo #1 del proyecto): la regla
-            // "exists" normal de Laravel consulta la tabla directo, SIN
-            // pasar por el Global Scope de tenant — por eso se limita a
-            // mano con Rule::exists()->where(), para no aceptar por error
-            // el marca_id de OTRA distribuidora.
             $reglas['marca_id'] = [
-                'required',
+                'nullable',
                 'integer',
-                Rule::exists('marcas', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
+                Rule::exists('marcas', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id())),
             ];
         }
         // marca_id NO se acepta en edición: una campaña no cambia de marca

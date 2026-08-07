@@ -28,7 +28,7 @@ class GestionarCampanaAction
         // puede mandar NULL de forma explícita y eso le "gana" al default
         // de la columna.
         return Campana::create([
-            'marca_id'     => $datos['marca_id'],
+            'marca_id'     => $datos['marca_id'] ?? null,
             'nombre'       => $datos['nombre'],
             'descripcion'  => $datos['descripcion'] ?? null,
             'fecha_inicio' => $datos['fecha_inicio'] ?? null,
