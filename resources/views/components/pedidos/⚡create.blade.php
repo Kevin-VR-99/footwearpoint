@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ClienteDirecto;
+use App\Models\Linea;
 use App\Models\Pedido;
 use App\Models\ProductoCampana;
 use App\Models\RevendedorDistribuidora;
@@ -22,6 +23,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
     public ?int $pedidoId = null;
 
+    public string $linea_id = '';
     public string $producto_campana_id = '';
     public string $variante_id = '';
     public string $cantidad = '1';
@@ -31,7 +33,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
     public function mount()
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return $this->redirect(route('login'), navigate: true);
         }
 
@@ -49,7 +51,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 $this->propietario_id = (string) ($pedido->cliente_directo_id ?? ($pedido->revendedor_distribuidora_id ?? ''));
                 $this->sucursal_id = (string) ($pedido->sucursal_id ?? '');
                 $this->observaciones = (string) ($pedido->observaciones ?? '');
-                $this->mensaje = 'Continuando captura del borrador ' . $pedido->folio;
+                $this->mensaje = 'Continuando captura del borrador '.$pedido->folio;
             }
         }
 
@@ -59,12 +61,18 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         }
     }
 
-    public function updatedTipo()
+    public function updatedTipo(): void
     {
         $this->propietario_id = '';
     }
 
-    public function updatedProductoCampanaId()
+    public function updatedLineaId(): void
+    {
+        $this->producto_campana_id = '';
+        $this->variante_id = '';
+    }
+
+    public function updatedProductoCampanaId(): void
     {
         $this->variante_id = '';
     }
@@ -84,12 +92,44 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         return Sucursal::query()->orderBy('id')->get();
     }
 
+    /**
+     * Líneas activas con productos publicados en la temporada (campaña) activa.
+     */
+    public function getLineasProperty()
+    {
+        return Linea::query()
+            ->where('activa', true)
+            ->whereHas('campana', fn ($q) => $q->where('estado', 'activa'))
+            ->whereHas('productos.publicacionesCampana', function ($q) {
+                $q->where('publicado', true)
+                    ->whereHas('campana', fn ($c) => $c->where('estado', 'activa'));
+            })
+            ->orderBy('nombre')
+            ->get();
+    }
+
+    /**
+     * Productos de la línea elegida, solo temporada activa y publicados.
+     */
     public function getCatalogoProperty()
     {
+        if ($this->linea_id === '') {
+            return collect();
+        }
+
         return ProductoCampana::query()
             ->where('publicado', true)
-            ->whereHas('campana', fn($q) => $q->where('estado', 'activa'))
-            ->with(['producto', 'disponibilidadPorVariante' => fn($q) => $q->where('estado', 'disponible'), 'disponibilidadPorVariante.variante.talla', 'disponibilidadPorVariante.variante.color'])
+            ->whereHas('campana', fn ($q) => $q->where('estado', 'activa'))
+            ->whereHas('producto', function ($q) {
+                $q->where('linea_id', (int) $this->linea_id)
+                    ->where('activo', true);
+            })
+            ->with([
+                'producto',
+                'disponibilidadPorVariante' => fn ($q) => $q->where('estado', 'disponible'),
+                'disponibilidadPorVariante.variante.talla',
+                'disponibilidadPorVariante.variante.color',
+            ])
             ->orderBy('id')
             ->get();
     }
@@ -107,7 +147,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
     public function getPedidoProperty(): ?Pedido
     {
-        if (!$this->pedidoId) {
+        if (! $this->pedidoId) {
             return null;
         }
 
@@ -137,7 +177,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             ]);
 
             $this->pedidoId = $pedido->id;
-            $this->mensaje = 'Borrador creado: ' . $pedido->folio;
+            $this->mensaje = 'Borrador creado: '.$pedido->folio;
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo crear.';
         } catch (\Throwable $e) {
@@ -150,13 +190,14 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         $this->mensaje = '';
         $this->errorMsg = '';
 
-        if (!$this->pedidoId) {
+        if (! $this->pedidoId) {
             $this->errorMsg = 'Primero crea el borrador.';
 
             return;
         }
 
         $this->validate([
+            'linea_id' => 'required|integer|min:1',
             'producto_campana_id' => 'required|integer|min:1',
             'variante_id' => 'required|integer|min:1',
             'cantidad' => 'required|integer|min:1',
@@ -171,6 +212,9 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             ]);
 
             $this->mensaje = 'Línea agregada.';
+            $this->linea_id = '';
+            $this->producto_campana_id = '';
+            $this->variante_id = '';
             $this->cantidad = '1';
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo agregar.';
@@ -184,14 +228,14 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         $this->mensaje = '';
         $this->errorMsg = '';
 
-        if (!$this->pedidoId) {
+        if (! $this->pedidoId) {
             return;
         }
 
         try {
             $pedido = Pedido::query()->findOrFail($this->pedidoId);
             $pedido = $accion->ejecutar($pedido);
-            $this->mensaje = 'Pedido enviado: ' . $pedido->folio;
+            $this->mensaje = 'Pedido enviado: '.$pedido->folio;
 
             return $this->redirect(route('pedidos.show', $pedido->id), navigate: true);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -207,20 +251,23 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
     <div class="mb-6">
         <a href="{{ route('pedidos.index') }}" class="text-sm text-[#2563EB] hover:underline">← Pedidos</a>
         <h2 class="text-2xl font-bold text-slate-900 mt-1">Nuevo pedido</h2>
-        <p class="text-sm text-slate-500 mt-1">Captura borrador, agrega líneas del catálogo y envía</p>
+        <p class="text-sm text-slate-500 mt-1">
+            Captura borrador, agrega productos de la temporada activa y envía
+        </p>
     </div>
 
     @if ($mensaje)
         <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
-            {{ $mensaje }}</div>
+            {{ $mensaje }}
+        </div>
     @endif
     @if ($errorMsg)
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">{{ $errorMsg }}
+        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+            {{ $errorMsg }}
         </div>
     @endif
 
-    {{-- Cabecera --}}
-    @if (!$pedidoId)
+    @if (! $pedidoId)
         <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4 max-w-xl">
             <h3 class="font-semibold text-slate-800">1. Datos del pedido</h3>
 
@@ -245,7 +292,8 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                     <select wire:model="propietario_id" class="w-full rounded-lg border-slate-300 text-sm">
                         <option value="">— Selecciona —</option>
                         @foreach ($this->revendedores as $r)
-                            <option value="{{ $r->id }}">{{ $r->revendedor?->nombre ?? 'Afiliación #' . $r->id }}
+                            <option value="{{ $r->id }}">
+                                {{ $r->revendedor?->nombre ?? 'Afiliación #'.$r->id }}
                             </option>
                         @endforeach
                     </select>
@@ -256,14 +304,15 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 <label class="block text-sm text-slate-600 mb-1">Sucursal</label>
                 <select wire:model="sucursal_id" class="w-full rounded-lg border-slate-300 text-sm">
                     @foreach ($this->sucursales as $s)
-                        <option value="{{ $s->id }}">{{ $s->nombre ?? 'Sucursal #' . $s->id }}</option>
+                        <option value="{{ $s->id }}">{{ $s->nombre ?? 'Sucursal #'.$s->id }}</option>
                     @endforeach
                 </select>
             </div>
 
             <div>
                 <label class="block text-sm text-slate-600 mb-1">Observaciones</label>
-                <textarea wire:model="observaciones" rows="2" class="w-full rounded-lg border-slate-300 text-sm"></textarea>
+                <textarea wire:model="observaciones" rows="2"
+                    class="w-full rounded-lg border-slate-300 text-sm"></textarea>
             </div>
 
             <button type="button" wire:click="crearBorrador" wire:loading.attr="disabled"
@@ -272,7 +321,6 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             </button>
         </div>
     @else
-        {{-- Resumen + líneas --}}
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
                 <p class="text-sm text-slate-500">Borrador</p>
@@ -289,23 +337,55 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
         <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4 mb-6 max-w-2xl">
             <h3 class="font-semibold text-slate-800">2. Agregar del catálogo</h3>
+            <p class="text-xs text-slate-500 -mt-2">
+                Solo productos de la <strong>temporada activa</strong>
+                (≈ 6 meses: Primavera-Verano / Otoño-Invierno).
+            </p>
 
             <div>
-                <label class="block text-sm text-slate-600 mb-1">Producto (campaña)</label>
-                <select wire:model.live="producto_campana_id" class="w-full rounded-lg border-slate-300 text-sm">
+                <label class="block text-sm text-slate-600 mb-1">Línea</label>
+                <select wire:model.live="linea_id" class="w-full rounded-lg border-slate-300 text-sm">
+                    <option value="">— Selecciona una línea —</option>
+                    @foreach ($this->lineas as $linea)
+                        <option value="{{ $linea->id }}">{{ $linea->nombre }}</option>
+                    @endforeach
+                </select>
+                @if ($this->lineas->isEmpty())
+                    <p class="text-xs text-amber-600 mt-1">
+                        No hay líneas con productos publicados en la temporada activa.
+                    </p>
+                @endif
+            </div>
+
+            <div>
+                <label class="block text-sm text-slate-600 mb-1">Producto</label>
+                <select wire:model.live="producto_campana_id"
+                    class="w-full rounded-lg border-slate-300 text-sm"
+                    @disabled($linea_id === '')>
                     <option value="">— Selecciona —</option>
                     @foreach ($this->catalogo as $pc)
                         <option value="{{ $pc->id }}">
-                            {{ $pc->producto?->nombre }} — {{ $pc->codigo_catalogo }}
+                            {{ $pc->producto?->nombre }}
+                            @if ($pc->producto?->modelo)
+                                · {{ $pc->producto->modelo }}
+                            @endif
+                            — {{ $pc->codigo_catalogo }}
                             (${{ number_format((float) $pc->precio_mayorista, 2) }})
                         </option>
                     @endforeach
                 </select>
+                @if ($linea_id !== '' && $this->catalogo->isEmpty())
+                    <p class="text-xs text-slate-500 mt-1">
+                        Esta línea no tiene productos publicados en la temporada activa.
+                    </p>
+                @endif
             </div>
 
             <div>
-                <label class="block text-sm text-slate-600 mb-1">Variante</label>
-                <select wire:model="variante_id" class="w-full rounded-lg border-slate-300 text-sm">
+                <label class="block text-sm text-slate-600 mb-1">Variante (talla / color)</label>
+                <select wire:model="variante_id"
+                    class="w-full rounded-lg border-slate-300 text-sm"
+                    @disabled($producto_campana_id === '')>
                     <option value="">— Selecciona —</option>
                     @foreach ($this->variantesDisponibles as $d)
                         <option value="{{ $d->variante_id }}">

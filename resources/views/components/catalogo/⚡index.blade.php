@@ -51,15 +51,14 @@ new #[Layout('layouts.panel')] class extends Component {
     public ?string $categoria_descripcion = null;
     public bool $categoria_activa = true;
 
-    // --- Campañas ---
-    // Nota: campanas.marca_id es legado; la relación real es Campaña → Líneas.
+    // --- Temporadas (técnicamente campanas) ---
     public $campanas = [];
     public ?int $campanaEditandoId = null;
     public bool $mostrandoFormularioCampana = false;
     public string $campana_nombre = '';
     public ?string $campana_fecha_inicio = null;
     public ?string $campana_fecha_fin = null;
-    public array $campana_linea_ids = []; // <-- añadir
+    public array $campana_linea_ids = [];
 
     private const CAMPANA_ESTADOS = [
         'borrador' => ['Borrador', 'neutral'],
@@ -163,21 +162,17 @@ new #[Layout('layouts.panel')] class extends Component {
     public function guardarMarca(): void
     {
         $this->errorNegocio = null;
-
         $datos = $this->validate([
             'marca_nombre' => ['required', 'string', 'max:120'],
             'marca_descripcion' => ['nullable', 'string'],
             'marca_logotipo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
         ]);
-
         $payload = [
             'nombre' => $datos['marca_nombre'],
             'descripcion' => $datos['marca_descripcion'],
             'activa' => $this->marca_activa,
         ];
-
         $accion = app(GestionarMarcaAction::class);
-
         try {
             if ($this->marcaEditandoId) {
                 $accion->actualizar(Marca::findOrFail($this->marcaEditandoId), $payload, $this->marca_logotipo);
@@ -188,7 +183,6 @@ new #[Layout('layouts.panel')] class extends Component {
             $this->errorNegocio = $e->getMessage();
             return;
         }
-
         $this->marca_logotipo = null;
         $this->mostrandoFormularioMarca = false;
         $this->marcaEditandoId = null;
@@ -234,22 +228,18 @@ new #[Layout('layouts.panel')] class extends Component {
     {
         $this->errorNegocio = null;
         $esCreacion = !$this->lineaEditandoId;
-
         $reglas = [
             'linea_nombre' => ['required', 'string', 'max:150'],
             'linea_descripcion' => ['nullable', 'string'],
             'linea_marca_ids' => ['sometimes', 'array'],
             'linea_marca_ids.*' => ['integer', Rule::exists('marcas', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id()))],
         ];
-
         if ($esCreacion) {
             $reglas['linea_campana_id'] = ['required', 'integer', Rule::exists('campanas', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id()))];
         }
-
         $datos = $this->validate($reglas);
         $accion = app(GestionarLineaAction::class);
         $marcaIds = array_map('intval', $this->linea_marca_ids ?? []);
-
         try {
             if ($esCreacion) {
                 $accion->crear(
@@ -275,7 +265,6 @@ new #[Layout('layouts.panel')] class extends Component {
             $this->errorNegocio = $e->getMessage();
             return;
         }
-
         $this->mostrandoFormularioLinea = false;
         $this->lineaEditandoId = null;
         $this->cargarLineas();
@@ -315,28 +304,24 @@ new #[Layout('layouts.panel')] class extends Component {
             'categoria_nombre' => ['required', 'string', 'max:120'],
             'categoria_descripcion' => ['nullable', 'string', 'max:300'],
         ]);
-
         $payload = [
             'nombre' => $datos['categoria_nombre'],
             'descripcion' => $datos['categoria_descripcion'],
             'activa' => $this->categoria_activa,
         ];
-
         $accion = app(GestionarCategoriaProductoAction::class);
-
         if ($this->categoriaEditandoId) {
             $accion->actualizar(CategoriaProducto::findOrFail($this->categoriaEditandoId), $payload);
         } else {
             $accion->crear($payload);
         }
-
         $this->mostrandoFormularioCategoria = false;
         $this->categoriaEditandoId = null;
         $this->cargarCategorias();
         $this->dispatch('guardado', mensaje: 'Categoría guardada correctamente.');
     }
 
-    // ============ CAMPAÑAS ============
+    // ============ TEMPORADAS (Campana) ============
 
     public function abrirFormularioCrearCampana(): void
     {
@@ -359,7 +344,6 @@ new #[Layout('layouts.panel')] class extends Component {
     public function guardarCampana(): void
     {
         $this->errorNegocio = null;
-
         $datos = $this->validate([
             'campana_nombre' => ['required', 'string', 'max:150'],
             'campana_fecha_inicio' => ['nullable', 'date'],
@@ -367,6 +351,11 @@ new #[Layout('layouts.panel')] class extends Component {
             'campana_linea_ids' => ['sometimes', 'array'],
             'campana_linea_ids.*' => ['integer', Rule::exists('lineas', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id()))],
         ]);
+
+        if (Campana::query()->count() >= 2) {
+            $this->errorNegocio = 'Solo se permiten 2 temporadas (Primavera-Verano y Otoño-Invierno).';
+            return;
+        }
 
         $campana = app(GestionarCampanaAction::class)->crear([
             'nombre' => $datos['campana_nombre'],
@@ -383,29 +372,46 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->campana_linea_ids = [];
         $this->cargarCampanas();
         $this->cargarLineas();
-        $this->dispatch('guardado', mensaje: 'Campaña creada correctamente.');
+        $this->dispatch('guardado', mensaje: 'Temporada creada correctamente.');
     }
 
-    public function avanzarEstadoCampana(int $id): void
+    public function activarTemporada(int $id): void
     {
         $this->errorNegocio = null;
         $campana = Campana::findOrFail($id);
-        $indiceActual = array_search($campana->estado, self::ORDEN_ESTADOS_CAMPANA, true);
-        $siguiente = self::ORDEN_ESTADOS_CAMPANA[$indiceActual + 1] ?? null;
-
-        if (!$siguiente) {
-            return;
-        }
 
         try {
-            app(GestionarCampanaAction::class)->actualizar($campana, ['estado' => $siguiente]);
+            // Solo una activa: el resto activas pasan a finalizada
+            Campana::query()
+                ->where('id', '!=', $campana->id)
+                ->where('estado', 'activa')
+                ->update(['estado' => 'finalizada']);
+
+            app(GestionarCampanaAction::class)->actualizar($campana, ['estado' => 'activa']);
         } catch (OperacionInvalidaException $e) {
-            $this->errorNegocio = $e->getMessage();
-            return;
+            // Si el Action bloquea saltos de estado, actualiza directo:
+            $campana->estado = 'activa';
+            $campana->save();
         }
 
         $this->cargarCampanas();
-        $this->dispatch('guardado', mensaje: "Campaña avanzada a '{$siguiente}'.");
+        $this->dispatch('guardado', mensaje: 'Temporada activada. Las demás activas se desactivaron.');
+    }
+
+    public function desactivarTemporada(int $id): void
+    {
+        $this->errorNegocio = null;
+        $campana = Campana::findOrFail($id);
+
+        try {
+            app(GestionarCampanaAction::class)->actualizar($campana, ['estado' => 'finalizada']);
+        } catch (OperacionInvalidaException $e) {
+            $campana->estado = 'finalizada';
+            $campana->save();
+        }
+
+        $this->cargarCampanas();
+        $this->dispatch('guardado', mensaje: 'Temporada desactivada.');
     }
 
     // ============ PRODUCTOS ============
@@ -450,19 +456,15 @@ new #[Layout('layouts.panel')] class extends Component {
     {
         $this->errorNegocio = null;
         $esCreacion = !$this->productoEditandoId;
-
-        $reglas = [
+        $datos = $this->validate([
             'producto_modelo' => ['required', 'string', 'max:120'],
             'producto_nombre' => ['required', 'string', 'max:200'],
             'producto_descripcion' => ['nullable', 'string'],
             'producto_categoria_id' => ['required', 'integer', Rule::exists('categorias_producto', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id()))],
             'producto_linea_id' => ['required', 'integer', Rule::exists('lineas', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id()))],
             'producto_marca_id' => ['required', 'integer', Rule::exists('marcas', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id()))],
-        ];
-
-        $datos = $this->validate($reglas);
+        ]);
         $accion = app(GestionarProductoAction::class);
-
         try {
             if ($esCreacion) {
                 $accion->crear([
@@ -488,7 +490,6 @@ new #[Layout('layouts.panel')] class extends Component {
             $this->errorNegocio = $e->getMessage();
             return;
         }
-
         $this->mostrandoFormularioProducto = false;
         $this->productoEditandoId = null;
         $this->cargarProductos();
@@ -507,7 +508,6 @@ new #[Layout('layouts.panel')] class extends Component {
         <span x-text="mensaje"></span>
     </div>
 
-    {{-- Pestañas --}}
     <div class="border-b border-slate-200 mb-6 flex gap-6 flex-wrap">
         <button type="button" wire:click="$set('pestanaActiva', 'productos')"
             class="pb-3 text-sm font-medium {{ $pestanaActiva === 'productos' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
@@ -523,7 +523,7 @@ new #[Layout('layouts.panel')] class extends Component {
         </button>
         <button type="button" wire:click="$set('pestanaActiva', 'campanas')"
             class="pb-3 text-sm font-medium {{ $pestanaActiva === 'campanas' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
-            Campañas
+            Temporadas
         </button>
         <button type="button" wire:click="$set('pestanaActiva', 'categorias')"
             class="pb-3 text-sm font-medium {{ $pestanaActiva === 'categorias' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
@@ -537,15 +537,13 @@ new #[Layout('layouts.panel')] class extends Component {
             <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">
                 {{ $errorNegocio }}</div>
         @endif
-
         @if (!$mostrandoFormularioProducto)
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-700">Productos</h2>
                     <button type="button" wire:click="abrirFormularioCrearProducto"
-                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
-                        + Agregar Producto
-                    </button>
+                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Agregar
+                        Producto</button>
                 </div>
                 <table class="w-full text-sm">
                     <thead>
@@ -573,9 +571,7 @@ new #[Layout('layouts.panel')] class extends Component {
                                         {{ $producto->activo ? 'Activo' : 'Inactivo' }}
                                     </span>
                                 </td>
-                                <td class="py-2 text-right space-x-3">
-                                    <a href="{{ route('catalogo.producto.detalle', $producto) }}"
-                                        class="text-fp-primary text-xs font-medium">Variantes</a>
+                                <td class="py-2 text-right">
                                     <button type="button"
                                         wire:click="abrirFormularioEditarProducto({{ $producto->id }})"
                                         class="text-fp-primary text-xs font-medium">Editar</button>
@@ -592,55 +588,34 @@ new #[Layout('layouts.panel')] class extends Component {
         @else
             <form wire:submit="guardarProducto" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
                 <h2 class="text-sm font-semibold text-slate-700">
-                    {{ $productoEditandoId ? 'Editar producto' : 'Agregar Nuevo Producto' }}
-                </h2>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Nombre del Producto</label>
-                    <input type="text" wire:model="producto_nombre" class="w-full rounded-md border-slate-300"
-                        placeholder="Ej. Air Max Running Pro 2024">
-                    @error('producto_nombre')
-                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
-                    @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Código / Modelo</label>
-                    <input type="text" wire:model="producto_modelo" class="w-full rounded-md border-slate-300"
-                        placeholder="Ej. AM-RUN-2024-BLK">
-                    @error('producto_modelo')
-                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
-                    @enderror
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
-                    <textarea wire:model="producto_descripcion" rows="2" class="w-full rounded-md border-slate-300"></textarea>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {{ $productoEditandoId ? 'Editar producto' : 'Nuevo producto' }}</h2>
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Línea</label>
-                        <select wire:model="producto_linea_id" class="w-full rounded-md border-slate-300">
-                            <option value="">Seleccionar línea</option>
-                            @foreach ($lineas as $linea)
-                                @if ($linea->activa)
-                                    <option value="{{ $linea->id }}">{{ $linea->nombre }}</option>
-                                @endif
-                            @endforeach
-                        </select>
-                        @error('producto_linea_id')
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Modelo / código</label>
+                        <input type="text" wire:model="producto_modelo" class="w-full rounded-md border-slate-300">
+                        @error('producto_modelo')
                             <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
                         @enderror
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                        <input type="text" wire:model="producto_nombre" class="w-full rounded-md border-slate-300">
+                        @error('producto_nombre')
+                            <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
+                    <textarea wire:model="producto_descripcion" rows="2" class="w-full rounded-md border-slate-300"></textarea>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Marca</label>
                         <select wire:model="producto_marca_id" class="w-full rounded-md border-slate-300">
-                            <option value="">Seleccionar marca</option>
-                            @foreach ($marcas as $marca)
-                                @if ($marca->activa)
-                                    <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
-                                @endif
+                            <option value="">—</option>
+                            @foreach ($marcas as $m)
+                                <option value="{{ $m->id }}">{{ $m->nombre }}</option>
                             @endforeach
                         </select>
                         @error('producto_marca_id')
@@ -648,13 +623,23 @@ new #[Layout('layouts.panel')] class extends Component {
                         @enderror
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Línea</label>
+                        <select wire:model="producto_linea_id" class="w-full rounded-md border-slate-300">
+                            <option value="">—</option>
+                            @foreach ($lineas as $l)
+                                <option value="{{ $l->id }}">{{ $l->nombre }}</option>
+                            @endforeach
+                        </select>
+                        @error('producto_linea_id')
+                            <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                        @enderror
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Categoría</label>
                         <select wire:model="producto_categoria_id" class="w-full rounded-md border-slate-300">
-                            <option value="">Seleccionar categoría</option>
-                            @foreach ($categorias as $categoria)
-                                @if ($categoria->activa)
-                                    <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
-                                @endif
+                            <option value="">—</option>
+                            @foreach ($categorias as $c)
+                                <option value="{{ $c->id }}">{{ $c->nombre }}</option>
                             @endforeach
                         </select>
                         @error('producto_categoria_id')
@@ -662,14 +647,12 @@ new #[Layout('layouts.panel')] class extends Component {
                         @enderror
                     </div>
                 </div>
-
                 @if ($productoEditandoId)
                     <label class="flex items-center gap-2 text-sm text-slate-700">
                         <input type="checkbox" wire:model="producto_activo" class="rounded border-slate-300">
                         Producto activo
                     </label>
                 @endif
-
                 <div class="flex gap-2">
                     <button type="submit"
                         class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar
@@ -687,21 +670,19 @@ new #[Layout('layouts.panel')] class extends Component {
             <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">
                 {{ $errorNegocio }}</div>
         @endif
-
         @if (!$mostrandoFormularioLinea)
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-700">Líneas comerciales</h2>
                     <button type="button" wire:click="abrirFormularioCrearLinea"
-                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
-                        + Nueva línea
-                    </button>
+                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nueva
+                        línea</button>
                 </div>
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left text-slate-500 border-b">
                             <th class="py-2">Nombre</th>
-                            <th class="py-2">Campaña</th>
+                            <th class="py-2">Temporada</th>
                             <th class="py-2">Marcas</th>
                             <th class="py-2">Estado</th>
                             <th class="py-2"></th>
@@ -731,14 +712,12 @@ new #[Layout('layouts.panel')] class extends Component {
         @else
             <form wire:submit="guardarLinea" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
                 <h2 class="text-sm font-semibold text-slate-700">
-                    {{ $lineaEditandoId ? 'Editar línea' : 'Nueva línea' }}
-                </h2>
-
+                    {{ $lineaEditandoId ? 'Editar línea' : 'Nueva línea' }}</h2>
                 @if (!$lineaEditandoId)
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Campaña</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Temporada</label>
                         <select wire:model="linea_campana_id" class="w-full rounded-md border-slate-300">
-                            <option value="">Seleccionar campaña</option>
+                            <option value="">Seleccionar temporada</option>
                             @foreach ($campanas as $campana)
                                 <option value="{{ $campana->id }}">{{ $campana->nombre }}</option>
                             @endforeach
@@ -748,7 +727,6 @@ new #[Layout('layouts.panel')] class extends Component {
                         @enderror
                     </div>
                 @endif
-
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
                     <input type="text" wire:model="linea_nombre" class="w-full rounded-md border-slate-300">
@@ -756,12 +734,10 @@ new #[Layout('layouts.panel')] class extends Component {
                         <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
                     @enderror
                 </div>
-
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
                     <textarea wire:model="linea_descripcion" rows="2" class="w-full rounded-md border-slate-300"></textarea>
                 </div>
-
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Marcas asociadas</label>
                     <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-3">
@@ -776,14 +752,12 @@ new #[Layout('layouts.panel')] class extends Component {
                         @endforeach
                     </div>
                 </div>
-
                 @if ($lineaEditandoId)
                     <label class="flex items-center gap-2 text-sm text-slate-700">
                         <input type="checkbox" wire:model="linea_activa" class="rounded border-slate-300">
                         Línea activa (cuenta para el cupo del plan)
                     </label>
                 @endif
-
                 <div class="flex gap-2">
                     <button type="submit"
                         class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar
@@ -801,7 +775,6 @@ new #[Layout('layouts.panel')] class extends Component {
             <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">
                 {{ $errorNegocio }}</div>
         @endif
-
         @if (!$mostrandoFormularioMarca)
             <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
                 <div class="flex justify-between items-center mb-4">
@@ -882,21 +855,32 @@ new #[Layout('layouts.panel')] class extends Component {
         @endif
     </div>
 
-    {{-- Campañas --}}
+    {{-- Temporadas --}}
     <div x-show="$wire.pestanaActiva === 'campanas'">
         @if ($errorNegocio && $pestanaActiva === 'campanas')
             <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">
-                {{ $errorNegocio }}</div>
+                {{ $errorNegocio }}
+            </div>
         @endif
 
         @if (!$mostrandoFormularioCampana)
             <div class="bg-white rounded-lg shadow-sm p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-sm font-semibold text-slate-700">Campañas</h2>
-                    <button type="button" wire:click="abrirFormularioCrearCampana"
-                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nueva
-                        campaña</button>
+                <div class="flex justify-between items-center mb-4 gap-3 flex-wrap">
+                    <div>
+                        <h2 class="text-sm font-semibold text-slate-700">Temporadas</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            ≈ 6 meses (Primavera-Verano / Otoño-Invierno). Solo una activa a la vez. Máximo 2.
+                        </p>
+                        @if (count($campanas) >= 2)
+                            <p class="text-xs text-amber-600 mt-1">Ya tienes 2 temporadas (máximo permitido).</p>
+                        @endif
+                    </div>
+                    <button type="button" wire:click="abrirFormularioCrearCampana" @disabled(count($campanas) >= 2)
+                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                        + Nueva temporada
+                    </button>
                 </div>
+
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left text-slate-500 border-b">
@@ -908,15 +892,7 @@ new #[Layout('layouts.panel')] class extends Component {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($campanas as $campana)
-                            @php
-                                [$textoEstado, $varianteEstado] = $campanaEstadosNombres[$campana->estado] ?? [
-                                    $campana->estado,
-                                    'neutral',
-                                ];
-                                $indiceActual = array_search($campana->estado, $ordenEstadosCampana, true);
-                                $siguienteEstado = $ordenEstadosCampana[$indiceActual + 1] ?? null;
-                            @endphp
+                        @forelse ($campanas as $campana)
                             <tr class="border-b last:border-0">
                                 <td class="py-2">{{ $campana->nombre }}</td>
                                 <td class="py-2">
@@ -931,26 +907,49 @@ new #[Layout('layouts.panel')] class extends Component {
                                     {{ $campana->fecha_fin?->format('d/m/Y') ?? '—' }}
                                 </td>
                                 <td class="py-2">
-                                    <x-ui.insignia-estado :texto="$textoEstado" :variante="$varianteEstado" />
+                                    @if ($campana->estado === 'activa')
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-fp-badge-success-bg text-fp-badge-success-fg">
+                                            Activa
+                                        </span>
+                                    @else
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-fp-badge-neutral-bg text-fp-badge-neutral-fg">
+                                            Inactiva
+                                        </span>
+                                    @endif
                                 </td>
                                 <td class="py-2 text-right">
-                                    @if ($siguienteEstado)
-                                        <button type="button" wire:click="avanzarEstadoCampana({{ $campana->id }})"
+                                    @if ($campana->estado === 'activa')
+                                        <button type="button" wire:click="desactivarTemporada({{ $campana->id }})"
                                             class="text-fp-primary text-xs font-medium">
-                                            Avanzar a "{{ $campanaEstadosNombres[$siguienteEstado][0] }}"
+                                            Desactivar
+                                        </button>
+                                    @else
+                                        <button type="button" wire:click="activarTemporada({{ $campana->id }})"
+                                            class="text-fp-primary text-xs font-medium">
+                                            Activar
                                         </button>
                                     @endif
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="5" class="py-8 text-center text-slate-500">No hay temporadas.</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
         @else
             <form wire:submit="guardarCampana" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
+                <h2 class="text-sm font-semibold text-slate-700">Nueva temporada</h2>
+                <p class="text-xs text-slate-500 -mt-2">Ejemplos: Primavera-Verano 2026, Otoño-Invierno 2026-2027.</p>
+
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Nombre de la campaña</label>
-                    <input type="text" wire:model="campana_nombre" class="w-full rounded-md border-slate-300">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nombre de la temporada</label>
+                    <input type="text" wire:model="campana_nombre" class="w-full rounded-md border-slate-300"
+                        placeholder="Primavera-Verano 2026">
                     @error('campana_nombre')
                         <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
                     @enderror
@@ -958,8 +957,8 @@ new #[Layout('layouts.panel')] class extends Component {
 
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Líneas a asignar (opcional)</label>
-                    <p class="text-xs text-slate-500 mb-2">Si eliges una línea que ya pertenece a otra campaña, se
-                        moverá a esta.</p>
+                    <p class="text-xs text-slate-500 mb-2">Si una línea ya pertenece a otra temporada, se moverá a
+                        esta.</p>
                     <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-3">
                         @forelse ($lineas as $linea)
                             <label class="flex items-center gap-2 text-sm">
@@ -968,44 +967,38 @@ new #[Layout('layouts.panel')] class extends Component {
                                 <span>
                                     {{ $linea->nombre }}
                                     <span
-                                        class="text-slate-400 text-xs">({{ $linea->campana?->nombre ?? 'sin campaña' }})</span>
+                                        class="text-slate-400 text-xs">({{ $linea->campana?->nombre ?? 'sin temporada' }})</span>
                                 </span>
                             </label>
                         @empty
-                            <p class="text-sm text-slate-400 col-span-2">No hay líneas creadas aún. Créalas en la
-                                pestaña Líneas.</p>
+                            <p class="text-sm text-slate-400 col-span-2">No hay líneas. Créalas en la pestaña Líneas.
+                            </p>
                         @endforelse
                     </div>
-                    @error('campana_linea_ids')
-                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
-                    @enderror
-                    @error('campana_linea_ids.*')
-                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
-                    @enderror
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de inicio</label>
-                            <input type="date" wire:model="campana_fecha_inicio"
-                                class="w-full rounded-md border-slate-300">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de fin</label>
-                            <input type="date" wire:model="campana_fecha_fin"
-                                class="w-full rounded-md border-slate-300">
-                            @error('campana_fecha_fin')
-                                <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
-                            @enderror
-                        </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de inicio</label>
+                        <input type="date" wire:model="campana_fecha_inicio"
+                            class="w-full rounded-md border-slate-300">
                     </div>
-                    <div class="flex gap-2">
-                        <button type="submit"
-                            class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
-                        <button type="button" wire:click="cancelarFormularioCampana"
-                            class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de fin</label>
+                        <input type="date" wire:model="campana_fecha_fin"
+                            class="w-full rounded-md border-slate-300">
+                        @error('campana_fecha_fin')
+                            <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                        @enderror
                     </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="submit"
+                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                    <button type="button" wire:click="cancelarFormularioCampana"
+                        class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
+                </div>
             </form>
         @endif
     </div>
