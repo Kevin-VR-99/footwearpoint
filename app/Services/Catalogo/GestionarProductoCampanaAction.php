@@ -9,21 +9,21 @@ use App\Models\ProductoCampana;
 
 class GestionarProductoCampanaAction
 {
-    /**
-     * DECISIÓN PROVISIONAL MÍA: valido que el producto y la campaña sean
-     * de la MISMA marca antes de publicar (no tendría sentido publicar un
-     * producto Nike dentro de una campaña de Adidas). No viene escrito
-     * así en ningún documento — es una regla de consistencia que agregué
-     * yo. Confirma con el equipo si esta restricción es correcta.
-     */
     public function crear(array $datos): ProductoCampana
     {
-        $producto = Producto::findOrFail($datos['producto_id']);
+        $producto = Producto::with('linea')->findOrFail($datos['producto_id']);
         $campana = Campana::findOrFail($datos['campana_id']);
 
-        if ($producto->marca_id !== $campana->marca_id) {
+        if (! $producto->linea_id) {
             throw new OperacionInvalidaException(
-                'El producto y la campaña deben pertenecer a la misma marca.',
+                'El producto no tiene línea comercial asignada. Asigna una línea antes de publicarlo en una campaña.',
+                409
+            );
+        }
+
+        if ((int) $producto->linea->campana_id !== (int) $campana->id) {
+            throw new OperacionInvalidaException(
+                'La línea del producto no pertenece a esa campaña. Publica el producto solo en la campaña de su línea.',
                 409
             );
         }
@@ -41,8 +41,6 @@ class GestionarProductoCampanaAction
 
     public function actualizar(ProductoCampana $productoCampana, array $datos): ProductoCampana
     {
-        // producto_id/campana_id nunca llegan aquí (el Form Request los
-        // bloquea en edición).
         $productoCampana->fill($datos);
         $productoCampana->save();
 
