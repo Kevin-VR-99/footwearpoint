@@ -6,12 +6,15 @@ use App\Models\ConfiguracionDistribuidora;
 use App\Models\Distribuidora;
 use App\Models\DistribuidoraStaff;
 use App\Models\RevendedorDistribuidora;
+use App\Models\Usuario;
 use App\Services\Distribuidora\ActualizarConfiguracionDistribuidoraAction;
 use App\Services\Distribuidora\ActualizarPerfilDistribuidoraAction;
 use App\Services\Distribuidora\ConfiguracionCicloAction;
 use App\Services\Distribuidora\GestionarClienteDirectoAction;
 use App\Services\Distribuidora\GestionarRevendedorAction;
 use App\Support\Tenant;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -19,20 +22,19 @@ use Livewire\WithFileUploads;
 new #[Layout('layouts.panel')] class extends Component {
     use WithFileUploads;
 
-    // --- Estado de la pestaña ---
     public string $pestanaActiva = 'perfil';
 
-    // --- Perfil (E3-01) ---
+    // --- Perfil ---
     public string $nombre_comercial = '';
     public ?string $descripcion_publica = null;
     public ?string $direccion_publica = null;
     public ?string $telefono_publico = null;
     public ?string $email_publico = null;
     public ?string $horario_publico = null;
-    public $logotipo = null; // archivo nuevo, si el usuario sube uno
+    public $logotipo = null;
     public ?string $logotipo_url_actual = null;
 
-    // --- Configuración general (E3-06) ---
+    // --- Configuración general ---
     public float $anticipo_por_producto = 0;
     public int $dias_solicitud_cambio = 12;
     public int $dias_gestion_devolucion = 20;
@@ -41,9 +43,9 @@ new #[Layout('layouts.panel')] class extends Component {
     public string $moneda = 'MXN';
     public string $zona_horaria = 'America/Mexico_City';
 
-    // --- Ciclos de compra (E3-05) — sin mockup, pantalla armada con tokens ---
+    // --- Ciclos ---
     public $ciclos = [];
-    public ?int $cicloEditandoId = null; // null = modo "crear"
+    public ?int $cicloEditandoId = null;
     public bool $mostrandoFormularioCiclo = false;
     public int $ciclo_dia_cierre = 5;
     public string $ciclo_hora_cierre = '18:00';
@@ -58,11 +60,16 @@ new #[Layout('layouts.panel')] class extends Component {
         5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo',
     ];
 
-    // --- Empleados (E3-03) — solo lectura y activar/desactivar. El alta
-    // con cuenta y contraseña vive en /empleados/registrar (Paquete A). ---
+    // --- Empleados ---
     public $empleados = [];
+    public bool $mostrandoFormularioEmpleado = false;
+    public string $empleado_nombre = '';
+    public string $empleado_email = '';
+    public ?string $empleado_telefono = null;
+    public string $empleado_password = '';
+    public string $empleado_password_confirmation = '';
 
-    // --- Revendedores (afiliación) ---
+    // --- Revendedores ---
     public $revendedores = [];
     public ?int $revendedorEditandoId = null;
     public bool $mostrandoFormularioRevendedor = false;
@@ -72,7 +79,7 @@ new #[Layout('layouts.panel')] class extends Component {
     public ?string $revendedor_codigo_interno = null;
     public string $revendedor_estado = 'activo';
 
-    // --- Clientes Directos ---
+    // --- Clientes ---
     public $clientesDirectos = [];
     public ?int $clienteEditandoId = null;
     public bool $mostrandoFormularioCliente = false;
@@ -82,11 +89,6 @@ new #[Layout('layouts.panel')] class extends Component {
     public ?string $cliente_direccion_contacto = null;
     public string $cliente_estado = 'activo';
 
-    /**
-     * Se cargan los datos actuales al abrir la pantalla — igual que el
-     * GET que ya probamos por curl, pero aquí se llama directo al modelo
-     * en vez de por HTTP (estamos dentro del mismo proceso de Laravel).
-     */
     public function mount(): void
     {
         $this->diasSemanaNombres = self::DIAS_SEMANA;
@@ -137,17 +139,74 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->revendedores = RevendedorDistribuidora::with('revendedor')->get();
     }
 
-    /**
-     * Único cambio permitido aquí sobre un empleado: activo/inactivo.
-     * Nada de crear cuentas ni tocar contraseñas (eso es Paquete A).
-     */
     public function toggleEstadoEmpleado(int $id): void
     {
         $empleado = DistribuidoraStaff::findOrFail($id);
         $empleado->estado = $empleado->estado === 'activo' ? 'inactivo' : 'activo';
         $empleado->save();
-
         $this->cargarEmpleados();
+    }
+
+    public function abrirFormularioInvitarEmpleado(): void
+    {
+        $this->empleado_nombre = '';
+        $this->empleado_email = '';
+        $this->empleado_telefono = null;
+        $this->empleado_password = '';
+        $this->empleado_password_confirmation = '';
+        $this->resetErrorBag();
+        $this->mostrandoFormularioEmpleado = true;
+    }
+
+    public function cancelarFormularioEmpleado(): void
+    {
+        $this->mostrandoFormularioEmpleado = false;
+        $this->resetErrorBag();
+    }
+
+    public function guardarEmpleado(): void
+    {
+        $this->validate([
+            'empleado_nombre' => ['required', 'string', 'max:150'],
+            'empleado_email' => ['required', 'email', 'max:190', 'unique:usuarios,email'],
+            'empleado_telefono' => ['nullable', 'string', 'max:30'],
+            'empleado_password' => ['required', 'string', 'min:8', 'same:empleado_password_confirmation'],
+        ], [
+            'empleado_nombre.required' => 'El nombre es obligatorio.',
+            'empleado_email.required' => 'El correo es obligatorio.',
+            'empleado_email.unique' => 'Ese correo ya está registrado.',
+            'empleado_password.required' => 'La contraseña es obligatoria.',
+            'empleado_password.min' => 'Mínimo 8 caracteres.',
+            'empleado_password.same' => 'Las contraseñas no coinciden.',
+        ]);
+
+        $distribuidoraId = Tenant::id();
+        abort_if($distribuidoraId === null, 403);
+
+        DB::transaction(function () use ($distribuidoraId) {
+            $usuario = Usuario::create([
+                'nombre' => $this->empleado_nombre,
+                'email' => $this->empleado_email,
+                'password' => Hash::make($this->empleado_password),
+                'telefono' => $this->empleado_telefono ?: null,
+                'estado' => 'activo',
+            ]);
+
+            DistribuidoraStaff::withoutGlobalScopes()->create([
+                'distribuidora_id' => $distribuidoraId,
+                'usuario_id' => $usuario->id,
+                'tipo' => 'empleado',
+                'estado' => 'activo',
+                'fecha_alta' => now(),
+            ]);
+
+            setPermissionsTeamId($distribuidoraId);
+            $usuario->assignRole('empleado');
+        });
+
+        $this->mostrandoFormularioEmpleado = false;
+        $this->cargarEmpleados();
+        $this->dispatch('guardado', mensaje: 'Empleado registrado correctamente.');
     }
 
     public function abrirFormularioAfiliarRevendedor(): void
@@ -164,7 +223,6 @@ new #[Layout('layouts.panel')] class extends Component {
     public function abrirFormularioEditarRevendedor(int $id): void
     {
         $afiliacion = RevendedorDistribuidora::with('revendedor')->findOrFail($id);
-
         $this->revendedorEditandoId = $afiliacion->id;
         $this->revendedor_nombre = $afiliacion->revendedor->nombre;
         $this->revendedor_telefono = $afiliacion->revendedor->telefono;
@@ -180,24 +238,21 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->revendedorEditandoId = null;
     }
 
-    /**
-     * Mismas reglas que GuardarRevendedorRequest (Bloque 2).
-     */
     public function guardarRevendedor(): void
     {
         $datos = $this->validate([
-            'revendedor_nombre'         => ['required', 'string', 'max:150'],
-            'revendedor_telefono'       => ['nullable', 'string', 'max:30'],
-            'revendedor_email'          => ['nullable', 'email', 'max:190'],
+            'revendedor_nombre' => ['required', 'string', 'max:150'],
+            'revendedor_telefono' => ['nullable', 'string', 'max:30'],
+            'revendedor_email' => ['nullable', 'email', 'max:190'],
             'revendedor_codigo_interno' => ['nullable', 'string', 'max:60'],
         ]);
 
         $payload = [
-            'nombre'         => $datos['revendedor_nombre'],
-            'telefono'       => $datos['revendedor_telefono'],
-            'email'          => $datos['revendedor_email'],
+            'nombre' => $datos['revendedor_nombre'],
+            'telefono' => $datos['revendedor_telefono'],
+            'email' => $datos['revendedor_email'],
             'codigo_interno' => $datos['revendedor_codigo_interno'],
-            'estado'         => $this->revendedor_estado,
+            'estado' => $this->revendedor_estado,
         ];
 
         $accion = app(GestionarRevendedorAction::class);
@@ -211,7 +266,6 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->mostrandoFormularioRevendedor = false;
         $this->revendedorEditandoId = null;
         $this->cargarRevendedores();
-
         $this->dispatch('guardado', mensaje: 'Revendedor guardado correctamente.');
     }
 
@@ -229,7 +283,6 @@ new #[Layout('layouts.panel')] class extends Component {
     public function abrirFormularioEditarCliente(int $id): void
     {
         $cliente = ClienteDirecto::findOrFail($id);
-
         $this->clienteEditandoId = $cliente->id;
         $this->cliente_nombre = $cliente->nombre;
         $this->cliente_telefono = $cliente->telefono;
@@ -245,24 +298,21 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->clienteEditandoId = null;
     }
 
-    /**
-     * Mismas reglas que GuardarClienteDirectoRequest (Bloque 2).
-     */
     public function guardarCliente(): void
     {
         $datos = $this->validate([
-            'cliente_nombre'             => ['required', 'string', 'max:150'],
-            'cliente_telefono'           => ['nullable', 'string', 'max:30'],
-            'cliente_email'              => ['nullable', 'email', 'max:190'],
+            'cliente_nombre' => ['required', 'string', 'max:150'],
+            'cliente_telefono' => ['nullable', 'string', 'max:30'],
+            'cliente_email' => ['nullable', 'email', 'max:190'],
             'cliente_direccion_contacto' => ['nullable', 'string', 'max:300'],
         ]);
 
         $payload = [
-            'nombre'             => $datos['cliente_nombre'],
-            'telefono'           => $datos['cliente_telefono'],
-            'email'              => $datos['cliente_email'],
+            'nombre' => $datos['cliente_nombre'],
+            'telefono' => $datos['cliente_telefono'],
+            'email' => $datos['cliente_email'],
             'direccion_contacto' => $datos['cliente_direccion_contacto'],
-            'estado'             => $this->cliente_estado,
+            'estado' => $this->cliente_estado,
         ];
 
         $accion = app(GestionarClienteDirectoAction::class);
@@ -276,29 +326,22 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->mostrandoFormularioCliente = false;
         $this->clienteEditandoId = null;
         $this->cargarClientesDirectos();
-
         $this->dispatch('guardado', mensaje: 'Cliente directo guardado correctamente.');
     }
 
-    /**
-     * Mismas reglas que ActualizarPerfilDistribuidoraRequest (Bloque 1) —
-     * se repiten aquí porque Livewire valida en su propio ciclo, no
-     * reutiliza el Form Request de la API directamente.
-     */
     public function guardarPerfil(): void
     {
         $datos = $this->validate([
-            'nombre_comercial'    => ['required', 'string', 'max:150'],
+            'nombre_comercial' => ['required', 'string', 'max:150'],
             'descripcion_publica' => ['nullable', 'string'],
-            'direccion_publica'   => ['nullable', 'string', 'max:300'],
-            'telefono_publico'    => ['nullable', 'string', 'max:30'],
-            'email_publico'       => ['nullable', 'email', 'max:190'],
-            'horario_publico'     => ['nullable', 'string', 'max:300'],
-            'logotipo'            => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            'direccion_publica' => ['nullable', 'string', 'max:300'],
+            'telefono_publico' => ['nullable', 'string', 'max:30'],
+            'email_publico' => ['nullable', 'email', 'max:190'],
+            'horario_publico' => ['nullable', 'string', 'max:300'],
+            'logotipo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
         ]);
 
         $distribuidora = Distribuidora::findOrFail(Tenant::id());
-
         app(ActualizarPerfilDistribuidoraAction::class)->ejecutar(
             $distribuidora,
             collect($datos)->except('logotipo')->all(),
@@ -306,25 +349,23 @@ new #[Layout('layouts.panel')] class extends Component {
         );
 
         $this->logotipo = null;
-        $this->mount(); // recarga los datos (incluida la nueva URL del logo)
-
+        $this->mount();
         $this->dispatch('guardado', mensaje: 'Perfil actualizado correctamente.');
     }
 
     public function guardarConfiguracion(): void
     {
         $datos = $this->validate([
-            'anticipo_por_producto'    => ['required', 'numeric', 'min:0'],
-            'dias_solicitud_cambio'    => ['required', 'integer', 'min:1'],
-            'dias_gestion_devolucion'  => ['required', 'integer', 'min:1'],
-            'dias_vigencia_vale'       => ['required', 'integer', 'min:1'],
+            'anticipo_por_producto' => ['required', 'numeric', 'min:0'],
+            'dias_solicitud_cambio' => ['required', 'integer', 'min:1'],
+            'dias_gestion_devolucion' => ['required', 'integer', 'min:1'],
+            'dias_vigencia_vale' => ['required', 'integer', 'min:1'],
             'dias_maximos_recoleccion' => ['required', 'integer', 'min:1'],
-            'moneda'                   => ['required', 'string', 'size:3'],
-            'zona_horaria'             => ['required', 'string', 'max:60'],
+            'moneda' => ['required', 'string', 'size:3'],
+            'zona_horaria' => ['required', 'string', 'max:60'],
         ]);
 
         app(ActualizarConfiguracionDistribuidoraAction::class)->ejecutar($datos);
-
         $this->dispatch('guardado', mensaje: 'Configuración general actualizada correctamente.');
     }
 
@@ -343,10 +384,9 @@ new #[Layout('layouts.panel')] class extends Component {
     public function abrirFormularioEditarCiclo(int $id): void
     {
         $ciclo = ConfiguracionCiclo::with('diasRecepcion')->findOrFail($id);
-
         $this->cicloEditandoId = $ciclo->id;
         $this->ciclo_dia_cierre = $ciclo->dia_cierre;
-        $this->ciclo_hora_cierre = substr($ciclo->hora_cierre, 0, 5); // "18:00:00" -> "18:00"
+        $this->ciclo_hora_cierre = substr($ciclo->hora_cierre, 0, 5);
         $this->ciclo_dia_solicitud_fabrica = $ciclo->dia_solicitud_fabrica;
         $this->ciclo_dias_estimados_llegada = $ciclo->dias_estimados_llegada;
         $this->ciclo_activa = (bool) $ciclo->activa;
@@ -360,27 +400,24 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->cicloEditandoId = null;
     }
 
-    /**
-     * Mismas reglas que GuardarConfiguracionCicloRequest (Bloque 1).
-     */
     public function guardarCiclo(): void
     {
         $datos = $this->validate([
-            'ciclo_dia_cierre'             => ['required', 'integer', 'between:1,7'],
-            'ciclo_hora_cierre'            => ['required', 'date_format:H:i'],
-            'ciclo_dia_solicitud_fabrica'  => ['required', 'integer', 'between:1,7'],
+            'ciclo_dia_cierre' => ['required', 'integer', 'between:1,7'],
+            'ciclo_hora_cierre' => ['required', 'date_format:H:i'],
+            'ciclo_dia_solicitud_fabrica' => ['required', 'integer', 'between:1,7'],
             'ciclo_dias_estimados_llegada' => ['required', 'integer', 'min:1'],
-            'ciclo_dias_recepcion'         => ['required', 'array', 'min:1'],
-            'ciclo_dias_recepcion.*'       => ['integer', 'between:1,7'],
+            'ciclo_dias_recepcion' => ['required', 'array', 'min:1'],
+            'ciclo_dias_recepcion.*' => ['integer', 'between:1,7'],
         ]);
 
         $payload = [
-            'dia_cierre'             => $datos['ciclo_dia_cierre'],
-            'hora_cierre'            => $datos['ciclo_hora_cierre'],
-            'dia_solicitud_fabrica'  => $datos['ciclo_dia_solicitud_fabrica'],
+            'dia_cierre' => $datos['ciclo_dia_cierre'],
+            'hora_cierre' => $datos['ciclo_hora_cierre'],
+            'dia_solicitud_fabrica' => $datos['ciclo_dia_solicitud_fabrica'],
             'dias_estimados_llegada' => $datos['ciclo_dias_estimados_llegada'],
-            'activa'                 => $this->ciclo_activa,
-            'dias_recepcion'         => $datos['ciclo_dias_recepcion'],
+            'activa' => $this->ciclo_activa,
+            'dias_recepcion' => $datos['ciclo_dias_recepcion'],
         ];
 
         $accion = app(ConfiguracionCicloAction::class);
@@ -394,7 +431,6 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->mostrandoFormularioCiclo = false;
         $this->cicloEditandoId = null;
         $this->cargarCiclos();
-
         $this->dispatch('guardado', mensaje: 'Configuración de ciclo guardada correctamente.');
     }
 };
@@ -403,58 +439,37 @@ new #[Layout('layouts.panel')] class extends Component {
 <div>
     <h1 class="text-xl font-semibold text-slate-800 mb-4">Configuración de la Distribuidora</h1>
 
-    {{-- Aviso de guardado exitoso (escucha el evento 'guardado' de arriba) --}}
-    <div
-        x-data="{ visible: false, mensaje: '' }"
+    <div x-data="{ visible: false, mensaje: '' }"
         x-on:guardado.window="mensaje = $event.detail.mensaje; visible = true; setTimeout(() => visible = false, 3000)"
-        x-show="visible"
-        x-transition
-        class="mb-4 rounded-md bg-fp-badge-success-bg text-fp-badge-success-fg px-4 py-2 text-sm"
-        style="display: none;"
-    >
+        x-show="visible" x-transition
+        class="mb-4 rounded-md bg-fp-badge-success-bg text-fp-badge-success-fg px-4 py-2 text-sm" style="display: none;">
         <span x-text="mensaje"></span>
     </div>
 
-    {{-- Pestañas --}}
-    <div class="border-b border-slate-200 mb-6 flex gap-6">
-        <button
-            type="button"
-            wire:click="$set('pestanaActiva', 'perfil')"
-            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'perfil' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}"
-        >
+    <div class="border-b border-slate-200 mb-6 flex gap-6 flex-wrap">
+        <button type="button" wire:click="$set('pestanaActiva', 'perfil')"
+            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'perfil' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
             Datos Generales
         </button>
-        <button
-            type="button"
-            wire:click="$set('pestanaActiva', 'general')"
-            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'general' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}"
-        >
+        <button type="button" wire:click="$set('pestanaActiva', 'general')"
+            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'general' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
             Anticipos y Plazos
         </button>
-        <button
-            type="button"
-            wire:click="$set('pestanaActiva', 'ciclos')"
-            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'ciclos' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}"
-        >
+        <button type="button" wire:click="$set('pestanaActiva', 'ciclos')"
+            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'ciclos' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
             Ciclos de Compra
         </button>
-        <button
-            type="button"
-            wire:click="$set('pestanaActiva', 'usuarios')"
-            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'usuarios' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}"
-        >
+        <button type="button" wire:click="$set('pestanaActiva', 'usuarios')"
+            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'usuarios' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
             Usuarios y Revendedores
         </button>
-        <button
-            type="button"
-            wire:click="$set('pestanaActiva', 'clientes')"
-            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'clientes' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}"
-        >
+        <button type="button" wire:click="$set('pestanaActiva', 'clientes')"
+            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'clientes' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
             Clientes Directos
         </button>
     </div>
 
-    {{-- Pestaña: Perfil --}}
+    {{-- Perfil --}}
     <div x-show="$wire.pestanaActiva === 'perfil'">
         <form wire:submit="guardarPerfil" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
             <div>
@@ -462,36 +477,28 @@ new #[Layout('layouts.panel')] class extends Component {
                 <input type="text" wire:model="nombre_comercial" class="w-full rounded-md border-slate-300">
                 @error('nombre_comercial') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
             </div>
-
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
                 <textarea wire:model="descripcion_publica" rows="3" class="w-full rounded-md border-slate-300"></textarea>
             </div>
-
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Dirección</label>
                 <input type="text" wire:model="direccion_publica" class="w-full rounded-md border-slate-300">
             </div>
-
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    {{-- Corrección de mockup (Correcciones_Mockups.docx): formato México, no España --}}
                     <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
                     <input type="text" wire:model="telefono_publico" placeholder="+52 55 1234 5678" class="w-full rounded-md border-slate-300">
-                    @error('telefono_publico') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
                     <input type="email" wire:model="email_publico" class="w-full rounded-md border-slate-300">
-                    @error('email_publico') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                 </div>
             </div>
-
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Horario</label>
                 <input type="text" wire:model="horario_publico" placeholder="Lunes a sábado, 9:00 a 19:00" class="w-full rounded-md border-slate-300">
             </div>
-
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Logotipo</label>
                 @if ($logotipo)
@@ -501,29 +508,22 @@ new #[Layout('layouts.panel')] class extends Component {
                 @endif
                 <input type="file" wire:model="logotipo" accept="image/png,image/jpeg">
                 <p class="text-xs text-fp-text-muted mt-1">PNG o JPG, hasta 2MB.</p>
-                @error('logotipo') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
-                <div wire:loading wire:target="logotipo" class="text-xs text-fp-text-muted">Subiendo...</div>
             </div>
-
-            <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled" wire:target="guardarPerfil">
-                Guardar Cambios
-            </button>
+            <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar Cambios</button>
         </form>
     </div>
 
-    {{-- Pestaña: Configuración general --}}
+    {{-- Anticipos y plazos --}}
     <div x-show="$wire.pestanaActiva === 'general'">
         <form wire:submit="guardarConfiguracion" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Anticipo por producto (MXN)</label>
                     <input type="number" step="0.01" wire:model="anticipo_por_producto" class="w-full rounded-md border-slate-300">
-                    @error('anticipo_por_producto') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Días máximos de recolección</label>
                     <input type="number" wire:model="dias_maximos_recoleccion" class="w-full rounded-md border-slate-300">
-                    @error('dias_maximos_recoleccion') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Días para solicitar cambio</label>
@@ -540,31 +540,24 @@ new #[Layout('layouts.panel')] class extends Component {
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Moneda</label>
                     <input type="text" wire:model="moneda" maxlength="3" class="w-full rounded-md border-slate-300 uppercase">
-                    @error('moneda') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                 </div>
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Zona horaria</label>
                 <input type="text" wire:model="zona_horaria" class="w-full rounded-md border-slate-300">
             </div>
-
-            <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled" wire:target="guardarConfiguracion">
-                Guardar Cambios
-            </button>
+            <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar Cambios</button>
         </form>
     </div>
 
-    {{-- Pestaña: Ciclos de compra --}}
+    {{-- Ciclos --}}
     <div x-show="$wire.pestanaActiva === 'ciclos'">
         @if (! $mostrandoFormularioCiclo)
             <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-700">Configuraciones de ciclo</h2>
-                    <button type="button" wire:click="abrirFormularioCrearCiclo" class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
-                        + Nueva configuración
-                    </button>
+                    <button type="button" wire:click="abrirFormularioCrearCiclo" class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nueva configuración</button>
                 </div>
-
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left text-slate-500 border-b">
@@ -589,9 +582,7 @@ new #[Layout('layouts.panel')] class extends Component {
                                     </span>
                                 </td>
                                 <td class="py-2 text-right">
-                                    <button type="button" wire:click="abrirFormularioEditarCiclo({{ $ciclo->id }})" class="text-fp-primary text-xs font-medium">
-                                        Editar
-                                    </button>
+                                    <button type="button" wire:click="abrirFormularioEditarCiclo({{ $ciclo->id }})" class="text-fp-primary text-xs font-medium">Editar</button>
                                 </td>
                             </tr>
                         @endforeach
@@ -600,10 +591,7 @@ new #[Layout('layouts.panel')] class extends Component {
             </div>
         @else
             <form wire:submit="guardarCiclo" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
-                <h2 class="text-sm font-semibold text-slate-700">
-                    {{ $cicloEditandoId ? 'Editar configuración de ciclo' : 'Nueva configuración de ciclo' }}
-                </h2>
-
+                <h2 class="text-sm font-semibold text-slate-700">{{ $cicloEditandoId ? 'Editar configuración de ciclo' : 'Nueva configuración de ciclo' }}</h2>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Día de cierre</label>
@@ -612,12 +600,10 @@ new #[Layout('layouts.panel')] class extends Component {
                                 <option value="{{ $numero }}">{{ $nombre }}</option>
                             @endforeach
                         </select>
-                        @error('ciclo_dia_cierre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Hora de cierre</label>
                         <input type="time" wire:model="ciclo_hora_cierre" class="w-full rounded-md border-slate-300">
-                        @error('ciclo_hora_cierre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Día de solicitud a fábrica</label>
@@ -630,10 +616,8 @@ new #[Layout('layouts.panel')] class extends Component {
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Días estimados de llegada</label>
                         <input type="number" wire:model="ciclo_dias_estimados_llegada" class="w-full rounded-md border-slate-300">
-                        @error('ciclo_dias_estimados_llegada') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
                 </div>
-
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Días de recepción</label>
                     <div class="flex gap-3 flex-wrap">
@@ -644,81 +628,107 @@ new #[Layout('layouts.panel')] class extends Component {
                             </label>
                         @endforeach
                     </div>
-                    @error('ciclo_dias_recepcion') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                 </div>
-
-                <div>
-                    <label class="flex items-center gap-2 text-sm text-slate-700">
-                        <input type="checkbox" wire:model="ciclo_activa" class="rounded border-slate-300">
-                        Marcar como configuración activa
-                    </label>
-                    <p class="text-xs text-fp-text-muted mt-1">
-                        Solo puede haber una configuración activa a la vez — al marcar esta, la anterior se desactiva sola.
-                    </p>
-                </div>
-
+                <label class="flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" wire:model="ciclo_activa" class="rounded border-slate-300">
+                    Marcar como configuración activa
+                </label>
                 <div class="flex gap-2">
-                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled" wire:target="guardarCiclo">
-                        Guardar
-                    </button>
-                    <button type="button" wire:click="cancelarFormularioCiclo" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">
-                        Cancelar
-                    </button>
+                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                    <button type="button" wire:click="cancelarFormularioCiclo" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>
         @endif
     </div>
 
-    {{-- Pestaña: Usuarios y Revendedores --}}
+    {{-- Usuarios y Revendedores --}}
     <div x-show="$wire.pestanaActiva === 'usuarios'" class="space-y-6">
 
-        {{-- Empleados: solo lectura + activar/desactivar. El alta con
-             cuenta vive en /empleados/registrar (Paquete A). --}}
+        {{-- Empleados: listado o formulario inline --}}
         <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-sm font-semibold text-slate-700">Empleados</h2>
-                <a href="{{ route('empleados.registrar') }}" class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
-                    + Invitar empleado
-                </a>
-            </div>
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-slate-500 border-b">
-                        <th class="py-2">Nombre</th>
-                        <th class="py-2">Correo</th>
-                        <th class="py-2">Teléfono</th>
-                        <th class="py-2">Estado</th>
-                        <th class="py-2"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($empleados as $empleado)
-                        <tr class="border-b last:border-0">
-                            <td class="py-2">{{ $empleado->usuario->nombre }}</td>
-                            <td class="py-2">{{ $empleado->usuario->email }}</td>
-                            <td class="py-2">{{ $empleado->usuario->telefono }}</td>
-                            <td class="py-2">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $empleado->estado === 'activo' ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
-                                    {{ $empleado->estado === 'activo' ? 'Activo' : 'Inactivo' }}
-                                </span>
-                            </td>
-                            <td class="py-2 text-right">
-                                <button type="button" wire:click="toggleEstadoEmpleado({{ $empleado->id }})" class="text-fp-primary text-xs font-medium">
-                                    {{ $empleado->estado === 'activo' ? 'Desactivar' : 'Activar' }}
-                                </button>
-                            </td>
+            @if (! $mostrandoFormularioEmpleado)
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-semibold text-slate-700">Empleados</h2>
+                    <button type="button" wire:click="abrirFormularioInvitarEmpleado"
+                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
+                        + Invitar empleado
+                    </button>
+                </div>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-slate-500 border-b">
+                            <th class="py-2">Nombre</th>
+                            <th class="py-2">Correo</th>
+                            <th class="py-2">Teléfono</th>
+                            <th class="py-2">Estado</th>
+                            <th class="py-2"></th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach ($empleados as $empleado)
+                            <tr class="border-b last:border-0">
+                                <td class="py-2">{{ $empleado->usuario?->nombre ?? '—' }}</td>
+                                <td class="py-2">{{ $empleado->usuario?->email ?? '—' }}</td>
+                                <td class="py-2">{{ $empleado->usuario?->telefono ?? '—' }}</td>
+                                <td class="py-2">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $empleado->estado === 'activo' ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
+                                        {{ $empleado->estado === 'activo' ? 'Activo' : 'Inactivo' }}
+                                    </span>
+                                </td>
+                                <td class="py-2 text-right">
+                                    <button type="button" wire:click="toggleEstadoEmpleado({{ $empleado->id }})"
+                                        class="text-fp-primary text-xs font-medium">
+                                        {{ $empleado->estado === 'activo' ? 'Desactivar' : 'Activar' }}
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @else
+                <form wire:submit="guardarEmpleado" class="space-y-4">
+                    <h2 class="text-sm font-semibold text-slate-700">Invitar empleado</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                            <input type="text" wire:model="empleado_nombre" class="w-full rounded-md border-slate-300">
+                            @error('empleado_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
+                            <input type="email" wire:model="empleado_email" class="w-full rounded-md border-slate-300">
+                            @error('empleado_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+                            <input type="text" wire:model="empleado_telefono" class="w-full rounded-md border-slate-300">
+                        </div>
+                        <div></div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+                            <input type="password" wire:model="empleado_password" class="w-full rounded-md border-slate-300">
+                            @error('empleado_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
+                            <input type="password" wire:model="empleado_password_confirmation" class="w-full rounded-md border-slate-300">
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                        <button type="button" wire:click="cancelarFormularioEmpleado" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
+                    </div>
+                </form>
+            @endif
         </div>
 
-        {{-- Revendedores: afiliar/editar (sin cuenta con login este sprint) --}}
+        {{-- Revendedores --}}
         <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
             @if (! $mostrandoFormularioRevendedor)
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-700">Revendedores</h2>
-                    <button type="button" wire:click="abrirFormularioAfiliarRevendedor" class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
+                    <button type="button" wire:click="abrirFormularioAfiliarRevendedor"
+                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
                         + Afiliar revendedor
                     </button>
                 </div>
@@ -751,9 +761,8 @@ new #[Layout('layouts.panel')] class extends Component {
                                     </span>
                                 </td>
                                 <td class="py-2 text-right">
-                                    <button type="button" wire:click="abrirFormularioEditarRevendedor({{ $afiliacion->id }})" class="text-fp-primary text-xs font-medium">
-                                        Editar
-                                    </button>
+                                    <button type="button" wire:click="abrirFormularioEditarRevendedor({{ $afiliacion->id }})"
+                                        class="text-fp-primary text-xs font-medium">Editar</button>
                                 </td>
                             </tr>
                         @endforeach
@@ -764,7 +773,6 @@ new #[Layout('layouts.panel')] class extends Component {
                     <h2 class="text-sm font-semibold text-slate-700">
                         {{ $revendedorEditandoId ? 'Editar revendedor' : 'Afiliar nuevo revendedor' }}
                     </h2>
-
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
@@ -782,10 +790,8 @@ new #[Layout('layouts.panel')] class extends Component {
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
                             <input type="email" wire:model="revendedor_email" class="w-full rounded-md border-slate-300">
-                            @error('revendedor_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                         </div>
                     </div>
-
                     @if ($revendedorEditandoId)
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
@@ -796,29 +802,23 @@ new #[Layout('layouts.panel')] class extends Component {
                             </select>
                         </div>
                     @endif
-
                     <div class="flex gap-2">
-                        <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled" wire:target="guardarRevendedor">
-                            Guardar
-                        </button>
-                        <button type="button" wire:click="cancelarFormularioRevendedor" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">
-                            Cancelar
-                        </button>
+                        <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                        <button type="button" wire:click="cancelarFormularioRevendedor" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                     </div>
                 </form>
             @endif
         </div>
     </div>
 
-    {{-- Pestaña: Clientes Directos --}}
+    {{-- Clientes --}}
     <div x-show="$wire.pestanaActiva === 'clientes'">
         @if (! $mostrandoFormularioCliente)
             <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-700">Clientes Directos</h2>
-                    <button type="button" wire:click="abrirFormularioCrearCliente" class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
-                        + Nuevo cliente
-                    </button>
+                    <button type="button" wire:click="abrirFormularioCrearCliente"
+                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nuevo cliente</button>
                 </div>
                 <table class="w-full text-sm">
                     <thead>
@@ -842,9 +842,8 @@ new #[Layout('layouts.panel')] class extends Component {
                                     </span>
                                 </td>
                                 <td class="py-2 text-right">
-                                    <button type="button" wire:click="abrirFormularioEditarCliente({{ $cliente->id }})" class="text-fp-primary text-xs font-medium">
-                                        Editar
-                                    </button>
+                                    <button type="button" wire:click="abrirFormularioEditarCliente({{ $cliente->id }})"
+                                        class="text-fp-primary text-xs font-medium">Editar</button>
                                 </td>
                             </tr>
                         @endforeach
@@ -856,30 +855,25 @@ new #[Layout('layouts.panel')] class extends Component {
                 <h2 class="text-sm font-semibold text-slate-700">
                     {{ $clienteEditandoId ? 'Editar cliente directo' : 'Nuevo cliente directo' }}
                 </h2>
-
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
                     <input type="text" wire:model="cliente_nombre" class="w-full rounded-md border-slate-300">
                     @error('cliente_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                 </div>
-
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                        <input type="text" wire:model="cliente_telefono" placeholder="+52 55 1234 5678" class="w-full rounded-md border-slate-300">
+                        <input type="text" wire:model="cliente_telefono" class="w-full rounded-md border-slate-300">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
                         <input type="email" wire:model="cliente_email" class="w-full rounded-md border-slate-300">
-                        @error('cliente_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
                 </div>
-
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Dirección de contacto</label>
                     <input type="text" wire:model="cliente_direccion_contacto" class="w-full rounded-md border-slate-300">
                 </div>
-
                 @if ($clienteEditandoId)
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
@@ -889,14 +883,9 @@ new #[Layout('layouts.panel')] class extends Component {
                         </select>
                     </div>
                 @endif
-
                 <div class="flex gap-2">
-                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled" wire:target="guardarCliente">
-                        Guardar
-                    </button>
-                    <button type="button" wire:click="cancelarFormularioCliente" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">
-                        Cancelar
-                    </button>
+                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                    <button type="button" wire:click="cancelarFormularioCliente" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>
         @endif
