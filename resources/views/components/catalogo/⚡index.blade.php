@@ -52,13 +52,14 @@ new #[Layout('layouts.panel')] class extends Component {
     public bool $categoria_activa = true;
 
     // --- Campañas ---
+    // Nota: campanas.marca_id es legado; la relación real es Campaña → Líneas.
     public $campanas = [];
     public ?int $campanaEditandoId = null;
     public bool $mostrandoFormularioCampana = false;
-    public ?int $campana_marca_id = null;
     public string $campana_nombre = '';
     public ?string $campana_fecha_inicio = null;
     public ?string $campana_fecha_fin = null;
+    public array $campana_linea_ids = []; // <-- añadir
 
     private const CAMPANA_ESTADOS = [
         'borrador' => ['Borrador', 'neutral'],
@@ -98,17 +99,21 @@ new #[Layout('layouts.panel')] class extends Component {
 
     private function cargarLineas(): void
     {
-        $this->lineas = Linea::with(['campana', 'marcas'])->latest()->get();
+        $this->lineas = Linea::with(['campana', 'marcas'])
+            ->latest()
+            ->get();
     }
 
     private function cargarCampanas(): void
     {
-        $this->campanas = Campana::with('marca')->latest()->get();
+        $this->campanas = Campana::with('lineas')->latest()->get();
     }
 
     private function cargarProductos(): void
     {
-        $this->productos = Producto::with(['marca', 'linea', 'categoria'])->latest()->get();
+        $this->productos = Producto::with(['marca', 'linea', 'categoria'])
+            ->latest()
+            ->get();
     }
 
     private function cargarMarcas(): void
@@ -214,7 +219,7 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->linea_nombre = $linea->nombre;
         $this->linea_descripcion = $linea->descripcion;
         $this->linea_activa = (bool) $linea->activa;
-        $this->linea_marca_ids = $linea->marcas->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $this->linea_marca_ids = $linea->marcas->pluck('id')->map(fn($id) => (string) $id)->all();
         $this->mostrandoFormularioLinea = true;
     }
 
@@ -228,23 +233,17 @@ new #[Layout('layouts.panel')] class extends Component {
     public function guardarLinea(): void
     {
         $this->errorNegocio = null;
-        $esCreacion = ! $this->lineaEditandoId;
+        $esCreacion = !$this->lineaEditandoId;
 
         $reglas = [
             'linea_nombre' => ['required', 'string', 'max:150'],
             'linea_descripcion' => ['nullable', 'string'],
             'linea_marca_ids' => ['sometimes', 'array'],
-            'linea_marca_ids.*' => [
-                'integer',
-                Rule::exists('marcas', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
-            ],
+            'linea_marca_ids.*' => ['integer', Rule::exists('marcas', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id()))],
         ];
 
         if ($esCreacion) {
-            $reglas['linea_campana_id'] = [
-                'required', 'integer',
-                Rule::exists('campanas', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
-            ];
+            $reglas['linea_campana_id'] = ['required', 'integer', Rule::exists('campanas', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id()))];
         }
 
         $datos = $this->validate($reglas);
@@ -253,17 +252,24 @@ new #[Layout('layouts.panel')] class extends Component {
 
         try {
             if ($esCreacion) {
-                $accion->crear([
-                    'campana_id' => $datos['linea_campana_id'],
-                    'nombre' => $datos['linea_nombre'],
-                    'descripcion' => $datos['linea_descripcion'] ?? null,
-                ], $marcaIds);
+                $accion->crear(
+                    [
+                        'campana_id' => $datos['linea_campana_id'],
+                        'nombre' => $datos['linea_nombre'],
+                        'descripcion' => $datos['linea_descripcion'] ?? null,
+                    ],
+                    $marcaIds,
+                );
             } else {
-                $accion->actualizar(Linea::findOrFail($this->lineaEditandoId), [
-                    'nombre' => $datos['linea_nombre'],
-                    'descripcion' => $datos['linea_descripcion'] ?? null,
-                    'activa' => $this->linea_activa,
-                ], $marcaIds);
+                $accion->actualizar(
+                    Linea::findOrFail($this->lineaEditandoId),
+                    [
+                        'nombre' => $datos['linea_nombre'],
+                        'descripcion' => $datos['linea_descripcion'] ?? null,
+                        'activa' => $this->linea_activa,
+                    ],
+                    $marcaIds,
+                );
             }
         } catch (OperacionInvalidaException $e) {
             $this->errorNegocio = $e->getMessage();
@@ -335,10 +341,10 @@ new #[Layout('layouts.panel')] class extends Component {
     public function abrirFormularioCrearCampana(): void
     {
         $this->campanaEditandoId = null;
-        $this->campana_marca_id = null;
         $this->campana_nombre = '';
         $this->campana_fecha_inicio = null;
         $this->campana_fecha_fin = null;
+        $this->campana_linea_ids = [];
         $this->errorNegocio = null;
         $this->mostrandoFormularioCampana = true;
     }
@@ -355,24 +361,28 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->errorNegocio = null;
 
         $datos = $this->validate([
-            'campana_marca_id' => [
-                'required', 'integer',
-                Rule::exists('marcas', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
-            ],
             'campana_nombre' => ['required', 'string', 'max:150'],
             'campana_fecha_inicio' => ['nullable', 'date'],
             'campana_fecha_fin' => ['nullable', 'date', 'after_or_equal:campana_fecha_inicio'],
+            'campana_linea_ids' => ['sometimes', 'array'],
+            'campana_linea_ids.*' => ['integer', Rule::exists('lineas', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id()))],
         ]);
 
-        app(GestionarCampanaAction::class)->crear([
-            'marca_id' => $datos['campana_marca_id'],
+        $campana = app(GestionarCampanaAction::class)->crear([
             'nombre' => $datos['campana_nombre'],
             'fecha_inicio' => $datos['campana_fecha_inicio'],
             'fecha_fin' => $datos['campana_fecha_fin'],
         ]);
 
+        $lineaIds = array_map('intval', $this->campana_linea_ids ?? []);
+        if ($lineaIds !== []) {
+            Linea::whereIn('id', $lineaIds)->update(['campana_id' => $campana->id]);
+        }
+
         $this->mostrandoFormularioCampana = false;
+        $this->campana_linea_ids = [];
         $this->cargarCampanas();
+        $this->cargarLineas();
         $this->dispatch('guardado', mensaje: 'Campaña creada correctamente.');
     }
 
@@ -383,7 +393,7 @@ new #[Layout('layouts.panel')] class extends Component {
         $indiceActual = array_search($campana->estado, self::ORDEN_ESTADOS_CAMPANA, true);
         $siguiente = self::ORDEN_ESTADOS_CAMPANA[$indiceActual + 1] ?? null;
 
-        if (! $siguiente) {
+        if (!$siguiente) {
             return;
         }
 
@@ -439,24 +449,15 @@ new #[Layout('layouts.panel')] class extends Component {
     public function guardarProducto(): void
     {
         $this->errorNegocio = null;
-        $esCreacion = ! $this->productoEditandoId;
+        $esCreacion = !$this->productoEditandoId;
 
         $reglas = [
             'producto_modelo' => ['required', 'string', 'max:120'],
             'producto_nombre' => ['required', 'string', 'max:200'],
             'producto_descripcion' => ['nullable', 'string'],
-            'producto_categoria_id' => [
-                'required', 'integer',
-                Rule::exists('categorias_producto', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
-            ],
-            'producto_linea_id' => [
-                'required', 'integer',
-                Rule::exists('lineas', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
-            ],
-            'producto_marca_id' => [
-                'required', 'integer',
-                Rule::exists('marcas', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
-            ],
+            'producto_categoria_id' => ['required', 'integer', Rule::exists('categorias_producto', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id()))],
+            'producto_linea_id' => ['required', 'integer', Rule::exists('lineas', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id()))],
+            'producto_marca_id' => ['required', 'integer', Rule::exists('marcas', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id()))],
         ];
 
         $datos = $this->validate($reglas);
@@ -533,10 +534,11 @@ new #[Layout('layouts.panel')] class extends Component {
     {{-- Productos --}}
     <div x-show="$wire.pestanaActiva === 'productos'">
         @if ($errorNegocio && $pestanaActiva === 'productos')
-            <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">{{ $errorNegocio }}</div>
+            <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">
+                {{ $errorNegocio }}</div>
         @endif
 
-        @if (! $mostrandoFormularioProducto)
+        @if (!$mostrandoFormularioProducto)
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-700">Productos</h2>
@@ -566,17 +568,23 @@ new #[Layout('layouts.panel')] class extends Component {
                                 <td class="py-2">{{ $producto->linea?->nombre ?? '—' }}</td>
                                 <td class="py-2">{{ $producto->categoria?->nombre ?? '—' }}</td>
                                 <td class="py-2">
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $producto->activo ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $producto->activo ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
                                         {{ $producto->activo ? 'Activo' : 'Inactivo' }}
                                     </span>
                                 </td>
                                 <td class="py-2 text-right space-x-3">
-                                    <a href="{{ route('catalogo.producto.detalle', $producto) }}" class="text-fp-primary text-xs font-medium">Variantes</a>
-                                    <button type="button" wire:click="abrirFormularioEditarProducto({{ $producto->id }})" class="text-fp-primary text-xs font-medium">Editar</button>
+                                    <a href="{{ route('catalogo.producto.detalle', $producto) }}"
+                                        class="text-fp-primary text-xs font-medium">Variantes</a>
+                                    <button type="button"
+                                        wire:click="abrirFormularioEditarProducto({{ $producto->id }})"
+                                        class="text-fp-primary text-xs font-medium">Editar</button>
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="7" class="py-8 text-center text-slate-500">No hay productos.</td></tr>
+                            <tr>
+                                <td colspan="7" class="py-8 text-center text-slate-500">No hay productos.</td>
+                            </tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -589,14 +597,20 @@ new #[Layout('layouts.panel')] class extends Component {
 
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Nombre del Producto</label>
-                    <input type="text" wire:model="producto_nombre" class="w-full rounded-md border-slate-300" placeholder="Ej. Air Max Running Pro 2024">
-                    @error('producto_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                    <input type="text" wire:model="producto_nombre" class="w-full rounded-md border-slate-300"
+                        placeholder="Ej. Air Max Running Pro 2024">
+                    @error('producto_nombre')
+                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                    @enderror
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Código / Modelo</label>
-                    <input type="text" wire:model="producto_modelo" class="w-full rounded-md border-slate-300" placeholder="Ej. AM-RUN-2024-BLK">
-                    @error('producto_modelo') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                    <input type="text" wire:model="producto_modelo" class="w-full rounded-md border-slate-300"
+                        placeholder="Ej. AM-RUN-2024-BLK">
+                    @error('producto_modelo')
+                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                    @enderror
                 </div>
 
                 <div>
@@ -615,7 +629,9 @@ new #[Layout('layouts.panel')] class extends Component {
                                 @endif
                             @endforeach
                         </select>
-                        @error('producto_linea_id') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                        @error('producto_linea_id')
+                            <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                        @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Marca</label>
@@ -627,7 +643,9 @@ new #[Layout('layouts.panel')] class extends Component {
                                 @endif
                             @endforeach
                         </select>
-                        @error('producto_marca_id') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                        @error('producto_marca_id')
+                            <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                        @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Categoría</label>
@@ -639,7 +657,9 @@ new #[Layout('layouts.panel')] class extends Component {
                                 @endif
                             @endforeach
                         </select>
-                        @error('producto_categoria_id') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                        @error('producto_categoria_id')
+                            <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                        @enderror
                     </div>
                 </div>
 
@@ -651,8 +671,11 @@ new #[Layout('layouts.panel')] class extends Component {
                 @endif
 
                 <div class="flex gap-2">
-                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar Producto</button>
-                    <button type="button" wire:click="cancelarFormularioProducto" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
+                    <button type="submit"
+                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar
+                        Producto</button>
+                    <button type="button" wire:click="cancelarFormularioProducto"
+                        class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>
         @endif
@@ -661,10 +684,11 @@ new #[Layout('layouts.panel')] class extends Component {
     {{-- Líneas --}}
     <div x-show="$wire.pestanaActiva === 'lineas'">
         @if ($errorNegocio && $pestanaActiva === 'lineas')
-            <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">{{ $errorNegocio }}</div>
+            <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">
+                {{ $errorNegocio }}</div>
         @endif
 
-        @if (! $mostrandoFormularioLinea)
+        @if (!$mostrandoFormularioLinea)
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-700">Líneas comerciales</h2>
@@ -691,12 +715,15 @@ new #[Layout('layouts.panel')] class extends Component {
                                 <td class="py-2">{{ $linea->marcas->pluck('nombre')->join(', ') ?: '—' }}</td>
                                 <td class="py-2">{{ $linea->activa ? 'Activa' : 'Inactiva' }}</td>
                                 <td class="py-2 text-right">
-                                    <button type="button" wire:click="abrirFormularioEditarLinea({{ $linea->id }})"
+                                    <button type="button"
+                                        wire:click="abrirFormularioEditarLinea({{ $linea->id }})"
                                         class="text-fp-primary text-xs font-medium">Editar</button>
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="py-8 text-center text-slate-500">No hay líneas.</td></tr>
+                            <tr>
+                                <td colspan="5" class="py-8 text-center text-slate-500">No hay líneas.</td>
+                            </tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -707,7 +734,7 @@ new #[Layout('layouts.panel')] class extends Component {
                     {{ $lineaEditandoId ? 'Editar línea' : 'Nueva línea' }}
                 </h2>
 
-                @if (! $lineaEditandoId)
+                @if (!$lineaEditandoId)
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Campaña</label>
                         <select wire:model="linea_campana_id" class="w-full rounded-md border-slate-300">
@@ -716,14 +743,18 @@ new #[Layout('layouts.panel')] class extends Component {
                                 <option value="{{ $campana->id }}">{{ $campana->nombre }}</option>
                             @endforeach
                         </select>
-                        @error('linea_campana_id') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                        @error('linea_campana_id')
+                            <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                        @enderror
                     </div>
                 @endif
 
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
                     <input type="text" wire:model="linea_nombre" class="w-full rounded-md border-slate-300">
-                    @error('linea_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                    @error('linea_nombre')
+                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                    @enderror
                 </div>
 
                 <div>
@@ -737,7 +768,8 @@ new #[Layout('layouts.panel')] class extends Component {
                         @foreach ($marcas as $marca)
                             @if ($marca->activa)
                                 <label class="flex items-center gap-2 text-sm">
-                                    <input type="checkbox" wire:model="linea_marca_ids" value="{{ $marca->id }}" class="rounded border-slate-300">
+                                    <input type="checkbox" wire:model="linea_marca_ids" value="{{ $marca->id }}"
+                                        class="rounded border-slate-300">
                                     {{ $marca->nombre }}
                                 </label>
                             @endif
@@ -753,8 +785,11 @@ new #[Layout('layouts.panel')] class extends Component {
                 @endif
 
                 <div class="flex gap-2">
-                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar línea</button>
-                    <button type="button" wire:click="cancelarFormularioLinea" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
+                    <button type="submit"
+                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar
+                        línea</button>
+                    <button type="button" wire:click="cancelarFormularioLinea"
+                        class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>
         @endif
@@ -763,15 +798,17 @@ new #[Layout('layouts.panel')] class extends Component {
     {{-- Marcas --}}
     <div x-show="$wire.pestanaActiva === 'marcas'">
         @if ($errorNegocio && $pestanaActiva === 'marcas')
-            <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">{{ $errorNegocio }}</div>
+            <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">
+                {{ $errorNegocio }}</div>
         @endif
 
-        @if (! $mostrandoFormularioMarca)
+        @if (!$mostrandoFormularioMarca)
             <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-700">Marcas</h2>
                     <button type="button" wire:click="abrirFormularioCrearMarca"
-                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nueva marca</button>
+                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nueva
+                        marca</button>
                 </div>
                 <table class="w-full text-sm">
                     <thead>
@@ -793,7 +830,8 @@ new #[Layout('layouts.panel')] class extends Component {
                                 <td class="py-2">{{ $marca->nombre }}</td>
                                 <td class="py-2">{{ $marca->activa ? 'Activa' : 'Inactiva' }}</td>
                                 <td class="py-2 text-right">
-                                    <button type="button" wire:click="abrirFormularioEditarMarca({{ $marca->id }})"
+                                    <button type="button"
+                                        wire:click="abrirFormularioEditarMarca({{ $marca->id }})"
                                         class="text-fp-primary text-xs font-medium">Editar</button>
                                 </td>
                             </tr>
@@ -803,11 +841,14 @@ new #[Layout('layouts.panel')] class extends Component {
             </div>
         @else
             <form wire:submit="guardarMarca" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
-                <h2 class="text-sm font-semibold text-slate-700">{{ $marcaEditandoId ? 'Editar marca' : 'Nueva marca' }}</h2>
+                <h2 class="text-sm font-semibold text-slate-700">
+                    {{ $marcaEditandoId ? 'Editar marca' : 'Nueva marca' }}</h2>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
                     <input type="text" wire:model="marca_nombre" class="w-full rounded-md border-slate-300">
-                    @error('marca_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                    @error('marca_nombre')
+                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                    @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
@@ -821,7 +862,9 @@ new #[Layout('layouts.panel')] class extends Component {
                         <img src="{{ $marca_logotipo_url_actual }}" class="h-16 w-16 object-cover rounded mb-2">
                     @endif
                     <input type="file" wire:model="marca_logotipo" accept="image/png,image/jpeg">
-                    @error('marca_logotipo') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                    @error('marca_logotipo')
+                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                    @enderror
                 </div>
                 @if ($marcaEditandoId)
                     <label class="flex items-center gap-2 text-sm text-slate-700">
@@ -830,8 +873,10 @@ new #[Layout('layouts.panel')] class extends Component {
                     </label>
                 @endif
                 <div class="flex gap-2">
-                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
-                    <button type="button" wire:click="cancelarFormularioMarca" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
+                    <button type="submit"
+                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                    <button type="button" wire:click="cancelarFormularioMarca"
+                        class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>
         @endif
@@ -840,21 +885,23 @@ new #[Layout('layouts.panel')] class extends Component {
     {{-- Campañas --}}
     <div x-show="$wire.pestanaActiva === 'campanas'">
         @if ($errorNegocio && $pestanaActiva === 'campanas')
-            <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">{{ $errorNegocio }}</div>
+            <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">
+                {{ $errorNegocio }}</div>
         @endif
 
-        @if (! $mostrandoFormularioCampana)
+        @if (!$mostrandoFormularioCampana)
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-700">Campañas</h2>
                     <button type="button" wire:click="abrirFormularioCrearCampana"
-                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nueva campaña</button>
+                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nueva
+                        campaña</button>
                 </div>
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left text-slate-500 border-b">
                             <th class="py-2">Nombre</th>
-                            <th class="py-2">Marca (legado)</th>
+                            <th class="py-2">Líneas</th>
                             <th class="py-2">Vigencia</th>
                             <th class="py-2">Estado</th>
                             <th class="py-2"></th>
@@ -863,13 +910,22 @@ new #[Layout('layouts.panel')] class extends Component {
                     <tbody>
                         @foreach ($campanas as $campana)
                             @php
-                                [$textoEstado, $varianteEstado] = $campanaEstadosNombres[$campana->estado] ?? [$campana->estado, 'neutral'];
+                                [$textoEstado, $varianteEstado] = $campanaEstadosNombres[$campana->estado] ?? [
+                                    $campana->estado,
+                                    'neutral',
+                                ];
                                 $indiceActual = array_search($campana->estado, $ordenEstadosCampana, true);
                                 $siguienteEstado = $ordenEstadosCampana[$indiceActual + 1] ?? null;
                             @endphp
                             <tr class="border-b last:border-0">
                                 <td class="py-2">{{ $campana->nombre }}</td>
-                                <td class="py-2">{{ $campana->marca->nombre ?? '—' }}</td>
+                                <td class="py-2">
+                                    @if ($campana->lineas->isEmpty())
+                                        <span class="text-slate-400">Sin líneas</span>
+                                    @else
+                                        {{ $campana->lineas->pluck('nombre')->join(', ') }}
+                                    @endif
+                                </td>
                                 <td class="py-2">
                                     {{ $campana->fecha_inicio?->format('d/m/Y') ?? '—' }} –
                                     {{ $campana->fecha_fin?->format('d/m/Y') ?? '—' }}
@@ -892,51 +948,77 @@ new #[Layout('layouts.panel')] class extends Component {
             </div>
         @else
             <form wire:submit="guardarCampana" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
-                <h2 class="text-sm font-semibold text-slate-700">Nueva campaña</h2>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Marca (referencia legada)</label>
-                    <select wire:model="campana_marca_id" class="w-full rounded-md border-slate-300">
-                        <option value="">Seleccionar marca</option>
-                        @foreach ($marcas as $marca)
-                            @if ($marca->activa)
-                                <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
-                            @endif
-                        @endforeach
-                    </select>
-                    @error('campana_marca_id') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
-                </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Nombre de la campaña</label>
                     <input type="text" wire:model="campana_nombre" class="w-full rounded-md border-slate-300">
-                    @error('campana_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                    @error('campana_nombre')
+                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                    @enderror
                 </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Líneas a asignar (opcional)</label>
+                    <p class="text-xs text-slate-500 mb-2">Si eliges una línea que ya pertenece a otra campaña, se
+                        moverá a esta.</p>
+                    <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-3">
+                        @forelse ($lineas as $linea)
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" wire:model="campana_linea_ids" value="{{ $linea->id }}"
+                                    class="rounded border-slate-300">
+                                <span>
+                                    {{ $linea->nombre }}
+                                    <span
+                                        class="text-slate-400 text-xs">({{ $linea->campana?->nombre ?? 'sin campaña' }})</span>
+                                </span>
+                            </label>
+                        @empty
+                            <p class="text-sm text-slate-400 col-span-2">No hay líneas creadas aún. Créalas en la
+                                pestaña Líneas.</p>
+                        @endforelse
+                    </div>
+                    @error('campana_linea_ids')
+                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                    @enderror
+                    @error('campana_linea_ids.*')
+                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                    @enderror
+                </div>
+
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de inicio</label>
-                        <input type="date" wire:model="campana_fecha_inicio" class="w-full rounded-md border-slate-300">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de inicio</label>
+                            <input type="date" wire:model="campana_fecha_inicio"
+                                class="w-full rounded-md border-slate-300">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de fin</label>
+                            <input type="date" wire:model="campana_fecha_fin"
+                                class="w-full rounded-md border-slate-300">
+                            @error('campana_fecha_fin')
+                                <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                            @enderror
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de fin</label>
-                        <input type="date" wire:model="campana_fecha_fin" class="w-full rounded-md border-slate-300">
-                        @error('campana_fecha_fin') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                    <div class="flex gap-2">
+                        <button type="submit"
+                            class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                        <button type="button" wire:click="cancelarFormularioCampana"
+                            class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                     </div>
-                </div>
-                <div class="flex gap-2">
-                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
-                    <button type="button" wire:click="cancelarFormularioCampana" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
-                </div>
             </form>
         @endif
     </div>
 
     {{-- Categorías --}}
     <div x-show="$wire.pestanaActiva === 'categorias'">
-        @if (! $mostrandoFormularioCategoria)
+        @if (!$mostrandoFormularioCategoria)
             <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-700">Categorías</h2>
                     <button type="button" wire:click="abrirFormularioCrearCategoria"
-                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nueva categoría</button>
+                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nueva
+                        categoría</button>
                 </div>
                 <table class="w-full text-sm">
                     <thead>
@@ -952,7 +1034,8 @@ new #[Layout('layouts.panel')] class extends Component {
                                 <td class="py-2">{{ $categoria->nombre }}</td>
                                 <td class="py-2">{{ $categoria->activa ? 'Activa' : 'Inactiva' }}</td>
                                 <td class="py-2 text-right">
-                                    <button type="button" wire:click="abrirFormularioEditarCategoria({{ $categoria->id }})"
+                                    <button type="button"
+                                        wire:click="abrirFormularioEditarCategoria({{ $categoria->id }})"
                                         class="text-fp-primary text-xs font-medium">Editar</button>
                                 </td>
                             </tr>
@@ -962,11 +1045,14 @@ new #[Layout('layouts.panel')] class extends Component {
             </div>
         @else
             <form wire:submit="guardarCategoria" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
-                <h2 class="text-sm font-semibold text-slate-700">{{ $categoriaEditandoId ? 'Editar categoría' : 'Nueva categoría' }}</h2>
+                <h2 class="text-sm font-semibold text-slate-700">
+                    {{ $categoriaEditandoId ? 'Editar categoría' : 'Nueva categoría' }}</h2>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
                     <input type="text" wire:model="categoria_nombre" class="w-full rounded-md border-slate-300">
-                    @error('categoria_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                    @error('categoria_nombre')
+                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                    @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
@@ -979,8 +1065,10 @@ new #[Layout('layouts.panel')] class extends Component {
                     </label>
                 @endif
                 <div class="flex gap-2">
-                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
-                    <button type="button" wire:click="cancelarFormularioCategoria" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
+                    <button type="submit"
+                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                    <button type="button" wire:click="cancelarFormularioCategoria"
+                        class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>
         @endif
