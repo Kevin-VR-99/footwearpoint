@@ -405,7 +405,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
             <button type="button" wire:click="agregarLinea" wire:loading.attr="disabled"
                 class="rounded-lg bg-[#2563EB] text-white text-sm font-medium px-4 py-2 hover:bg-blue-700 disabled:opacity-60">
-                Agregar línea
+                Agregar Producto
             </button>
         </div>
 
