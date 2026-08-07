@@ -75,7 +75,7 @@ class PedidoController extends Controller
 
         return response()->json([
             'data'    => new PedidoResource($pedido),
-            'message' => 'Línea agregada al pedido.',
+            'message' => 'Producto agregado al pedido.',
         ], 201);
     }
 
