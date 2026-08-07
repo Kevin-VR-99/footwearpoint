@@ -17,7 +17,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-new #[Layout('layouts::distribuidora')] class extends Component {
+new #[Layout('layouts.panel')] class extends Component {
     use WithFileUploads;
 
     public int $productoId;
