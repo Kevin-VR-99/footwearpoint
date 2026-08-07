@@ -21,4 +21,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth', 'tenant.team', 'role:admin_distribuidora'])->group(function () {
     Route::livewire('/catalogo', 'catalogo.index')
         ->name('distribuidora.catalogo');
+
+    Route::livewire('/catalogo/productos/{producto}', 'catalogo.producto-detalle')
+        ->name('catalogo.producto.detalle');
 });
