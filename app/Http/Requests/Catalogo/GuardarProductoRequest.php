@@ -26,21 +26,25 @@ class GuardarProductoRequest extends FormRequest
             'categoria_id' => [
                 $requerido,
                 'integer',
-                // Igual que en campañas: acotado al tenant a mano, la regla
-                // "exists" normal no respeta el Global Scope.
-                Rule::exists('categorias_producto', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
+                Rule::exists('categorias_producto', 'id')->where(
+                    fn($q) => $q->where('distribuidora_id', Tenant::id())
+                ),
+            ],
+            'linea_id' => [
+                $requerido,
+                'integer',
+                Rule::exists('lineas', 'id')->where(
+                    fn($q) => $q->where('distribuidora_id', Tenant::id())
+                ),
+            ],
+            'marca_id' => [
+                $requerido,
+                'integer',
+                Rule::exists('marcas', 'id')->where(
+                    fn($q) => $q->where('distribuidora_id', Tenant::id())
+                ),
             ],
         ];
-
-        if ($esCreacion) {
-            // marca_id solo se acepta al crear — no se cambia después
-            // (decisión provisional mía, ver LEEME).
-            $reglas['marca_id'] = [
-                'required',
-                'integer',
-                Rule::exists('marcas', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
-            ];
-        }
 
         return $reglas;
     }

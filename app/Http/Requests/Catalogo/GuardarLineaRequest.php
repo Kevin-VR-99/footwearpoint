@@ -23,7 +23,7 @@ class GuardarLineaRequest extends FormRequest
                 $esCreacion ? 'required' : 'prohibited',
                 'integer',
                 Rule::exists('campanas', 'id')->where(
-                    fn ($q) => $q->where('distribuidora_id', Tenant::id())
+                    fn($q) => $q->where('distribuidora_id', Tenant::id())
                 ),
             ],
             'nombre' => [$requerido, 'string', 'max:150'],
@@ -33,7 +33,7 @@ class GuardarLineaRequest extends FormRequest
             'marca_ids.*' => [
                 'integer',
                 Rule::exists('marcas', 'id')->where(
-                    fn ($q) => $q->where('distribuidora_id', Tenant::id())
+                    fn($q) => $q->where('distribuidora_id', Tenant::id())
                 ),
             ],
         ];
