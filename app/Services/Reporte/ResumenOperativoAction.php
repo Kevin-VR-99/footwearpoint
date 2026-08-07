@@ -84,16 +84,54 @@ class ResumenOperativoAction
 
         $ventasDirectas = 0;
         $montoVentas = 0.0;
+        $listaVentas = [];
+
         if (Schema::hasTable('ventas_directas')) {
             $vd = VentaDirecta::query();
             if ($desde) {
-                $vd->whereDate('created_at', '>=', $desde);
+                $vd->whereDate('fecha_venta', '>=', $desde);
             }
             if ($hasta) {
-                $vd->whereDate('created_at', '<=', $hasta);
+                $vd->whereDate('fecha_venta', '<=', $hasta);
             }
+
             $ventasDirectas = (clone $vd)->count();
             $montoVentas = (float) (clone $vd)->sum('total');
+
+            $listaVentas = (clone $vd)
+                ->with([
+                    'clienteDirecto:id,nombre',
+                    'registradaPor.usuario:id,nombre',
+                    'sucursal:id,nombre',
+                    'detalle:id,venta_directa_id,producto_nombre,modelo,talla,color,cantidad',
+                ])
+                ->latest('fecha_venta')
+                ->limit(100)
+                ->get()
+                ->map(function (VentaDirecta $v) {
+                    $descripcion = $v->detalle
+                        ->map(fn ($d) => trim(
+                            ($d->producto_nombre ?: $d->modelo)
+                            .' · '.$d->talla
+                            .' · '.$d->color
+                            .' ×'.$d->cantidad
+                        ))
+                        ->implode('; ');
+
+                    return [
+                        'id'            => $v->id,
+                        'folio'         => $v->folio,
+                        'quien'         => $v->clienteDirecto?->nombre ?? 'Público general',
+                        'capturado_por' => $v->registradaPor?->usuario?->nombre,
+                        'sucursal'      => $v->sucursal?->nombre,
+                        'fecha'         => optional($v->fecha_venta)?->format('d/m/Y H:i'),
+                        'estado'        => $v->estado,
+                        'total'         => (float) $v->total,
+                        'descripcion'   => $descripcion !== '' ? $descripcion : 'Sin líneas',
+                    ];
+                })
+                ->values()
+                ->all();
         }
 
         return [
@@ -114,6 +152,7 @@ class ResumenOperativoAction
             'ventas_directas' => [
                 'total'       => $ventasDirectas,
                 'monto_total' => $montoVentas,
+                'lista'       => $listaVentas,
             ],
         ];
     }
