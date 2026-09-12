@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,7 +6,13 @@ import 'providers/auth_provider.dart';
 import 'screens/inicio_screen.dart';
 import 'screens/login_screen.dart';
 
-void main() {
+Future<void> main() async {
+  // Firebase se conecta al arrancar, leyendo android/app/google-services.json.
+  // Todavia NO hay logica de notificaciones: esto solo deja la conexion lista
+  // para cuando se agregue el registro del dispositivo (E16-03 / TG-136).
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
   runApp(const FootwearPointApp());
 }
 
