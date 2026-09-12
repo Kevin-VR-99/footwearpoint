@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PedidoResource;
 use App\Models\Pedido;
+use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,9 +22,11 @@ class PedidoController extends Controller
     {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
-        $query = Pedido::query()
-            ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor'])
-            ->orderByDesc('id');
+        // Un revendedor o cliente directo solo ve SUS pedidos. El personal de
+        // la casa sigue viendo todos los de su distribuidora.
+        $query = PropietarioActual::limitar(
+            Pedido::query()->with(['clienteDirecto', 'revendedorAfiliacion.revendedor'])
+        )->orderByDesc('id');
 
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
@@ -44,9 +47,11 @@ class PedidoController extends Controller
     {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
-        $pedido = Pedido::query()
-            ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle'])
-            ->findOrFail($id);
+        // Un pedido ajeno responde 404, no 403: así ni siquiera se confirma
+        // que exista.
+        $pedido = PropietarioActual::limitar(
+            Pedido::query()->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle'])
+        )->findOrFail($id);
 
         return response()->json([
             'data' => new PedidoResource($pedido),
@@ -70,7 +75,7 @@ class PedidoController extends Controller
     ): JsonResponse {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
-        $pedido = Pedido::query()->findOrFail($id);
+        $pedido = PropietarioActual::limitar(Pedido::query())->findOrFail($id);
         $pedido = $accion->ejecutar($pedido, $request->validated());
 
         return response()->json([
@@ -83,7 +88,7 @@ class PedidoController extends Controller
     {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
-        $pedido = Pedido::query()->findOrFail($id);
+        $pedido = PropietarioActual::limitar(Pedido::query())->findOrFail($id);
         $pedido = $accion->ejecutar($pedido);
 
         return response()->json([
@@ -96,7 +101,7 @@ class PedidoController extends Controller
     {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
-        $pedido = Pedido::query()->findOrFail($pedidoId);
+        $pedido = PropietarioActual::limitar(Pedido::query())->findOrFail($pedidoId);
         $pedido = $accion->ejecutar($pedido, $lineaId);
 
         return response()->json([

@@ -75,7 +75,12 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora'])->
     Route::patch('lineas/{linea}', [LineaController::class, 'update']);
 });
 
-// --- Bloque 3e: catálogo consultable — uso diario, admin_distribuidora Y empleado ---
-Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado'])->group(function () {
+// --- Bloque 3e: catálogo consultable — uso diario ---
+// Desde Sprint 3 (TG-134) también entran revendedor y cliente directo, que
+// ya tienen cuenta propia y consultan el catálogo desde la app móvil.
+// Cada quien ve solo el de SU distribuidora: de eso se encarga el TenantScope.
+// El precio mayorista NO se le muestra al cliente directo — ver
+// App\Http\Resources\Catalogo\CatalogoResource.
+Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado|revendedor|cliente_directo'])->group(function () {
     Route::get('catalogo', [CatalogoController::class, 'index']);
 });

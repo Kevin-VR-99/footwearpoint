@@ -7,6 +7,7 @@ use App\Http\Requests\Vale\StoreValeRequest;
 use App\Http\Resources\ValeResource;
 use App\Models\Vale;
 use App\Services\Vale\EmitirValeAction;
+use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,11 @@ class ValeController extends Controller
     {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
-        $query = Vale::query()->with(['clienteDirecto', 'revendedorAfiliacion.revendedor']);
+        // Un revendedor o cliente directo solo ve SUS vales. El personal de la
+        // casa sigue viendo todos los de su distribuidora.
+        $query = PropietarioActual::limitar(
+            Vale::query()->with(['clienteDirecto', 'revendedorAfiliacion.revendedor'])
+        );
 
         if ($request->filled('propietario_tipo') && $request->filled('propietario_id')) {
             if ($request->propietario_tipo === 'cliente_directo') {
@@ -54,7 +59,8 @@ class ValeController extends Controller
     {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
-        $vale = Vale::query()->findOrFail($id);
+        // Un vale ajeno responde 404: nadie aplica el saldo de otro.
+        $vale = PropietarioActual::limitar(Vale::query())->findOrFail($id);
         $vale = $accion->ejecutar($vale, $request->validated());
 
         return response()->json([

@@ -79,8 +79,13 @@ class AplicarValeAction
             }
         }
 
+        // Puede quedar en null a propósito (TG-138): el cliente o revendedor
+        // aplica su propio vale desde la app, sin empleado de por medio.
+        // De que el vale sea suyo ya se encarga assertMismoPropietario().
+        //
+        // Emitir un vale es otra cosa y sigue siendo solo de empleados: ver
+        // EmitirValeAction, que conserva su abort.
         $staffId = $this->staffIdActual();
-        abort_if($staffId === null, 403, 'No se pudo determinar el staff.');
 
         return DB::transaction(function () use ($vale, $monto, $pedidoId, $ventaId, $staffId) {
             $saldoAnterior = (float) $vale->saldo_actual;
