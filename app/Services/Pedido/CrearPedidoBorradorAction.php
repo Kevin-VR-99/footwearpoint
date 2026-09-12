@@ -18,8 +18,14 @@ class CrearPedidoBorradorAction
         $distribuidoraId = Tenant::id();
         abort_if($distribuidoraId === null, 403, 'No se pudo determinar la distribuidora.');
 
+        // Puede quedar en null a propósito (TG-138): si quien crea el pedido
+        // es el propio cliente directo o revendedor desde la app, no hay
+        // ningún empleado que lo haya capturado.
+        //
+        // No se pierde el control de acceso: arriba ya se exigió que el
+        // usuario tenga una distribuidora resuelta, y eso solo lo logra quien
+        // es staff, revendedor afiliado o cliente directo de ella.
         $staffId = $this->staffIdActual();
-        abort_if($staffId === null, 403, 'No se pudo determinar el staff del usuario autenticado.');
 
         $sucursal = Sucursal::where('id', $datos['sucursal_id'])->first();
         if (! $sucursal) {
