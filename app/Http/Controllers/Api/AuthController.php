@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterEmpleadoRequest;
 use App\Models\DistribuidoraStaff;
+use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
@@ -40,12 +41,13 @@ class AuthController extends Controller
         // Token Sanctum
         $token = $usuario->createToken('auth_token')->plainTextToken;
 
-        // Obtener distribuidora_id si aplica
-        $distribuidoraId = null;
-        $staff = $usuario->membresiasStaff()->first();
-        if ($staff) {
-            $distribuidoraId = $staff->distribuidora_id;
-        }
+        // La distribuidora se resuelve con la misma lógica que usa todo el
+        // resto del sistema (TG-134), no con una búsqueda propia: antes aquí
+        // solo se miraba distribuidora_staff, así que un revendedor o un
+        // cliente directo recibía null y la app móvil se quedaba sin
+        // distribuidora ni rol con que trabajar, aunque por dentro el sistema
+        // sí supiera de quién era.
+        $distribuidoraId = Tenant::paraUsuario((int) $usuario->id);
 
         // Obtener rol (compatible con Spatie teams)
         $rol = null;
