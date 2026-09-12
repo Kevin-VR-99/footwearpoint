@@ -7,6 +7,7 @@ use App\Models\DistribuidoraStaff;
 use App\Models\Revendedor;
 use App\Models\RevendedorDistribuidora;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class Tenant
 {
@@ -16,6 +17,11 @@ class Tenant
     // dispara una consulta extra a distribuidora_staff.
     protected static ?int $cacheUsuarioId = null;
     protected static ?int $cacheDistribuidoraId = null;
+
+    // Mismo motivo que el caché de arriba: esAdminGeneral() lo consulta
+    // TenantScope en cada query, así que no puede ir a la base cada vez.
+    protected static ?int $cacheAdminUsuarioId = null;
+    protected static bool $cacheEsAdminGeneral = false;
 
     public static function id(): ?int
     {
@@ -131,6 +137,47 @@ class Tenant
         return $cliente !== null ? (int) $cliente->distribuidora_id : null;
     }
 
+    /**
+     * ¿El usuario autenticado es admin_general?
+     *
+     * admin_general administra todo el SaaS y a propósito NO pertenece a
+     * ninguna distribuidora, así que su Tenant::id() es null de forma
+     * legítima. TenantScope necesita distinguirlo de un usuario al que
+     * simplemente no se le pudo resolver la distribuidora.
+     *
+     * Se consulta la tabla pivote directo, sin pasar por hasRole(), porque
+     * hasRole() filtra por el "team" (la distribuidora) que esté fijado en
+     * ese momento — y TenantScope corre en contextos donde ese team puede
+     * no estar fijado todavía. Aquí el resultado no debe depender de eso.
+     */
+    public static function esAdminGeneral(): bool
+    {
+        $usuario = Auth::user();
+
+        if (! $usuario) {
+            return false;
+        }
+
+        if (static::$cacheAdminUsuarioId === (int) $usuario->id) {
+            return static::$cacheEsAdminGeneral;
+        }
+
+        $tablaRoles = config('permission.table_names.roles', 'roles');
+        $tablaPivote = config('permission.table_names.model_has_roles', 'model_has_roles');
+
+        $esAdminGeneral = DB::table($tablaPivote)
+            ->join($tablaRoles, $tablaRoles . '.id', '=', $tablaPivote . '.role_id')
+            ->where($tablaPivote . '.model_id', $usuario->id)
+            ->where($tablaPivote . '.model_type', $usuario->getMorphClass())
+            ->where($tablaRoles . '.name', 'admin_general')
+            ->exists();
+
+        static::$cacheAdminUsuarioId = (int) $usuario->id;
+        static::$cacheEsAdminGeneral = $esAdminGeneral;
+
+        return $esAdminGeneral;
+    }
+
     public static function forzar(?int $distribuidoraId, callable $callback)
     {
         $anterior = static::$overrideId;
@@ -149,5 +196,7 @@ class Tenant
     {
         static::$cacheUsuarioId = null;
         static::$cacheDistribuidoraId = null;
+        static::$cacheAdminUsuarioId = null;
+        static::$cacheEsAdminGeneral = false;
     }
 }

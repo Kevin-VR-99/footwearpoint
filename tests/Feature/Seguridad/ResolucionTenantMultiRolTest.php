@@ -4,6 +4,7 @@ namespace Tests\Feature\Seguridad;
 
 use App\Models\ClienteDirecto;
 use App\Models\Distribuidora;
+use App\Models\DistribuidoraStaff;
 use App\Models\Marca;
 use App\Models\Revendedor;
 use App\Models\RevendedorDistribuidora;
@@ -12,6 +13,7 @@ use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
@@ -316,5 +318,108 @@ class ResolucionTenantMultiRolTest extends TestCase
                 "Falta el rol '{$rol}' en la distribuidora demo."
             );
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Sin distribuidora resuelta: no filtrar NO es lo mismo que no mostrar
+    //
+    // Antes de este arreglo, TenantScope omitía el filtro por completo
+    // cuando no había distribuidora — es decir, quien no resolviera ninguna
+    // terminaba viendo los datos de TODAS.
+    // ------------------------------------------------------------------
+
+    public function test_un_revendedor_suspendido_no_ve_datos_de_ninguna_distribuidora(): void
+    {
+        $distribuidoraA = $this->distribuidoraA();
+        $distribuidoraB = $this->crearDistribuidoraB();
+
+        Tenant::forzar($distribuidoraA->id, fn () => Marca::create([
+            'nombre' => 'Marca Propia',
+            'activa' => true,
+        ]));
+
+        Tenant::forzar($distribuidoraB->id, fn () => Marca::create([
+            'nombre' => 'Marca Rival',
+            'activa' => true,
+        ]));
+
+        $usuario = $this->crearRevendedorConCuenta(
+            $distribuidoraA->id,
+            'rev.suspendido.scope@revendedor.test',
+            'suspendido'
+        );
+
+        $this->actingAs($usuario);
+        Tenant::olvidarCache();
+
+        // Suspender a alguien tiene que quitarle acceso, no dárselo todo.
+        $this->assertSame(0, Marca::count());
+    }
+
+    public function test_un_empleado_dado_de_baja_no_ve_datos_de_ninguna_distribuidora(): void
+    {
+        $usuario = Usuario::where('email', 'empleado@calzadosramirez.test')->firstOrFail();
+
+        DistribuidoraStaff::withoutGlobalScopes()
+            ->where('usuario_id', $usuario->id)
+            ->update(['estado' => 'inactivo']);
+
+        $this->actingAs($usuario);
+        Tenant::olvidarCache();
+
+        $this->assertNull(Tenant::id());
+        $this->assertSame(0, Marca::count());
+    }
+
+    /**
+     * admin_general es la excepción legítima: no pertenece a ninguna
+     * distribuidora a propósito, y debe seguir viendo a través de todas.
+     */
+    public function test_un_admin_general_no_queda_bloqueado_por_el_filtro(): void
+    {
+        $distribuidoraA = $this->distribuidoraA();
+        $distribuidoraB = $this->crearDistribuidoraB();
+
+        $marcaDeA = Tenant::forzar($distribuidoraA->id, fn () => Marca::create([
+            'nombre' => 'Marca Propia',
+            'activa' => true,
+        ]));
+
+        $marcaDeB = Tenant::forzar($distribuidoraB->id, fn () => Marca::create([
+            'nombre' => 'Marca Rival',
+            'activa' => true,
+        ]));
+
+        $usuario = Usuario::create([
+            'nombre'   => 'Admin General',
+            'email'    => 'admin.general@footwearpoint.test',
+            'password' => Hash::make('password'),
+            'estado'   => 'activo',
+        ]);
+
+        // El rol admin_general vive fuera de toda distribuidora (equipo 0).
+        app(PermissionRegistrar::class)->setPermissionsTeamId(0);
+        $usuario->assignRole('admin_general');
+
+        $this->actingAs($usuario);
+        Tenant::olvidarCache();
+
+        $this->assertNull(Tenant::id());
+
+        $idsVisibles = Marca::pluck('id');
+        $this->assertContains($marcaDeA->id, $idsVisibles);
+        $this->assertContains($marcaDeB->id, $idsVisibles);
+    }
+
+    /**
+     * Los seeders y los comandos de consola corren sin nadie autenticado.
+     * Ese caso tiene que seguir pasando sin filtro, o se rompen.
+     */
+    public function test_sin_sesion_iniciada_el_filtro_no_bloquea(): void
+    {
+        Tenant::olvidarCache();
+
+        $this->assertNull(Tenant::id());
+        $this->assertGreaterThan(0, Marca::count());
     }
 }
