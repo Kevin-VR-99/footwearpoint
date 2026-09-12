@@ -26,3 +26,6 @@ Thumbs.db
 crear_paquete_c.ps1
 
 verificar.ps1
+
+# Volcado local del esquema, se regenera desde la base de cada quien
+esquema_actual.sql

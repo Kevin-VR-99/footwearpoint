@@ -104,6 +104,23 @@ class DemoDistribuidoraSeeder extends Seeder
             'team_id' => $distribuidora->id,
         ]);
 
+        // Roles de la app móvil (Sprint 3): a partir de este sprint el
+        // revendedor y el cliente directo tienen cuenta propia y entran a la
+        // app por sí mismos. Se crean por distribuidora igual que los dos de
+        // arriba. En una distribuidora real no se crean aquí, sino al activar
+        // la primera cuenta (E3-07 / TG-133).
+        Role::firstOrCreate([
+            'name' => 'revendedor',
+            'guard_name' => 'web',
+            'team_id' => $distribuidora->id,
+        ]);
+
+        Role::firstOrCreate([
+            'name' => 'cliente_directo',
+            'guard_name' => 'web',
+            'team_id' => $distribuidora->id,
+        ]);
+
         // --- 6. Sus 2 empleados de prueba ---
         // Contraseña de prueba para ambos: "password"
         $admin = Usuario::firstOrCreate(
