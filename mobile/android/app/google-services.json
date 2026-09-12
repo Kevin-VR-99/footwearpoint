@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "406216515821",
+    "project_id": "footwearpoint",
+    "storage_bucket": "footwearpoint.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:406216515821:android:fc4c1afaa8354dced96ce4",
+        "android_client_info": {
+          "package_name": "com.footwearpoint.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBY8kR5oHpY8nOVw_YFxVExeg5vSip2AgY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
