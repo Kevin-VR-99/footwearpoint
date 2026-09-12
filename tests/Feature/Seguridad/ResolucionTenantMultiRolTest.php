@@ -9,6 +9,7 @@ use App\Models\Marca;
 use App\Models\Revendedor;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Usuario;
+use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -45,6 +46,7 @@ class ResolucionTenantMultiRolTest extends TestCase
         // El caché de Tenant es estático y sobrevive entre pruebas del mismo
         // proceso. Se limpia para que cada prueba empiece de cero.
         Tenant::olvidarCache();
+        PropietarioActual::olvidarCache();
     }
 
     private function distribuidoraA(): Distribuidora

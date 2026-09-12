@@ -7,6 +7,7 @@ use App\Models\DistribuidoraStaff;
 use App\Models\Pedido;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Sucursal;
+use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -21,11 +22,22 @@ class CrearPedidoBorradorAction
         // Puede quedar en null a propósito (TG-138): si quien crea el pedido
         // es el propio cliente directo o revendedor desde la app, no hay
         // ningún empleado que lo haya capturado.
-        //
-        // No se pierde el control de acceso: arriba ya se exigió que el
-        // usuario tenga una distribuidora resuelta, y eso solo lo logra quien
-        // es staff, revendedor afiliado o cliente directo de ella.
         $staffId = $this->staffIdActual();
+
+        // De quién es el pedido NO se acepta desde la petición cuando quien
+        // lo crea es el propio cliente o revendedor: se toma del usuario
+        // autenticado y se ignora lo que haya mandado.
+        //
+        // Sin esto, un cliente podría mandar el propietario_id de otro y
+        // crear un pedido a su nombre. El empleado sí conserva la capacidad
+        // de capturar pedidos para cualquiera, que es como opera el mostrador.
+        $propietario = PropietarioActual::actual();
+        abort_if($propietario === null, 403, 'No se pudo determinar a nombre de quién va el pedido.');
+
+        if ($propietario['tipo'] !== PropietarioActual::STAFF) {
+            $datos['tipo'] = $propietario['tipo'];
+            $datos['propietario_id'] = $propietario['id'];
+        }
 
         $sucursal = Sucursal::where('id', $datos['sucursal_id'])->first();
         if (! $sucursal) {

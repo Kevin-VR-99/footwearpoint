@@ -5,13 +5,22 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Paquete D — Pedidos (fase segura)
+| Paquete D — Pedidos
 |--------------------------------------------------------------------------
-| Commit 1: solo listado y detalle.
-| Crear / líneas / enviar llegan en commits siguientes.
+|
+| Desde Sprint 3 (TG-134) también entran revendedor y cliente directo, que
+| arman y envían su propio pedido desde la app móvil.
+|
+| Cada quien ve y toca SOLO sus pedidos — de eso se encarga
+| App\Support\PropietarioActual dentro del controlador, no el middleware.
+| El empleado conserva el acceso a todos los de su distribuidora, porque
+| sigue capturando pedidos en el mostrador.
+|
+| Al crear un pedido, el dueño se toma del usuario autenticado y se ignora
+| lo que venga en la petición (ver CrearPedidoBorradorAction).
 */
 
-Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado'])
+Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado|revendedor|cliente_directo'])
     ->group(function () {
         Route::get('/pedidos', [PedidoController::class, 'index']);
         Route::get('/pedidos/{id}', [PedidoController::class, 'show']);

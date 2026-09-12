@@ -13,6 +13,7 @@ use App\Models\ProductoCampana;
 use App\Models\Revendedor;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Usuario;
+use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -39,6 +40,7 @@ class AccesoAppMovilTest extends TestCase
         parent::setUp();
 
         Tenant::olvidarCache();
+        PropietarioActual::olvidarCache();
     }
 
     private function distribuidoraA(): Distribuidora
@@ -323,11 +325,11 @@ class AccesoAppMovilTest extends TestCase
     }
 
     /**
-     * Pedidos y vales se abren hasta el commit siguiente, con su filtro de
-     * dueño. Mientras tanto siguen cerrados — si esta prueba se pone roja,
-     * es porque se abrieron sin el filtro.
+     * Pedidos y vales ya están abiertos, con su filtro de dueño dentro del
+     * controlador. Que cada quien vea solo lo suyo se prueba aparte, en
+     * AislamientoEntreRevendedoresTest.
      */
-    public function test_pedidos_y_vales_siguen_cerrados_por_ahora(): void
+    public function test_un_revendedor_si_entra_a_pedidos_y_vales(): void
     {
         $distribuidoraA = $this->distribuidoraA();
         $usuario = $this->crearRevendedor($distribuidoraA->id, 'rev.pedidos@revendedor.test');
@@ -335,7 +337,7 @@ class AccesoAppMovilTest extends TestCase
         Sanctum::actingAs($usuario);
         Tenant::olvidarCache();
 
-        $this->getJson('/api/pedidos')->assertStatus(403);
-        $this->getJson('/api/vales')->assertStatus(403);
+        $this->getJson('/api/pedidos')->assertOk();
+        $this->getJson('/api/vales')->assertOk();
     }
 }

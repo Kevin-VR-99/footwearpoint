@@ -7,6 +7,7 @@ use App\Models\Distribuidora;
 use App\Models\Sucursal;
 use App\Models\Usuario;
 use App\Services\Pedido\CrearPedidoBorradorAction;
+use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -33,6 +34,7 @@ class PedidoSinEmpleadoTest extends TestCase
         parent::setUp();
 
         Tenant::olvidarCache();
+        PropietarioActual::olvidarCache();
     }
 
     private function distribuidoraA(): Distribuidora
