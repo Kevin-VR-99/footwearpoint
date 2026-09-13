@@ -101,6 +101,28 @@ Sin token. Es el único endpoint público que usa la app.
 
 > Si `rol` o `distribuidora_id` salen en `null` para un revendedor o cliente directo, es que su cuenta no está bien ligada. Se arregla del lado del panel web (E3-07).
 
+### GET `/api/auth/me`
+
+Requiere token. Sin cuerpo. Cualquier rol. (TG-140)
+
+Para **recuperar la sesión al abrir la app**: la app solo guarda el token, y con él le pregunta al servidor quién es el usuario. No se guardan rol ni distribuidora en el teléfono, porque podrían quedar viejos (por ejemplo, si un admin suspende a alguien).
+
+**Salida (200)** — lo mismo que el login, pero **sin** `token` ni `token_type`:
+
+```json
+{
+  "data": {
+    "usuario": { "id": 7, "nombre": "María López", "email": "maria@ejemplo.com", "telefono": "9631234567", "estado": "activo" },
+    "rol": "revendedor",
+    "distribuidora_id": 1
+  }
+}
+```
+
+**Errores**
+
+- **401** si no hay token, si ya se cerró sesión con él, o si la cuenta se desactivó después del login. En este último caso el servidor además revoca el token. En los tres casos la app debe regresar a la pantalla de login.
+
 ### POST `/api/auth/logout`
 
 Requiere token. Sin cuerpo.

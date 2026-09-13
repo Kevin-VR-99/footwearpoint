@@ -41,6 +41,51 @@ class AuthController extends Controller
         // Token Sanctum
         $token = $usuario->createToken('auth_token')->plainTextToken;
 
+        return response()->json([
+            'data' => [
+                'token'      => $token,
+                'token_type' => 'Bearer',
+            ] + $this->datosDeSesion($usuario),
+            'message' => 'Inicio de sesión exitoso.',
+        ]);
+    }
+
+    /**
+     * GET /api/auth/me (TG-140) — ¿de quién es este token?
+     *
+     * La app móvil solo guarda el token. Al volver a abrirla necesita saber
+     * otra vez quién es el usuario, su rol y su distribuidora, y no puede
+     * guardarlos en el teléfono: si un admin lo suspende, el teléfono
+     * seguiría creyendo que tiene acceso. Por eso se le pregunta al servidor.
+     *
+     * Responde lo mismo que el login, pero sin token nuevo.
+     */
+    public function me(Request $request)
+    {
+        $usuario = $request->user();
+
+        // El token sigue siendo válido aunque la cuenta se haya desactivado
+        // después del login. Se trata como sesión vencida (401) para que la
+        // app regrese a la pantalla de login, y el token se revoca de una vez.
+        if ($usuario->estado !== 'activo') {
+            $usuario->currentAccessToken()?->delete();
+
+            return response()->json([
+                'message' => 'Tu cuenta no está activa.',
+            ], 401);
+        }
+
+        return response()->json([
+            'data' => $this->datosDeSesion($usuario),
+        ]);
+    }
+
+    /**
+     * Usuario, rol y distribuidora, en la forma que espera la app. Lo usan
+     * login y me para responder exactamente igual.
+     */
+    private function datosDeSesion(Usuario $usuario): array
+    {
         // La distribuidora se resuelve con la misma lógica que usa todo el
         // resto del sistema (TG-134), no con una búsqueda propia: antes aquí
         // solo se miraba distribuidora_staff, así que un revendedor o un
@@ -61,25 +106,21 @@ class AuthController extends Controller
         // Si no tiene rol de distribuidora, buscar rol global (admin_general)
         if (!$rol) {
             setPermissionsTeamId(0);
+            $usuario->unsetRelation('roles');
             $rol = $usuario->getRoleNames()->first();
         }
 
-        return response()->json([
-            'data' => [
-                'token'            => $token,
-                'token_type'       => 'Bearer',
-                'usuario'          => [
-                    'id'       => $usuario->id,
-                    'nombre'   => $usuario->nombre,
-                    'email'    => $usuario->email,
-                    'telefono' => $usuario->telefono,
-                    'estado'   => $usuario->estado,
-                ],
-                'rol'              => $rol,
-                'distribuidora_id' => $distribuidoraId,
+        return [
+            'usuario' => [
+                'id'       => $usuario->id,
+                'nombre'   => $usuario->nombre,
+                'email'    => $usuario->email,
+                'telefono' => $usuario->telefono,
+                'estado'   => $usuario->estado,
             ],
-            'message' => 'Inicio de sesión exitoso.',
-        ]);
+            'rol'              => $rol,
+            'distribuidora_id' => $distribuidoraId,
+        ];
     }
 
     public function logout(Request $request)
