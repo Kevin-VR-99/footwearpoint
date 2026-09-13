@@ -23,6 +23,21 @@ class GuardarClienteDirectoRequest extends FormRequest
             'direccion_contacto' => ['nullable', 'string', 'max:300'],
             'notas'              => ['nullable', 'string'],
             'estado'             => ['sometimes', Rule::in(['activo', 'inactivo'])],
+
+            // E3-07 (TG-133): cuenta de acceso a la app, opcional. Se puede
+            // mandar al crear o después, en el PATCH. Los dos van juntos.
+            'acceso_email'       => ['nullable', 'required_with:acceso_password', 'email', 'max:190'],
+            'acceso_password'    => ['nullable', 'required_with:acceso_email', 'string', 'min:8', 'confirmed'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'acceso_email.required_with'    => 'Para dar acceso a la app escribe también el correo.',
+            'acceso_password.required_with' => 'Para dar acceso a la app escribe también la contraseña.',
+            'acceso_password.min'           => 'La contraseña debe tener al menos 8 caracteres.',
+            'acceso_password.confirmed'     => 'La confirmación de la contraseña no coincide.',
         ];
     }
 }
