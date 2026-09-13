@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\Route;
 |
 | Al crear un pedido, el dueño se toma del usuario autenticado y se ignora
 | lo que venga en la petición (ver CrearPedidoBorradorAction).
+|
+| E8-02 / TG-31: registrar anticipo o saldo es solo personal de mostrador
+| (admin_distribuidora | empleado). No va en el grupo móvil.
 */
 
 Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado|revendedor|cliente_directo'])
@@ -28,4 +31,9 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empl
         Route::post('/pedidos/{id}/lineas', [PedidoController::class, 'agregarLinea']);
         Route::post('/pedidos/{id}/enviar', [PedidoController::class, 'enviar']);
         Route::delete('/pedidos/{pedidoId}/lineas/{lineaId}', [PedidoController::class, 'quitarLinea']);
+    });
+
+Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado'])
+    ->group(function () {
+        Route::post('/pedidos/{id}/pagos', [PedidoController::class, 'registrarPago']);
     });
