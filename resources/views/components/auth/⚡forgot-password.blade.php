@@ -1,6 +1,6 @@
 <?php
 
-use Illuminate\Support\Facades\Password;
+use App\Services\Auth\EnviarEnlaceRecuperacionAction;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -25,21 +25,16 @@ new #[Layout('layouts.guest')] #[Title('Recuperar contraseña — FootwearPoint'
         ];
     }
 
-    public function sendResetLink()
+    /**
+     * Siempre el mismo aviso, exista o no el correo (TG-141): antes un correo
+     * inexistente mostraba un error y así se podía averiguar quién tiene
+     * cuenta. Misma regla y mismo mensaje que la API.
+     */
+    public function sendResetLink(EnviarEnlaceRecuperacionAction $accion)
     {
         $this->validate();
-        $this->status = '';
 
-        $status = Password::broker('users')->sendResetLink(
-            ['email' => $this->email]
-        );
-
-        if ($status === Password::RESET_LINK_SENT) {
-            $this->status = 'Te enviamos el enlace de recuperación. Revisa el log o tu correo.';
-            return;
-        }
-
-        $this->addError('email', __($status));
+        $this->status = $accion->ejecutar($this->email);
     }
 };
 ?>

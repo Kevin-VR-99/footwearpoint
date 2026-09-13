@@ -144,8 +144,18 @@ Invalida el token en el servidor. La app borra su copia local de todos modos, au
 Sin token. Manda el correo de recuperación.
 
 **Entrada:** `{ "email": "maria@ejemplo.com" }`
-**Salida (200):** `{ "message": "Se ha enviado el enlace de recuperación al correo." }`
-**Error (422):** no se pudo enviar.
+
+**Salida (200) — siempre la misma, exista o no el correo** (TG-141):
+
+```json
+{ "message": "Si el correo pertenece a una cuenta, te llegará un enlace para restablecer tu contraseña." }
+```
+
+Es a propósito, por seguridad: si la respuesta cambiara según el correo, cualquiera podría averiguar quién tiene cuenta. También responde igual si se pide el enlace varias veces seguidas. **La app debe mostrar este mensaje tal cual y no intentar deducir si la cuenta existe.**
+
+**Error (422):** solo si el correo viene vacío o mal escrito (`errors.email`). Ese error no revela nada sobre las cuentas.
+
+> En local no se manda correo real: con `MAIL_MAILER=log`, el enlace se escribe en `storage/logs/laravel.log`.
 
 ### POST `/api/auth/reset-password`
 

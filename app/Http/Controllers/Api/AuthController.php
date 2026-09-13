@@ -16,6 +16,7 @@ use App\Http\Requests\Auth\AceptarLegalesRequest;
 use App\Models\AceptacionLegal;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Services\Auth\EnviarEnlaceRecuperacionAction;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Str;
@@ -265,22 +266,16 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function forgotPassword(ForgotPasswordRequest $request)
+    /**
+     * Siempre 200 con el mismo mensaje, exista o no el correo (TG-141). Ver
+     * EnviarEnlaceRecuperacionAction. El único 422 posible es el de un correo
+     * mal escrito, que no revela nada sobre las cuentas.
+     */
+    public function forgotPassword(ForgotPasswordRequest $request, EnviarEnlaceRecuperacionAction $accion)
     {
-        $status = Password::broker('users')->sendResetLink(
-            $request->only('email')
-        );
-
-        if ($status === Password::RESET_LINK_SENT) {
-            return response()->json([
-                'message' => 'Se ha enviado el enlace de recuperación al correo.',
-            ]);
-        }
-
         return response()->json([
-            'message' => 'No se pudo enviar el enlace de recuperación.',
-            'error'   => __($status),
-        ], 422);
+            'message' => $accion->ejecutar($request->validated('email')),
+        ]);
     }
 
     public function resetPassword(ResetPasswordRequest $request)
