@@ -1,9 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:footwearpoint/main.dart';
+import 'package:footwearpoint/services/api_service.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 void main() {
   // En las pruebas no hay teléfono: el almacenamiento seguro se simula con un
@@ -62,27 +66,49 @@ void main() {
     expect(oculta(), isTrue);
   });
 
-  testWidgets('si hay una sesión guardada, entra directo sin pedir login', (tester) async {
+  testWidgets('con token válido (auth/me responde 200), entra directo sin pedir login', (tester) async {
     FlutterSecureStorage.setMockInitialValues(<String, String>{
       'token_sanctum': '1|token-de-prueba',
-      'sesion_usuario': jsonEncode({
-        'usuario': {
-          'id': 7,
-          'nombre': 'María López',
-          'email': 'maria@ejemplo.com',
-          'telefono': null,
-          'estado': 'activo',
-        },
-        'rol': 'revendedor',
-        'distribuidora_id': 1,
-      }),
     });
 
-    await tester.pumpWidget(const FootwearPointApp());
+    final servidor = MockClient((peticion) async => http.Response(
+      jsonEncode({
+        'data': {
+          'usuario': {
+            'id': 7,
+            'nombre': 'María López',
+            'email': 'maria@ejemplo.com',
+            'telefono': null,
+            'estado': 'activo',
+          },
+          'rol': 'revendedor',
+          'distribuidora_id': 1,
+        },
+      }),
+      200,
+      headers: {'content-type': 'application/json; charset=utf-8'},
+    ));
+
+    await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: servidor)));
     await tester.pumpAndSettle();
 
     expect(find.text('Sesión iniciada'), findsOneWidget);
     expect(find.text('María López'), findsOneWidget);
+    expect(find.text('Entrar'), findsNothing);
+  });
+
+  testWidgets('con token pero sin conexión, ofrece reintentar en vez de sacar al login', (tester) async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'token_sanctum': '1|token-de-prueba',
+    });
+
+    final servidor = MockClient((_) async => throw const SocketException('sin red'));
+
+    await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: servidor)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No se pudo conectar con el servidor'), findsOneWidget);
+    expect(find.text('Reintentar'), findsOneWidget);
     expect(find.text('Entrar'), findsNothing);
   });
 }
