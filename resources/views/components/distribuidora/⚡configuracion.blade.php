@@ -7,6 +7,7 @@ use App\Models\Distribuidora;
 use App\Models\DistribuidoraStaff;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Usuario;
+use App\Services\Distribuidora\ActivarCuentaAccesoAction;
 use App\Services\Distribuidora\ActualizarConfiguracionDistribuidoraAction;
 use App\Services\Distribuidora\ActualizarPerfilDistribuidoraAction;
 use App\Services\Distribuidora\ConfiguracionCicloAction;
@@ -15,6 +16,7 @@ use App\Services\Distribuidora\GestionarRevendedorAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -79,6 +81,13 @@ new #[Layout('layouts.panel')] class extends Component {
     public ?string $revendedor_codigo_interno = null;
     public string $revendedor_estado = 'activo';
 
+    // Cuenta para la app móvil (E3-07 / TG-133). Si ya tiene, se guarda su
+    // correo para mostrarlo; si no, se capturan los campos de acceso.
+    public ?string $revendedor_cuenta_email_actual = null;
+    public ?string $revendedor_acceso_email = null;
+    public string $revendedor_acceso_password = '';
+    public string $revendedor_acceso_password_confirmation = '';
+
     // --- Clientes ---
     public $clientesDirectos = [];
     public ?int $clienteEditandoId = null;
@@ -88,6 +97,12 @@ new #[Layout('layouts.panel')] class extends Component {
     public ?string $cliente_email = null;
     public ?string $cliente_direccion_contacto = null;
     public string $cliente_estado = 'activo';
+
+    // Cuenta para la app móvil (E3-07 / TG-133), igual que en revendedores.
+    public ?string $cliente_cuenta_email_actual = null;
+    public ?string $cliente_acceso_email = null;
+    public string $cliente_acceso_password = '';
+    public string $cliente_acceso_password_confirmation = '';
 
     public function mount(): void
     {
@@ -126,7 +141,7 @@ new #[Layout('layouts.panel')] class extends Component {
 
     private function cargarClientesDirectos(): void
     {
-        $this->clientesDirectos = ClienteDirecto::all();
+        $this->clientesDirectos = ClienteDirecto::with('usuario')->get();
     }
 
     private function cargarEmpleados(): void
@@ -136,7 +151,7 @@ new #[Layout('layouts.panel')] class extends Component {
 
     private function cargarRevendedores(): void
     {
-        $this->revendedores = RevendedorDistribuidora::with('revendedor')->get();
+        $this->revendedores = RevendedorDistribuidora::with('revendedor.usuario')->get();
     }
 
     public function toggleEstadoEmpleado(int $id): void
@@ -217,18 +232,21 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->revendedor_email = null;
         $this->revendedor_codigo_interno = null;
         $this->revendedor_estado = 'activo';
+        $this->limpiarAccesoRevendedor();
         $this->mostrandoFormularioRevendedor = true;
     }
 
     public function abrirFormularioEditarRevendedor(int $id): void
     {
-        $afiliacion = RevendedorDistribuidora::with('revendedor')->findOrFail($id);
+        $afiliacion = RevendedorDistribuidora::with('revendedor.usuario')->findOrFail($id);
         $this->revendedorEditandoId = $afiliacion->id;
         $this->revendedor_nombre = $afiliacion->revendedor->nombre;
         $this->revendedor_telefono = $afiliacion->revendedor->telefono;
         $this->revendedor_email = $afiliacion->revendedor->email;
         $this->revendedor_codigo_interno = $afiliacion->codigo_interno;
         $this->revendedor_estado = $afiliacion->estado;
+        $this->limpiarAccesoRevendedor();
+        $this->revendedor_cuenta_email_actual = $afiliacion->revendedor->usuario?->email;
         $this->mostrandoFormularioRevendedor = true;
     }
 
@@ -236,6 +254,7 @@ new #[Layout('layouts.panel')] class extends Component {
     {
         $this->mostrandoFormularioRevendedor = false;
         $this->revendedorEditandoId = null;
+        $this->limpiarAccesoRevendedor();
     }
 
     public function guardarRevendedor(): void
@@ -245,6 +264,14 @@ new #[Layout('layouts.panel')] class extends Component {
             'revendedor_telefono' => ['nullable', 'string', 'max:30'],
             'revendedor_email' => ['nullable', 'email', 'max:190'],
             'revendedor_codigo_interno' => ['nullable', 'string', 'max:60'],
+            // E3-07: opcionales, pero si se llena uno se exige el otro.
+            'revendedor_acceso_email' => ['nullable', 'required_with:revendedor_acceso_password', 'email', 'max:190'],
+            'revendedor_acceso_password' => ['nullable', 'required_with:revendedor_acceso_email', 'string', 'min:8', 'same:revendedor_acceso_password_confirmation'],
+        ], [
+            'revendedor_acceso_email.required_with' => 'Para dar acceso a la app escribe también el correo.',
+            'revendedor_acceso_password.required_with' => 'Para dar acceso a la app escribe también la contraseña.',
+            'revendedor_acceso_password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'revendedor_acceso_password.same' => 'La confirmación de la contraseña no coincide.',
         ]);
 
         $payload = [
@@ -257,16 +284,46 @@ new #[Layout('layouts.panel')] class extends Component {
 
         $accion = app(GestionarRevendedorAction::class);
 
-        if ($this->revendedorEditandoId) {
-            $accion->actualizar(RevendedorDistribuidora::findOrFail($this->revendedorEditandoId), $payload);
-        } else {
-            $accion->afiliar($payload);
+        // Una sola transacción: si la cuenta falla (correo repetido), tampoco
+        // se afilia al revendedor, para no dejar un duplicado en la lista.
+        try {
+            DB::transaction(function () use ($accion, $payload, $datos) {
+                $afiliacion = $this->revendedorEditandoId
+                    ? $accion->actualizar(RevendedorDistribuidora::findOrFail($this->revendedorEditandoId), $payload)
+                    : $accion->afiliar($payload);
+
+                if (filled($datos['revendedor_acceso_email']) && $this->revendedor_cuenta_email_actual === null) {
+                    app(ActivarCuentaAccesoAction::class)->paraRevendedor(
+                        $afiliacion->fresh('revendedor'),
+                        $datos['revendedor_acceso_email'],
+                        $datos['revendedor_acceso_password'],
+                    );
+                }
+            });
+        } catch (ValidationException $e) {
+            // La acción nombra el campo "acceso_email"; aquí se llama
+            // "revendedor_acceso_email", para que el error salga debajo.
+            foreach ($e->errors() as $campo => $mensajes) {
+                $this->addError('revendedor_' . $campo, $mensajes[0]);
+            }
+
+            return;
         }
 
         $this->mostrandoFormularioRevendedor = false;
         $this->revendedorEditandoId = null;
+        $this->limpiarAccesoRevendedor();
         $this->cargarRevendedores();
         $this->dispatch('guardado', mensaje: 'Revendedor guardado correctamente.');
+    }
+
+    /** Las contraseñas no se quedan guardadas en el estado de la pantalla. */
+    private function limpiarAccesoRevendedor(): void
+    {
+        $this->revendedor_cuenta_email_actual = null;
+        $this->revendedor_acceso_email = null;
+        $this->revendedor_acceso_password = '';
+        $this->revendedor_acceso_password_confirmation = '';
     }
 
     public function abrirFormularioCrearCliente(): void
@@ -277,18 +334,21 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->cliente_email = null;
         $this->cliente_direccion_contacto = null;
         $this->cliente_estado = 'activo';
+        $this->limpiarAccesoCliente();
         $this->mostrandoFormularioCliente = true;
     }
 
     public function abrirFormularioEditarCliente(int $id): void
     {
-        $cliente = ClienteDirecto::findOrFail($id);
+        $cliente = ClienteDirecto::with('usuario')->findOrFail($id);
         $this->clienteEditandoId = $cliente->id;
         $this->cliente_nombre = $cliente->nombre;
         $this->cliente_telefono = $cliente->telefono;
         $this->cliente_email = $cliente->email;
         $this->cliente_direccion_contacto = $cliente->direccion_contacto;
         $this->cliente_estado = $cliente->estado;
+        $this->limpiarAccesoCliente();
+        $this->cliente_cuenta_email_actual = $cliente->usuario?->email;
         $this->mostrandoFormularioCliente = true;
     }
 
@@ -296,6 +356,7 @@ new #[Layout('layouts.panel')] class extends Component {
     {
         $this->mostrandoFormularioCliente = false;
         $this->clienteEditandoId = null;
+        $this->limpiarAccesoCliente();
     }
 
     public function guardarCliente(): void
@@ -305,6 +366,14 @@ new #[Layout('layouts.panel')] class extends Component {
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
             'cliente_email' => ['nullable', 'email', 'max:190'],
             'cliente_direccion_contacto' => ['nullable', 'string', 'max:300'],
+            // E3-07: opcionales, pero si se llena uno se exige el otro.
+            'cliente_acceso_email' => ['nullable', 'required_with:cliente_acceso_password', 'email', 'max:190'],
+            'cliente_acceso_password' => ['nullable', 'required_with:cliente_acceso_email', 'string', 'min:8', 'same:cliente_acceso_password_confirmation'],
+        ], [
+            'cliente_acceso_email.required_with' => 'Para dar acceso a la app escribe también el correo.',
+            'cliente_acceso_password.required_with' => 'Para dar acceso a la app escribe también la contraseña.',
+            'cliente_acceso_password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'cliente_acceso_password.same' => 'La confirmación de la contraseña no coincide.',
         ]);
 
         $payload = [
@@ -317,16 +386,44 @@ new #[Layout('layouts.panel')] class extends Component {
 
         $accion = app(GestionarClienteDirectoAction::class);
 
-        if ($this->clienteEditandoId) {
-            $accion->actualizar(ClienteDirecto::findOrFail($this->clienteEditandoId), $payload);
-        } else {
-            $accion->crear($payload);
+        // Una sola transacción: si la cuenta falla (correo repetido), tampoco
+        // se crea el cliente, para no dejar un duplicado en la lista.
+        try {
+            DB::transaction(function () use ($accion, $payload, $datos) {
+                $cliente = $this->clienteEditandoId
+                    ? $accion->actualizar(ClienteDirecto::findOrFail($this->clienteEditandoId), $payload)
+                    : $accion->crear($payload);
+
+                if (filled($datos['cliente_acceso_email']) && $this->cliente_cuenta_email_actual === null) {
+                    app(ActivarCuentaAccesoAction::class)->paraClienteDirecto(
+                        $cliente->fresh(),
+                        $datos['cliente_acceso_email'],
+                        $datos['cliente_acceso_password'],
+                    );
+                }
+            });
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $campo => $mensajes) {
+                $this->addError('cliente_' . $campo, $mensajes[0]);
+            }
+
+            return;
         }
 
         $this->mostrandoFormularioCliente = false;
         $this->clienteEditandoId = null;
+        $this->limpiarAccesoCliente();
         $this->cargarClientesDirectos();
         $this->dispatch('guardado', mensaje: 'Cliente directo guardado correctamente.');
+    }
+
+    /** Las contraseñas no se quedan guardadas en el estado de la pantalla. */
+    private function limpiarAccesoCliente(): void
+    {
+        $this->cliente_cuenta_email_actual = null;
+        $this->cliente_acceso_email = null;
+        $this->cliente_acceso_password = '';
+        $this->cliente_acceso_password_confirmation = '';
     }
 
     public function guardarPerfil(): void
@@ -739,6 +836,7 @@ new #[Layout('layouts.panel')] class extends Component {
                             <th class="py-2">Teléfono</th>
                             <th class="py-2">Correo</th>
                             <th class="py-2">Estado</th>
+                            <th class="py-2">App</th>
                             <th class="py-2"></th>
                         </tr>
                     </thead>
@@ -759,6 +857,13 @@ new #[Layout('layouts.panel')] class extends Component {
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $colorEstado }}">
                                         {{ ucfirst($afiliacion->estado) }}
                                     </span>
+                                </td>
+                                <td class="py-2">
+                                    @if ($afiliacion->revendedor->usuario_id)
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-fp-badge-success-bg text-fp-badge-success-fg">Con cuenta</span>
+                                    @else
+                                        <span class="text-xs text-slate-400">Sin cuenta</span>
+                                    @endif
                                 </td>
                                 <td class="py-2 text-right">
                                     <button type="button" wire:click="abrirFormularioEditarRevendedor({{ $afiliacion->id }})"
@@ -791,6 +896,35 @@ new #[Layout('layouts.panel')] class extends Component {
                             <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
                             <input type="email" wire:model="revendedor_email" class="w-full rounded-md border-slate-300">
                         </div>
+                    </div>
+                    {{-- E3-07 (TG-133): cuenta para entrar a la app móvil --}}
+                    <div class="border-t border-slate-200 pt-4">
+                        <h3 class="text-sm font-semibold text-slate-700 mb-1">Acceso a la app</h3>
+                        @if ($revendedor_cuenta_email_actual)
+                            <p class="text-sm text-slate-600">
+                                Ya tiene cuenta: <span class="font-medium">{{ $revendedor_cuenta_email_actual }}</span>
+                            </p>
+                        @else
+                            <p class="text-xs text-slate-500 mb-3">
+                                Opcional. Si le das un correo y una contraseña, podrá entrar a la app móvil con ellos.
+                            </p>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="col-span-2">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Correo para entrar a la app</label>
+                                    <input type="email" wire:model="revendedor_acceso_email" autocomplete="off" class="w-full rounded-md border-slate-300">
+                                    @error('revendedor_acceso_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+                                    <input type="password" wire:model="revendedor_acceso_password" autocomplete="new-password" class="w-full rounded-md border-slate-300">
+                                    @error('revendedor_acceso_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
+                                    <input type="password" wire:model="revendedor_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-md border-slate-300">
+                                </div>
+                            </div>
+                        @endif
                     </div>
                     @if ($revendedorEditandoId)
                         <div>
@@ -827,6 +961,7 @@ new #[Layout('layouts.panel')] class extends Component {
                             <th class="py-2">Teléfono</th>
                             <th class="py-2">Correo</th>
                             <th class="py-2">Estado</th>
+                            <th class="py-2">App</th>
                             <th class="py-2"></th>
                         </tr>
                     </thead>
@@ -840,6 +975,13 @@ new #[Layout('layouts.panel')] class extends Component {
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $cliente->estado === 'activo' ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
                                         {{ $cliente->estado === 'activo' ? 'Activo' : 'Inactivo' }}
                                     </span>
+                                </td>
+                                <td class="py-2">
+                                    @if ($cliente->usuario_id)
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-fp-badge-success-bg text-fp-badge-success-fg">Con cuenta</span>
+                                    @else
+                                        <span class="text-xs text-slate-400">Sin cuenta</span>
+                                    @endif
                                 </td>
                                 <td class="py-2 text-right">
                                     <button type="button" wire:click="abrirFormularioEditarCliente({{ $cliente->id }})"
@@ -873,6 +1015,35 @@ new #[Layout('layouts.panel')] class extends Component {
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Dirección de contacto</label>
                     <input type="text" wire:model="cliente_direccion_contacto" class="w-full rounded-md border-slate-300">
+                </div>
+                {{-- E3-07 (TG-133): cuenta para entrar a la app móvil --}}
+                <div class="border-t border-slate-200 pt-4">
+                    <h3 class="text-sm font-semibold text-slate-700 mb-1">Acceso a la app</h3>
+                    @if ($cliente_cuenta_email_actual)
+                        <p class="text-sm text-slate-600">
+                            Ya tiene cuenta: <span class="font-medium">{{ $cliente_cuenta_email_actual }}</span>
+                        </p>
+                    @else
+                        <p class="text-xs text-slate-500 mb-3">
+                            Opcional. Si le das un correo y una contraseña, podrá entrar a la app móvil con ellos.
+                        </p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="col-span-2">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Correo para entrar a la app</label>
+                                <input type="email" wire:model="cliente_acceso_email" autocomplete="off" class="w-full rounded-md border-slate-300">
+                                @error('cliente_acceso_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+                                <input type="password" wire:model="cliente_acceso_password" autocomplete="new-password" class="w-full rounded-md border-slate-300">
+                                @error('cliente_acceso_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
+                                <input type="password" wire:model="cliente_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-md border-slate-300">
+                            </div>
+                        </div>
+                    @endif
                 </div>
                 @if ($clienteEditandoId)
                     <div>
