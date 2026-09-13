@@ -5,15 +5,13 @@ namespace App\Services;
 use App\Models\DistribuidoraStaff;
 use App\Models\HistorialEstadoPedido;
 use App\Models\Pedido;
-use Illuminate\Support\Facades\Auth;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Notificacion\NotificarCambioEstadoPedidoAction;
+use Illuminate\Support\Facades\Auth;
 
 class CambiarEstadoPedidoService
 {
-    // Único lugar del proyecto que debe cambiar pedidos.estado. Lo usan
-    // Paquete C (cerrar/solicitar/recibir un ciclo) y Paquete D (no surtido,
-    // vencido sin recoger, y cualquier otro cambio de estado del pedido).
-    // Nadie más debe escribir $pedido->estado = ... directamente.
+    // Único lugar del proyecto que debe cambiar pedidos.estado.
     public function cambiar(Pedido $pedido, string $nuevoEstado, ?int $staffId = null, ?string $comentario = null): Pedido
     {
         $estadoAnterior = $pedido->estado;
@@ -37,6 +35,17 @@ class CambiarEstadoPedidoService
         app(NotificarCambioEstadoPedidoAction::class)
             ->ejecutar($pedido, $estadoAnterior, $nuevoEstado);
 
+        app(RegistrarAuditoriaAction::class)->ejecutar(
+            'pedido.cambio_estado',
+            'pedido',
+            $pedido->id,
+            ['estado' => $estadoAnterior],
+            [
+                'estado' => $nuevoEstado,
+                'comentario' => $comentario,
+            ]
+        );
+
         return $pedido;
     }
 
@@ -49,8 +58,6 @@ class CambiarEstadoPedidoService
         }
     }
 
-    // Si nadie pasó un staff_id a mano, lo busca solo a partir del usuario
-    // que inició sesión (mismo patrón que App\Support\Tenant::id()).
     protected function staffIdActual(): ?int
     {
         $usuario = Auth::user();
