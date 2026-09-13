@@ -22,9 +22,10 @@ class FootwearPointApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // AuthProvider se crea aquí arriba de todo para que cualquier pantalla
-    // pueda preguntarle quién inició sesión.
+    // pueda preguntarle quién inició sesión. Al crearse, busca si ya había
+    // una sesión guardada en el teléfono.
     return ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+      create: (_) => AuthProvider()..restaurarSesion(),
       child: MaterialApp(
         title: 'FootwearPoint',
         debugShowCheckedModeBanner: false,
@@ -44,8 +45,26 @@ class _Raiz extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final iniciando = context.select<AuthProvider, bool>((auth) => auth.iniciando);
     final haySesion = context.select<AuthProvider, bool>((auth) => auth.haySesion);
 
-    return haySesion ? const InicioScreen() : const LoginScreen();
+    // Mientras se lee la sesión guardada, para que no parpadee el login
+    // antes de entrar solo.
+    if (iniciando) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (haySesion) return const InicioScreen();
+
+    // Esto solo se vuelve a construir cuando cambia iniciando o haySesion.
+    // Si la sesión se perdió (un 401) con otras pantallas abiertas encima,
+    // se cierran para que el login quede a la vista y no escondido debajo.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted) {
+        Navigator.of(context).popUntil((ruta) => ruta.isFirst);
+      }
+    });
+
+    return const LoginScreen();
   }
 }
