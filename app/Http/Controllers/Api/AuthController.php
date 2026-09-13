@@ -47,6 +47,86 @@ class AuthController extends Controller
             ]);
         }
 
+        $sesion = $this->datosDeSesion($usuario);
+
+        // TG-93 (E1-01): este login lo usa la app móvil, que es solo para
+        // revendedor y cliente directo. El personal interno entra por el
+        // panel web, que tiene su propio login con sesión y no pasa por aquí.
+        // Se revisa ANTES de crear el token, para no dejarle uno válido a
+        // quien se está rechazando.
+        if ($this->esRolSoloWeb($sesion['rol'])) {
+            throw ValidationException::withMessages([
+                'email' => ['Esta aplicación es solo para revendedores y clientes directos.'],
+            ]);
+        }
+
+        // Token Sanctum
+        $token = $usuario->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'data' => [
+                'token'      => $token,
+                'token_type' => 'Bearer',
+            ] + $sesion,
+            'message' => 'Inicio de sesión exitoso.',
+        ]);
+    }
+
+    /**
+     * GET /api/auth/me (TG-140) — ¿de quién es este token?
+     *
+     * La app móvil solo guarda el token. Al volver a abrirla necesita saber
+     * otra vez quién es el usuario, su rol y su distribuidora, y no puede
+     * guardarlos en el teléfono: si un admin lo suspende, el teléfono
+     * seguiría creyendo que tiene acceso. Por eso se le pregunta al servidor.
+     *
+     * Responde lo mismo que el login, pero sin token nuevo. Los dos rechazos
+     * responden 401 y revocan el token, para que la app regrese al login
+     * igual que con cualquier sesión que ya no sirve.
+     */
+    public function me(Request $request)
+    {
+        $usuario = $request->user();
+
+        // Sanctum no invalida el token cuando la cuenta se desactiva después
+        // del login: sin esta revisión, el token seguiría respondiendo 200.
+        if ($usuario->estado !== 'activo') {
+            $usuario->currentAccessToken()?->delete();
+
+            return response()->json([
+                'message' => 'Tu cuenta no está activa.',
+            ], 401);
+        }
+
+        $sesion = $this->datosDeSesion($usuario);
+
+        // Mismo rechazo que el login (TG-93). Normalmente el personal interno
+        // ni siquiera tiene un token de la app, porque el login ya se lo
+        // niega; esto cubre un token viejo, sacado antes de esa regla.
+        if ($this->esRolSoloWeb($sesion['rol'])) {
+            $usuario->currentAccessToken()?->delete();
+
+            return response()->json([
+                'message' => 'Esta aplicación es solo para revendedores y clientes directos.',
+            ], 401);
+        }
+
+        return response()->json([
+            'data' => $sesion,
+        ]);
+    }
+
+    private function esRolSoloWeb(?string $rol): bool
+    {
+        return in_array($rol, self::ROLES_SOLO_WEB, true);
+    }
+
+    /**
+     * Usuario, rol y distribuidora, en la forma que espera la app. Lo usan
+     * login y me para responder exactamente igual.
+     */
+    private function datosDeSesion(Usuario $usuario): array
+    {
         // La distribuidora se resuelve con la misma lógica que usa todo el
         // resto del sistema (TG-134), no con una búsqueda propia: antes aquí
         // solo se miraba distribuidora_staff, así que un revendedor o un
@@ -67,39 +147,21 @@ class AuthController extends Controller
         // Si no tiene rol de distribuidora, buscar rol global (admin_general)
         if (!$rol) {
             setPermissionsTeamId(0);
+            $usuario->unsetRelation('roles');
             $rol = $usuario->getRoleNames()->first();
         }
 
-        // TG-93 (E1-01): este login lo usa la app móvil, que es solo para
-        // revendedor y cliente directo. El personal interno entra por el
-        // panel web, que tiene su propio login con sesión y no pasa por aquí.
-        // Se revisa ANTES de crear el token, para no dejarle uno válido a
-        // quien se está rechazando.
-        if (in_array($rol, self::ROLES_SOLO_WEB, true)) {
-            throw ValidationException::withMessages([
-                'email' => ['Esta aplicación es solo para revendedores y clientes directos.'],
-            ]);
-        }
-
-        // Token Sanctum
-        $token = $usuario->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'data' => [
-                'token'            => $token,
-                'token_type'       => 'Bearer',
-                'usuario'          => [
-                    'id'       => $usuario->id,
-                    'nombre'   => $usuario->nombre,
-                    'email'    => $usuario->email,
-                    'telefono' => $usuario->telefono,
-                    'estado'   => $usuario->estado,
-                ],
-                'rol'              => $rol,
-                'distribuidora_id' => $distribuidoraId,
+        return [
+            'usuario' => [
+                'id'       => $usuario->id,
+                'nombre'   => $usuario->nombre,
+                'email'    => $usuario->email,
+                'telefono' => $usuario->telefono,
+                'estado'   => $usuario->estado,
             ],
-            'message' => 'Inicio de sesión exitoso.',
-        ]);
+            'rol'              => $rol,
+            'distribuidora_id' => $distribuidoraId,
+        ];
     }
 
     public function logout(Request $request)
