@@ -194,4 +194,28 @@ class ActivarCuentaAccesoTest extends TestCase
 
         $this->accion()->paraRevendedor($afiliacionEnB, 'maria@revendedor.test', 'otra-clave-1');
     }
+
+    // ------------------------------------------------------------------
+    // Datos de demo
+    // ------------------------------------------------------------------
+
+    /**
+     * Las cuentas de demo existen para que cualquiera del equipo pueda probar
+     * la app de verdad. Y el seeder tiene que poder correrse otra vez sin
+     * tronar por intentar crear la misma cuenta.
+     */
+    public function test_las_cuentas_de_demo_entran_a_la_app_y_el_seeder_se_puede_repetir(): void
+    {
+        $this->seed(\Database\Seeders\DemoContactosSeeder::class);
+
+        $this->postJson('/api/auth/login', ['email' => 'maria.lopez@revendedor.test', 'password' => 'password'])
+            ->assertOk()
+            ->assertJsonPath('data.rol', 'revendedor');
+
+        $this->app['auth']->forgetGuards();
+
+        $this->postJson('/api/auth/login', ['email' => 'jose.hernandez@cliente.test', 'password' => 'password'])
+            ->assertOk()
+            ->assertJsonPath('data.rol', 'cliente_directo');
+    }
 }
