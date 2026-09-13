@@ -3,18 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Pedido\AgregarLineaPedidoRequest;
+use App\Http\Requests\Pedido\RegistrarPagoPedidoRequest;
+use App\Http\Requests\Pedido\StorePedidoRequest;
 use App\Http\Resources\PedidoResource;
 use App\Models\Pedido;
+use App\Services\Pedido\AgregarLineaPedidoAction;
+use App\Services\Pedido\CrearPedidoBorradorAction;
+use App\Services\Pedido\EnviarPedidoAction;
+use App\Services\Pedido\QuitarLineaPedidoAction;
+use App\Services\Pedido\RegistrarPagoPedidoAction;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Http\Requests\Pedido\StorePedidoRequest;
-use App\Services\Pedido\CrearPedidoBorradorAction;
-use App\Http\Requests\Pedido\AgregarLineaPedidoRequest;
-use App\Services\Pedido\AgregarLineaPedidoAction;
-use App\Services\Pedido\EnviarPedidoAction;
-use App\Services\Pedido\QuitarLineaPedidoAction;
 
 class PedidoController extends Controller
 {
@@ -22,8 +24,6 @@ class PedidoController extends Controller
     {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
-        // Un revendedor o cliente directo solo ve SUS pedidos. El personal de
-        // la casa sigue viendo todos los de su distribuidora.
         $query = PropietarioActual::limitar(
             Pedido::query()->with(['clienteDirecto', 'revendedorAfiliacion.revendedor'])
         )->orderByDesc('id');
@@ -47,10 +47,8 @@ class PedidoController extends Controller
     {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
-        // Un pedido ajeno responde 404, no 403: así ni siquiera se confirma
-        // que exista.
         $pedido = PropietarioActual::limitar(
-            Pedido::query()->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle'])
+            Pedido::query()->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle', 'pagos'])
         )->findOrFail($id);
 
         return response()->json([
@@ -108,5 +106,21 @@ class PedidoController extends Controller
             'data'    => new PedidoResource($pedido),
             'message' => 'Línea eliminada del pedido.',
         ]);
+    }
+
+    public function registrarPago(
+        int $id,
+        RegistrarPagoPedidoRequest $request,
+        RegistrarPagoPedidoAction $accion
+    ): JsonResponse {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+
+        $pedido = PropietarioActual::limitar(Pedido::query()->with(['detalle', 'pagos']))->findOrFail($id);
+        $pedido = $accion->ejecutar($pedido, $request->validated());
+
+        return response()->json([
+            'data'    => new PedidoResource($pedido),
+            'message' => 'Pago registrado correctamente.',
+        ], 201);
     }
 }
