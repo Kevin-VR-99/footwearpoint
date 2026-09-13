@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../validaciones.dart';
+import 'recuperar_password_screen.dart';
 
 /// Pantalla de inicio de sesión (E1-01).
 ///
@@ -23,26 +25,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _passwordVisible = false;
 
-  /// Revisa solo la forma: algo@algo.algo. La regla 'email' de Laravel
-  /// (LoginRequest) es la que manda; esto evita un viaje al servidor por un
-  /// error de dedo.
-  static final _formatoCorreo = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
   @override
   void dispose() {
     _email.dispose();
     _password.dispose();
     super.dispose();
-  }
-
-  String? _validarCorreo(String? valor) {
-    final correo = valor?.trim() ?? '';
-
-    if (correo.isEmpty) return 'Escribe tu correo.';
-    // Mismo texto que manda LoginRequest del backend.
-    if (!_formatoCorreo.hasMatch(correo)) return 'El correo no es válido.';
-
-    return null;
   }
 
   // No se exige mínimo de caracteres aquí: el login del backend no lo pide,
@@ -65,6 +52,15 @@ class _LoginScreenState extends State<LoginScreen> {
     // Le avisa al teléfono que el login funcionó, para que ofrezca guardar
     // la contraseña en su gestor (si el usuario tiene uno).
     if (entro) TextInput.finishAutofillContext();
+  }
+
+  void _abrirRecuperarPassword() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        // Se lleva el correo que ya escribió, para no hacerlo escribir dos veces.
+        builder: (_) => RecuperarPasswordScreen(correoInicial: _email.text.trim()),
+      ),
+    );
   }
 
   @override
@@ -101,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         autofillHints: const [AutofillHints.email],
                         autocorrect: false,
                         textInputAction: TextInputAction.next,
-                        validator: _validarCorreo,
+                        validator: Validaciones.correo,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -130,11 +126,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         onFieldSubmitted: (_) => _entrar(),
                         validator: _validarPassword,
                       ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: auth.ocupado ? null : _abrirRecuperarPassword,
+                          child: const Text('¿Olvidaste tu contraseña?'),
+                        ),
+                      ),
                       if (auth.error != null) ...[
-                        const SizedBox(height: 16),
-                        _AvisoError(mensaje: auth.error!),
+                        const SizedBox(height: 8),
+                        AvisoError(mensaje: auth.error!),
                       ],
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
                       FilledButton(
                         onPressed: auth.ocupado ? null : _entrar,
                         style: FilledButton.styleFrom(
@@ -197,10 +200,13 @@ class _Encabezado extends StatelessWidget {
   }
 }
 
-/// El motivo por el que no se pudo entrar (credenciales, cuenta inactiva,
-/// sin conexión) o el aviso de que la sesión expiró.
-class _AvisoError extends StatelessWidget {
-  const _AvisoError({required this.mensaje});
+/// Recuadro rojo con un mensaje de error: por qué no se pudo entrar
+/// (credenciales, cuenta inactiva, sin conexión), el aviso de que la sesión
+/// expiró, o por qué no se pudo mandar el enlace de recuperación.
+///
+/// Es público porque también lo usa RecuperarPasswordScreen.
+class AvisoError extends StatelessWidget {
+  const AvisoError({super.key, required this.mensaje});
 
   final String mensaje;
 
