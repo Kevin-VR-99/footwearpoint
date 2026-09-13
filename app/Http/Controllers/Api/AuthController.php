@@ -22,6 +22,15 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
+    /**
+     * Roles del personal interno: no pueden iniciar sesión por la API.
+     *
+     * Es una lista de los que se rechazan, no de los que se permiten, a
+     * propósito: un revendedor suspendido (rol en null porque no resuelve
+     * distribuidora) sigue entrando, y el TenantScope hace que no vea nada.
+     */
+    private const ROLES_SOLO_WEB = ['admin_general', 'admin_distribuidora', 'empleado'];
+
     public function login(LoginRequest $request)
     {
         $usuario = Usuario::where('email', $request->email)->first();
@@ -38,6 +47,19 @@ class AuthController extends Controller
             ]);
         }
 
+        $sesion = $this->datosDeSesion($usuario);
+
+        // TG-93 (E1-01): este login lo usa la app móvil, que es solo para
+        // revendedor y cliente directo. El personal interno entra por el
+        // panel web, que tiene su propio login con sesión y no pasa por aquí.
+        // Se revisa ANTES de crear el token, para no dejarle uno válido a
+        // quien se está rechazando.
+        if ($this->esRolSoloWeb($sesion['rol'])) {
+            throw ValidationException::withMessages([
+                'email' => ['Esta aplicación es solo para revendedores y clientes directos.'],
+            ]);
+        }
+
         // Token Sanctum
         $token = $usuario->createToken('auth_token')->plainTextToken;
 
@@ -45,7 +67,7 @@ class AuthController extends Controller
             'data' => [
                 'token'      => $token,
                 'token_type' => 'Bearer',
-            ] + $this->datosDeSesion($usuario),
+            ] + $sesion,
             'message' => 'Inicio de sesión exitoso.',
         ]);
     }
@@ -58,15 +80,16 @@ class AuthController extends Controller
      * guardarlos en el teléfono: si un admin lo suspende, el teléfono
      * seguiría creyendo que tiene acceso. Por eso se le pregunta al servidor.
      *
-     * Responde lo mismo que el login, pero sin token nuevo.
+     * Responde lo mismo que el login, pero sin token nuevo. Los dos rechazos
+     * responden 401 y revocan el token, para que la app regrese al login
+     * igual que con cualquier sesión que ya no sirve.
      */
     public function me(Request $request)
     {
         $usuario = $request->user();
 
-        // El token sigue siendo válido aunque la cuenta se haya desactivado
-        // después del login. Se trata como sesión vencida (401) para que la
-        // app regrese a la pantalla de login, y el token se revoca de una vez.
+        // Sanctum no invalida el token cuando la cuenta se desactiva después
+        // del login: sin esta revisión, el token seguiría respondiendo 200.
         if ($usuario->estado !== 'activo') {
             $usuario->currentAccessToken()?->delete();
 
@@ -75,9 +98,27 @@ class AuthController extends Controller
             ], 401);
         }
 
+        $sesion = $this->datosDeSesion($usuario);
+
+        // Mismo rechazo que el login (TG-93). Normalmente el personal interno
+        // ni siquiera tiene un token de la app, porque el login ya se lo
+        // niega; esto cubre un token viejo, sacado antes de esa regla.
+        if ($this->esRolSoloWeb($sesion['rol'])) {
+            $usuario->currentAccessToken()?->delete();
+
+            return response()->json([
+                'message' => 'Esta aplicación es solo para revendedores y clientes directos.',
+            ], 401);
+        }
+
         return response()->json([
-            'data' => $this->datosDeSesion($usuario),
+            'data' => $sesion,
         ]);
+    }
+
+    private function esRolSoloWeb(?string $rol): bool
+    {
+        return in_array($rol, self::ROLES_SOLO_WEB, true);
     }
 
     /**

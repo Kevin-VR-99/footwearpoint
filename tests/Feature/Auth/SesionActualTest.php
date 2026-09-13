@@ -116,12 +116,13 @@ class SesionActualTest extends TestCase
 
     public function test_no_entrega_un_token_nuevo(): void
     {
-        $token = $this->iniciarSesion('empleado@calzadosramirez.test');
+        $this->crearRevendedor('maria.sintoken@revendedor.test');
+        $token = $this->iniciarSesion('maria.sintoken@revendedor.test');
 
         $me = $this->withToken($token)->getJson('/api/auth/me')->assertOk();
 
         $this->assertNull($me->json('data.token'));
-        $this->assertSame('empleado', $me->json('data.rol'));
+        $this->assertSame('revendedor', $me->json('data.rol'));
     }
 
     public function test_sin_token_responde_401(): void
@@ -131,7 +132,8 @@ class SesionActualTest extends TestCase
 
     public function test_despues_de_cerrar_sesion_el_token_ya_no_sirve(): void
     {
-        $token = $this->iniciarSesion('empleado@calzadosramirez.test');
+        $this->crearRevendedor('maria.logout@revendedor.test');
+        $token = $this->iniciarSesion('maria.logout@revendedor.test');
 
         $this->withToken($token)->postJson('/api/auth/logout')->assertOk();
         $this->olvidarSesionEnMemoria();
@@ -146,14 +148,15 @@ class SesionActualTest extends TestCase
      */
     public function test_una_cuenta_desactivada_despues_del_login_responde_401_y_pierde_el_token(): void
     {
-        $token = $this->iniciarSesion('empleado@calzadosramirez.test');
+        $this->crearRevendedor('maria.bloqueada@revendedor.test');
+        $token = $this->iniciarSesion('maria.bloqueada@revendedor.test');
 
-        Usuario::where('email', 'empleado@calzadosramirez.test')->update(['estado' => 'bloqueado']);
+        Usuario::where('email', 'maria.bloqueada@revendedor.test')->update(['estado' => 'bloqueado']);
 
         $this->withToken($token)->getJson('/api/auth/me')->assertStatus(401);
         $this->olvidarSesionEnMemoria();
 
-        Usuario::where('email', 'empleado@calzadosramirez.test')->update(['estado' => 'activo']);
+        Usuario::where('email', 'maria.bloqueada@revendedor.test')->update(['estado' => 'activo']);
 
         // Aunque la reactiven, ese token ya se revocó: tiene que volver a entrar.
         $this->withToken($token)->getJson('/api/auth/me')->assertStatus(401);
@@ -174,5 +177,20 @@ class SesionActualTest extends TestCase
             ->getJson('/api/auth/me')
             ->assertOk()
             ->assertJsonPath('data.distribuidora_id', null);
+    }
+
+    /**
+     * Mismo rechazo que el login (TG-93). El login ya no le da token al
+     * personal interno, así que aquí se simula un token viejo, sacado antes
+     * de esa regla: tampoco debe servir para entrar a la app.
+     */
+    public function test_un_token_viejo_de_empleado_responde_401_y_se_revoca(): void
+    {
+        $empleado = Usuario::where('email', 'empleado@calzadosramirez.test')->firstOrFail();
+        $token = $empleado->createToken('token_de_antes')->plainTextToken;
+
+        $this->withToken($token)->getJson('/api/auth/me')->assertStatus(401);
+
+        $this->assertSame(0, $empleado->tokens()->count());
     }
 }

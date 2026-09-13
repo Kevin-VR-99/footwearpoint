@@ -93,17 +93,18 @@ Sin token. Es el único endpoint público que usa la app.
 }
 ```
 
-`rol` puede ser: `admin_general`, `admin_distribuidora`, `empleado`, `revendedor`, `cliente_directo`.
+`rol` en una respuesta exitosa es `revendedor` o `cliente_directo` (o `null`, ver la nota de abajo). El personal interno no puede entrar por aquí: ver errores.
 
 **Errores**
 
 - **422** con `errors.email` si las credenciales son incorrectas o la cuenta no está activa. El mensaje que hay que mostrarle al usuario viene ahí, no en `message`.
+- **422** con `errors.email` = `"Esta aplicación es solo para revendedores y clientes directos."` si el rol es `admin_general`, `admin_distribuidora` o `empleado` (TG-93). El personal interno entra por el panel web, que tiene su propio login. En este caso **no se crea token**.
 
 > Si `rol` o `distribuidora_id` salen en `null` para un revendedor o cliente directo, es que su cuenta no está bien ligada. Se arregla del lado del panel web (E3-07).
 
 ### GET `/api/auth/me`
 
-Requiere token. Sin cuerpo. Cualquier rol. (TG-140)
+Requiere token. Sin cuerpo. (TG-140)
 
 Para **recuperar la sesión al abrir la app**: la app solo guarda el token, y con él le pregunta al servidor quién es el usuario. No se guardan rol ni distribuidora en el teléfono, porque podrían quedar viejos (por ejemplo, si un admin suspende a alguien).
 
@@ -121,7 +122,14 @@ Para **recuperar la sesión al abrir la app**: la app solo guarda el token, y co
 
 **Errores**
 
-- **401** si no hay token, si ya se cerró sesión con él, o si la cuenta se desactivó después del login. En este último caso el servidor además revoca el token. En los tres casos la app debe regresar a la pantalla de login.
+- **401** si no hay token, si ya se cerró sesión con él, o si la cuenta se desactivó después del login.
+- **401** si el token es de personal interno (`admin_general`, `admin_distribuidora`, `empleado`), igual que el rechazo del login (TG-93).
+
+En los dos casos de rechazo (cuenta desactivada o personal interno) el servidor además revoca el token. En todos los 401 la app debe regresar a la pantalla de login.
+
+> **Suspendido puede ser en dos niveles, y responden distinto:**
+> - La **cuenta** inactiva (`usuarios.estado`) → **401**.
+> - Solo la **afiliación** suspendida (`revendedor_distribuidora.estado`) → **200**, pero con `rol` y `distribuidora_id` en `null`, igual que el login. El backend ya no le deja ver nada; la app debe tratar `distribuidora_id` en `null` como "sin acceso".
 
 ### POST `/api/auth/logout`
 
