@@ -26,16 +26,4 @@ class Usuario {
       estado: json['estado'] as String,
     );
   }
-
-  /// Lo contrario de [Usuario.desdeJson], con las mismas llaves: sirve para
-  /// guardar el usuario en el teléfono y recuperarlo al volver a abrir la app.
-  Map<String, dynamic> aJson() {
-    return {
-      'id': id,
-      'nombre': nombre,
-      'email': email,
-      'telefono': telefono,
-      'estado': estado,
-    };
-  }
 }

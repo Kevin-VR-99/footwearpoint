@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -19,12 +18,12 @@ class AuthProvider extends ChangeNotifier {
   /// mismo token, sin crear su propio ApiService.
   final ApiService api;
 
-  /// Además del token (que guarda ApiService), se guarda lo que respondió el
-  /// login: usuario, rol y distribuidora. No hay un endpoint para volver a
-  /// pedirlos, y sin ellos la app no sabe qué mostrarle a quien la abre.
-  static const _llaveSesion = 'sesion_usuario';
-
   static const mensajeSesionVencida = 'Tu sesión expiró. Vuelve a iniciar sesión.';
+
+  /// Llave donde una versión anterior de esta rama guardaba usuario, rol y
+  /// distribuidora en el teléfono. Ya no se guarda nada ahí (ver
+  /// [restaurarSesion]); solo se borra por si quedó en algún teléfono de prueba.
+  static const _llaveSesionVieja = 'sesion_usuario';
 
   final _almacen = const FlutterSecureStorage();
 
@@ -32,6 +31,7 @@ class AuthProvider extends ChangeNotifier {
   String? _rol;
   int? _distribuidoraId;
   bool _iniciando = true;
+  bool _sinConexion = false;
   bool _ocupado = false;
   String? _error;
 
@@ -42,39 +42,64 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
   bool get haySesion => _usuario != null;
 
-  /// True mientras se lee la sesión guardada al abrir la app. Mientras dure,
-  /// no se sabe todavía si toca mostrar el login o la app.
+  /// La cuenta es válida pero no tiene distribuidora: su afiliación está
+  /// suspendida (revendedor_distribuidora.estado) o la cuenta quedó mal
+  /// ligada. El backend ya no le deja ver nada; la app tampoco la deja pasar.
+  /// No se borra el token: si la reactivan, basta con volver a revisar.
+  bool get sinAcceso => haySesion && _distribuidoraId == null;
+
+  /// True mientras se revisa, al abrir la app, si el token guardado sirve.
+  /// Mientras dure, no se sabe todavía si toca mostrar el login o la app.
   bool get iniciando => _iniciando;
+
+  /// True si al abrir la app había token pero no se pudo hablar con el
+  /// servidor para revisarlo. El token NO se borra: puede ser solo que no
+  /// hay WiFi, y se vuelve a intentar con [reintentar].
+  bool get sinConexion => _sinConexion;
 
   /// Se llama una sola vez al abrir la app.
   ///
-  /// No le pregunta nada al servidor: si el token guardado ya no sirve, la
-  /// primera petición regresa 401 y [_sesionVencida] manda al login.
+  /// En el teléfono solo vive el token. Usuario, rol y distribuidora se le
+  /// piden al servidor con GET auth/me: si se guardaran en el teléfono y un
+  /// admin suspendiera a alguien, la app seguiría creyendo que tiene acceso.
   Future<void> restaurarSesion() async {
     try {
+      await _almacen.delete(key: _llaveSesionVieja);
+
       final token = await api.token();
-      final guardada = await _almacen.read(key: _llaveSesion);
+      if (token == null || token.isEmpty) return;
 
-      if (token != null && token.isNotEmpty && guardada != null) {
-        final datos = jsonDecode(guardada) as Map<String, dynamic>;
-
-        _usuario = Usuario.desdeJson(datos['usuario'] as Map<String, dynamic>);
-        _rol = datos['rol'] as String?;
-        _distribuidoraId = datos['distribuidora_id'] as int?;
-      } else if (token != null || guardada != null) {
-        // Quedó solo una de las dos partes (por ejemplo, un token guardado
-        // por la versión del Bloque 0, que no guardaba el usuario). Con
-        // media sesión no se puede trabajar: se pide login de nuevo.
+      final respuesta = await api.get('auth/me');
+      _llenarSesion(respuesta['data'] as Map<String, dynamic>);
+    } on ApiException catch (e) {
+      if (e.codigoHttp == null) {
+        // Sin conexión o el servidor tardó: no se sabe si el token sirve.
+        _sinConexion = true;
+        _error = e.mensaje;
+      } else {
+        // El servidor sí contestó y no reconoció el token: 401 (vencido o
+        // cuenta suspendida) o cualquier otro error (404, 500).
         await _olvidarSesion();
+        _error = e.codigoHttp == 401 ? mensajeSesionVencida : null;
       }
     } catch (_) {
-      // Lo guardado está dañado o no tiene la forma esperada. No se puede
-      // confiar en ello: se empieza sin sesión.
+      // El servidor contestó 200 pero con una forma que no se esperaba. No
+      // se puede armar la sesión con eso: se pide login de nuevo.
       await _olvidarSesion();
     } finally {
       _iniciando = false;
       notifyListeners();
     }
+  }
+
+  /// El botón "Reintentar" de la pantalla sin conexión.
+  Future<void> reintentar() async {
+    _sinConexion = false;
+    _iniciando = true;
+    _error = null;
+    notifyListeners();
+
+    await restaurarSesion();
   }
 
   /// Devuelve true si entró. Si no, el motivo queda en [error].
@@ -92,12 +117,7 @@ class AuthProvider extends ChangeNotifier {
       final datos = respuesta['data'] as Map<String, dynamic>;
 
       await api.guardarToken(datos['token'] as String);
-
-      _usuario = Usuario.desdeJson(datos['usuario'] as Map<String, dynamic>);
-      _rol = datos['rol'] as String?;
-      _distribuidoraId = datos['distribuidora_id'] as int?;
-
-      await _guardarSesion();
+      _llenarSesion(datos);
 
       return true;
     } on ApiException catch (e) {
@@ -132,9 +152,12 @@ class AuthProvider extends ChangeNotifier {
 
   /// Lo llama ApiService cuando el servidor responde 401, desde cualquier
   /// pantalla. Al quedar sin usuario, main.dart muestra el login solo.
+  ///
+  /// NO llama a [logout]: logout le pega al servidor, que respondería 401
+  /// otra vez y se ciclaría.
   void _sesionVencida() {
-    // Sin sesión no hay nada que cerrar (por ejemplo, un 401 que llega
-    // cuando ya se estaba en el login).
+    // Sin sesión no hay nada que cerrar (por ejemplo, el 401 de auth/me al
+    // abrir la app, que ya atiende restaurarSesion).
     if (!haySesion) return;
 
     unawaited(_olvidarSesion());
@@ -143,18 +166,20 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _guardarSesion() {
-    return _almacen.write(
-      key: _llaveSesion,
-      value: jsonEncode({
-        'usuario': _usuario!.aJson(),
-        'rol': _rol,
-        'distribuidora_id': _distribuidoraId,
-      }),
-    );
+  /// Misma forma en el login y en auth/me: { usuario, rol, distribuidora_id }.
+  void _llenarSesion(Map<String, dynamic> datos) {
+    // Se lee todo antes de asignar, para no quedar con media sesión si algún
+    // campo no viene como se esperaba.
+    final usuario = Usuario.desdeJson(datos['usuario'] as Map<String, dynamic>);
+    final rol = datos['rol'] as String?;
+    final distribuidoraId = datos['distribuidora_id'] as int?;
+
+    _usuario = usuario;
+    _rol = rol;
+    _distribuidoraId = distribuidoraId;
   }
 
-  /// Borra la sesión de memoria y del teléfono.
+  /// Borra la sesión de memoria y el token del teléfono.
   Future<void> _olvidarSesion() async {
     // Primero la memoria, sin esperar a nada: así [haySesion] cambia en ese
     // mismo instante, aunque borrar del teléfono tarde un poco.
@@ -163,6 +188,5 @@ class AuthProvider extends ChangeNotifier {
     _distribuidoraId = null;
 
     await api.borrarToken();
-    await _almacen.delete(key: _llaveSesion);
   }
 }
