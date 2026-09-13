@@ -42,6 +42,12 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
   bool get haySesion => _usuario != null;
 
+  /// La cuenta es válida pero no tiene distribuidora: su afiliación está
+  /// suspendida (revendedor_distribuidora.estado) o la cuenta quedó mal
+  /// ligada. El backend ya no le deja ver nada; la app tampoco la deja pasar.
+  /// No se borra el token: si la reactivan, basta con volver a revisar.
+  bool get sinAcceso => haySesion && _distribuidoraId == null;
+
   /// True mientras se revisa, al abrir la app, si el token guardado sirve.
   /// Mientras dure, no se sabe todavía si toca mostrar el login o la app.
   bool get iniciando => _iniciando;

@@ -97,6 +97,47 @@ void main() {
     expect(find.text('Entrar'), findsNothing);
   });
 
+  testWidgets('afiliación suspendida: no pasa de "sin acceso" y puede cerrar sesión', (tester) async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'token_sanctum': '1|token-de-prueba',
+    });
+
+    final servidor = MockClient((peticion) async {
+      if (peticion.url.path.endsWith('/auth/logout')) {
+        return http.Response(jsonEncode({'message': 'Sesión cerrada correctamente.'}), 200);
+      }
+
+      return http.Response(
+        jsonEncode({
+          'data': {
+            'usuario': {
+              'id': 8,
+              'nombre': 'Revendedor Suspendido',
+              'email': 'suspendido@ejemplo.com',
+              'telefono': null,
+              'estado': 'activo',
+            },
+            'rol': null,
+            'distribuidora_id': null,
+          },
+        }),
+        200,
+        headers: {'content-type': 'application/json; charset=utf-8'},
+      );
+    });
+
+    await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: servidor)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sin acceso por ahora'), findsOneWidget);
+    expect(find.text('Sesión iniciada'), findsNothing);
+
+    await tester.tap(find.text('Cerrar sesión'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Entrar'), findsOneWidget);
+  });
+
   testWidgets('con token pero sin conexión, ofrece reintentar en vez de sacar al login', (tester) async {
     FlutterSecureStorage.setMockInitialValues(<String, String>{
       'token_sanctum': '1|token-de-prueba',

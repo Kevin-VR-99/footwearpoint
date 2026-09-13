@@ -53,6 +53,7 @@ class _Raiz extends StatelessWidget {
     final iniciando = context.select<AuthProvider, bool>((auth) => auth.iniciando);
     final sinConexion = context.select<AuthProvider, bool>((auth) => auth.sinConexion);
     final haySesion = context.select<AuthProvider, bool>((auth) => auth.haySesion);
+    final sinAcceso = context.select<AuthProvider, bool>((auth) => auth.sinAcceso);
 
     // Mientras se revisa el token guardado, para que no parpadee el login
     // antes de entrar solo.
@@ -62,10 +63,13 @@ class _Raiz extends StatelessWidget {
 
     if (sinConexion) return const _SinConexionScreen();
 
+    // Va antes que la pantalla de inicio: sin distribuidora no se entra.
+    if (sinAcceso) return const _SinAccesoScreen();
+
     if (haySesion) return const InicioScreen();
 
-    // Esto solo se vuelve a construir cuando cambia alguno de los tres
-    // valores de arriba. Si la sesión se perdió (un 401) con otras pantallas
+    // Esto solo se vuelve a construir cuando cambia alguno de los valores
+    // de arriba. Si la sesión se perdió (un 401) con otras pantallas
     // abiertas encima, se cierran para que el login quede a la vista y no
     // escondido debajo.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -87,6 +91,73 @@ class _SinConexionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+
+    return _AvisoScreen(
+      icono: Icons.wifi_off_rounded,
+      titulo: 'No se pudo conectar con el servidor',
+      texto: auth.error,
+      acciones: [
+        FilledButton.icon(
+          onPressed: auth.reintentar,
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+          icon: const Icon(Icons.refresh),
+          label: const Text('Reintentar'),
+        ),
+      ],
+    );
+  }
+}
+
+/// La cuenta es válida, pero no tiene distribuidora (afiliación suspendida
+/// o cuenta mal ligada). Ver AuthProvider.sinAcceso.
+class _SinAccesoScreen extends StatelessWidget {
+  const _SinAccesoScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    return _AvisoScreen(
+      icono: Icons.lock_person_outlined,
+      titulo: 'Sin acceso por ahora',
+      texto: 'Tu cuenta no tiene acceso activo a ninguna distribuidora. '
+          'Comunícate con tu distribuidora para que lo revise.',
+      acciones: [
+        // Vuelve a preguntarle a auth/me: si ya la reactivaron, entra.
+        FilledButton.icon(
+          onPressed: auth.ocupado ? null : auth.reintentar,
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+          icon: const Icon(Icons.refresh),
+          label: const Text('Volver a revisar'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: auth.ocupado ? null : auth.logout,
+          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+          child: const Text('Cerrar sesión'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Molde de las pantallas de aviso de pantalla completa: ícono, título,
+/// texto opcional y botones.
+class _AvisoScreen extends StatelessWidget {
+  const _AvisoScreen({
+    required this.icono,
+    required this.titulo,
+    required this.acciones,
+    this.texto,
+  });
+
+  final IconData icono;
+  final String titulo;
+  final String? texto;
+  final List<Widget> acciones;
+
+  @override
+  Widget build(BuildContext context) {
     final tema = Theme.of(context);
 
     return Scaffold(
@@ -100,17 +171,17 @@ class _SinConexionScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(Icons.wifi_off_rounded, size: 64, color: tema.colorScheme.error),
+                  Icon(icono, size: 64, color: tema.colorScheme.error),
                   const SizedBox(height: 16),
                   Text(
-                    'No se pudo conectar con el servidor',
+                    titulo,
                     textAlign: TextAlign.center,
                     style: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                   ),
-                  if (auth.error != null) ...[
+                  if (texto != null) ...[
                     const SizedBox(height: 12),
                     Text(
-                      auth.error!,
+                      texto!,
                       textAlign: TextAlign.center,
                       style: tema.textTheme.bodyMedium?.copyWith(
                         color: tema.colorScheme.onSurfaceVariant,
@@ -118,12 +189,7 @@ class _SinConexionScreen extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: 24),
-                  FilledButton.icon(
-                    onPressed: auth.reintentar,
-                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Reintentar'),
-                  ),
+                  ...acciones,
                 ],
               ),
             ),

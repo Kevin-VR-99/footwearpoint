@@ -22,6 +22,20 @@ const _sesion = {
   'distribuidora_id': 1,
 };
 
+/// Afiliación suspendida: la cuenta es válida, pero el servidor regresa rol
+/// y distribuidora en null (mismo criterio en login y en auth/me).
+const _sesionSinDistribuidora = {
+  'usuario': {
+    'id': 8,
+    'nombre': 'Revendedor Suspendido',
+    'email': 'suspendido@ejemplo.com',
+    'telefono': null,
+    'estado': 'activo',
+  },
+  'rol': null,
+  'distribuidora_id': null,
+};
+
 http.Response _json(Object cuerpo, int codigo) => http.Response(
   jsonEncode(cuerpo),
   codigo,
@@ -150,6 +164,27 @@ void main() {
       expect(almacen, isEmpty);
     });
 
+    test('afiliación suspendida (distribuidora null): sin acceso, pero conserva el token', () async {
+      almacen['token_sanctum'] = '12|token-de-prueba';
+      var reactivado = false;
+
+      final auth = crearProvider(
+        me: () => _json({'data': reactivado ? _sesion : _sesionSinDistribuidora}, 200),
+      );
+      await auth.restaurarSesion();
+
+      expect(auth.haySesion, isTrue);
+      expect(auth.sinAcceso, isTrue);
+      expect(almacen['token_sanctum'], '12|token-de-prueba');
+
+      // La distribuidora lo reactiva y el usuario toca "Volver a revisar".
+      reactivado = true;
+      await auth.reintentar();
+
+      expect(auth.sinAcceso, isFalse);
+      expect(auth.distribuidoraId, 1);
+    });
+
     test('borra lo que guardaba la versión anterior (usuario y rol en el teléfono)', () async {
       almacen['sesion_usuario'] = jsonEncode(_sesion);
 
@@ -168,6 +203,7 @@ void main() {
     expect(await auth.login('maria@ejemplo.com', 'secreto123'), isTrue);
 
     expect(auth.rol, 'revendedor');
+    expect(auth.sinAcceso, isFalse);
     expect(almacen.keys, ['token_sanctum']);
   });
 
