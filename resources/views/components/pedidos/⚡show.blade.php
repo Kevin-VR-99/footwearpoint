@@ -2,7 +2,9 @@
 
 use App\Models\Pedido;
 use App\Services\Pedido\EnviarPedidoAction;
+use App\Services\Pedido\MarcarListoEntregaAction;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
+use App\Services\Pedido\RegistrarRecoleccionAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -62,7 +64,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         }
     }
 
-        public function registrarPago(RegistrarPagoPedidoAction $accion)
+    public function registrarPago(RegistrarPagoPedidoAction $accion)
     {
         $this->mensaje = '';
         $this->errorMsg = '';
@@ -95,6 +97,40 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             $this->errorMsg = $e->getMessage();
         }
     }
+
+    public function marcarListo(MarcarListoEntregaAction $accion)
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $accion->ejecutar($this->pedido);
+            unset($this->pedido);
+            unset($this->resumen);
+            $this->mensaje = 'Pedido marcado como listo para entrega.';
+        } catch (ValidationException $e) {
+            $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo marcar.';
+        } catch (\Throwable $e) {
+            $this->errorMsg = $e->getMessage();
+        }
+    }
+
+    public function registrarRecoleccion(RegistrarRecoleccionAction $accion)
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $accion->ejecutar($this->pedido);
+            unset($this->pedido);
+            unset($this->resumen);
+            $this->mensaje = 'Recolección registrada.';
+        } catch (ValidationException $e) {
+            $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo registrar.';
+        } catch (\Throwable $e) {
+            $this->errorMsg = $e->getMessage();
+        }
+    }
 };
 ?>
 
@@ -112,12 +148,28 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             </div>
         </div>
 
-        @if ($this->pedido->estado === 'borrador')
-            <button type="button" wire:click="enviar"
-                class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB]">
-                Enviar pedido
-            </button>
-        @endif
+        <div class="flex flex-wrap gap-2">
+            @if ($this->pedido->estado === 'borrador')
+                <button type="button" wire:click="enviar"
+                    class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB]">
+                    Enviar pedido
+                </button>
+            @endif
+
+            @if ($this->pedido->estado === 'recibido_distribuidora')
+                <button type="button" wire:click="marcarListo"
+                    class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB]">
+                    Listo para entrega
+                </button>
+            @endif
+
+            @if ($this->pedido->estado === 'listo_entrega')
+                <button type="button" wire:click="registrarRecoleccion"
+                    class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB]">
+                    Registrar recolección
+                </button>
+            @endif
+        </div>
     </div>
 
     @if ($this->pedido->estado === 'borrador')
