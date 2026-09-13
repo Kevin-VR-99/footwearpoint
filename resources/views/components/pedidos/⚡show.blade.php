@@ -52,6 +52,8 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
 
         try {
             $accion->ejecutar($this->pedido);
+            unset($this->pedido);
+            unset($this->resumen);
             $this->mensaje = 'Pedido enviado correctamente.';
         } catch (ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo enviar.';
@@ -60,10 +62,14 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         }
     }
 
-    public function registrarPago(RegistrarPagoPedidoAction $accion)
+        public function registrarPago(RegistrarPagoPedidoAction $accion)
     {
         $this->mensaje = '';
         $this->errorMsg = '';
+
+        if ($this->resumen['anticipo_pendiente'] <= 0) {
+            $this->pagoTipo = 'saldo_pedido';
+        }
 
         $this->validate([
             'pagoTipo' => 'required|in:anticipo,saldo_pedido',
@@ -122,6 +128,19 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         </div>
     @endif
 
+    @if (in_array($this->pedido->estado, ['recibido_distribuidora', 'listo_entrega'], true))
+        <div class="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            La mercancía ya está en sucursal.
+            @if ($this->resumen['saldo'] > 0)
+                Saldo pendiente:
+                <span class="font-semibold tabular-nums">${{ number_format($this->resumen['saldo'], 2) }}</span>.
+                Cobra el saldo abajo antes de entregar.
+            @else
+                No hay saldo pendiente.
+            @endif
+        </div>
+    @endif
+
     @if ($mensaje)
         <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
             {{ $mensaje }}
@@ -160,7 +179,9 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 <label class="text-sm">
                     <span class="block text-slate-500 mb-1">Tipo</span>
                     <select wire:model="pagoTipo" class="w-full rounded-lg border-slate-300 text-sm">
-                        <option value="anticipo">Anticipo</option>
+                        @if ($this->resumen['anticipo_pendiente'] > 0)
+                            <option value="anticipo">Anticipo</option>
+                        @endif
                         <option value="saldo_pedido">Saldo</option>
                     </select>
                 </label>
