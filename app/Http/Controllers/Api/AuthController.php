@@ -22,6 +22,15 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
+    /**
+     * Roles del personal interno: no pueden iniciar sesión por la API.
+     *
+     * Es una lista de los que se rechazan, no de los que se permiten, a
+     * propósito: un revendedor suspendido (rol en null porque no resuelve
+     * distribuidora) sigue entrando, y el TenantScope hace que no vea nada.
+     */
+    private const ROLES_SOLO_WEB = ['admin_general', 'admin_distribuidora', 'empleado'];
+
     public function login(LoginRequest $request)
     {
         $usuario = Usuario::where('email', $request->email)->first();
@@ -37,9 +46,6 @@ class AuthController extends Controller
                 'email' => ['Tu cuenta no está activa.'],
             ]);
         }
-
-        // Token Sanctum
-        $token = $usuario->createToken('auth_token')->plainTextToken;
 
         // La distribuidora se resuelve con la misma lógica que usa todo el
         // resto del sistema (TG-134), no con una búsqueda propia: antes aquí
@@ -63,6 +69,20 @@ class AuthController extends Controller
             setPermissionsTeamId(0);
             $rol = $usuario->getRoleNames()->first();
         }
+
+        // TG-93 (E1-01): este login lo usa la app móvil, que es solo para
+        // revendedor y cliente directo. El personal interno entra por el
+        // panel web, que tiene su propio login con sesión y no pasa por aquí.
+        // Se revisa ANTES de crear el token, para no dejarle uno válido a
+        // quien se está rechazando.
+        if (in_array($rol, self::ROLES_SOLO_WEB, true)) {
+            throw ValidationException::withMessages([
+                'email' => ['Esta aplicación es solo para revendedores y clientes directos.'],
+            ]);
+        }
+
+        // Token Sanctum
+        $token = $usuario->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'data' => [
