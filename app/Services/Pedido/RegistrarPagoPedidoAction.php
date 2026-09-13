@@ -2,23 +2,23 @@
 
 namespace App\Services\Pedido;
 
-use App\Models\Auditoria;
 use App\Models\DistribuidoraStaff;
 use App\Models\Pago;
 use App\Models\Pedido;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class RegistrarPagoPedidoAction
 {
-    /**
-     * Registra un pago de pedido (anticipo o saldo) en la tabla pagos.
-     * El pedido no guarda columnas de anticipo/saldo: se calculan sumando pagos aplicados.
-     */
+    public function __construct(
+        protected RegistrarAuditoriaAction $auditoria
+    ) {}
+
     public function ejecutar(Pedido $pedido, array $datos): Pedido
     {
-        $tipo = $datos['tipo']; // anticipo | saldo_pedido
+        $tipo = $datos['tipo'];
         $metodo = $datos['metodo'];
         $monto = round((float) $datos['monto'], 2);
 
@@ -70,38 +70,35 @@ class RegistrarPagoPedidoAction
 
         return DB::transaction(function () use ($pedido, $tipo, $metodo, $monto, $datos, $staffId) {
             $pago = Pago::create([
-                'distribuidora_id'         => $pedido->distribuidora_id,
-                'pedido_id'                => $pedido->id,
-                'venta_directa_id'         => null,
-                'folio'                    => $this->generarFolio((int) $pedido->distribuidora_id),
-                'tipo'                     => $tipo,
-                'direccion'                => 'entrada',
-                'metodo'                   => $metodo,
-                'monto'                    => $monto,
-                'fecha_pago'               => now(),
-                'referencia'               => $datos['referencia'] ?? null,
-                'proveedor_pago'           => null,
-                'referencia_externa'       => null,
-                'estado'                   => 'aplicado',
-                'registrado_por_staff_id'  => $staffId,
+                'distribuidora_id'        => $pedido->distribuidora_id,
+                'pedido_id'               => $pedido->id,
+                'venta_directa_id'        => null,
+                'folio'                   => $this->generarFolio((int) $pedido->distribuidora_id),
+                'tipo'                    => $tipo,
+                'direccion'               => 'entrada',
+                'metodo'                  => $metodo,
+                'monto'                   => $monto,
+                'fecha_pago'              => now(),
+                'referencia'              => $datos['referencia'] ?? null,
+                'proveedor_pago'          => null,
+                'referencia_externa'      => null,
+                'estado'                  => 'aplicado',
+                'registrado_por_staff_id' => $staffId,
             ]);
 
-            Auditoria::create([
-                'usuario_id'       => Auth::id(),
-                'distribuidora_id' => $pedido->distribuidora_id,
-                'accion'           => 'pago.'.$tipo,
-                'entidad_tipo'     => 'pago',
-                'entidad_id'       => $pago->id,
-                'datos_previos'    => null,
-                'datos_nuevos'     => [
+            $this->auditoria->ejecutar(
+                'pago.'.$tipo,
+                'pago',
+                $pago->id,
+                null,
+                [
                     'pedido_id' => $pedido->id,
                     'folio'     => $pago->folio,
                     'tipo'      => $tipo,
                     'monto'     => $monto,
                     'metodo'    => $metodo,
-                ],
-                'ip_origen'        => request()?->ip(),
-            ]);
+                ]
+            );
 
             return $pedido->fresh([
                 'clienteDirecto',
@@ -112,7 +109,6 @@ class RegistrarPagoPedidoAction
         });
     }
 
-    /** @return array{pagado: float, saldo: float, anticipo_requerido: float, anticipo_pagado: float, anticipo_pendiente: float} */
     public function resumen(Pedido $pedido): array
     {
         $pedido->loadMissing('detalle', 'pagos');
@@ -130,11 +126,11 @@ class RegistrarPagoPedidoAction
         $anticipoPendiente = round(max(0, $anticipoRequerido - $anticipoPagado), 2);
 
         return [
-            'pagado'              => $pagado,
-            'saldo'               => $saldo,
-            'anticipo_requerido'  => $anticipoRequerido,
-            'anticipo_pagado'     => $anticipoPagado,
-            'anticipo_pendiente'  => $anticipoPendiente,
+            'pagado'             => $pagado,
+            'saldo'              => $saldo,
+            'anticipo_requerido' => $anticipoRequerido,
+            'anticipo_pagado'    => $anticipoPagado,
+            'anticipo_pendiente' => $anticipoPendiente,
         ];
     }
 
