@@ -26,6 +26,12 @@ Route::prefix('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])
         ->middleware('auth:sanctum');
 
+    // Recuperar la sesión al abrir la app (TG-140). Solo auth:sanctum, sin
+    // role:..., porque tiene que responder a cualquier rol, incluido un
+    // revendedor suspendido (que recibe distribuidora_id null).
+    Route::get('/me', [AuthController::class, 'me'])
+        ->middleware('auth:sanctum');
+
     Route::post('/register-empleado', [AuthController::class, 'registerEmpleado'])
         ->middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora']);
 
