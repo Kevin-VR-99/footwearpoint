@@ -32,6 +32,9 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
     public string $aviso = '';
     public string $errorMsg = '';
 
+    /** La venta recién cobrada, para el enlace a su comprobante (E7-02). */
+    public ?int $ultimaVentaId = null;
+
     public function mount()
     {
         if (! Auth::check()) {
@@ -308,6 +311,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
 
             $this->limpiar();
             $this->mensaje = $confirmacion;
+            $this->ultimaVentaId = (int) $resultado->venta->id;
         } catch (OperacionInvalidaException $e) {
             $this->errorMsg = $e->getMessage();
         } catch (\Throwable $e) {
@@ -328,6 +332,11 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
     @if ($mensaje)
         <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
             {{ $mensaje }}
+            @if ($ultimaVentaId)
+                {{-- Pestaña nueva: el punto de venta queda listo para la siguiente venta. --}}
+                <a href="{{ route('ventas-directas.comprobante', $ultimaVentaId) }}" target="_blank"
+                    class="ml-2 font-semibold underline">Ver comprobante</a>
+            @endif
         </div>
     @endif
 

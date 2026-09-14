@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ComprobanteVentaController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -76,6 +77,20 @@ Route::middleware('auth')->group(function () {
 
     Route::livewire('/punto-venta', 'punto-venta.index')
         ->name('punto-venta.index');
+
+    // E7-02 — comprobante de venta directa: ver/imprimir, PDF y correo.
+    // Solo personal de la distribuidora; la venta de otra distribuidora da 404.
+    Route::middleware(['tenant.team', 'role:admin_distribuidora|empleado'])
+        ->prefix('ventas-directas/{id}/comprobante')
+        ->whereNumber('id')
+        ->group(function () {
+            Route::get('/', [ComprobanteVentaController::class, 'show'])
+                ->name('ventas-directas.comprobante');
+            Route::get('/pdf', [ComprobanteVentaController::class, 'pdf'])
+                ->name('ventas-directas.comprobante.pdf');
+            Route::post('/enviar', [ComprobanteVentaController::class, 'enviar'])
+                ->name('ventas-directas.comprobante.enviar');
+        });
 
     Route::livewire('/ciclo', 'ciclo.index')
         ->name('ciclo.index');
