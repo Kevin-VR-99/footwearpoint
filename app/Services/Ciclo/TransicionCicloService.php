@@ -28,8 +28,25 @@ use Illuminate\Support\Facades\DB;
  */
 class TransicionCicloService
 {
-    /** Pedidos que si se mandan a fabrica al solicitar el ciclo. */
-    private const PEDIDOS_A_SOLICITAR = ['confirmado', 'incluido_en_ciclo'];
+    /**
+     * Pedidos que si se mandan a fabrica al solicitar el ciclo: los activos.
+     *
+     * E10-03 (TG-120), decision del equipo: se incluye 'colocado' y
+     * 'en_revision' porque en el sistema no existe un paso que pase un pedido
+     * a 'confirmado' (enviar lo deja en 'colocado'). Con solo 'confirmado' e
+     * 'incluido_en_ciclo', ningun pedido real llegaba nunca a fabrica.
+     * Si algun dia se construye el paso de revisar y confirmar, se ajusta aqui.
+     */
+    private const PEDIDOS_A_SOLICITAR = ['colocado', 'en_revision', 'confirmado', 'incluido_en_ciclo'];
+
+    /**
+     * Pedidos que nunca cuentan en el consolidado a fabrica (E10-03).
+     *
+     * Se excluyen en vez de listar los que si cuentan a proposito: despues de
+     * solicitar, los pedidos ya estan en 'solicitado_fabrica', 'en_transito',
+     * etc., y el consolidado tiene que seguir mostrando lo que se pidio.
+     */
+    private const PEDIDOS_FUERA_DEL_CONSOLIDADO = ['rechazado', 'descartado'];
 
     /** Pedidos que si se marcan como recibidos al llegar el ciclo. */
     private const PEDIDOS_A_RECIBIR = ['solicitado_fabrica', 'en_transito'];
@@ -192,11 +209,16 @@ class TransicionCicloService
      * PHP en vez de con SQL crudo (convencion E17-02). Los textos salen de la
      * fotografia historica de pedido_detalle, no del catalogo actual.
      *
+     * Nunca suma pedidos rechazados ni descartados (E10-03): esas piezas no
+     * se le piden a fabrica.
+     *
      * @return array<int, array<string, mixed>>
      */
     private function consolidado(CicloCompra $ciclo): array
     {
-        $pedidoIds = $this->pedidosDelCiclo($ciclo)->pluck('id');
+        $pedidoIds = $this->pedidosDelCiclo($ciclo)
+            ->reject(fn ($pedido) => in_array($pedido->estado, self::PEDIDOS_FUERA_DEL_CONSOLIDADO, true))
+            ->pluck('id');
 
         if ($pedidoIds->isEmpty()) {
             return [];

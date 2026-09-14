@@ -286,7 +286,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
                 <div class="px-5 py-3 border-b border-slate-100">
                     <h3 class="text-sm font-semibold text-slate-800">Consolidado por variante</h3>
                     <p class="text-xs text-slate-500 mt-0.5">
-                        Lo que se le pide a fábrica, sumando todos los pedidos del ciclo.
+                        Lo que se le pide a fábrica, sumando los pedidos del ciclo (sin rechazados ni descartados).
                     </p>
                 </div>
 
