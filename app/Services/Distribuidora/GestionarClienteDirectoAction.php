@@ -3,6 +3,7 @@
 namespace App\Services\Distribuidora;
 
 use App\Models\ClienteDirecto;
+use Illuminate\Support\Facades\DB;
 
 class GestionarClienteDirectoAction
 {
@@ -21,9 +22,17 @@ class GestionarClienteDirectoAction
 
     public function actualizar(ClienteDirecto $cliente, array $datos): ClienteDirecto
     {
-        $cliente->fill($datos);
-        $cliente->save();
+        return DB::transaction(function () use ($cliente, $datos) {
+            $sincronizar = app(SincronizarCuentaDesdeContactoAction::class);
+            $datos = $sincronizar->normalizar($datos);
 
-        return $cliente->fresh();
+            $cliente->fill($datos);
+            $cliente->save();
+
+            // TG-147: si ya tiene cuenta de la app, que vea el dato nuevo.
+            $sincronizar->ejecutar($cliente->usuario_id, $datos);
+
+            return $cliente->fresh();
+        });
     }
 }

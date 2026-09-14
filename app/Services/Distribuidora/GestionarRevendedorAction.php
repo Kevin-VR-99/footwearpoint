@@ -43,11 +43,18 @@ class GestionarRevendedorAction
     public function actualizar(RevendedorDistribuidora $afiliacion, array $datos): RevendedorDistribuidora
     {
         return DB::transaction(function () use ($afiliacion, $datos) {
-            $datosContacto = array_intersect_key($datos, array_flip(['nombre', 'telefono', 'email']));
+            $sincronizar = app(SincronizarCuentaDesdeContactoAction::class);
+
+            $datosContacto = $sincronizar->normalizar(
+                array_intersect_key($datos, array_flip(['nombre', 'telefono', 'email']))
+            );
             $datosAfiliacion = array_intersect_key($datos, array_flip(['codigo_interno', 'notas', 'estado']));
 
             if ($datosContacto !== []) {
                 $afiliacion->revendedor->fill($datosContacto)->save();
+
+                // TG-147: si ya tiene cuenta de la app, que vea el dato nuevo.
+                $sincronizar->ejecutar($afiliacion->revendedor->usuario_id, $datosContacto);
             }
 
             if ($datosAfiliacion !== []) {
