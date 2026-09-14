@@ -43,6 +43,7 @@ dependencies:
   provider: 6.1.5+1               # manejo de estado
   flutter_secure_storage: 11.1.1  # guarda el token de Sanctum cifrado
   firebase_core: 4.14.0           # conecta la app con Firebase al arrancar
+  firebase_messaging: 16.7.0     # pide el token del dispositivo
 
 dev_dependencies:
   flutter_test:
