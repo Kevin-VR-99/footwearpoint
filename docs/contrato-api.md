@@ -141,7 +141,9 @@ Requiere token.
 { "fcm_token": "token-que-da-firebase" }
 ```
 
-Si se manda, ese celular **deja de recibir notificaciones push** en la misma llamada (E16-03 / TG-136). La app debe mandarlo siempre que tenga el token de Firebase: si no, el celular seguiría recibiendo avisos de una cuenta que ya cerró sesión. Solo borra el dispositivo si es de ese usuario.
+Al cerrar la sesión, **el celular que se registró con esa sesión deja de recibir push automáticamente**, aunque la app no mande nada (TG-144): el servidor borra el registro del celular junto con el token.
+
+`fcm_token` sigue siendo opcional (TG-136). Ya no hace falta para que el celular deje de recibir avisos; solo cubre celulares registrados antes de TG-144. Mandarlo no hace daño. Solo borra el dispositivo si es de ese usuario.
 
 **Salida (200):** `{ "message": "Sesión cerrada correctamente." }`
 
@@ -465,7 +467,14 @@ Guarda el token que Firebase le da a este celular, ligado al usuario que inició
 
 > **Mismo celular, otra cuenta:** el token identifica al celular, no a la persona. Si otra cuenta inicia sesión en ese celular y lo registra, el token pasa a esa cuenta: la anterior deja de recibir ahí sus avisos.
 
-**Para quitarlo** no hay endpoint aparte: se manda `fcm_token` al cerrar sesión (ver `POST /api/auth/logout`).
+**El celular queda ligado a la sesión con la que se registró** (TG-144). Cuando esa sesión termina, por la razón que sea, el servidor borra el celular solo y deja de mandarle push:
+
+- cerrar sesión,
+- restablecer la contraseña con el enlace del correo (se cierran todas las sesiones),
+- que la cuenta se desactive,
+- cambiar la contraseña desde otro celular (se cierran las demás sesiones).
+
+Por eso **hay que registrar el celular después de cada inicio de sesión**, no solo la primera vez: la sesión nueva es la que queda ligada. No hay endpoint para quitarlo a mano.
 
 ---
 
