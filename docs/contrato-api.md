@@ -182,6 +182,16 @@ Sin token.
 
 La contraseña debe tener mínimo 8 caracteres y coincidir con su confirmación.
 
+**Error (422):** si el enlace no sirve, por cualquier motivo, siempre el mismo:
+
+```json
+{ "message": "El enlace no es válido o ya venció. Solicita uno nuevo.", "errors": { "token": ["El enlace no es válido o ya venció. Solicita uno nuevo."] } }
+```
+
+No distingue si el correo existe o si el enlace es inventado o vencido, a propósito, para no revelar quién tiene cuenta (mismo criterio que `forgot-password`).
+
+**Al restablecerla se cierran todas las sesiones de esa cuenta** (TG-142): cualquier celular que tuviera la app abierta con esa cuenta va a recibir **401** en su siguiente petición y tiene que volver a iniciar sesión. Es a propósito: quien restablece puede sospechar que alguien más conoce su contraseña.
+
 ---
 
 ## 3. Catálogo
