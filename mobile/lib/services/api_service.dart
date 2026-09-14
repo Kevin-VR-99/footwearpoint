@@ -79,6 +79,16 @@ class ApiService {
     );
   }
 
+  Future<Map<String, dynamic>> patch(String ruta, {Map<String, dynamic>? cuerpo}) async {
+    return _enviar(
+      () async => _cliente.patch(
+        _url(ruta),
+        headers: await _encabezados(),
+        body: jsonEncode(cuerpo ?? const <String, dynamic>{}),
+      ),
+    );
+  }
+
   /// Acepta la ruta con o sin diagonal al inicio: 'auth/login' y
   /// '/auth/login' llegan al mismo lugar.
   Uri _url(String ruta) {
