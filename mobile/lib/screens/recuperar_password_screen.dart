@@ -20,11 +20,12 @@ class RecuperarPasswordScreen extends StatefulWidget {
   /// El correo que ya se había escrito en el login, si había alguno.
   final String correoInicial;
 
-  /// Es el mismo texto exista o no una cuenta con ese correo: decir "no
-  /// existe" le serviría a cualquiera para averiguar qué correos están
-  /// registrados.
-  static const mensajeEnviado =
-      'Si el correo pertenece a una cuenta, te llegará un enlace para crear una nueva contraseña.';
+  /// Solo por si el servidor no mandara `message`. Normalmente se muestra el
+  /// que manda el servidor, tal cual (docs/contrato-api.md, forgot-password):
+  /// es el mismo exista o no la cuenta, para no revelar quién está registrado.
+  /// Mismo texto que EnviarEnlaceRecuperacionAction::MENSAJE del backend.
+  static const mensajeRespaldo =
+      'Si el correo pertenece a una cuenta, te llegará un enlace para restablecer tu contraseña.';
 
   @override
   State<RecuperarPasswordScreen> createState() => _RecuperarPasswordScreenState();
@@ -40,6 +41,9 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
   /// El correo al que se mandó el enlace. Mientras sea null se ve el
   /// formulario; cuando tiene valor se ve "Revisa tu bandeja".
   String? _correoEnviado;
+
+  /// Lo que respondió el servidor al mandar el enlace.
+  String? _mensajeEnviado;
 
   @override
   void dispose() {
@@ -61,24 +65,19 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
     });
 
     String? enviado;
+    String? mensaje;
     String? error;
 
     try {
-      await api.post('auth/forgot-password', cuerpo: {'email': correo});
+      // El backend responde SIEMPRE 200 con el mismo mensaje, exista o no el
+      // correo (TG-141). La app lo muestra tal cual y no intenta deducir nada.
+      final respuesta = await api.post('auth/forgot-password', cuerpo: {'email': correo});
       enviado = correo;
+      mensaje = respuesta['message'] as String?;
     } on ApiException catch (e) {
-      if (e.codigoHttp == 422 && e.errores.isEmpty) {
-        // Un 422 sin errores de validación es el broker de Laravel diciendo
-        // "ese correo no tiene cuenta" o "ya pediste uno hace menos de un
-        // minuto". Los dos se muestran igual que un envío exitoso, para no
-        // delatar qué correos existen (decisión con Kevin: el backend
-        // también va a responder siempre 200).
-        enviado = correo;
-      } else {
-        // Correo mal escrito (viene en errors.email), sin conexión o error
-        // del servidor: eso sí hay que decirlo, no revela nada.
-        error = e.errorDe('email') ?? e.mensaje;
-      }
+      // Correo mal escrito (viene en errors.email), sin conexión o error del
+      // servidor: eso sí hay que decirlo, no revela nada sobre las cuentas.
+      error = e.errorDe('email') ?? e.mensaje;
     }
 
     if (!mounted) return;
@@ -86,6 +85,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
     setState(() {
       _enviando = false;
       _correoEnviado = enviado;
+      _mensajeEnviado = mensaje;
       _error = error;
     });
   }
@@ -184,7 +184,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          RecuperarPasswordScreen.mensajeEnviado,
+          _mensajeEnviado ?? RecuperarPasswordScreen.mensajeRespaldo,
           textAlign: TextAlign.center,
           style: tema.textTheme.bodyLarge,
         ),

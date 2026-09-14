@@ -78,36 +78,29 @@ void main() {
     expect(peticiones, isEmpty);
   });
 
-  testWidgets('al enviar bien, muestra "Revisa tu bandeja" con el texto neutro', (tester) async {
-    await abrirPantalla(
-      tester,
-      () async => _json({'message': 'Se ha enviado el enlace de recuperación al correo.'}, 200),
-    );
+  testWidgets('al enviar, muestra "Revisa tu bandeja" con el mensaje del servidor tal cual', (tester) async {
+    // Un texto distinto al de respaldo, para comprobar que se usa el que
+    // manda el servidor y no uno escrito en la app.
+    const delServidor = 'Mensaje neutro que manda el servidor.';
+
+    await abrirPantalla(tester, () async => _json({'message': delServidor}, 200));
 
     await enviar(tester, 'maria@ejemplo.com');
 
     expect(peticiones.single.url.path, endsWith('/auth/forgot-password'));
     expect(jsonDecode(peticiones.single.body), {'email': 'maria@ejemplo.com'});
     expect(find.text('Revisa tu bandeja'), findsOneWidget);
-    expect(find.text(RecuperarPasswordScreen.mensajeEnviado), findsOneWidget);
+    expect(find.text(delServidor), findsOneWidget);
+    expect(find.text(RecuperarPasswordScreen.mensajeRespaldo), findsNothing);
   });
 
-  testWidgets('si el correo no tiene cuenta (422 sin errores), muestra lo mismo que un envío bueno', (tester) async {
-    // Lo que responde hoy el backend cuando el correo no existe o se pidió
-    // otro enlace hace menos de un minuto.
-    await abrirPantalla(
-      tester,
-      () async => _json({
-        'message': 'No se pudo enviar el enlace de recuperación.',
-        'error': "We can't find a user with that email address.",
-      }, 422),
-    );
+  testWidgets('si el servidor no manda mensaje, usa el mismo texto del backend', (tester) async {
+    await abrirPantalla(tester, () async => _json(<String, Object>{}, 200));
 
-    await enviar(tester, 'noexiste@ejemplo.com');
+    await enviar(tester, 'maria@ejemplo.com');
 
     expect(find.text('Revisa tu bandeja'), findsOneWidget);
-    expect(find.text(RecuperarPasswordScreen.mensajeEnviado), findsOneWidget);
-    expect(find.textContaining('No se pudo'), findsNothing);
+    expect(find.text(RecuperarPasswordScreen.mensajeRespaldo), findsOneWidget);
   });
 
   testWidgets('un error de validación del servidor se muestra', (tester) async {
