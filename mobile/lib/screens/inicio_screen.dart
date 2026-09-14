@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import 'perfil_screen.dart';
 
 /// Pantalla provisional de después del login.
 ///
@@ -38,6 +39,16 @@ class InicioScreen extends StatelessWidget {
                 valor: auth.distribuidoraId?.toString(),
               ),
               const Spacer(),
+              FilledButton.icon(
+                onPressed: auth.ocupado
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(builder: (_) => const PerfilScreen()),
+                        ),
+                icon: const Icon(Icons.person_outline),
+                label: const Text('Mi perfil'),
+              ),
+              const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: auth.ocupado ? null : () => context.read<AuthProvider>().logout(),
                 child: const Text('Cerrar sesión'),

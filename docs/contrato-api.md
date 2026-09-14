@@ -469,21 +469,66 @@ Guarda el token que Firebase le da a este celular, ligado al usuario que inició
 
 ---
 
-## 7. Endpoints que TODAVÍA NO EXISTEN
+## 7. Perfil del usuario (E1-05 / TG-110)
 
-Se documentan aquí para que Flutter pueda avanzar sin esperar al backend, que es justo el propósito de esta historia. **La forma exacta puede cambiar al construirlos** — hay que confirmar contra este documento antes de dar una pantalla por terminada.
+Roles: cualquier usuario con token (solo `auth:sanctum`, igual que `auth/me`), incluido un revendedor con la afiliación suspendida.
 
-### Perfil — historia E1-05
+> **No confundir** con `/api/distribuidora/perfil`, que es el perfil de la distribuidora y solo lo usa su admin. Aquí no hay `{id}`: cada quien solo ve y edita su propia cuenta, la del token.
 
-Ver y editar los datos propios, y cambiar la contraseña. Aún no está definido ni construido.
+### GET `/api/perfil`
 
-Propuesta a confirmar:
+**Salida (200):** el mismo objeto `usuario` del login.
 
-| | |
-|---|---|
-| `GET /api/perfil` | Regresa el mismo objeto `usuario` del login |
-| `PATCH /api/perfil` | Entrada: `nombre`, `telefono` |
-| `POST /api/perfil/password` | Entrada: `password_actual`, `password`, `password_confirmation` |
+```json
+{
+  "data": {
+    "id": 7,
+    "nombre": "María López",
+    "email": "maria@ejemplo.com",
+    "telefono": "9631234567",
+    "estado": "activo"
+  }
+}
+```
+
+### PATCH `/api/perfil`
+
+**Entrada**
+
+```json
+{ "nombre": "María López Ruiz", "telefono": "9630001111" }
+```
+
+- `nombre`: obligatorio, máximo 150.
+- `telefono`: opcional, máximo 30. Vacío o solo espacios se guarda como `null`.
+- El **correo no se cambia** aquí: si se manda `email`, se ignora.
+
+Además de `usuarios`, se actualiza en la misma operación el registro ligado en `revendedores` o `clientes_directos` (lo que ve el empleado en el panel web), para que no se desincronicen.
+
+**Salida (200):** `{ "data": { ...usuario... }, "message": "Datos actualizados correctamente." }`
+**Error (422):** `errors.nombre` / `errors.telefono`.
+
+### POST `/api/perfil/password`
+
+**Entrada**
+
+```json
+{
+  "password_actual": "secreto123",
+  "password": "nuevaClave123",
+  "password_confirmation": "nuevaClave123"
+}
+```
+
+La nueva sigue las mismas reglas que el cambio por enlace: mínimo 8 caracteres y que coincida con su confirmación.
+
+**Salida (200):** `{ "message": "Contraseña actualizada. Se cerró la sesión en tus otros dispositivos." }`
+
+**Se cierran las demás sesiones:** se borran todos los tokens de la cuenta **menos el que hizo la petición**. Ese teléfono sigue dentro; los demás reciben 401 en su siguiente petición.
+
+**Errores (422):**
+- `errors.password_actual` = `"La contraseña actual no es correcta."`
+- `errors.password` si es corta o no coincide la confirmación.
 
 ---
 
@@ -499,6 +544,7 @@ Para verificar o actualizar este documento:
 | Vales | `app/Http/Controllers/Api/ValeController.php`, `app/Http/Requests/Vale/`, `app/Http/Resources/ValeResource.php` |
 | Notificaciones | `app/Http/Controllers/Api/NotificacionController.php`, `app/Http/Resources/NotificacionResource.php` |
 | Dispositivos FCM | `app/Http/Controllers/Api/DispositivoFcmController.php`, `app/Services/Notificacion/GestionarDispositivoFcmAction.php` |
+| Perfil | `app/Http/Controllers/Api/PerfilUsuarioController.php`, `app/Http/Requests/Perfil/`, `app/Services/Perfil/` |
 | Quién entra a qué | `routes/api.php` y `routes/api/*.php` |
 | Filtro por dueño | `app/Support/PropietarioActual.php` |
 | Filtro por distribuidora | `app/Support/Tenant.php`, `app/Models/Scopes/TenantScope.php` |

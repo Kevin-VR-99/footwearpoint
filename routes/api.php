@@ -92,4 +92,7 @@ require __DIR__.'/api/vales.php';
 require __DIR__.'/api/notificaciones.php';
 require __DIR__.'/api/dispositivos-fcm.php';
 
+// E1-05 — perfil del usuario (no el de la distribuidora)
+require __DIR__.'/api/perfil.php';
+
 require __DIR__.'/api/reportes.php';

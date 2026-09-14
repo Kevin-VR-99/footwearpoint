@@ -150,6 +150,16 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Reemplaza los datos del usuario con los que regresó el servidor (por
+  /// ejemplo, al guardar el perfil), para que el nombre nuevo se vea en toda
+  /// la app sin volver a iniciar sesión. Rol y distribuidora no cambian.
+  void actualizarUsuario(Usuario usuario) {
+    if (!haySesion) return;
+
+    _usuario = usuario;
+    notifyListeners();
+  }
+
   /// Lo llama ApiService cuando el servidor responde 401, desde cualquier
   /// pantalla. Al quedar sin usuario, main.dart muestra el login solo.
   ///
