@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Notificacion\RegistrarDispositivoFcmRequest;
 use App\Services\Notificacion\GestionarDispositivoFcmAction;
 use Illuminate\Http\JsonResponse;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class DispositivoFcmController extends Controller
 {
@@ -20,7 +21,12 @@ class DispositivoFcmController extends Controller
     {
         $datos = $request->validated();
 
-        $dispositivo = $accion->registrar($request->user(), $datos['token'], $datos['plataforma']);
+        // La sesión con la que llega esta petición (TG-144). Solo un token real
+        // de Sanctum tiene id; en cualquier otro caso se guarda sin liga.
+        $sesion = $request->user()->currentAccessToken();
+        $sesionId = $sesion instanceof PersonalAccessToken ? (int) $sesion->getKey() : null;
+
+        $dispositivo = $accion->registrar($request->user(), $datos['token'], $datos['plataforma'], $sesionId);
 
         // El token no se regresa: la app ya lo tiene, y no hace falta que
         // viaje de vuelta.

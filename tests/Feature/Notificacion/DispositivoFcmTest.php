@@ -167,15 +167,19 @@ class DispositivoFcmTest extends TestCase
         $this->withToken($sesion)->getJson('/api/auth/me')->assertStatus(401);
     }
 
-    /** Regresión: el logout de siempre, sin mandar nada, sigue funcionando. */
-    public function test_cerrar_sesion_sin_mandar_el_token_del_celular_sigue_funcionando(): void
+    /**
+     * TG-144: aunque la app no mande fcm_token, al cerrar la sesión la base
+     * borra sola el celular que se registró con ella. Antes de TG-144 el
+     * celular se quedaba y seguía recibiendo push de una cuenta sin sesión.
+     */
+    public function test_cerrar_sesion_sin_mandar_el_token_del_celular_tambien_lo_quita(): void
     {
         $sesion = $this->iniciarSesion(self::MARIA);
         $this->registrar($sesion, 'token-celular-maria');
 
         $this->withToken($sesion)->postJson('/api/auth/logout')->assertOk();
 
-        $this->assertDatabaseHas('dispositivos_fcm', ['token' => 'token-celular-maria']);
+        $this->assertDatabaseMissing('dispositivos_fcm', ['token' => 'token-celular-maria']);
     }
 
     public function test_no_se_puede_quitar_el_celular_de_otra_persona(): void
@@ -190,5 +194,94 @@ class DispositivoFcmTest extends TestCase
             'token'      => 'token-celular-jose',
             'usuario_id' => $this->idDe(self::JOSE),
         ]);
+    }
+
+    // ------------------------------------------------------------------
+    // TG-144: cada celular ligado a su sesión
+    // ------------------------------------------------------------------
+
+    /** El token de Sanctum en texto plano empieza con su id: "15|abc...". */
+    private function idDeSesion(string $sesion): int
+    {
+        return (int) explode('|', $sesion, 2)[0];
+    }
+
+    public function test_el_celular_queda_ligado_a_la_sesion_con_la_que_se_registro(): void
+    {
+        $sesion = $this->iniciarSesion(self::MARIA);
+        $this->registrar($sesion, 'token-celular-maria');
+
+        $this->assertDatabaseHas('dispositivos_fcm', [
+            'token'                    => 'token-celular-maria',
+            'personal_access_token_id' => $this->idDeSesion($sesion),
+        ]);
+    }
+
+    /**
+     * Revocar todas las sesiones de la cuenta (como hace restablecer la
+     * contraseña, TG-142) quita todos sus celulares, sin código extra.
+     */
+    public function test_revocar_todas_las_sesiones_de_la_cuenta_quita_todos_sus_celulares(): void
+    {
+        $this->registrar($this->iniciarSesion(self::MARIA), 'celular-1');
+        $this->registrar($this->iniciarSesion(self::MARIA), 'celular-2');
+        $this->registrar($this->iniciarSesion(self::JOSE), 'celular-de-jose');
+
+        Usuario::where('email', self::MARIA)->firstOrFail()->tokens()->delete();
+
+        $this->assertSame(0, DispositivoFcm::where('usuario_id', $this->idDe(self::MARIA))->count());
+        $this->assertDatabaseHas('dispositivos_fcm', ['token' => 'celular-de-jose']);
+    }
+
+    /**
+     * Lo que va a usar el cambio de contraseña del perfil (TG-143): se revocan
+     * las OTRAS sesiones y el celular desde donde se hizo sigue recibiendo push.
+     */
+    public function test_revocar_las_otras_sesiones_deja_el_celular_de_la_sesion_actual(): void
+    {
+        $sesionActual = $this->iniciarSesion(self::MARIA);
+        $this->registrar($sesionActual, 'celular-actual');
+        $this->registrar($this->iniciarSesion(self::MARIA), 'celular-viejo');
+
+        Usuario::where('email', self::MARIA)->firstOrFail()
+            ->tokens()
+            ->where('id', '!=', $this->idDeSesion($sesionActual))
+            ->delete();
+
+        $this->assertDatabaseHas('dispositivos_fcm', ['token' => 'celular-actual']);
+        $this->assertDatabaseMissing('dispositivos_fcm', ['token' => 'celular-viejo']);
+    }
+
+    /**
+     * Si el mismo celular inicia sesión otra vez y se vuelve a registrar, queda
+     * ligado a la sesión nueva: cerrar la vieja ya no lo borra.
+     */
+    public function test_al_volver_a_registrarse_el_celular_pasa_a_la_sesion_nueva(): void
+    {
+        $sesionVieja = $this->iniciarSesion(self::MARIA);
+        $this->registrar($sesionVieja, 'mismo-celular');
+
+        $sesionNueva = $this->iniciarSesion(self::MARIA);
+        $this->registrar($sesionNueva, 'mismo-celular')->assertOk();
+
+        $this->withToken($sesionVieja)->postJson('/api/auth/logout')->assertOk();
+
+        $this->assertDatabaseHas('dispositivos_fcm', [
+            'token'                    => 'mismo-celular',
+            'personal_access_token_id' => $this->idDeSesion($sesionNueva),
+        ]);
+    }
+
+    /** auth/me revoca la sesión de una cuenta desactivada: su celular se va con ella. */
+    public function test_una_cuenta_desactivada_pierde_su_celular_al_consultar_me(): void
+    {
+        $sesion = $this->iniciarSesion(self::MARIA);
+        $this->registrar($sesion, 'token-celular-maria');
+
+        Usuario::where('email', self::MARIA)->update(['estado' => 'bloqueado']);
+
+        $this->withToken($sesion)->getJson('/api/auth/me')->assertStatus(401);
+
+        $this->assertDatabaseMissing('dispositivos_fcm', ['token' => 'token-celular-maria']);
     }
 }

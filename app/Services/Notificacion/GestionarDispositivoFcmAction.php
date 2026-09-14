@@ -25,15 +25,21 @@ class GestionarDispositivoFcmAction
      *
      * Registrar el mismo token otra vez no duplica nada: solo actualiza cuándo
      * se usó por última vez. Un usuario sí puede tener varios celulares.
+     *
+     * TG-144: también se guarda la sesión de Sanctum con la que se registró.
+     * Cuando esa sesión se revoca, la base borra este celular sola. Si el
+     * mismo celular vuelve a iniciar sesión, al registrarse otra vez queda
+     * ligado a la sesión nueva.
      */
-    public function registrar(Usuario $usuario, string $token, string $plataforma): DispositivoFcm
+    public function registrar(Usuario $usuario, string $token, string $plataforma, ?int $sesionId): DispositivoFcm
     {
         return DispositivoFcm::updateOrCreate(
             ['token' => $token],
             [
-                'usuario_id'    => $usuario->id,
-                'plataforma'    => $plataforma,
-                'ultimo_uso_at' => now(),
+                'usuario_id'               => $usuario->id,
+                'personal_access_token_id' => $sesionId,
+                'plataforma'               => $plataforma,
+                'ultimo_uso_at'            => now(),
             ],
         );
     }

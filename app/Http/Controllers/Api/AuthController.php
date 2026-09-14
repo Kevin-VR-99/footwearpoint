@@ -167,9 +167,12 @@ class AuthController extends Controller
     }
 
     /**
-     * fcm_token es opcional (E16-03 / TG-136): si la app lo manda, ese
-     * celular deja de recibir notificaciones en la misma llamada. Así no
-     * depende de que la app haga dos peticiones en el orden correcto.
+     * Al borrar el token de la sesión, la base de datos borra sola el celular
+     * que se registró con esa sesión (TG-144, ON DELETE CASCADE), así que deja
+     * de recibir push aunque la app no mande nada.
+     *
+     * fcm_token sigue siendo opcional (TG-136): sirve para celulares
+     * registrados antes de ligarlos a la sesión, que la cascada no alcanza.
      */
     public function logout(Request $request, GestionarDispositivoFcmAction $dispositivos)
     {
