@@ -1,9 +1,6 @@
 <?php
 
-use Illuminate\Auth\Events\PasswordReset;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
+use App\Services\Auth\RestablecerPasswordAction;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -37,33 +34,21 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
         ];
     }
 
-    public function resetPassword()
+    /**
+     * Misma acción que la API: además de cambiar la contraseña, revoca todos
+     * los tokens de la cuenta, así la app pide iniciar sesión otra vez (TG-142).
+     */
+    public function resetPassword(RestablecerPasswordAction $accion)
     {
         $this->validate();
 
-        $status = Password::broker('users')->reset(
-            [
-                'email'                 => $this->email,
-                'password'              => $this->password,
-                'password_confirmation' => $this->password_confirmation,
-                'token'                 => $this->token,
-            ],
-            function ($user, $password) {
-                $user->forceFill([
-                    'password' => Hash::make($password),
-                ])->setRememberToken(Str::random(60));
-
-                $user->save();
-                event(new PasswordReset($user));
-            }
-        );
-
-        if ($status === Password::PASSWORD_RESET) {
+        if ($accion->ejecutar($this->email, $this->password, $this->password_confirmation, $this->token)) {
             session()->flash('status', 'Contraseña restablecida. Ya puedes iniciar sesión.');
             return $this->redirect(route('login'), navigate: true);
         }
 
-        $this->addError('email', __($status));
+        // Mismo mensaje exista o no el correo, para no revelar cuentas.
+        $this->addError('email', RestablecerPasswordAction::MENSAJE_ENLACE_INVALIDO);
     }
 };
 ?>

@@ -17,10 +17,8 @@ use App\Http\Requests\Auth\AceptarLegalesRequest;
 use App\Models\AceptacionLegal;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Services\Auth\RestablecerPasswordAction;
 use App\Services\Auth\EnviarEnlaceRecuperacionAction;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Auth\Events\PasswordReset;
-use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -294,30 +292,28 @@ class AuthController extends Controller
         ]);
     }
 
-    public function resetPassword(ResetPasswordRequest $request)
+    /**
+     * Además de cambiar la contraseña, revoca todos los tokens de la cuenta
+     * (TG-142). Si falla, siempre el mismo error, sin decir si el correo
+     * existe. Ver RestablecerPasswordAction.
+     */
+    public function resetPassword(ResetPasswordRequest $request, RestablecerPasswordAction $accion)
     {
-        $status = Password::broker('users')->reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user, $password) {
-                $user->forceFill([
-                    'password' => Hash::make($password),
-                ])->setRememberToken(Str::random(60));
-
-                $user->save();
-
-                event(new PasswordReset($user));
-            }
+        $restablecida = $accion->ejecutar(
+            $request->input('email'),
+            $request->input('password'),
+            (string) $request->input('password_confirmation'),
+            $request->input('token'),
         );
 
-        if ($status === Password::PASSWORD_RESET) {
-            return response()->json([
-                'message' => 'Contraseña restablecida correctamente.',
+        if (! $restablecida) {
+            throw ValidationException::withMessages([
+                'token' => [RestablecerPasswordAction::MENSAJE_ENLACE_INVALIDO],
             ]);
         }
 
         return response()->json([
-            'message' => 'No se pudo restablecer la contraseña.',
-            'error'   => __($status),
-        ], 422);
+            'message' => 'Contraseña restablecida correctamente.',
+        ]);
     }
 }
