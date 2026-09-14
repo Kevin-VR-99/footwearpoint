@@ -193,6 +193,31 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         </div>
     @endif
 
+    @if ($this->pedido->estado === 'listo_entrega' && $this->pedido->fecha_limite_recoleccion)
+        @php
+            $limite = $this->pedido->fecha_limite_recoleccion;
+            $vencido = now()->greaterThan($limite);
+            $porVencer = (! $vencido) && now()->diffInHours($limite, false) <= 48;
+        @endphp
+
+        @if ($vencido)
+            <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+                El plazo de recolección venció el
+                {{ $limite->timezone('America/Mexico_City')->format('d/m/Y H:i') }}.
+            </div>
+        @elseif ($porVencer)
+            <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                El pedido está por vencer. Límite:
+                {{ $limite->timezone('America/Mexico_City')->format('d/m/Y H:i') }}.
+            </div>
+        @else
+            <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                Recoger antes del
+                {{ $limite->timezone('America/Mexico_City')->format('d/m/Y H:i') }}.
+            </div>
+        @endif
+    @endif
+
     @if ($mensaje)
         <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
             {{ $mensaje }}
