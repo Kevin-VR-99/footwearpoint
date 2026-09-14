@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterEmpleadoRequest;
 use App\Models\DistribuidoraStaff;
+use App\Services\Notificacion\GestionarDispositivoFcmAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 use App\Models\Usuario;
@@ -164,8 +165,23 @@ class AuthController extends Controller
         ];
     }
 
-    public function logout(Request $request)
+    /**
+     * fcm_token es opcional (E16-03 / TG-136): si la app lo manda, ese
+     * celular deja de recibir notificaciones en la misma llamada. Así no
+     * depende de que la app haga dos peticiones en el orden correcto.
+     */
+    public function logout(Request $request, GestionarDispositivoFcmAction $dispositivos)
     {
+        $datos = $request->validate([
+            'fcm_token' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        // Primero el dispositivo, mientras todavía se sabe de quién es la
+        // sesión; después se revoca el token.
+        if (! empty($datos['fcm_token'])) {
+            $dispositivos->quitar($request->user(), $datos['fcm_token']);
+        }
+
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([

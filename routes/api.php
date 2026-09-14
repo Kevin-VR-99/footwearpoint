@@ -90,5 +90,6 @@ require __DIR__.'/api/pedidos.php';
 require __DIR__.'/api/marketplace.php';
 require __DIR__.'/api/vales.php';
 require __DIR__.'/api/notificaciones.php';
+require __DIR__.'/api/dispositivos-fcm.php';
 
 require __DIR__.'/api/reportes.php';

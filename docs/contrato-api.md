@@ -133,7 +133,15 @@ En los dos casos de rechazo (cuenta desactivada o personal interno) el servidor 
 
 ### POST `/api/auth/logout`
 
-Requiere token. Sin cuerpo.
+Requiere token.
+
+**Entrada (opcional)**
+
+```json
+{ "fcm_token": "token-que-da-firebase" }
+```
+
+Si se manda, ese celular **deja de recibir notificaciones push** en la misma llamada (E16-03 / TG-136). La app debe mandarlo siempre que tenga el token de Firebase: si no, el celular seguiría recibiendo avisos de una cuenta que ya cerró sesión. Solo borra el dispositivo si es de ese usuario.
 
 **Salida (200):** `{ "message": "Sesión cerrada correctamente." }`
 
@@ -405,6 +413,40 @@ Sin cuerpo.
 **Salida (200):** `{ "data": { ...notificación... }, "message": "Notificación marcada como leída." }`
 **Error (404):** la notificación es de otro usuario.
 
+### POST `/api/dispositivos-fcm`
+
+Requiere token. (E16-03 / TG-136)
+
+Guarda el token que Firebase le da a este celular, ligado al usuario que inició sesión, para poder mandarle notificaciones push.
+
+**Cuándo llamarlo:** después de iniciar sesión (o de recuperar la sesión con `auth/me`), y otra vez cada que Firebase renueve el token del celular. Llamarlo varias veces con el mismo token no duplica nada.
+
+**Entrada**
+
+```json
+{ "token": "token-que-da-firebase", "plataforma": "android" }
+```
+
+`plataforma`: `android`, `ios` o `web`. Este sprint siempre es `android`.
+
+**Salida**
+
+- **201** la primera vez que se registra ese celular
+- **200** si ya estaba registrado (solo se actualiza `ultimo_uso_at`)
+
+```json
+{
+  "data": { "id": 3, "plataforma": "android", "ultimo_uso_at": "2026-09-13T18:20:00-06:00" },
+  "message": "Dispositivo registrado para notificaciones."
+}
+```
+
+**Errores:** **422** si falta `token` o `plataforma`, o la plataforma no es válida.
+
+> **Mismo celular, otra cuenta:** el token identifica al celular, no a la persona. Si otra cuenta inicia sesión en ese celular y lo registra, el token pasa a esa cuenta: la anterior deja de recibir ahí sus avisos.
+
+**Para quitarlo** no hay endpoint aparte: se manda `fcm_token` al cerrar sesión (ver `POST /api/auth/logout`).
+
 ---
 
 ## 7. Endpoints que TODAVÍA NO EXISTEN
@@ -423,20 +465,6 @@ Propuesta a confirmar:
 | `PATCH /api/perfil` | Entrada: `nombre`, `telefono` |
 | `POST /api/perfil/password` | Entrada: `password_actual`, `password`, `password_confirmation` |
 
-### Registro de dispositivo para push — historia E16-03 (TG-136)
-
-`POST /api/dispositivos-fcm` — guarda el token del celular para poder mandarle notificaciones.
-
-La tabla `dispositivos_fcm` ya existe en la base con estas columnas: `usuario_id`, `token`, `plataforma` (`android` / `ios` / `web`), `ultimo_uso_at`. El `token` es único.
-
-Propuesta a confirmar:
-
-```json
-{ "token": "token-que-da-firebase", "plataforma": "android" }
-```
-
-Y una forma de invalidarlo al cerrar sesión, que es un criterio de aceptación de esa historia.
-
 ---
 
 ## 8. De dónde salió cada cosa
@@ -450,6 +478,7 @@ Para verificar o actualizar este documento:
 | Pedidos | `app/Http/Controllers/Api/PedidoController.php`, `app/Http/Requests/Pedido/`, `app/Http/Resources/PedidoResource.php` |
 | Vales | `app/Http/Controllers/Api/ValeController.php`, `app/Http/Requests/Vale/`, `app/Http/Resources/ValeResource.php` |
 | Notificaciones | `app/Http/Controllers/Api/NotificacionController.php`, `app/Http/Resources/NotificacionResource.php` |
+| Dispositivos FCM | `app/Http/Controllers/Api/DispositivoFcmController.php`, `app/Services/Notificacion/GestionarDispositivoFcmAction.php` |
 | Quién entra a qué | `routes/api.php` y `routes/api/*.php` |
 | Filtro por dueño | `app/Support/PropietarioActual.php` |
 | Filtro por distribuidora | `app/Support/Tenant.php`, `app/Models/Scopes/TenantScope.php` |
