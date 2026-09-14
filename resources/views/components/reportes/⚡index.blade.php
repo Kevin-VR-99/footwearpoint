@@ -10,10 +10,12 @@ use Livewire\Component;
 new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class extends Component {
     public string $desde = '';
     public string $hasta = '';
+    public string $cicloId = '';
+    public string $estado = '';
 
     public function mount()
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return $this->redirect(route('login'), navigate: true);
         }
 
@@ -24,7 +26,12 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
 
     public function getResumenProperty(): array
     {
-        return app(ResumenOperativoAction::class)->ejecutar($this->desde !== '' ? $this->desde : null, $this->hasta !== '' ? $this->hasta : null);
+        return app(ResumenOperativoAction::class)->ejecutar(
+            $this->desde !== '' ? $this->desde : null,
+            $this->hasta !== '' ? $this->hasta : null,
+            $this->cicloId !== '' ? (int) $this->cicloId : null,
+            $this->estado !== '' ? $this->estado : null,
+        );
     }
 };
 ?>
@@ -43,6 +50,26 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         <div>
             <label class="block text-xs text-slate-500 mb-1">Hasta</label>
             <input type="date" wire:model.live="hasta" class="rounded-lg border-slate-300 text-sm" />
+        </div>
+        <div>
+            <label class="block text-xs text-slate-500 mb-1">Ciclo</label>
+            <select wire:model.live="cicloId" class="rounded-lg border-slate-300 text-sm">
+                <option value="">Todos</option>
+                @foreach ($this->resumen['ciclos'] ?? [] as $ciclo)
+                    <option value="{{ $ciclo['id'] }}">{{ $ciclo['nombre'] }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs text-slate-500 mb-1">Estado</label>
+            <select wire:model.live="estado" class="rounded-lg border-slate-300 text-sm">
+                <option value="">Todos</option>
+                <option value="borrador">Borrador</option>
+                <option value="colocado">Colocado</option>
+                <option value="recibido_distribuidora">Recibido</option>
+                <option value="listo_entrega">Listo entrega</option>
+                <option value="entregado">Entregado</option>
+            </select>
         </div>
     </div>
 
@@ -97,6 +124,32 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     </div>
 
     <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b font-medium text-slate-800">Pedidos por ciclo</div>
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-50 text-left text-slate-500">
+                <tr>
+                    <th class="px-4 py-2">Ciclo</th>
+                    <th class="px-4 py-2 text-right">Cantidad</th>
+                    <th class="px-4 py-2 text-right">Monto</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @forelse ($this->resumen['pedidos']['por_ciclo'] ?? [] as $fila)
+                    <tr>
+                        <td class="px-4 py-3">{{ $fila['ciclo'] }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums">{{ $fila['cantidad'] }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="3" class="px-4 py-8 text-center text-slate-500">Sin datos</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Detalle de pedidos
             <span class="text-xs font-normal text-slate-500">(máx. 100 del periodo)</span>
@@ -107,6 +160,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                     <tr>
                         <th class="px-4 py-2">Folio</th>
                         <th class="px-4 py-2">Quién</th>
+                        <th class="px-4 py-2">Ciclo</th>
                         <th class="px-4 py-2">Fecha</th>
                         <th class="px-4 py-2">Estado</th>
                         <th class="px-4 py-2">Descripción</th>
@@ -126,6 +180,9 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                                 @if (!empty($pedido['capturado_por']))
                                     <div class="text-xs text-slate-400">Capturó: {{ $pedido['capturado_por'] }}</div>
                                 @endif
+                            </td>
+                            <td class="px-4 py-3 text-slate-600 whitespace-nowrap">
+                                {{ $pedido['ciclo'] ?? '—' }}
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-slate-600">
                                 {{ $pedido['fecha'] ?? '—' }}
@@ -150,7 +207,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-8 text-center text-slate-500">
+                            <td colspan="8" class="px-4 py-8 text-center text-slate-500">
                                 No hay pedidos en el periodo.
                             </td>
                         </tr>
@@ -159,6 +216,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             </table>
         </div>
     </div>
+
     <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Detalle de ventas (punto de venta)

@@ -2,6 +2,7 @@
 
 namespace App\Services\Reporte;
 
+use App\Models\CicloCompra;
 use App\Models\Pedido;
 use App\Models\Vale;
 use App\Models\VentaDirecta;
@@ -9,14 +10,25 @@ use Illuminate\Support\Facades\Schema;
 
 class ResumenOperativoAction
 {
-    public function ejecutar(?string $desde = null, ?string $hasta = null): array
-    {
+    public function ejecutar(
+        ?string $desde = null,
+        ?string $hasta = null,
+        ?int $cicloId = null,
+        ?string $estado = null,
+    ): array {
         $pedidos = Pedido::query();
+
         if ($desde) {
             $pedidos->whereDate('created_at', '>=', $desde);
         }
         if ($hasta) {
             $pedidos->whereDate('created_at', '<=', $hasta);
+        }
+        if ($cicloId) {
+            $pedidos->where('ciclo_compra_id', $cicloId);
+        }
+        if ($estado) {
+            $pedidos->where('estado', $estado);
         }
 
         $porEstado = (clone $pedidos)
@@ -31,6 +43,25 @@ class ResumenOperativoAction
             ->values()
             ->all();
 
+        $porCiclo = (clone $pedidos)
+            ->selectRaw('ciclo_compra_id, COUNT(*) as cantidad, COALESCE(SUM(total), 0) as monto')
+            ->groupBy('ciclo_compra_id')
+            ->get()
+            ->map(function ($r) {
+                $nombre = $r->ciclo_compra_id
+                    ? (CicloCompra::query()->whereKey($r->ciclo_compra_id)->value('nombre') ?? 'Ciclo #'.$r->ciclo_compra_id)
+                    : 'Sin ciclo';
+
+                return [
+                    'ciclo_id' => $r->ciclo_compra_id,
+                    'ciclo'    => $nombre,
+                    'cantidad' => (int) $r->cantidad,
+                    'monto'    => (float) $r->monto,
+                ];
+            })
+            ->values()
+            ->all();
+
         $totalPedidos = (clone $pedidos)->count();
         $montoPedidos = (float) (clone $pedidos)->sum('total');
 
@@ -39,6 +70,7 @@ class ResumenOperativoAction
                 'clienteDirecto:id,nombre',
                 'revendedorAfiliacion.revendedor:id,nombre',
                 'capturadoPor.usuario:id,nombre',
+                'ciclo:id,nombre',
                 'detalle:id,pedido_id,producto_nombre,modelo,talla,color,cantidad',
             ])
             ->latest('created_at')
@@ -48,8 +80,6 @@ class ResumenOperativoAction
                 $quien = $p->clienteDirecto?->nombre
                     ?? $p->revendedorAfiliacion?->revendedor?->nombre
                     ?? '—';
-
-                $capturadoPor = $p->capturadoPor?->usuario?->nombre;
 
                 $descripcion = $p->detalle
                     ->map(fn ($d) => trim(
@@ -68,9 +98,10 @@ class ResumenOperativoAction
                     'id'            => $p->id,
                     'folio'         => $p->folio,
                     'estado'        => $p->estado,
+                    'ciclo'         => $p->ciclo?->nombre ?? '—',
                     'quien'         => $quien,
                     'tipo'          => $p->cliente_directo_id ? 'Cliente' : ($p->revendedor_distribuidora_id ? 'Revendedor' : '—'),
-                    'capturado_por' => $capturadoPor,
+                    'capturado_por' => $p->capturadoPor?->usuario?->nombre,
                     'fecha'         => optional($p->fecha_colocacion ?? $p->created_at)?->format('d/m/Y H:i'),
                     'total'         => (float) $p->total,
                     'descripcion'   => $descripcion !== '' ? $descripcion : 'Sin líneas',
@@ -134,15 +165,25 @@ class ResumenOperativoAction
                 ->all();
         }
 
+        $ciclos = CicloCompra::query()
+            ->orderByDesc('id')
+            ->get(['id', 'nombre'])
+            ->map(fn ($c) => ['id' => $c->id, 'nombre' => $c->nombre])
+            ->all();
+
         return [
             'filtros' => [
-                'desde' => $desde,
-                'hasta' => $hasta,
+                'desde'    => $desde,
+                'hasta'    => $hasta,
+                'ciclo_id' => $cicloId,
+                'estado'   => $estado,
             ],
+            'ciclos'  => $ciclos,
             'pedidos' => [
                 'total'       => $totalPedidos,
                 'monto_total' => $montoPedidos,
                 'por_estado'  => $porEstado,
+                'por_ciclo'   => $porCiclo,
                 'lista'       => $listaPedidos,
             ],
             'vales' => [
