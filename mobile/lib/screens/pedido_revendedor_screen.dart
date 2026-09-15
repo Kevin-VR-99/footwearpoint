@@ -24,7 +24,7 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
   void _enviarPedido() async {
     setState(() => _enviando = true);
 
-    // Simulación de envío agrupado a la distribuidora (E9-01)
+    // Simulación de envío agrupado a la distribuidora (E9-01 / E9-03)
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
@@ -32,7 +32,7 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
     setState(() => _enviando = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('¡Pedido de revendedor enviado con éxito a la distribuidora!')),
+      const SnackBar(content: Text('¡Pedido enviado a la distribuidora a nombre del revendedor!')),
     );
     
     // Regresar al catálogo limpiando la pila de pedido
@@ -106,6 +106,26 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: tema.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline, size: 20, color: tema.colorScheme.primary),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'El pedido se envía a nombre del revendedor (sin reserva de stock local).',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -130,6 +150,7 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
     );
   }
 }
+
 /// 1600 -> "$1,600.00"
 String formatoPrecio(double precio) {
   final partes = precio.toStringAsFixed(2).split('.');
