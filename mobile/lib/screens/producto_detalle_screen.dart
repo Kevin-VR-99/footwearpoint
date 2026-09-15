@@ -239,6 +239,8 @@ class _Precios extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
+    final mayorista = producto.precioMayorista;
+    final ganancia = mayorista != null ? producto.precioMinoristaSugerido - mayorista : null;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -252,14 +254,35 @@ class _Precios extends StatelessWidget {
               precio: producto.precioMinoristaSugerido,
               estilo: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
-            if (producto.precioMayorista != null) ...[
+            if (mayorista != null) ...[
               const Divider(height: 24),
               _FilaPrecio(
                 etiqueta: 'Precio mayorista',
-                precio: producto.precioMayorista!,
+                precio: mayorista,
                 estilo: tema.textTheme.titleMedium?.copyWith(
                   color: tema.colorScheme.primary,
                   fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: tema.colorScheme.primaryContainer.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Ganancia estimada:', style: TextStyle(fontWeight: FontWeight.w500)),
+                    Text(
+                      formatoPrecio(ganancia!),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: tema.colorScheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
