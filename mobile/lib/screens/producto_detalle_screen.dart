@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-
 import '../models/producto_catalogo.dart';
+import 'crear_pedido_screen.dart';
+
 
 /// Detalle de un producto del catálogo (E4-05): fotos, precios y la
 /// disponibilidad de cada variante (talla/color).
@@ -17,6 +18,16 @@ class ProductoDetalleScreen extends StatefulWidget {
 
 class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   int _fotoActual = 0;
+  VarianteCatalogo? _varianteSeleccionada; // <-- NUEVO: Memoria de la talla elegida
+
+  // <-- NUEVO: Función para guardar la talla seleccionada
+  void _seleccionarVariante(VarianteCatalogo variante) {
+    if (variante.disponibilidad == Disponibilidad.noDisponible) return; // No se puede pedir
+    
+    setState(() {
+      _varianteSeleccionada = variante;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +42,29 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(producto.nombre)),
+      // <-- NUEVO: Barra fija en la parte inferior con el botón de tu historia E8-01
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: FilledButton(
+            // El botón está apagado (null) si no hay talla seleccionada
+            onPressed: _varianteSeleccionada == null 
+                ? null 
+                : () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CrearPedidoScreen(
+                          producto: producto,
+                          variante: _varianteSeleccionada!,
+                        ),
+                      ),
+                    );
+                  },
+            child: const Text('Hacer pedido'),
+          ),
+        ),
+      ),
       body: SafeArea(
         child: ListView(
           children: [
@@ -91,7 +125,12 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     )
                   else
                     for (final grupo in producto.variantesPorColor.entries)
-                      _GrupoColor(color: grupo.key, variantes: grupo.value),
+                      _GrupoColor(
+                        color: grupo.key, 
+                        variantes: grupo.value,
+                        varianteSeleccionada: _varianteSeleccionada, // <-- NUEVO
+                        onSeleccionar: _seleccionarVariante,         // <-- NUEVO
+                      ),
                 ],
               ),
             ),
@@ -178,10 +217,17 @@ class _Leyenda extends StatelessWidget {
 }
 
 class _GrupoColor extends StatelessWidget {
-  const _GrupoColor({required this.color, required this.variantes});
+  const _GrupoColor({
+    required this.color, 
+    required this.variantes,
+    required this.varianteSeleccionada, // <-- NUEVO
+    required this.onSeleccionar,        // <-- NUEVO
+  });
 
   final String color;
   final List<VarianteCatalogo> variantes;
+  final VarianteCatalogo? varianteSeleccionada;
+  final ValueChanged<VarianteCatalogo> onSeleccionar;
 
   @override
   Widget build(BuildContext context) {
@@ -196,7 +242,12 @@ class _GrupoColor extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final variante in variantes) _Talla(variante: variante),
+              for (final variante in variantes) 
+                _Talla(
+                  variante: variante,
+                  seleccionada: variante == varianteSeleccionada, // <-- NUEVO
+                  onTap: () => onSeleccionar(variante),           // <-- NUEVO
+                ),
             ],
           ),
         ],
@@ -205,34 +256,49 @@ class _GrupoColor extends StatelessWidget {
   }
 }
 
-/// Una talla, pintada según su disponibilidad.
+/// Una talla, pintada según su disponibilidad y si está seleccionada.
 class _Talla extends StatelessWidget {
-  const _Talla({required this.variante});
+  const _Talla({
+    required this.variante,
+    required this.seleccionada, // <-- NUEVO
+    required this.onTap,        // <-- NUEVO
+  });
 
   final VarianteCatalogo variante;
+  final bool seleccionada;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final estilo = EstiloDisponibilidad.de(variante.disponibilidad);
     final noDisponible = variante.disponibilidad == Disponibilidad.noDisponible;
+    final tema = Theme.of(context); // Usamos el tema para pintar el botón activo
 
     return Tooltip(
       message: 'Talla ${variante.talla}: ${variante.disponibilidad.etiqueta}',
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 52),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: estilo.fondo,
-          border: Border.all(color: estilo.borde),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          variante.talla,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: estilo.texto,
-            fontWeight: FontWeight.w600,
-            decoration: noDisponible ? TextDecoration.lineThrough : null,
+      child: InkWell( // <-- NUEVO: Para que detecte el toque
+        onTap: noDisponible ? null : onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 52),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            // <-- NUEVO: Si está seleccionada, se pinta del color principal de la app
+            color: seleccionada ? tema.colorScheme.primaryContainer : estilo.fondo,
+            border: Border.all(
+              color: seleccionada ? tema.colorScheme.primary : estilo.borde,
+              width: seleccionada ? 2 : 1, // Borde más grueso si está seleccionada
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            variante.talla,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: seleccionada ? tema.colorScheme.onPrimaryContainer : estilo.texto,
+              fontWeight: FontWeight.w600,
+              decoration: noDisponible ? TextDecoration.lineThrough : null,
+            ),
           ),
         ),
       ),
