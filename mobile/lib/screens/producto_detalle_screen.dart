@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-
 import '../models/producto_catalogo.dart';
+import '../models/item_pedido_revendedor.dart';
+import 'crear_pedido_screen.dart';
+import 'pedido_revendedor_screen.dart';
 
-/// Detalle de un producto del catálogo (E4-05): fotos, precios y la
+/// Detalle de un producto del catálogo (E4-05 / E8 / E9): fotos, precios y la
 /// disponibilidad de cada variante (talla/color).
-///
-/// Solo consulta. Agregar al pedido es parte de E8-01 / E9.
 class ProductoDetalleScreen extends StatefulWidget {
   const ProductoDetalleScreen({super.key, required this.producto});
 
@@ -17,6 +17,57 @@ class ProductoDetalleScreen extends StatefulWidget {
 
 class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   int _fotoActual = 0;
+  VarianteCatalogo? _varianteSeleccionada;
+  
+  // Lista acumulada del pedido del revendedor (E9-01)
+  final List<ItemPedidoRevendedor> _carritoRevendedor = [];
+
+  void _seleccionarVariante(VarianteCatalogo variante) {
+    if (variante.disponibilidad == Disponibilidad.noDisponible) return;
+    
+    setState(() {
+      _varianteSeleccionada = variante;
+    });
+  }
+
+  void _agregarAlPedidoRevendedor() {
+    if (_varianteSeleccionada == null) return;
+
+    setState(() {
+      // Verificar si ya existe esta variante en el carrito para sumar cantidad
+      final index = _carritoRevendedor.indexWhere(
+        (item) => item.variante.varianteId == _varianteSeleccionada!.varianteId,
+      );
+
+      if (index >= 0) {
+        _carritoRevendedor[index].cantidad++;
+      } else {
+        _carritoRevendedor.add(
+          ItemPedidoRevendedor(
+            producto: widget.producto,
+            variante: _varianteSeleccionada!,
+          ),
+        );
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Agregado al pedido: Talla ${_varianteSeleccionada!.talla}'),
+        action: SnackBarAction(
+          label: 'Ver pedido (${_carritoRevendedor.fold<int>(0, (sum, i) => sum + i.cantidad)})',
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PedidoRevendedorScreen(itemsIniciales: _carritoRevendedor),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,8 +80,81 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       'Modelo ${producto.modelo}',
     ].join(' · ');
 
+    final esRevendedor = producto.precioMayorista != null;
+
     return Scaffold(
-      appBar: AppBar(title: Text(producto.nombre)),
+      appBar: AppBar(
+        title: Text(producto.nombre),
+        actions: [
+          if (esRevendedor && _carritoRevendedor.isNotEmpty)
+            IconButton(
+              icon: Badge(
+                label: Text('${_carritoRevendedor.fold<int>(0, (sum, i) => sum + i.cantidad)}'),
+                child: const Icon(Icons.shopping_cart),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PedidoRevendedorScreen(itemsIniciales: _carritoRevendedor),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: esRevendedor
+              ? Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _varianteSeleccionada == null ? null : _agregarAlPedidoRevendedor,
+                        icon: const Icon(Icons.add_shopping_cart),
+                        label: const Text('Agregar a pedido'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: _varianteSeleccionada == null 
+                            ? null 
+                            : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CrearPedidoScreen(
+                                      producto: producto,
+                                      variante: _varianteSeleccionada!,
+                                    ),
+                                  ),
+                                );
+                              },
+                        child: const Text('Pedido directo'),
+                      ),
+                    ),
+                  ],
+                )
+              : FilledButton(
+                  onPressed: _varianteSeleccionada == null 
+                      ? null 
+                      : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CrearPedidoScreen(
+                                producto: producto,
+                                variante: _varianteSeleccionada!,
+                              ),
+                            ),
+                          );
+                        },
+                  child: const Text('Hacer pedido'),
+                ),
+        ),
+      ),
       body: SafeArea(
         child: ListView(
           children: [
@@ -91,7 +215,12 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     )
                   else
                     for (final grupo in producto.variantesPorColor.entries)
-                      _GrupoColor(color: grupo.key, variantes: grupo.value),
+                      _GrupoColor(
+                        color: grupo.key, 
+                        variantes: grupo.value,
+                        varianteSeleccionada: _varianteSeleccionada,
+                        onSeleccionar: _seleccionarVariante,
+                      ),
                 ],
               ),
             ),
@@ -110,6 +239,8 @@ class _Precios extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
+    final mayorista = producto.precioMayorista;
+    final ganancia = mayorista != null ? producto.precioMinoristaSugerido - mayorista : null;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -123,16 +254,35 @@ class _Precios extends StatelessWidget {
               precio: producto.precioMinoristaSugerido,
               estilo: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
-            // Solo llega para revendedor: al cliente directo el servidor ni
-            // siquiera le manda el precio mayorista.
-            if (producto.precioMayorista != null) ...[
+            if (mayorista != null) ...[
               const Divider(height: 24),
               _FilaPrecio(
                 etiqueta: 'Precio mayorista',
-                precio: producto.precioMayorista!,
+                precio: mayorista,
                 estilo: tema.textTheme.titleMedium?.copyWith(
                   color: tema.colorScheme.primary,
                   fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: tema.colorScheme.primaryContainer.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Ganancia estimada:', style: TextStyle(fontWeight: FontWeight.w500)),
+                    Text(
+                      formatoPrecio(ganancia!),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: tema.colorScheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -178,10 +328,17 @@ class _Leyenda extends StatelessWidget {
 }
 
 class _GrupoColor extends StatelessWidget {
-  const _GrupoColor({required this.color, required this.variantes});
+  const _GrupoColor({
+    required this.color, 
+    required this.variantes,
+    required this.varianteSeleccionada,
+    required this.onSeleccionar,
+  });
 
   final String color;
   final List<VarianteCatalogo> variantes;
+  final VarianteCatalogo? varianteSeleccionada;
+  final ValueChanged<VarianteCatalogo> onSeleccionar;
 
   @override
   Widget build(BuildContext context) {
@@ -196,7 +353,12 @@ class _GrupoColor extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final variante in variantes) _Talla(variante: variante),
+              for (final variante in variantes) 
+                _Talla(
+                  variante: variante,
+                  seleccionada: variante == varianteSeleccionada,
+                  onTap: () => onSeleccionar(variante),
+                ),
             ],
           ),
         ],
@@ -205,34 +367,47 @@ class _GrupoColor extends StatelessWidget {
   }
 }
 
-/// Una talla, pintada según su disponibilidad.
 class _Talla extends StatelessWidget {
-  const _Talla({required this.variante});
+  const _Talla({
+    required this.variante,
+    required this.seleccionada,
+    required this.onTap,
+  });
 
   final VarianteCatalogo variante;
+  final bool seleccionada;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final estilo = EstiloDisponibilidad.de(variante.disponibilidad);
     final noDisponible = variante.disponibilidad == Disponibilidad.noDisponible;
+    final tema = Theme.of(context);
 
     return Tooltip(
       message: 'Talla ${variante.talla}: ${variante.disponibilidad.etiqueta}',
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 52),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: estilo.fondo,
-          border: Border.all(color: estilo.borde),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          variante.talla,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: estilo.texto,
-            fontWeight: FontWeight.w600,
-            decoration: noDisponible ? TextDecoration.lineThrough : null,
+      child: InkWell(
+        onTap: noDisponible ? null : onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 52),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: seleccionada ? tema.colorScheme.primaryContainer : estilo.fondo,
+            border: Border.all(
+              color: seleccionada ? tema.colorScheme.primary : estilo.borde,
+              width: seleccionada ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            variante.talla,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: seleccionada ? tema.colorScheme.onPrimaryContainer : estilo.texto,
+              fontWeight: FontWeight.w600,
+              decoration: noDisponible ? TextDecoration.lineThrough : null,
+            ),
           ),
         ),
       ),
@@ -266,11 +441,6 @@ class _Puntos extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Piezas que también usa la lista de productos (productos_linea_screen.dart).
-// ---------------------------------------------------------------------------
-
-/// Colores de cada disponibilidad, iguales en la lista y en el detalle.
 class EstiloDisponibilidad {
   const EstiloDisponibilidad({required this.fondo, required this.borde, required this.texto});
 
@@ -323,7 +493,6 @@ class EtiquetaDisponibilidad extends StatelessWidget {
   }
 }
 
-/// La foto de un producto. Sin foto, o si no carga, un ícono en su lugar.
 class ImagenProducto extends StatelessWidget {
   const ImagenProducto({super.key, required this.url});
 
@@ -353,7 +522,6 @@ class ImagenProducto extends StatelessWidget {
   }
 }
 
-/// 1600 -> "$1,600.00"
 String formatoPrecio(double precio) {
   final partes = precio.toStringAsFixed(2).split('.');
   final entero = partes[0].replaceAllMapped(
