@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/producto_catalogo.dart';
+import '../models/item_pedido_revendedor.dart';
 import 'crear_pedido_screen.dart';
+import 'pedido_revendedor_screen.dart';
 
-
-/// Detalle de un producto del catálogo (E4-05): fotos, precios y la
+/// Detalle de un producto del catálogo (E4-05 / E8 / E9): fotos, precios y la
 /// disponibilidad de cada variante (talla/color).
-///
-/// Solo consulta. Agregar al pedido es parte de E8-01 / E9.
 class ProductoDetalleScreen extends StatefulWidget {
   const ProductoDetalleScreen({super.key, required this.producto});
 
@@ -18,15 +17,56 @@ class ProductoDetalleScreen extends StatefulWidget {
 
 class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   int _fotoActual = 0;
-  VarianteCatalogo? _varianteSeleccionada; // <-- NUEVO: Memoria de la talla elegida
+  VarianteCatalogo? _varianteSeleccionada;
+  
+  // Lista acumulada del pedido del revendedor (E9-01)
+  final List<ItemPedidoRevendedor> _carritoRevendedor = [];
 
-  // <-- NUEVO: Función para guardar la talla seleccionada
   void _seleccionarVariante(VarianteCatalogo variante) {
-    if (variante.disponibilidad == Disponibilidad.noDisponible) return; // No se puede pedir
+    if (variante.disponibilidad == Disponibilidad.noDisponible) return;
     
     setState(() {
       _varianteSeleccionada = variante;
     });
+  }
+
+  void _agregarAlPedidoRevendedor() {
+    if (_varianteSeleccionada == null) return;
+
+    setState(() {
+      // Verificar si ya existe esta variante en el carrito para sumar cantidad
+      final index = _carritoRevendedor.indexWhere(
+        (item) => item.variante.varianteId == _varianteSeleccionada!.varianteId,
+      );
+
+      if (index >= 0) {
+        _carritoRevendedor[index].cantidad++;
+      } else {
+        _carritoRevendedor.add(
+          ItemPedidoRevendedor(
+            producto: widget.producto,
+            variante: _varianteSeleccionada!,
+          ),
+        );
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Agregado al pedido: Talla ${_varianteSeleccionada!.talla}'),
+        action: SnackBarAction(
+          label: 'Ver pedido (${_carritoRevendedor.fold<int>(0, (sum, i) => sum + i.cantidad)})',
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PedidoRevendedorScreen(itemsIniciales: _carritoRevendedor),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -40,29 +80,79 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       'Modelo ${producto.modelo}',
     ].join(' · ');
 
+    final esRevendedor = producto.precioMayorista != null;
+
     return Scaffold(
-      appBar: AppBar(title: Text(producto.nombre)),
-      // <-- NUEVO: Barra fija en la parte inferior con el botón de tu historia E8-01
+      appBar: AppBar(
+        title: Text(producto.nombre),
+        actions: [
+          if (esRevendedor && _carritoRevendedor.isNotEmpty)
+            IconButton(
+              icon: Badge(
+                label: Text('${_carritoRevendedor.fold<int>(0, (sum, i) => sum + i.cantidad)}'),
+                child: const Icon(Icons.shopping_cart),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PedidoRevendedorScreen(itemsIniciales: _carritoRevendedor),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: FilledButton(
-            // El botón está apagado (null) si no hay talla seleccionada
-            onPressed: _varianteSeleccionada == null 
-                ? null 
-                : () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CrearPedidoScreen(
-                          producto: producto,
-                          variante: _varianteSeleccionada!,
-                        ),
+          child: esRevendedor
+              ? Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _varianteSeleccionada == null ? null : _agregarAlPedidoRevendedor,
+                        icon: const Icon(Icons.add_shopping_cart),
+                        label: const Text('Agregar a pedido'),
                       ),
-                    );
-                  },
-            child: const Text('Hacer pedido'),
-          ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: _varianteSeleccionada == null 
+                            ? null 
+                            : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CrearPedidoScreen(
+                                      producto: producto,
+                                      variante: _varianteSeleccionada!,
+                                    ),
+                                  ),
+                                );
+                              },
+                        child: const Text('Pedido directo'),
+                      ),
+                    ),
+                  ],
+                )
+              : FilledButton(
+                  onPressed: _varianteSeleccionada == null 
+                      ? null 
+                      : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CrearPedidoScreen(
+                                producto: producto,
+                                variante: _varianteSeleccionada!,
+                              ),
+                            ),
+                          );
+                        },
+                  child: const Text('Hacer pedido'),
+                ),
         ),
       ),
       body: SafeArea(
@@ -128,8 +218,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       _GrupoColor(
                         color: grupo.key, 
                         variantes: grupo.value,
-                        varianteSeleccionada: _varianteSeleccionada, // <-- NUEVO
-                        onSeleccionar: _seleccionarVariante,         // <-- NUEVO
+                        varianteSeleccionada: _varianteSeleccionada,
+                        onSeleccionar: _seleccionarVariante,
                       ),
                 ],
               ),
@@ -162,8 +252,6 @@ class _Precios extends StatelessWidget {
               precio: producto.precioMinoristaSugerido,
               estilo: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
-            // Solo llega para revendedor: al cliente directo el servidor ni
-            // siquiera le manda el precio mayorista.
             if (producto.precioMayorista != null) ...[
               const Divider(height: 24),
               _FilaPrecio(
@@ -220,8 +308,8 @@ class _GrupoColor extends StatelessWidget {
   const _GrupoColor({
     required this.color, 
     required this.variantes,
-    required this.varianteSeleccionada, // <-- NUEVO
-    required this.onSeleccionar,        // <-- NUEVO
+    required this.varianteSeleccionada,
+    required this.onSeleccionar,
   });
 
   final String color;
@@ -245,8 +333,8 @@ class _GrupoColor extends StatelessWidget {
               for (final variante in variantes) 
                 _Talla(
                   variante: variante,
-                  seleccionada: variante == varianteSeleccionada, // <-- NUEVO
-                  onTap: () => onSeleccionar(variante),           // <-- NUEVO
+                  seleccionada: variante == varianteSeleccionada,
+                  onTap: () => onSeleccionar(variante),
                 ),
             ],
           ),
@@ -256,12 +344,11 @@ class _GrupoColor extends StatelessWidget {
   }
 }
 
-/// Una talla, pintada según su disponibilidad y si está seleccionada.
 class _Talla extends StatelessWidget {
   const _Talla({
     required this.variante,
-    required this.seleccionada, // <-- NUEVO
-    required this.onTap,        // <-- NUEVO
+    required this.seleccionada,
+    required this.onTap,
   });
 
   final VarianteCatalogo variante;
@@ -272,22 +359,21 @@ class _Talla extends StatelessWidget {
   Widget build(BuildContext context) {
     final estilo = EstiloDisponibilidad.de(variante.disponibilidad);
     final noDisponible = variante.disponibilidad == Disponibilidad.noDisponible;
-    final tema = Theme.of(context); // Usamos el tema para pintar el botón activo
+    final tema = Theme.of(context);
 
     return Tooltip(
       message: 'Talla ${variante.talla}: ${variante.disponibilidad.etiqueta}',
-      child: InkWell( // <-- NUEVO: Para que detecte el toque
+      child: InkWell(
         onTap: noDisponible ? null : onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
           constraints: const BoxConstraints(minWidth: 52),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            // <-- NUEVO: Si está seleccionada, se pinta del color principal de la app
             color: seleccionada ? tema.colorScheme.primaryContainer : estilo.fondo,
             border: Border.all(
               color: seleccionada ? tema.colorScheme.primary : estilo.borde,
-              width: seleccionada ? 2 : 1, // Borde más grueso si está seleccionada
+              width: seleccionada ? 2 : 1,
             ),
             borderRadius: BorderRadius.circular(8),
           ),
@@ -332,11 +418,6 @@ class _Puntos extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Piezas que también usa la lista de productos (productos_linea_screen.dart).
-// ---------------------------------------------------------------------------
-
-/// Colores de cada disponibilidad, iguales en la lista y en el detalle.
 class EstiloDisponibilidad {
   const EstiloDisponibilidad({required this.fondo, required this.borde, required this.texto});
 
@@ -389,7 +470,6 @@ class EtiquetaDisponibilidad extends StatelessWidget {
   }
 }
 
-/// La foto de un producto. Sin foto, o si no carga, un ícono en su lugar.
 class ImagenProducto extends StatelessWidget {
   const ImagenProducto({super.key, required this.url});
 
@@ -419,7 +499,6 @@ class ImagenProducto extends StatelessWidget {
   }
 }
 
-/// 1600 -> "$1,600.00"
 String formatoPrecio(double precio) {
   final partes = precio.toStringAsFixed(2).split('.');
   final entero = partes[0].replaceAllMapped(
