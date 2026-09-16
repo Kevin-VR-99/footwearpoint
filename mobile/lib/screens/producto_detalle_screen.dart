@@ -51,12 +51,19 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       }
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    // Forzamos el cierre inmediato de cualquier SnackBar previo y evitamos bugs al retroceder
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.removeCurrentSnackBar();
+    
+    messenger.showSnackBar(
       SnackBar(
         content: Text('Agregado al pedido: Talla ${_varianteSeleccionada!.talla}'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating, // Evita colisiones con la barra de navegación
         action: SnackBarAction(
           label: 'Ver pedido (${_carritoRevendedor.fold<int>(0, (sum, i) => sum + i.cantidad)})',
           onPressed: () {
+            messenger.removeCurrentSnackBar();
             Navigator.push(
               context,
               MaterialPageRoute(
