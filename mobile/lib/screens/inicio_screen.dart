@@ -6,13 +6,8 @@ import 'catalogo_screen.dart';
 import 'perfil_screen.dart';
 import 'clientes_privados_screen.dart';
 import 'vales_screen.dart';
+import 'notificaciones_screen.dart';
 
-/// Pantalla provisional de después del login.
-///
-/// Enseña tal cual lo que respondió el servidor. No es una pantalla de
-/// producto: existe para comprobar a simple vista que el login funcionó y
-/// que el backend reconoce bien el rol y la distribuidora del usuario.
-/// Las pantallas de verdad las construyen Ailton y Aurelio encima de esto.
 class InicioScreen extends StatelessWidget {
   const InicioScreen({super.key});
 
@@ -22,7 +17,22 @@ class InicioScreen extends StatelessWidget {
     final usuario = auth.usuario;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('FootwearPoint')),
+      appBar: AppBar(
+        title: const Text('FootwearPoint'),
+        actions: [
+          // Ícono de campana de notificaciones clásico en la esquina superior derecha
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            tooltip: 'Bandeja de Notificaciones',
+            onPressed: auth.ocupado
+                ? null
+                : () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(builder: (_) => const NotificacionesScreen()),
+                    ),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -102,8 +112,6 @@ class _Dato extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Un valor vacío se marca en rojo: si el rol o la distribuidora salen
-    // vacíos, es justo la señal de que algo falta del lado del backend.
     final vacio = valor == null || valor!.isEmpty;
 
     return Padding(
