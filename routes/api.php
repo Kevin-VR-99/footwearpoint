@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Admin\DistribuidoraController;
 use App\Http\Controllers\Api\Admin\PlanSuscripcionController;
+use App\Http\Controllers\Api\ClientePrivadoRevendedorController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/ping', function () {
+Route::post('/ping', function () {
     return response()->json(['status' => 'ok']);
 });
 
@@ -96,3 +97,15 @@ require __DIR__.'/api/dispositivos-fcm.php';
 require __DIR__.'/api/perfil.php';
 
 require __DIR__.'/api/reportes.php';
+
+/*
+|--------------------------------------------------------------------------
+| Clientes particulares privados del revendedor (E9-06)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth:sanctum'])->prefix('revendedor/clientes-privados')->group(function () {
+    Route::get('/', [ClientePrivadoRevendedorController::class, 'index']);
+    Route::post('/', [ClientePrivadoRevendedorController::class, 'store']);
+    Route::put('/{id}', [ClientePrivadoRevendedorController::class, 'update']);
+    Route::delete('/{id}', [ClientePrivadoRevendedorController::class, 'destroy']);
+});

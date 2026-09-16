@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import '../models/usuario.dart';
 import '../services/api_service.dart';
@@ -71,6 +72,7 @@ class AuthProvider extends ChangeNotifier {
 
       final respuesta = await api.get('auth/me');
       _llenarSesion(respuesta['data'] as Map<String, dynamic>);
+      _registrarDispositivoFCM();
     } on ApiException catch (e) {
       if (e.codigoHttp == null) {
         // Sin conexión o el servidor tardó: no se sabe si el token sirve.
@@ -118,6 +120,7 @@ class AuthProvider extends ChangeNotifier {
 
       await api.guardarToken(datos['token'] as String);
       _llenarSesion(datos);
+      _registrarDispositivoFCM();
 
       return true;
     } on ApiException catch (e) {
@@ -136,10 +139,14 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Invalidar token de FCM en el cliente al cerrar sesión
+      await FirebaseMessaging.instance.deleteToken();
       await api.post('auth/logout');
     } on ApiException {
       // Aunque el servidor no conteste, la sesión local se cierra igual: no
       // tiene caso dejar al usuario atrapado dentro de la app.
+    } catch (_) {
+      // Ignorar errores de firebase al expirar si no hay red
     } finally {
       await _olvidarSesion();
 
@@ -198,5 +205,32 @@ class AuthProvider extends ChangeNotifier {
     _distribuidoraId = null;
 
     await api.borrarToken();
+  }
+
+  /// Pide el token a Firebase y lo registra en Laravel (TG-96).
+  void _registrarDispositivoFCM() async {
+    try {
+      // 1. Pedimos el token de este celular a Firebase
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        await api.post(
+          'dispositivos-fcm', 
+          cuerpo: {'token': token, 'plataforma': 'android'},
+        );
+      }
+
+      // 2. Escuchamos por si Firebase decide renovar el token en segundo plano
+      FirebaseMessaging.instance.onTokenRefresh.listen((nuevoToken) async {
+        if (haySesion) {
+          await api.post(
+            'dispositivos-fcm', 
+            cuerpo: {'token': nuevoToken, 'plataforma': 'android'},
+          );
+        }
+      });
+    } catch (e) {
+      // Si el usuario no tiene internet o Firebase falla, lo ignoramos para no tumbar la app
+      debugPrint('Error al registrar FCM: $e');
+    }
   }
 }

@@ -89,6 +89,20 @@ class ApiService {
     );
   }
 
+  Future<Map<String, dynamic>> put(String ruta, {Map<String, dynamic>? cuerpo}) async {
+    return _enviar(
+      () async => _cliente.put(
+        _url(ruta),
+        headers: await _encabezados(),
+        body: jsonEncode(cuerpo ?? const <String, dynamic>{}),
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>> delete(String ruta) async {
+    return _enviar(() async => _cliente.delete(_url(ruta), headers: await _encabezados()));
+  }
+
   /// Acepta la ruta con o sin diagonal al inicio: 'auth/login' y
   /// '/auth/login' llegan al mismo lugar.
   Uri _url(String ruta) {
