@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/ping', function () {
+Route::post('/ping', function () {
     return response()->json(['status' => 'ok']);
 });
 
