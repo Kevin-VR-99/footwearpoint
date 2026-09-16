@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/producto_catalogo.dart';
+import '../models/vale.dart';
+import '../services/vale_service.dart';
 
-/// Pantalla para registrar un pedido directo bajo pedido y aviso de pago de anticipo (E8-01 / E8-02).
+/// Pantalla para registrar un pedido directo y aviso de pago de anticipo,
+/// con soporte integrado para aplicar vales vigentes como descuento directo al producto.
 class CrearPedidoScreen extends StatefulWidget {
   const CrearPedidoScreen({
     super.key,
@@ -19,13 +22,17 @@ class CrearPedidoScreen extends StatefulWidget {
 
 class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
   final _formKey = GlobalKey<FormState>();
+  final ValeService _valeService = ValeService();
+  
   bool _enviando = false;
+  bool _cargandoVales = false;
+  List<Vale> _valesVigentes = [];
+  Vale? _valeSeleccionado;
   
   String _metodoSeleccionado = 'Transferencia';
   final List<String> _metodosPago = ['Transferencia', 'Efectivo', 'Tarjeta', 'Otro'];
   
-  late final double _anticipoMinimo;
-  late final double _precioMaximo;
+  late final double _precioOriginal;
   final TextEditingController _referenciaController = TextEditingController();
   final TextEditingController _montoController = TextEditingController();
   final TextEditingController _otroMetodoController = TextEditingController();
@@ -33,10 +40,41 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
   @override
   void initState() {
     super.initState();
-    _precioMaximo = widget.producto.precioMinoristaSugerido;
-    // Anticipo mínimo obligatorio (ej. 50% del precio sugerido)
-    _anticipoMinimo = _precioMaximo * 0.5;
-    _montoController.text = _anticipoMinimo.toStringAsFixed(2);
+    _precioOriginal = widget.producto.precioMinoristaSugerido;
+    _actualizarCalculosAnticipo();
+    _cargarValesVigentes();
+  }
+
+  double get _montoDescuentoVale => _valeSeleccionado?.saldoActual ?? 0.0;
+  
+  double get _precioNeto {
+    final neto = _precioOriginal - _montoDescuentoVale;
+    return neto < 0 ? 0.0 : neto;
+  }
+
+  double get _anticipoMinimo => _precioNeto * 0.5;
+
+  bool get _cubiertoPorValeCompletamente => _montoDescuentoVale >= _precioOriginal;
+
+  void _actualizarCalculosAnticipo() {
+    if (_cubiertoPorValeCompletamente) {
+      _montoController.text = '0.00';
+    } else {
+      _montoController.text = _anticipoMinimo.toStringAsFixed(2);
+    }
+  }
+
+  Future<void> _cargarValesVigentes() async {
+    setState(() => _cargandoVales = true);
+    try {
+      final vales = await _valeService.listarValesVigentes();
+      setState(() {
+        _valesVigentes = vales.where((v) => v.saldoActual > 0).toList();
+        _cargandoVales = false;
+      });
+    } catch (e) {
+      setState(() => _cargandoVales = false);
+    }
   }
 
   @override
@@ -63,24 +101,47 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
   }
 
   void _enviarAvisoAnticipo() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
+    if (!_cubiertoPorValeCompletamente) {
+      if (!_formKey.currentState!.validate()) {
+        return;
+      }
     }
 
     setState(() => _enviando = true);
 
-    // Simulamos la llamada al backend para registrar el aviso pendiente
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      int pedidoIdGenerado = 1; 
 
-    if (!mounted) return;
+      if (_valeSeleccionado != null) {
+        final montoADescotarDelVale = _valeSeleccionado!.saldoActual >= _precioOriginal
+            ? _precioOriginal
+            : _valeSeleccionado!.saldoActual;
 
-    setState(() => _enviando = false);
+        await _valeService.aplicarVale(
+          valeId: _valeSeleccionado!.id,
+          monto: montoADescotarDelVale,
+          pedidoId: pedidoIdGenerado,
+        );
+      }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('¡Aviso de anticipo registrado como pendiente con éxito!')),
-    );
-    Navigator.pop(context); // Regresa al detalle
-    Navigator.pop(context); // Regresa al catálogo
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Pedido registrado con éxito!'), backgroundColor: Colors.green),
+      );
+      Navigator.pop(context);
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _enviando = false);
+      }
+    }
   }
 
   @override
@@ -90,7 +151,7 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
     final tema = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Aviso de Anticipo - Pedido Directo')),
+      appBar: AppBar(title: const Text('Pedido Directo y Anticipo')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -110,146 +171,257 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text('Modelo: ${producto.modelo}'),
-                      Text('Color: ${variante.color}'),
+                      Text('Color: ${variante.colorForDisplay ?? variante.color}'),
                       Text('Talla: ${variante.talla}'),
                       const Divider(height: 24),
                       Text(
-                        'Precio sugerido: ${formatoPrecio(_precioMaximo)}',
+                        'Precio original: ${_formatearPrecioLocal(_precioOriginal)}',
                         style: tema.textTheme.titleMedium?.copyWith(
-                          color: tema.colorScheme.primary,
+                          decoration: _valeSeleccionado != null ? TextDecoration.lineThrough : null,
+                          color: _valeSeleccionado != null ? Colors.grey : tema.colorScheme.primary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      if (_valeSeleccionado != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Descuento por Vale (${_valeSeleccionado!.folio}): -${_formatearPrecioLocal(_montoDescuentoVale)}',
+                          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                        ),
+                        const Divider(height: 16),
+                        Text(
+                          'Nuevo Total Neto: ${_formatearPrecioLocal(_precioNeto)}',
+                          style: tema.textTheme.titleLarge?.copyWith(
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 16),
+
               Card(
+                color: tema.colorScheme.surfaceVariant.withOpacity(0.3),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Registrar Aviso de Anticipo (E8-02)',
+                        '¿Deseas aplicar un vale a este producto?',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        value: _metodoSeleccionado,
-                        decoration: const InputDecoration(
-                          labelText: 'Método de pago',
-                          border: OutlineInputBorder(),
+                      const SizedBox(height: 8),
+                      _cargandoVales
+                          ? const Center(child: LinearProgressIndicator())
+                          : _valesVigentes.isEmpty
+                              ? const Text('No tienes vales vigentes disponibles.', style: TextStyle(color: Colors.grey))
+                              : Row(
+                                  children: [
+                                    Expanded(
+                                      child: DropdownButtonFormField<Vale?>(
+                                        value: _valeSeleccionado,
+                                        isExpanded: true,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Seleccionar vale (Opcional)',
+                                          border: OutlineInputBorder(),
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                        ),
+                                        items: [
+                                          const DropdownMenuItem<Vale?>(
+                                            value: null,
+                                            child: Text(
+                                              '-- Ninguno (Sin vale) --',
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          ..._valesVigentes.map((vale) {
+                                            return DropdownMenuItem<Vale?>(
+                                              value: vale,
+                                              child: Text(
+                                                'Folio: ${vale.folio} (Disponible: \$${vale.saldoActual.toStringAsFixed(2)})',
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            );
+                                          }),
+                                        ],
+                                        onChanged: (vale) {
+                                          setState(() {
+                                            _valeSeleccionado = vale;
+                                            _actualizarCalculosAnticipo();
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    if (_valeSeleccionado != null) ...[
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        icon: const Icon(Icons.clear, color: Colors.red),
+                                        tooltip: 'Quitar vale',
+                                        onPressed: () {
+                                          setState(() {
+                                            _valeSeleccionado = null;
+                                            _actualizarCalculosAnticipo();
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              if (_cubiertoPorValeCompletamente) ...[
+                Card(
+                  color: Colors.green.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.green, size: 32),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            '¡Excelente! Tu vale cubre el 100% del costo de este producto. No requieres dejar anticipo en efectivo ni transferencia.',
+                            style: TextStyle(color: Colors.green.shade900, fontWeight: FontWeight.bold),
+                          ),
                         ),
-                        items: _metodosPago.map((metodo) {
-                          return DropdownMenuItem(value: metodo, child: Text(metodo));
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            setState(() {
-                              _metodoSeleccionado = val;
-                              _referenciaController.clear();
-                            });
-                          }
-                        },
-                      ),
-                      
-                      if (_metodoSeleccionado == 'Otro') ...[
+                      ],
+                    ),
+                  ),
+                ),
+              ] else ...[
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Registrar Aviso de Anticipo',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: _metodoSeleccionado,
+                          decoration: const InputDecoration(
+                            labelText: 'Método de pago para el resto',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _metodosPago.map((metodo) {
+                            return DropdownMenuItem(value: metodo, child: Text(metodo));
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _metodoSeleccionado = val;
+                                _referenciaController.clear();
+                              });
+                            }
+                          },
+                        ),
+
+                        if (_metodoSeleccionado == 'Otro') ...[
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _otroMetodoController,
+                            maxLength: 30,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]')),
+                            ],
+                            decoration: const InputDecoration(
+                              labelText: 'Especifique el método de pago',
+                              border: OutlineInputBorder(),
+                              hintText: 'Ej. Crédito Interno',
+                              counterText: '',
+                            ),
+                            validator: (value) {
+                              if (_metodoSeleccionado == 'Otro') {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Debe especificar el método de pago';
+                                }
+                                if (value.trim().length < 3) {
+                                  return 'Especifique un nombre válido (mín. 3 caracteres)';
+                                }
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+
                         const SizedBox(height: 12),
                         TextFormField(
-                          controller: _otroMetodoController,
-                          maxLength: 30, // Límite estricto de longitud
+                          controller: _montoController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           inputFormatters: [
-                            // Solo permite letras, números y espacios (bloquea símbolos especiales y emojis)
-                            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s]')),
+                            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
                           ],
-                          decoration: const InputDecoration(
-                            labelText: 'Especifique el método de pago',
-                            border: OutlineInputBorder(),
-                            hintText: 'Ej. Crédito Interno',
-                            counterText: '', // Oculta el contador visual si se prefiere limpio
+                          decoration: InputDecoration(
+                            labelText: 'Monto del anticipo (Mín: ${_formatearPrecioLocal(_anticipoMinimo)} - Máx: ${_formatearPrecioLocal(_precioNeto)})',
+                            border: const OutlineInputBorder(),
+                            prefixText: '\$',
                           ),
                           validator: (value) {
-                            if (_metodoSeleccionado == 'Otro') {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Debe especificar el método de pago';
+                            if (value == null || value.trim().isEmpty) {
+                              return 'El monto es obligatorio';
+                            }
+                            final monto = double.tryParse(value);
+                            if (monto == null) {
+                              return 'Ingrese un número válido';
+                            }
+                            if (monto < _anticipoMinimo) {
+                              return 'El anticipo no puede ser menor a ${_formatearPrecioLocal(_anticipoMinimo)}';
+                            }
+                            if (monto > _precioNeto) {
+                              return 'El anticipo no puede ser mayor al precio neto del producto (${_formatearPrecioLocal(_precioNeto)})';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _referenciaController,
+                          maxLength: 40,
+                          keyboardType: _metodoSeleccionado == 'Transferencia' 
+                              ? TextInputType.number 
+                              : TextInputType.text,
+                          inputFormatters: _metodoSeleccionado == 'Transferencia'
+                              ? [FilteringTextInputFormatter.digitsOnly]
+                              : [
+                                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-]')),
+                                ],
+                          decoration: InputDecoration(
+                            labelText: _obtenerEtiquetaReferencia(),
+                            border: const OutlineInputBorder(),
+                            counterText: '',
+                            hintText: _metodoSeleccionado == 'Transferencia' ? 'Ej. 123456' : 'Ej. Folio o recibo',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Este campo es obligatorio para validar su pago';
+                            }
+                            int minLength = _metodoSeleccionado == 'Transferencia' ? 6 : 4;
+                            if (value.trim().length < minLength) {
+                              if (_metodoSeleccionado == 'Transferencia') {
+                                return 'La clave de rastreo debe tener al menos $minLength dígitos numéricos';
                               }
-                              if (value.trim().length < 3) {
-                                return 'Especifique un nombre válido (mín. 3 caracteres)';
-                              }
+                              return 'Debe ingresar al menos $minLength caracteres válidos';
                             }
                             return null;
                           },
                         ),
                       ],
-
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _montoController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                        ],
-                        decoration: InputDecoration(
-                          labelText: 'Monto del anticipo (Mín: ${formatoPrecio(_anticipoMinimo)} - Máx: ${formatoPrecio(_precioMaximo)})',
-                          border: const OutlineInputBorder(),
-                          prefixText: '\$',
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'El monto es obligatorio';
-                          }
-                          final monto = double.tryParse(value);
-                          if (monto == null) {
-                            return 'Ingrese un número válido';
-                          }
-                          if (monto < _anticipoMinimo) {
-                            return 'El anticipo no puede ser menor a ${formatoPrecio(_anticipoMinimo)}';
-                          }
-                          if (monto > _precioMaximo) {
-                            return 'El anticipo no puede ser mayor al precio total del producto (${formatoPrecio(_precioMaximo)})';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _referenciaController,
-                        maxLength: 40, // Límite máximo para evitar cadenas infinitas
-                        keyboardType: _metodoSeleccionado == 'Transferencia' 
-                            ? TextInputType.number 
-                            : TextInputType.text,
-                        inputFormatters: _metodoSeleccionado == 'Transferencia'
-                            ? [FilteringTextInputFormatter.digitsOnly] // Estrictamente dígitos numéricos
-                            : [
-                                // Para otros métodos, permitimos alfanuméricos y guiones comunes en folios
-                                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-]')),
-                              ],
-                        decoration: InputDecoration(
-                          labelText: _obtenerEtiquetaReferencia(),
-                          border: const OutlineInputBorder(),
-                          counterText: '',
-                          hintText: _metodoSeleccionado == 'Transferencia' ? 'Ej. 123456' : 'Ej. Folio o recibo',
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Este campo es obligatorio para validar su pago';
-                          }
-                          int minLength = _metodoSeleccionado == 'Transferencia' ? 6 : 4;
-                          if (value.trim().length < minLength) {
-                            if (_metodoSeleccionado == 'Transferencia') {
-                              return 'La clave de rastreo debe tener al menos $minLength dígitos numéricos';
-                            }
-                            return 'Debe ingresar al menos $minLength caracteres válidos';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+              ],
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: _enviando ? null : _enviarAvisoAnticipo,
@@ -259,8 +431,10 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Icon(Icons.send_rounded),
-                label: Text(_enviando ? 'Enviando aviso...' : 'Enviar Aviso de Anticipo'),
+                    : Icon(_cubiertoPorValeCompletamente ? Icons.check_circle_rounded : Icons.send_rounded),
+                label: Text(_enviando 
+                    ? 'Procesando pedido...' 
+                    : (_cubiertoPorValeCompletamente ? 'Finalizar Pedido con Vale' : 'Enviar Aviso de Anticipo')),
               ),
             ],
           ),
@@ -270,8 +444,8 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
   }
 }
 
-/// 1600 -> "$1,600.00"
-String formatoPrecio(double precio) {
+/// Función local para formatear precios sin colisiones
+String _formatearPrecioLocal(double precio) {
   final partes = precio.toStringAsFixed(2).split('.');
   final entero = partes[0].replaceAllMapped(
     RegExp(r'\B(?=(\d{3})+(?!\d))'),
