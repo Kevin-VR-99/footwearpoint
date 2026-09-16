@@ -139,10 +139,14 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Invalidar token de FCM en el cliente al cerrar sesión
+      await FirebaseMessaging.instance.deleteToken();
       await api.post('auth/logout');
     } on ApiException {
       // Aunque el servidor no conteste, la sesión local se cierra igual: no
       // tiene caso dejar al usuario atrapado dentro de la app.
+    } catch (_) {
+      // Ignorar errores de firebase al expirar si no hay red
     } finally {
       await _olvidarSesion();
 
