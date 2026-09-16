@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'catalogo_screen.dart';
 import 'perfil_screen.dart';
+import 'clientes_privados_screen.dart';
 
 /// Pantalla provisional de después del login.
 ///
@@ -48,6 +49,16 @@ class InicioScreen extends StatelessWidget {
                         ),
                 icon: const Icon(Icons.storefront_outlined),
                 label: const Text('Ver catálogo'),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.tonalIcon(
+                onPressed: auth.ocupado
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(builder: (_) => const ClientesPrivadosScreen()),
+                        ),
+                icon: const Icon(Icons.group_outlined),
+                label: const Text('Mis Clientes Particulares'),
               ),
               const SizedBox(height: 12),
               FilledButton.tonalIcon(
