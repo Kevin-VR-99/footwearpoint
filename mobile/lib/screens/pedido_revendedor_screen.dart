@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/producto_catalogo.dart';
 import '../models/item_pedido_revendedor.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 
 class PedidoRevendedorScreen extends StatefulWidget {
   const PedidoRevendedorScreen({super.key, required this.itemsIniciales});
@@ -22,21 +25,61 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
   }
 
   void _enviarPedido() async {
+    if (_items.isEmpty) return;
+
     setState(() => _enviando = true);
 
-    // Simulación de envío agrupado a la distribuidora (E9-01 / E9-03)
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final api = context.read<AuthProvider>().api;
 
-    if (!mounted) return;
+      // 1. Creamos el pedido maestro base
+      final respuestaPedido = await api.post('/pedidos', cuerpo: {
+        'tipo': 'revendedor',
+        'propietario_id': 1,
+        'sucursal_id': 1,
+      });
 
-    setState(() => _enviando = false);
+      final pedidoId = respuestaPedido['data']?['id'] ?? respuestaPedido['id'];
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('¡Pedido enviado a la distribuidora a nombre del revendedor!')),
-    );
-    
-    // Regresar al catálogo limpiando la pila de pedido
-    Navigator.popUntil(context, (route) => route.isFirst);
+      if (pedidoId == null) {
+        throw ApiException('No se pudo obtener el ID del pedido creado.');
+      }
+
+      // 2. Agregamos cada línea utilizando el producto_campana_id correcto y la variante correspondiente a ese producto
+      for (var item in _items) {
+        await api.post('/pedidos/$pedidoId/lineas', cuerpo: {
+          'producto_campana_id': item.producto.id,
+          'variante_id': item.variante.varianteId,
+          'cantidad': item.cantidad,
+        });
+      }
+
+      // 3. Enviamos formalmente el pedido a la distribuidora
+      await api.post('/pedidos/$pedidoId/enviar');
+
+      if (!mounted) return;
+
+      setState(() => _enviando = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('¡Pedido enviado a la distribuidora a nombre del revendedor con éxito!')),
+      );
+      
+      _items.clear();
+      Navigator.popUntil(context, (route) => route.isFirst);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _enviando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error del servidor: ${e.mensaje}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _enviando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error de conexión al enviar el pedido: $e')),
+      );
+    }
   }
 
   @override
@@ -151,7 +194,6 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
   }
 }
 
-/// 1600 -> "$1,600.00"
 String formatoPrecio(double precio) {
   final partes = precio.toStringAsFixed(2).split('.');
   final entero = partes[0].replaceAllMapped(

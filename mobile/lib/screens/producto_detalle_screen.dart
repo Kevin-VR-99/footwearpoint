@@ -19,8 +19,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   int _fotoActual = 0;
   VarianteCatalogo? _varianteSeleccionada;
   
-  // Lista acumulada del pedido del revendedor (E9-01)
-  final List<ItemPedidoRevendedor> _carritoRevendedor = [];
+  // Carrito global estático en memoria para que persista al navegar entre productos
+  static final List<ItemPedidoRevendedor> _carritoGlobalRevendedor = [];
 
   void _seleccionarVariante(VarianteCatalogo variante) {
     if (variante.disponibilidad == Disponibilidad.noDisponible) return;
@@ -34,15 +34,14 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     if (_varianteSeleccionada == null) return;
 
     setState(() {
-      // Verificar si ya existe esta variante en el carrito para sumar cantidad
-      final index = _carritoRevendedor.indexWhere(
+      final index = _carritoGlobalRevendedor.indexWhere(
         (item) => item.variante.varianteId == _varianteSeleccionada!.varianteId,
       );
 
       if (index >= 0) {
-        _carritoRevendedor[index].cantidad++;
+        _carritoGlobalRevendedor[index].cantidad++;
       } else {
-        _carritoRevendedor.add(
+        _carritoGlobalRevendedor.add(
           ItemPedidoRevendedor(
             producto: widget.producto,
             variante: _varianteSeleccionada!,
@@ -51,29 +50,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       }
     });
 
-    // Forzamos el cierre inmediato de cualquier SnackBar previo y evitamos bugs al retroceder
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.removeCurrentSnackBar();
-    
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text('Agregado al pedido: Talla ${_varianteSeleccionada!.talla}'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating, // Evita colisiones con la barra de navegación
-        action: SnackBarAction(
-          label: 'Ver pedido (${_carritoRevendedor.fold<int>(0, (sum, i) => sum + i.cantidad)})',
-          onPressed: () {
-            messenger.removeCurrentSnackBar();
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PedidoRevendedorScreen(itemsIniciales: _carritoRevendedor),
-              ),
-            );
-          },
-        ),
-      ),
-    );
+    // Sin SnackBars molestos: la confirmación ocurre visualmente actualizando el contador del carrito en la AppBar.
+    ScaffoldMessenger.of(context).clearSnackBars();
   }
 
   @override
@@ -88,22 +66,25 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     ].join(' · ');
 
     final esRevendedor = producto.precioMayorista != null;
+    final totalItemsCarrito = _carritoGlobalRevendedor.fold<int>(0, (sum, i) => sum + i.cantidad);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(producto.nombre),
         actions: [
-          if (esRevendedor && _carritoRevendedor.isNotEmpty)
+          // El icono del carrito ahora siempre se muestra para revendedores si hay ítems acumulados
+          if (esRevendedor)
             IconButton(
               icon: Badge(
-                label: Text('${_carritoRevendedor.fold<int>(0, (sum, i) => sum + i.cantidad)}'),
+                isLabelVisible: totalItemsCarrito > 0,
+                label: Text('$totalItemsCarrito'),
                 child: const Icon(Icons.shopping_cart),
               ),
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => PedidoRevendedorScreen(itemsIniciales: _carritoRevendedor),
+                    builder: (_) => PedidoRevendedorScreen(itemsIniciales: _carritoGlobalRevendedor),
                   ),
                 );
               },

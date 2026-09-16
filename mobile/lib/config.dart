@@ -23,5 +23,5 @@ class Config {
   ///
   /// Sin el --host, Laravel solo escucha en la propia computadora y el
   /// celular nunca lo va a alcanzar, aunque la IP este bien.
-      static const String urlBaseApi = 'http://192.168.1.96:8000/api';
+      static const String urlBaseApi = 'http://192.168.1.94:8000/api';
 }
