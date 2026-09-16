@@ -58,6 +58,9 @@ class _ValesScreenState extends State<ValesScreen> {
                         padding: const EdgeInsets.all(16),
                         itemBuilder: (context, index) {
                           final vale = _vales[index];
+                          final bool estaVencido = vale.fechaVencimiento != null &&
+                              vale.fechaVencimiento!.isBefore(DateTime.now());
+
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
                             child: ListTile(
@@ -68,8 +71,13 @@ class _ValesScreenState extends State<ValesScreen> {
                                   const SizedBox(height: 4),
                                   Text('Saldo Actual: \$${vale.saldoActual.toStringAsFixed(2)}'),
                                   if (vale.fechaVencimiento != null)
-                                    Text('Vence: ${vale.fechaVencimiento.toString().split(' ')[0]}',
-                                        style: const TextStyle(color: Colors.grey)),
+                                    Text(
+                                      'Vence: ${vale.fechaVencimiento!.day.toString().padLeft(2, '0')}/${vale.fechaVencimiento!.month.toString().padLeft(2, '0')}/${vale.fechaVencimiento!.year}${estaVencido ? ' (VENCIDO)' : ''}',
+                                      style: TextStyle(
+                                        color: estaVencido ? Colors.red : Colors.grey,
+                                        fontWeight: estaVencido ? FontWeight.bold : FontWeight.normal,
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
