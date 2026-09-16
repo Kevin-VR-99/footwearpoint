@@ -15,7 +15,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     public string $mensaje = '';
     public string $errorMsg = '';
 
-    public string $pagoTipo = 'anticipo';
+    public string $pagoTipo = 'saldo_pedido';
     public string $pagoMetodo = 'efectivo';
     public string $pagoMonto = '';
     public string $pagoReferencia = '';
@@ -31,6 +31,12 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         }
 
         $this->pedidoId = $id;
+
+        if ($this->pedido->tipo === 'cliente_directo' && $this->resumen['anticipo_pendiente'] > 0) {
+            $this->pagoTipo = 'anticipo';
+        } else {
+            $this->pagoTipo = 'saldo_pedido';
+        }
     }
 
     public function getPedidoProperty()
@@ -62,12 +68,14 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         }
     }
 
-        public function registrarPago(RegistrarPagoPedidoAction $accion)
+    public function registrarPago(RegistrarPagoPedidoAction $accion)
     {
         $this->mensaje = '';
         $this->errorMsg = '';
 
-        if ($this->resumen['anticipo_pendiente'] <= 0) {
+        if ($this->pedido->tipo === 'cliente_directo' && $this->resumen['anticipo_pendiente'] <= 0) {
+            $this->pagoTipo = 'saldo_pedido';
+        } elseif ($this->pedido->tipo !== 'cliente_directo') {
             $this->pagoTipo = 'saldo_pedido';
         }
 
@@ -153,7 +161,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         </div>
     @endif
 
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+    <div class="grid gap-4 sm:grid-cols-2 {{ $this->pedido->tipo === 'cliente_directo' ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} mb-6">
         <div class="bg-white rounded-xl border border-slate-200 p-4">
             <p class="text-xs text-slate-500">Total</p>
             <p class="text-lg font-semibold tabular-nums">${{ number_format((float) $this->pedido->total, 2) }}</p>
@@ -166,10 +174,12 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             <p class="text-xs text-slate-500">Saldo</p>
             <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['saldo'], 2) }}</p>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
-            <p class="text-xs text-slate-500">Anticipo pendiente</p>
-            <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['anticipo_pendiente'], 2) }}</p>
-        </div>
+        @if ($this->pedido->tipo === 'cliente_directo')
+            <div class="bg-white rounded-xl border border-slate-200 p-4">
+                <p class="text-xs text-slate-500">Anticipo pendiente</p>
+                <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['anticipo_pendiente'], 2) }}</p>
+            </div>
+        @endif
     </div>
 
     @if ($this->pedido->estado !== 'borrador')
@@ -179,10 +189,10 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 <label class="text-sm">
                     <span class="block text-slate-500 mb-1">Tipo</span>
                     <select wire:model="pagoTipo" class="w-full rounded-lg border-slate-300 text-sm">
-                        @if ($this->resumen['anticipo_pendiente'] > 0)
+                        @if ($this->pedido->tipo === 'cliente_directo' && $this->resumen['anticipo_pendiente'] > 0)
                             <option value="anticipo">Anticipo</option>
                         @endif
-                        <option value="saldo_pedido">Saldo</option>
+                        <option value="saldo_pedido">Saldo / Total</option>
                     </select>
                 </label>
                 <label class="text-sm">
