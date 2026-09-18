@@ -39,12 +39,7 @@ class CrearPedidoBorradorAction
             $datos['propietario_id'] = $propietario['id'];
         }
 
-        $sucursal = Sucursal::where('id', $datos['sucursal_id'])->first();
-        if (! $sucursal) {
-            throw ValidationException::withMessages([
-                'sucursal_id' => ['La sucursal no existe en esta distribuidora.'],
-            ]);
-        }
+        $sucursal = $this->sucursal($propietario['tipo'], $datos['sucursal_id'] ?? null);
 
         $clienteId = null;
         $revendedorAfiliacionId = null;
@@ -86,6 +81,38 @@ class CrearPedidoBorradorAction
         ]);
 
         return $pedido->fresh(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle']);
+    }
+
+    /**
+     * La sucursal del pedido (TG-166).
+     *
+     * El personal la elige. Desde la app se usa siempre la principal de la
+     * distribuidora: el MVP opera con una sola sucursal y la app no tiene cómo
+     * saber su id. Antes la app mandaba un 1 fijo, que en cualquier
+     * distribuidora que no fuera la demo daba "La sucursal no existe".
+     */
+    protected function sucursal(string $tipoPropietario, ?int $sucursalId): Sucursal
+    {
+        if ($tipoPropietario !== PropietarioActual::STAFF) {
+            $principal = Sucursal::where('es_principal', true)->where('activa', true)->first();
+
+            if (! $principal) {
+                throw ValidationException::withMessages([
+                    'sucursal_id' => ['Tu distribuidora no tiene una sucursal principal activa. Avísale a la distribuidora.'],
+                ]);
+            }
+
+            return $principal;
+        }
+
+        $sucursal = Sucursal::where('id', $sucursalId)->first();
+        if (! $sucursal) {
+            throw ValidationException::withMessages([
+                'sucursal_id' => ['La sucursal no existe en esta distribuidora.'],
+            ]);
+        }
+
+        return $sucursal;
     }
 
     protected function generarFolio(int $distribuidoraId): string

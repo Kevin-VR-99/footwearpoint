@@ -7,6 +7,7 @@ use App\Models\Pedido;
 use App\Models\PedidoDetalle;
 use App\Models\ProductoCampana;
 use App\Models\Variante;
+use App\Support\PropietarioActual;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use App\Models\DisponibilidadVarianteCampana;
@@ -80,9 +81,22 @@ class AgregarLineaPedidoAction
         }
 
         $cantidad = (int) $datos['cantidad'];
-        $precio = isset($datos['precio_unitario'])
+
+        // El precio lo decide el servidor según de quién es el pedido (TG-166):
+        // el cliente directo paga el minorista, igual que en la venta directa
+        // del mostrador, y el revendedor el mayorista. Antes siempre se usaba
+        // el mayorista, así que el cliente pagaba (y veía) el precio de costo
+        // del revendedor.
+        //
+        // Solo el personal puede poner otro precio. Si lo manda la app se
+        // ignora: si no, cualquiera podría pedir un par a $1.
+        $precioDeLista = $pedido->tipo === 'cliente_directo'
+            ? $pc->precio_minorista_sugerido
+            : $pc->precio_mayorista;
+
+        $precio = PropietarioActual::esDeLaCasa() && isset($datos['precio_unitario'])
             ? round((float) $datos['precio_unitario'], 2)
-            : round((float) $pc->precio_mayorista, 2);
+            : round((float) $precioDeLista, 2);
 
         $subtotalLinea = round($precio * $cantidad, 2);
 

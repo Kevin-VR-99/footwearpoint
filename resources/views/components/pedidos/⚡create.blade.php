@@ -394,7 +394,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                                 · {{ $pc->producto->modelo }}
                             @endif
                             — {{ $pc->codigo_catalogo }}
-                            (${{ number_format((float) $pc->precio_mayorista, 2) }})
+                            (${{ number_format((float) ($tipo === 'cliente_directo' ? $pc->precio_minorista_sugerido : $pc->precio_mayorista), 2) }})
                         </option>
                     @endforeach
                 </select>
