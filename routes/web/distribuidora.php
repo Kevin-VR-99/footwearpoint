@@ -19,6 +19,6 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware(['auth', 'tenant.team', 'role:admin_distribuidora'])->group(function () {
-    Route::livewire('/configuracion', 'distribuidora.configuracion')
+    Route::livewire('/distribuidora/configuracion', 'distribuidora.configuracion')
         ->name('distribuidora.configuracion');
 });

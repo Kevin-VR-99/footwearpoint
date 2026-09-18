@@ -51,7 +51,7 @@ require __DIR__.'/web/catalogo.php';
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'tenant.team'])->group(function () {
     Route::post('/logout', function () {
         Auth::logout();
         request()->session()->invalidate();
@@ -149,11 +149,7 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('reportes.index');
     })->name('distribuidora.reportes');
 
-    // URLs amigables (sin name) → pantallas reales de B
-    Route::get('/distribuidora/configuracion', function () {
-        return redirect()->route('distribuidora.configuracion');
-    });
-
+    // URL amigable de catálogo (sin name) → pantalla real de B
     Route::get('/distribuidora/catalogo', function () {
         return redirect()->route('distribuidora.catalogo');
     });
