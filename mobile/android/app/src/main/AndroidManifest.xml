@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- TG-165: sin esto, la app instalada (release) no puede llegar a la API
+         en Railway. Antes solo estaba en los manifiestos de debug y profile,
+         por eso con "flutter run" sí funcionaba. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="footwearpoint"
         android:name="${applicationName}"
