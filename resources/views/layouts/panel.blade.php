@@ -59,21 +59,12 @@
         >
             {{-- Brand --}}
             <div class="px-4 py-4 border-b border-white/10 flex items-center justify-between gap-3">
-                <a href="{{ route('dashboard') }}" class="flex items-center gap-3 min-w-0" @click="sidebarOpen = false">
+                <a href="{{ route('dashboard') }}" class="flex items-center min-w-0 rounded-xl bg-white px-2.5 py-2 shadow-sm" @click="sidebarOpen = false">
                     <img
-                        src="{{ asset('brand/logo-mark.svg') }}"
+                        src="{{ asset('brand/logo-sidebar.png') }}"
                         alt="Footwear Point"
-                        class="h-10 w-10 shrink-0 rounded-full shadow-sm ring-1 ring-white/20"
-                        width="40"
-                        height="40"
+                        class="h-11 w-auto max-w-[11.5rem] object-contain"
                     >
-                    <div class="min-w-0 leading-tight">
-                        <p class="text-sm font-bold tracking-wide truncate">
-                            <span class="text-white">Footwear</span>
-                            <span class="text-fp-danger">Point</span>
-                        </p>
-                        <p class="text-[11px] text-white/50 truncate">Panel distribuidora</p>
-                    </div>
                 </a>
                 <button
                     type="button"
@@ -222,7 +213,7 @@
             </nav>
 
             <div class="p-3 border-t border-white/10">
-                <p class="px-2 text-[10px] uppercase tracking-wider text-white/35">Footwear Point</p>
+                <img src="{{ asset('brand/logo-mark-32.png') }}" alt="" class="mx-auto h-7 w-7 opacity-80" width="28" height="28">
             </div>
         </aside>
 
@@ -241,10 +232,11 @@
                 </button>
 
                 <div class="flex-1 min-w-0 lg:hidden">
-                    <p class="text-sm font-semibold text-slate-900 truncate">
-                        <span class="text-fp-sidebar">Footwear</span>
-                        <span class="text-fp-danger">Point</span>
-                    </p>
+                    <img
+                        src="{{ asset('brand/logo-sidebar.png') }}"
+                        alt="Footwear Point"
+                        class="h-8 w-auto max-w-[10rem] object-contain"
+                    >
                 </div>
 
                 <div class="hidden lg:block flex-1"></div>

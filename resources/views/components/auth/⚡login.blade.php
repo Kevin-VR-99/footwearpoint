@@ -89,9 +89,13 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
 ?>
 
 <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
-    <div class="text-center mb-8">
-        <h1 class="text-2xl font-bold text-slate-900">FootwearPoint</h1>
-        <p class="text-sm text-slate-500 mt-1">Inicia sesión en tu cuenta</p>
+        <div class="text-center mb-8">
+        <img
+            src="{{ asset('brand/logo-full-160.png') }}"
+            alt="Footwear Point"
+            class="mx-auto h-28 w-auto object-contain"
+        >
+        <p class="text-sm text-slate-500 mt-3">Inicia sesión en tu cuenta</p>
     </div>
 
     <form wire:submit="login" class="space-y-5">
