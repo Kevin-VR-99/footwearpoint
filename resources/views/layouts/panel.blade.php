@@ -66,14 +66,17 @@
         >
             {{-- Brand --}}
             <div class="px-4 py-4 border-b border-white/10 flex items-center justify-between gap-3">
-                <a href="{{ route('dashboard') }}" class="flex items-center min-w-0" @click="sidebarOpen = false">
+                <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 min-w-0" @click="sidebarOpen = false">
                     <img
-                        src="{{ asset('brand/logo-mark-40.png') }}"
-                        alt="Footwear Point"
-                        class="h-10 w-10 shrink-0 object-contain"
+                        src="{{ asset('brand/logo-mark-white-40.png') }}"
+                        alt=""
+                        class="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-white/20"
                         width="40"
                         height="40"
                     >
+                    <span class="min-w-0 leading-tight">
+                        <span class="block truncate text-sm font-semibold tracking-wide text-white">Footwear Point</span>
+                    </span>
                 </a>
                 <button
                     type="button"
@@ -238,14 +241,15 @@
                     </svg>
                 </button>
 
-                <div class="flex-1 min-w-0 lg:hidden">
+                <div class="flex flex-1 items-center gap-2 min-w-0 lg:hidden">
                     <img
-                        src="{{ asset('brand/logo-mark-40.png') }}"
-                        alt="Footwear Point"
-                        class="h-8 w-8 object-contain"
+                        src="{{ asset('brand/logo-mark-white-40.png') }}"
+                        alt=""
+                        class="h-8 w-8 shrink-0 rounded-full object-cover"
                         width="32"
                         height="32"
                     >
+                    <span class="truncate text-sm font-semibold text-slate-900">Footwear Point</span>
                 </div>
 
                 <div class="hidden lg:block flex-1"></div>
