@@ -6,6 +6,7 @@ use App\Models\CategoriaProducto;
 use App\Models\Linea;
 use App\Models\Marca;
 use App\Models\Producto;
+use App\Models\Suscripcion;
 use App\Services\Catalogo\GestionarCampanaAction;
 use App\Services\Catalogo\GestionarCategoriaProductoAction;
 use App\Services\Catalogo\GestionarLineaAction;
@@ -42,6 +43,11 @@ new #[Layout('layouts.panel')] class extends Component {
     public ?string $linea_descripcion = null;
     public bool $linea_activa = true;
     public array $linea_marca_ids = [];
+
+    /** Cupo del plan (lineas activas / limite contratado). */
+    public int $lineasActivasCount = 0;
+    public ?int $lineasLimitePlan = null;
+    public bool $cupoLineasAlcanzado = false;
 
     // --- Categorías ---
     public $categorias = [];
@@ -91,6 +97,7 @@ new #[Layout('layouts.panel')] class extends Component {
 
         $this->cargarMarcas();
         $this->cargarLineas();
+        $this->cargarCupoLineas();
         $this->cargarCategorias();
         $this->cargarCampanas();
         $this->cargarProductos();
@@ -102,6 +109,25 @@ new #[Layout('layouts.panel')] class extends Component {
             ->latest()
             ->get();
     }
+
+    private function cargarCupoLineas(): void
+    {
+        $this->lineasActivasCount = (int) Linea::where('activa', true)->count();
+
+        $suscripcion = Suscripcion::where('estado', 'activa')->first();
+
+        if (! $suscripcion) {
+            $this->lineasLimitePlan = null;
+            $this->cupoLineasAlcanzado = true;
+
+            return;
+        }
+
+        $this->lineasLimitePlan = (int) $suscripcion->lineas_incluidas_contratadas
+            + (int) $suscripcion->lineas_extra_contratadas;
+        $this->cupoLineasAlcanzado = $this->lineasActivasCount >= $this->lineasLimitePlan;
+    }
+
 
     private function cargarCampanas(): void
     {
@@ -194,6 +220,17 @@ new #[Layout('layouts.panel')] class extends Component {
 
     public function abrirFormularioCrearLinea(): void
     {
+        $this->cargarCupoLineas();
+
+        if ($this->cupoLineasAlcanzado) {
+            $limite = $this->lineasLimitePlan;
+            $this->errorNegocio = $limite === null
+                ? 'No hay una suscripción activa; no se pueden crear líneas.'
+                : "Ya alcanzaste el límite de {$limite} línea(s) activa(s) de tu plan actual. Contacta al administrador general para ampliar tu plan.";
+
+            return;
+        }
+
         $this->errorNegocio = null;
         $this->lineaEditandoId = null;
         $this->linea_campana_id = null;
@@ -268,6 +305,7 @@ new #[Layout('layouts.panel')] class extends Component {
         $this->mostrandoFormularioLinea = false;
         $this->lineaEditandoId = null;
         $this->cargarLineas();
+        $this->cargarCupoLineas();
         $this->dispatch('guardado', mensaje: 'Línea guardada correctamente.');
     }
 
@@ -674,9 +712,23 @@ new #[Layout('layouts.panel')] class extends Component {
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-sm font-semibold text-slate-700">Líneas comerciales</h2>
-                    <button type="button" wire:click="abrirFormularioCrearLinea"
-                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nueva
-                        línea</button>
+                    <div class="flex items-center gap-3">
+                        @if ($lineasLimitePlan === null)
+                            <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20">
+                                Sin plan activo
+                            </span>
+                        @else
+                            <span
+                                class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset {{ $cupoLineasAlcanzado ? 'bg-fp-badge-danger-bg text-fp-badge-danger-fg ring-red-600/20' : 'bg-slate-50 text-slate-700 ring-slate-500/20' }}"
+                                title="Líneas activas que cuentan para el cupo del plan">
+                                Cupo: {{ $lineasActivasCount }} / {{ $lineasLimitePlan }}
+                            </span>
+                        @endif
+                        <button type="button" wire:click="abrirFormularioCrearLinea"
+                            @disabled($cupoLineasAlcanzado)
+                            class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">+ Nueva
+                            línea</button>
+                    </div>
                 </div>
                 <table class="w-full text-sm">
                     <thead>
