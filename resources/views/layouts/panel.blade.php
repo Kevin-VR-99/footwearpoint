@@ -27,10 +27,17 @@
 >
     @php
         $esAdminDistribuidora = false;
+        $logotipoDistribuidora = null;
         if (auth()->check()) {
             app(\Spatie\Permission\PermissionRegistrar::class)
                 ->setPermissionsTeamId(\App\Support\Tenant::id() ?? 0);
             $esAdminDistribuidora = auth()->user()->hasRole('admin_distribuidora');
+            $tenantId = \App\Support\Tenant::id();
+            if ($tenantId) {
+                $logotipoDistribuidora = \App\Models\Distribuidora::query()
+                    ->whereKey($tenantId)
+                    ->value('logotipo_url');
+            }
         }
         $nombreUsuario = auth()->user()->nombre ?? '';
         $emailUsuario = auth()->user()->email ?? '';
@@ -59,11 +66,13 @@
         >
             {{-- Brand --}}
             <div class="px-4 py-4 border-b border-white/10 flex items-center justify-between gap-3">
-                <a href="{{ route('dashboard') }}" class="flex items-center min-w-0 rounded-xl bg-white px-2.5 py-2 shadow-sm" @click="sidebarOpen = false">
+                <a href="{{ route('dashboard') }}" class="flex items-center min-w-0" @click="sidebarOpen = false">
                     <img
-                        src="{{ asset('brand/logo-sidebar.png') }}"
+                        src="{{ asset('brand/logo-mark-40.png') }}"
                         alt="Footwear Point"
-                        class="h-11 w-auto max-w-[11.5rem] object-contain"
+                        class="h-10 w-10 shrink-0 object-contain"
+                        width="40"
+                        height="40"
                     >
                 </a>
                 <button
@@ -212,9 +221,7 @@
                 @endif
             </nav>
 
-            <div class="p-3 border-t border-white/10">
-                <img src="{{ asset('brand/logo-mark-32.png') }}" alt="" class="mx-auto h-7 w-7 opacity-80" width="28" height="28">
-            </div>
+
         </aside>
 
         <div class="flex-1 flex flex-col min-w-0">
@@ -233,9 +240,11 @@
 
                 <div class="flex-1 min-w-0 lg:hidden">
                     <img
-                        src="{{ asset('brand/logo-sidebar.png') }}"
+                        src="{{ asset('brand/logo-mark-40.png') }}"
                         alt="Footwear Point"
-                        class="h-8 w-auto max-w-[10rem] object-contain"
+                        class="h-8 w-8 object-contain"
+                        width="32"
+                        height="32"
                     >
                 </div>
 
@@ -249,9 +258,19 @@
                         @click="userMenuOpen = !userMenuOpen"
                         :aria-expanded="userMenuOpen.toString()"
                     >
-                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-fp-sidebar text-[11px] font-semibold text-white">
-                            {{ $iniciales }}
-                        </span>
+                        @if ($logotipoDistribuidora)
+                            <img
+                                src="{{ $logotipoDistribuidora }}"
+                                alt="Logotipo"
+                                class="h-8 w-8 rounded-full object-cover bg-slate-100"
+                                width="32"
+                                height="32"
+                            >
+                        @else
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-fp-sidebar text-[11px] font-semibold text-white">
+                                {{ $iniciales }}
+                            </span>
+                        @endif
                         <span class="hidden sm:block min-w-0 max-w-[10rem]">
                             <span class="block truncate text-sm font-medium text-slate-800">{{ $nombreUsuario }}</span>
                         </span>
