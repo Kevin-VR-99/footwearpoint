@@ -8,6 +8,8 @@ import '../services/api_service.dart';
 import '../services/cliente_privado_service.dart';
 import 'login_screen.dart';
 import 'producto_detalle_screen.dart';
+import '../tema/fp_colores.dart';
+import '../widgets/fp_componentes.dart';
 
 /// Clientes particulares del revendedor (E9-06): gente a la que él le vende
 /// por su cuenta. Solo él los ve; el servidor filtra por su revendedor_id.
@@ -108,7 +110,7 @@ class _ClientesPrivadosScreenState extends State<ClientesPrivadosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mis clientes particulares')),
+      appBar: AppBar(title: const Text('Mis clientes particulares'), bottom: const FpBordeMarca()),
       body: SafeArea(child: _contenido()),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _cargando ? null : () => _abrirFormulario(),
@@ -124,25 +126,11 @@ class _ClientesPrivadosScreenState extends State<ClientesPrivadosScreen> {
     }
 
     if (_clientes.isEmpty) {
-      final tema = Theme.of(context);
-
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.people_outline, size: 64, color: tema.colorScheme.onSurfaceVariant),
-              const SizedBox(height: 16),
-              Text('Todavía no tienes clientes particulares', style: tema.textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Text(
-                'Toca "Agregar cliente" para registrar a quien le vendes por tu cuenta.',
-                textAlign: TextAlign.center,
-                style: tema.textTheme.bodyMedium?.copyWith(color: tema.colorScheme.onSurfaceVariant),
-              ),
-            ],
-          ),
+      return const Center(
+        child: FpEstadoVacio(
+          icono: Icons.people_outline,
+          titulo: 'Todavía no tienes clientes particulares',
+          texto: 'Toca "Agregar cliente" para registrar a quien le vendes por tu cuenta.',
         ),
       );
     }
@@ -196,11 +184,7 @@ class _TarjetaCliente extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
-                    backgroundColor: colores.primaryContainer,
-                    foregroundColor: colores.onPrimaryContainer,
-                    child: Text(cliente.nombre.trim().isEmpty ? '?' : cliente.nombre.trim()[0].toUpperCase()),
-                  ),
+                  FpAvatar(nombre: cliente.nombre, tamano: 40),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -208,7 +192,10 @@ class _TarjetaCliente extends StatelessWidget {
                       children: [
                         Text(
                           cliente.nombre,
-                          style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                          style: tema.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: FpColores.sidebar,
+                          ),
                         ),
                         if (_tiene(cliente.telefono))
                           Text(cliente.telefono!, style: tema.textTheme.bodySmall),
@@ -649,7 +636,6 @@ class _Campo extends StatelessWidget {
           prefixIcon: icono != null ? Icon(icono) : null,
           prefixText: prefijo,
           helperText: ayuda,
-          border: const OutlineInputBorder(),
           isDense: true,
           // El límite se respeta, pero sin mostrar "0/150" en cada campo.
           counterText: '',

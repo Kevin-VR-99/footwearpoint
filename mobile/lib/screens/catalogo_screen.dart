@@ -7,6 +7,8 @@ import '../services/api_service.dart';
 import '../services/catalogo_service.dart';
 import 'login_screen.dart';
 import 'productos_linea_screen.dart';
+import '../tema/fp_colores.dart';
+import '../widgets/fp_componentes.dart';
 
 /// Primera pantalla del catálogo (E4-05): las líneas con productos.
 ///
@@ -67,7 +69,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Catálogo')),
+      appBar: AppBar(title: const Text('Catálogo'), bottom: const FpBordeMarca()),
       body: SafeArea(child: _contenido(context)),
     );
   }
@@ -108,11 +110,14 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                   AvisoError(mensaje: _error!),
                   const SizedBox(height: 12),
                 ],
-                Text(
-                  'Elige una línea',
-                  style: Theme.of(context).textTheme.titleMedium,
+                FpEncabezado(
+                  etiqueta: 'Catálogo',
+                  titulo: 'Elige una línea',
+                  subtitulo: _lineas!.length == 1
+                      ? '1 línea con productos publicados'
+                      : '${_lineas!.length} líneas con productos publicados',
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 for (final linea in _lineas!) _TarjetaLinea(linea: linea),
               ],
             ),
@@ -128,19 +133,17 @@ class _TarjetaLinea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cantidad = linea.productos.length;
-    final colores = Theme.of(context).colorScheme;
-
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 5),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: colores.primaryContainer,
-          child: Icon(Icons.style_outlined, color: colores.onPrimaryContainer),
+        leading: const FpIconoCuadro(icono: Icons.style_outlined),
+        title: Text(
+          linea.nombre,
+          style: const TextStyle(color: FpColores.sidebar, fontWeight: FontWeight.w600),
         ),
-        title: Text(linea.nombre, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(cantidad == 1 ? '1 producto' : '$cantidad productos'),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: const Icon(Icons.chevron_right_rounded, color: FpColores.bordeFuerte),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => ProductosLineaScreen(linea: linea)),
         ),
@@ -164,31 +167,18 @@ class _Aviso extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tema = Theme.of(context);
-
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icono,
-              size: 64,
-              color: esError ? tema.colorScheme.error : tema.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 16),
-            Text(mensaje, textAlign: TextAlign.center, style: tema.textTheme.bodyLarge),
-            if (alReintentar != null) ...[
-              const SizedBox(height: 24),
-              FilledButton.icon(
+      child: FpEstadoVacio(
+        icono: icono,
+        titulo: mensaje,
+        error: esError,
+        accion: alReintentar == null
+            ? null
+            : FilledButton.icon(
                 onPressed: alReintentar,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Reintentar'),
               ),
-            ],
-          ],
-        ),
       ),
     );
   }

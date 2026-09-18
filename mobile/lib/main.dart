@@ -7,6 +7,7 @@ import 'providers/carrito_revendedor_provider.dart';
 import 'screens/inicio_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/api_service.dart';
+import 'tema/fp_tema.dart';
 
 Future<void> main() async {
   // Firebase se conecta al arrancar, leyendo android/app/google-services.json.
@@ -46,10 +47,8 @@ class FootwearPointApp extends StatelessWidget {
       child: MaterialApp(
         title: 'FootwearPoint',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorSchemeSeed: const Color(0xFF6D4C41),
-          useMaterial3: true,
-        ),
+        // Con el estilo del panel web (TG-165).
+        theme: FpTema.claro(),
         home: const _Raiz(),
       ),
     );

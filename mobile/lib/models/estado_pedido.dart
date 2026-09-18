@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../tema/fp_colores.dart';
+
 /// Cómo se muestra cada estado de un pedido en la app (TG-165, "Mis pedidos").
 ///
 /// Los nombres y los colores son los mismos del panel web
@@ -42,13 +44,13 @@ enum TonoEstado {
   exito,
   peligro;
 
-  /// (fondo, texto) de la etiqueta.
+  /// (fondo, texto) de la etiqueta: los mismos --color-fp-badge-* de la web.
   (Color, Color) colores() => switch (this) {
-    TonoEstado.neutral => (Colors.grey.shade200, Colors.grey.shade800),
-    TonoEstado.info => (Colors.blue.shade50, Colors.blue.shade800),
-    TonoEstado.advertencia => (Colors.orange.shade50, Colors.orange.shade900),
-    TonoEstado.exito => (Colors.green.shade50, Colors.green.shade800),
-    TonoEstado.peligro => (Colors.red.shade50, Colors.red.shade800),
+    TonoEstado.neutral => (FpColores.insigniaNeutralFondo, FpColores.insigniaNeutralTexto),
+    TonoEstado.info => (FpColores.insigniaInfoFondo, FpColores.insigniaInfoTexto),
+    TonoEstado.advertencia => (FpColores.insigniaAvisoFondo, FpColores.insigniaAvisoTexto),
+    TonoEstado.exito => (FpColores.insigniaExitoFondo, FpColores.insigniaExitoTexto),
+    TonoEstado.peligro => (FpColores.insigniaPeligroFondo, FpColores.insigniaPeligroTexto),
   };
 }
 
@@ -64,11 +66,12 @@ class EtiquetaEstadoPedido extends StatelessWidget {
     final (fondo, texto) = info.tono.colores();
 
     return Container(
+      // px-2.5 py-1 rounded-full text-xs font-medium, como en la web.
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: fondo, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: fondo, borderRadius: BorderRadius.circular(999)),
       child: Text(
         info.etiqueta,
-        style: TextStyle(color: texto, fontSize: 12, fontWeight: FontWeight.w600),
+        style: TextStyle(color: texto, fontSize: 12, fontWeight: FontWeight.w500),
       ),
     );
   }

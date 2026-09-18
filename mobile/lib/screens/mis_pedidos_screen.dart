@@ -6,6 +6,8 @@ import '../models/pedido_resumen.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/pedido_service.dart';
+import '../tema/fp_colores.dart';
+import '../widgets/fp_componentes.dart';
 import 'pedido_detalle_screen.dart';
 import 'producto_detalle_screen.dart';
 
@@ -60,9 +62,8 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
   }
 
   Future<void> _abrir(PedidoResumen pedido) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => PedidoDetalleScreen(pedidoId: pedido.id)),
-    );
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => PedidoDetalleScreen(pedidoId: pedido.id)));
     // Al regresar se actualiza: el estado o el saldo pudieron cambiar.
     if (mounted) _cargar();
   }
@@ -70,34 +71,25 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mis pedidos')),
+      appBar: AppBar(title: const Text('Mis pedidos'), bottom: const FpBordeMarca()),
       body: SafeArea(child: _contenido(context)),
     );
   }
 
   Widget _contenido(BuildContext context) {
-    final tema = Theme.of(context);
-
     if (_cargando) return const Center(child: CircularProgressIndicator());
 
     final lista = _lista;
     if (lista == null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off_outlined, size: 64, color: tema.colorScheme.error),
-              const SizedBox(height: 16),
-              Text(_error ?? 'No se pudieron cargar tus pedidos.', textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _reintentar,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Reintentar'),
-              ),
-            ],
+        child: FpEstadoVacio(
+          error: true,
+          icono: Icons.cloud_off_outlined,
+          titulo: _error ?? 'No se pudieron cargar tus pedidos.',
+          accion: FilledButton.icon(
+            onPressed: _reintentar,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
           ),
         ),
       );
@@ -108,16 +100,12 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
       child: lista.isEmpty
           ? ListView(
               // ListView para que se pueda deslizar y recargar aunque esté vacío.
-              children: [
-                const SizedBox(height: 120),
-                Icon(Icons.receipt_long_outlined, size: 64, color: tema.colorScheme.onSurfaceVariant),
-                const SizedBox(height: 16),
-                const Text('Todavía no tienes pedidos.', textAlign: TextAlign.center),
-                const SizedBox(height: 4),
-                Text(
-                  'Cuando envíes uno desde el catálogo, aparecerá aquí con su estado.',
-                  textAlign: TextAlign.center,
-                  style: tema.textTheme.bodySmall?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+              children: const [
+                SizedBox(height: 80),
+                FpEstadoVacio(
+                  icono: Icons.receipt_long_outlined,
+                  titulo: 'Todavía no tienes pedidos.',
+                  texto: 'Cuando envíes uno desde el catálogo, aparecerá aquí con su estado.',
                 ),
               ],
             )
@@ -142,51 +130,54 @@ class _TarjetaPedido extends StatelessWidget {
     final tema = Theme.of(context);
     final debe = pedido.saldo > 0;
 
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: alTocar,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return FpTarjeta(
+      alTocar: alTocar,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
+              const FpIconoCuadro(icono: Icons.receipt_long_outlined, tamano: 36),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       pedido.folio,
-                      style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                      style: tema.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: FpColores.sidebar,
+                      ),
                     ),
-                  ),
-                  EtiquetaEstadoPedido(estado: pedido.estado),
-                ],
-              ),
-              if (pedido.fecha != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  formatoFecha(pedido.fecha!),
-                  style: tema.textTheme.bodySmall?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                    if (pedido.fecha != null)
+                      Text(
+                        formatoFecha(pedido.fecha!),
+                        style: tema.textTheme.bodySmall?.copyWith(color: FpColores.textoTenue),
+                      ),
+                  ],
                 ),
-              ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: _Dato(etiqueta: 'Total', valor: formatoPrecio(pedido.total))),
-                  Expanded(
-                    child: _Dato(
-                      etiqueta: debe ? 'Saldo pendiente' : 'Saldo',
-                      valor: formatoPrecio(pedido.saldo),
-                      resaltar: debe,
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right),
-                ],
               ),
+              EtiquetaEstadoPedido(estado: pedido.estado),
             ],
           ),
-        ),
+          const Divider(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: _Dato(etiqueta: 'Total', valor: formatoPrecio(pedido.total)),
+              ),
+              Expanded(
+                child: _Dato(
+                  etiqueta: debe ? 'Saldo pendiente' : 'Saldo',
+                  valor: formatoPrecio(pedido.saldo),
+                  resaltar: debe,
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: FpColores.bordeFuerte),
+            ],
+          ),
+        ],
       ),
     );
   }

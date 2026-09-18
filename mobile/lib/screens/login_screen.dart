@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../tema/fp_colores.dart';
 import '../validaciones.dart';
+import '../widgets/fp_componentes.dart';
 import 'recuperar_password_screen.dart';
 
 /// Pantalla de inicio de sesión (E1-01).
@@ -44,10 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     FocusScope.of(context).unfocus();
 
-    final entro = await context.read<AuthProvider>().login(
-      _email.text.trim(),
-      _password.text,
-    );
+    final entro = await context.read<AuthProvider>().login(_email.text.trim(), _password.text);
 
     // Le avisa al teléfono que el login funcionó, para que ofrezca guardar
     // la contraseña en su gestor (si el usuario tiene uno).
@@ -66,134 +65,148 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final tema = Theme.of(context);
 
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              // En tabletas o celulares acostados no se estira de lado a lado.
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: AutofillGroup(
-                child: Form(
-                  key: _formulario,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _Encabezado(tema: tema),
-                      const SizedBox(height: 40),
-                      TextFormField(
-                        controller: _email,
-                        enabled: !auth.ocupado,
-                        decoration: const InputDecoration(
-                          labelText: 'Correo',
-                          prefixIcon: Icon(Icons.mail_outline),
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.email],
-                        autocorrect: false,
-                        textInputAction: TextInputAction.next,
-                        validator: Validaciones.correo,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _password,
-                        enabled: !auth.ocupado,
-                        decoration: InputDecoration(
-                          labelText: 'Contraseña',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                            tooltip: _passwordVisible
-                                ? 'Ocultar contraseña'
-                                : 'Mostrar contraseña',
-                            icon: Icon(
-                              _passwordVisible
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
+    // Diseño (TG-165): fondo azul marino como el menú de la web, con el logo
+    // arriba y el formulario en una tarjeta blanca. Mismos campos y botones.
+    // Íconos blancos en la barra de estado del teléfono, sobre el fondo oscuro.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: FpColores.sidebar,
+        body: DecoratedBox(
+          decoration: const BoxDecoration(gradient: FpColores.degradadoMenu),
+          child: SafeArea(
+            child: Column(
+              children: [
+                const FpLineaMarca(),
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: ConstrainedBox(
+                        // En tabletas o celulares acostados no se estira de lado a lado.
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const _Encabezado(),
+                            const SizedBox(height: 24),
+                            FpTarjeta(
+                              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                              child: _campos(auth),
                             ),
-                            onPressed: () =>
-                                setState(() => _passwordVisible = !_passwordVisible),
-                          ),
-                        ),
-                        obscureText: !_passwordVisible,
-                        autofillHints: const [AutofillHints.password],
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) => _entrar(),
-                        validator: _validarPassword,
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: auth.ocupado ? null : _abrirRecuperarPassword,
-                          child: const Text('¿Olvidaste tu contraseña?'),
+                          ],
                         ),
                       ),
-                      if (auth.error != null) ...[
-                        const SizedBox(height: 8),
-                        AvisoError(mensaje: auth.error!),
-                      ],
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: auth.ocupado ? null : _entrar,
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(52),
-                        ),
-                        child: auth.ocupado
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Entrar'),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
       ),
     );
   }
+
+  Widget _campos(AuthProvider auth) {
+    return AutofillGroup(
+      child: Form(
+        key: _formulario,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              controller: _email,
+              enabled: !auth.ocupado,
+              decoration: const InputDecoration(
+                labelText: 'Correo',
+                prefixIcon: Icon(Icons.mail_outline),
+              ),
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              autocorrect: false,
+              textInputAction: TextInputAction.next,
+              validator: Validaciones.correo,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _password,
+              enabled: !auth.ocupado,
+              decoration: InputDecoration(
+                labelText: 'Contraseña',
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  tooltip: _passwordVisible ? 'Ocultar contraseña' : 'Mostrar contraseña',
+                  icon: Icon(
+                    _passwordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  ),
+                  onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+                ),
+              ),
+              obscureText: !_passwordVisible,
+              autofillHints: const [AutofillHints.password],
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _entrar(),
+              validator: _validarPassword,
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: auth.ocupado ? null : _abrirRecuperarPassword,
+                child: const Text('¿Olvidaste tu contraseña?'),
+              ),
+            ),
+            if (auth.error != null) ...[
+              const SizedBox(height: 8),
+              AvisoError(mensaje: auth.error!),
+            ],
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: auth.ocupado ? null : _entrar,
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+              child: auth.ocupado
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Entrar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
+/// Logo circular y nombre, como la marca del menú de la web.
 class _Encabezado extends StatelessWidget {
-  const _Encabezado({required this.tema});
-
-  final ThemeData tema;
+  const _Encabezado();
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        CircleAvatar(
-          radius: 36,
-          backgroundColor: tema.colorScheme.primaryContainer,
-          child: Icon(
-            Icons.storefront_outlined,
-            size: 36,
-            color: tema.colorScheme.onPrimaryContainer,
+        const FpLogo(tamano: 76),
+        const SizedBox(height: 14),
+        const Text(
+          'Footwear Point',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 26,
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.4,
           ),
         ),
-        const SizedBox(height: 16),
-        Text(
-          'FootwearPoint',
-          textAlign: TextAlign.center,
-          style: tema.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
           'Inicia sesión para continuar',
           textAlign: TextAlign.center,
-          style: tema.textTheme.bodyLarge?.copyWith(
-            color: tema.colorScheme.onSurfaceVariant,
-          ),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 15),
         ),
       ],
     );
@@ -218,7 +231,8 @@ class AvisoError extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: colores.errorContainer,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colores.error.withValues(alpha: 0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,10 +240,7 @@ class AvisoError extends StatelessWidget {
           Icon(Icons.error_outline, color: colores.onErrorContainer),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              mensaje,
-              style: TextStyle(color: colores.onErrorContainer),
-            ),
+            child: Text(mensaje, style: TextStyle(color: colores.onErrorContainer)),
           ),
         ],
       ),

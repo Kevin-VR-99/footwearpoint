@@ -10,6 +10,8 @@ import '../services/pedido_service.dart';
 import '../widgets/selector_vale.dart';
 import 'login_screen.dart';
 import 'producto_detalle_screen.dart';
+import '../tema/fp_colores.dart';
+import '../widgets/fp_componentes.dart';
 
 /// Pedido directo de una variante (E8-01 / E8-02), con vale opcional (E12-03).
 ///
@@ -103,7 +105,7 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
     final pedido = _pedido;
 
     return Scaffold(
-      appBar: AppBar(title: Text(pedido == null ? 'Pedido directo' : 'Pedido enviado')),
+      appBar: AppBar(title: Text(pedido == null ? 'Pedido directo' : 'Pedido enviado'), bottom: const FpBordeMarca()),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -137,7 +139,10 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(producto.nombre, style: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  producto.nombre,
+                  style: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: FpColores.sidebar),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   'Modelo ${producto.modelo} · Talla ${variante.talla} · ${variante.colorParaMostrar}',
@@ -226,9 +231,13 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(Icons.check_circle_outline, size: 72, color: Colors.green.shade600),
+        const FpIconoGrande(icono: Icons.check_rounded),
         const SizedBox(height: 12),
-        Text('¡Pedido enviado!', textAlign: TextAlign.center, style: tema.textTheme.headlineSmall),
+        Text(
+          '¡Pedido enviado!',
+          textAlign: TextAlign.center,
+          style: tema.textTheme.headlineSmall?.copyWith(color: FpColores.sidebar, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 4),
         Text(
           'Folio ${pedido.folio}',
@@ -324,8 +333,9 @@ class _Nota extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colores.primaryContainer.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(8),
+        color: colores.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colores.primary.withValues(alpha: 0.15)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
