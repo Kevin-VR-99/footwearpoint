@@ -9,8 +9,9 @@ import 'services/api_service.dart';
 
 Future<void> main() async {
   // Firebase se conecta al arrancar, leyendo android/app/google-services.json.
-  // Todavia NO hay logica de notificaciones: esto solo deja la conexion lista
-  // para cuando se agregue el registro del dispositivo (E16-03 / TG-136).
+  // Las notificaciones push ya usan esta conexion: AuthProvider registra el
+  // celular en Laravel al iniciar sesion y al abrir la app (E16-03), y el
+  // servidor lo quita al cerrar la sesion (TG-144).
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 

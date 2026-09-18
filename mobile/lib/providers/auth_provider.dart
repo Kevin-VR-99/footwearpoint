@@ -28,6 +28,10 @@ class AuthProvider extends ChangeNotifier {
 
   final _almacen = const FlutterSecureStorage();
 
+  /// El escuchador de renovación del token de Firebase (E16-03). Uno solo
+  /// para toda la sesión: ver [_registrarDispositivoFCM].
+  StreamSubscription<String>? _renovacionTokenFcm;
+
   Usuario? _usuario;
   String? _rol;
   int? _distribuidoraId;
@@ -139,14 +143,29 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Invalidar token de FCM en el cliente al cerrar sesión
-      await FirebaseMessaging.instance.deleteToken();
-      await api.post('auth/logout');
-    } on ApiException {
-      // Aunque el servidor no conteste, la sesión local se cierra igual: no
-      // tiene caso dejar al usuario atrapado dentro de la app.
-    } catch (_) {
-      // Ignorar errores de firebase al expirar si no hay red
+      // Lo indispensable: avisarle SIEMPRE al servidor, para que invalide el
+      // token. Desde TG-144 el servidor además quita este celular de las
+      // notificaciones al cerrar la sesión, así que no hace falta mandarle el
+      // token de Firebase. Va primero y aparte de Firebase: si Firebase
+      // fallara antes, el servidor nunca se enteraría y la sesión seguiría
+      // válida allá (E16-03, corrección TG-161).
+      try {
+        await api.post('auth/logout');
+      } on ApiException {
+        // Aunque el servidor no conteste, la sesión local se cierra igual: no
+        // tiene caso dejar al usuario atrapado dentro de la app.
+      }
+
+      // Extra: que Firebase también olvide el token en este teléfono. Si falla
+      // (sin internet, sin servicios de Google), no impide cerrar la sesión.
+      await _renovacionTokenFcm?.cancel();
+      _renovacionTokenFcm = null;
+
+      try {
+        await FirebaseMessaging.instance.deleteToken();
+      } catch (e) {
+        debugPrint('No se pudo borrar el token de Firebase: $e');
+      }
     } finally {
       await _olvidarSesion();
 
@@ -155,6 +174,12 @@ class AuthProvider extends ChangeNotifier {
 
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _renovacionTokenFcm?.cancel();
+    super.dispose();
   }
 
   /// Reemplaza los datos del usuario con los que regresó el servidor (por
@@ -219,11 +244,14 @@ class AuthProvider extends ChangeNotifier {
         );
       }
 
-      // 2. Escuchamos por si Firebase decide renovar el token en segundo plano
-      FirebaseMessaging.instance.onTokenRefresh.listen((nuevoToken) async {
+      // 2. Escuchamos por si Firebase decide renovar el token en segundo plano.
+      // Solo UNA vez: esto se llama en cada login y en cada apertura de la
+      // app, y sin el ??= se iba sumando un escuchador más cada vez (el
+      // celular se volvía a registrar repetido). Se cancela al cerrar sesión.
+      _renovacionTokenFcm ??= FirebaseMessaging.instance.onTokenRefresh.listen((nuevoToken) async {
         if (haySesion) {
           await api.post(
-            'dispositivos-fcm', 
+            'dispositivos-fcm',
             cuerpo: {'token': nuevoToken, 'plataforma': 'android'},
           );
         }
