@@ -5,6 +5,8 @@ import '../providers/auth_provider.dart';
 import '../providers/carrito_revendedor_provider.dart';
 import '../services/api_service.dart';
 import '../services/notificacion_service.dart';
+import '../tema/fp_colores.dart';
+import '../widgets/fp_componentes.dart';
 import 'catalogo_screen.dart';
 import 'mis_pedidos_screen.dart';
 import 'pedido_revendedor_screen.dart';
@@ -16,127 +18,137 @@ import 'notificaciones_screen.dart';
 class InicioScreen extends StatelessWidget {
   const InicioScreen({super.key});
 
+  /// El rol como se lee en pantalla. Si llegara uno nuevo, se muestra tal cual.
+  static String nombreRol(String? rol) => switch (rol) {
+    'revendedor' => 'Revendedor',
+    'cliente_directo' => 'Cliente directo',
+    null => '',
+    _ => rol,
+  };
+
+  void _abrir(BuildContext context, Widget pantalla) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => pantalla));
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final usuario = auth.usuario;
+    final habilitado = !auth.ocupado;
+    final primerNombre = (usuario?.nombre ?? '').trim().split(RegExp(r'\s+')).first;
 
+    // Diseño (TG-165): como el Inicio del panel web. Encabezado con barra
+    // azul, accesos en tarjetas y los datos de la cuenta abajo. Mismos
+    // botones y a las mismas pantallas que antes.
     return Scaffold(
       appBar: AppBar(
-        title: const Text('FootwearPoint'),
+        titleSpacing: 16,
+        title: const Row(
+          children: [
+            FpLogo(tamano: 34),
+            SizedBox(width: 10),
+            // En celulares angostos se recorta en vez de desbordarse.
+            Flexible(child: Text('Footwear Point', overflow: TextOverflow.ellipsis)),
+          ],
+        ),
+        bottom: const FpBordeMarca(),
         actions: [
           // TG-165: con el número de no leídas, como el panel web (TG-156).
-          _CampanaNotificaciones(habilitada: !auth.ocupado),
-          const SizedBox(width: 8),
+          _CampanaNotificaciones(habilitada: habilitado),
+          const SizedBox(width: 4),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FpAvatar(nombre: usuario?.nombre, tamano: 34),
+          ),
         ],
       ),
-      // Se puede deslizar si no cabe (celulares chicos): con tantos botones, la
-      // columna fija se desbordaba y tapaba "Cerrar sesión". En pantallas
-      // grandes se ve igual que antes: la altura mínima deja los botones abajo.
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, limites) => SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: limites.maxHeight - 48),
-              child: IntrinsicHeight(
+        // Un scroll normal (no ListView): arma todos los botones desde el
+        // principio, también los de abajo que todavía no se ven.
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FpEncabezado(
+                etiqueta: auth.rol == null ? null : nombreRol(auth.rol),
+                titulo: primerNombre.isEmpty ? 'Hola' : 'Hola, $primerNombre',
+                subtitulo: 'Tu catálogo, tus pedidos y tus vales en un solo lugar.',
+                pie: const _SesionIniciada(),
+              ),
+              const SizedBox(height: 20),
+              const FpTituloSeccion('Accesos'),
+              FpAccion(
+                destacada: true,
+                icono: Icons.storefront_outlined,
+                titulo: 'Ver catálogo',
+                subtitulo: 'Productos por línea, tallas y colores',
+                alTocar: habilitado ? () => _abrir(context, const CatalogoScreen()) : null,
+              ),
+              // TG-165: el carrito ahora se guarda en el teléfono; sin
+              // este botón, al volver a abrir la app solo se llegaba a
+              // él desde el detalle de un producto.
+              if (auth.rol == 'revendedor') ...[
+                const SizedBox(height: 10),
+                _BotonCarrito(habilitado: habilitado),
+              ],
+              const SizedBox(height: 10),
+              // TG-165: ver el estado de los pedidos propios desde la app.
+              FpAccion(
+                icono: Icons.receipt_long_outlined,
+                titulo: 'Mis pedidos',
+                subtitulo: 'Estado, pagos y saldo',
+                alTocar: habilitado ? () => _abrir(context, const MisPedidosScreen()) : null,
+              ),
+              const SizedBox(height: 10),
+              FpAccion(
+                icono: Icons.group_outlined,
+                titulo: 'Mis Clientes Particulares',
+                subtitulo: 'Tu lista de clientes',
+                alTocar: habilitado ? () => _abrir(context, const ClientesPrivadosScreen()) : null,
+              ),
+              const SizedBox(height: 10),
+              FpAccion(
+                icono: Icons.confirmation_number_outlined,
+                titulo: 'Consultar y Aplicar Vales',
+                subtitulo: 'Saldo y vigencia de tus vales',
+                alTocar: habilitado ? () => _abrir(context, const ValesScreen()) : null,
+              ),
+              const SizedBox(height: 10),
+              FpAccion(
+                icono: Icons.person_outline,
+                titulo: 'Mi perfil',
+                subtitulo: 'Nombre, teléfono y contraseña',
+                alTocar: habilitado ? () => _abrir(context, const PerfilScreen()) : null,
+              ),
+              const SizedBox(height: 20),
+              const FpTituloSeccion('Tu cuenta'),
+              FpTarjeta(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Sesión iniciada',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
                     _Dato(etiqueta: 'Nombre', valor: usuario?.nombre),
                     _Dato(etiqueta: 'Correo', valor: usuario?.email),
-                    _Dato(etiqueta: 'Rol', valor: auth.rol),
+                    _Dato(etiqueta: 'Rol', valor: nombreRol(auth.rol)),
                     _Dato(
                       etiqueta: 'Distribuidora',
                       valor: auth.distribuidoraId?.toString(),
-                    ),
-                    const Spacer(),
-                    FilledButton.icon(
-                      onPressed: auth.ocupado
-                          ? null
-                          : () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const CatalogoScreen(),
-                              ),
-                            ),
-                      icon: const Icon(Icons.storefront_outlined),
-                      label: const Text('Ver catálogo'),
-                    ),
-                    // TG-165: el carrito ahora se guarda en el teléfono; sin
-                    // este botón, al volver a abrir la app solo se llegaba a
-                    // él desde el detalle de un producto.
-                    if (auth.rol == 'revendedor') ...[
-                      const SizedBox(height: 12),
-                      _BotonCarrito(habilitado: !auth.ocupado),
-                    ],
-                    const SizedBox(height: 12),
-                    // TG-165: ver el estado de los pedidos propios desde la app.
-                    FilledButton.tonalIcon(
-                      onPressed: auth.ocupado
-                          ? null
-                          : () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const MisPedidosScreen(),
-                              ),
-                            ),
-                      icon: const Icon(Icons.receipt_long_outlined),
-                      label: const Text('Mis pedidos'),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.tonalIcon(
-                      onPressed: auth.ocupado
-                          ? null
-                          : () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const ClientesPrivadosScreen(),
-                              ),
-                            ),
-                      icon: const Icon(Icons.group_outlined),
-                      label: const Text('Mis Clientes Particulares'),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.tonalIcon(
-                      onPressed: auth.ocupado
-                          ? null
-                          : () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const ValesScreen(),
-                              ),
-                            ),
-                      icon: const Icon(Icons.confirmation_number_outlined),
-                      label: const Text('Consultar y Aplicar Vales'),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.tonalIcon(
-                      onPressed: auth.ocupado
-                          ? null
-                          : () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const PerfilScreen(),
-                              ),
-                            ),
-                      icon: const Icon(Icons.person_outline),
-                      label: const Text('Mi perfil'),
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton(
-                      onPressed: auth.ocupado
-                          ? null
-                          : () => context.read<AuthProvider>().logout(),
-                      child: const Text('Cerrar sesión'),
+                      ultimo: true,
                     ),
                   ],
                 ),
               ),
-            ),
+              const SizedBox(height: 20),
+              OutlinedButton.icon(
+                onPressed: habilitado ? () => context.read<AuthProvider>().logout() : null,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: FpColores.peligro,
+                  side: BorderSide(color: FpColores.peligro.withValues(alpha: 0.3)),
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text('Cerrar sesión'),
+              ),
+            ],
           ),
         ),
       ),
@@ -144,26 +156,76 @@ class InicioScreen extends StatelessWidget {
   }
 }
 
+/// La píldora con punto verde del encabezado.
+class _SesionIniciada extends StatelessWidget {
+  const _SesionIniciada();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: ShapeDecoration(
+        color: FpColores.insigniaExitoFondo,
+        shape: const StadiumBorder(),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 6,
+            height: 6,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: FpColores.insigniaExitoTexto,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          SizedBox(width: 8),
+          Text(
+            'Sesión iniciada',
+            style: TextStyle(
+              color: FpColores.insigniaExitoTexto,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Dato extends StatelessWidget {
-  const _Dato({required this.etiqueta, required this.valor});
+  const _Dato({required this.etiqueta, required this.valor, this.ultimo = false});
 
   final String etiqueta;
   final String? valor;
+  final bool ultimo;
 
   @override
   Widget build(BuildContext context) {
     final vacio = valor == null || valor!.isEmpty;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: ultimo
+          ? null
+          : const BoxDecoration(
+              border: Border(bottom: BorderSide(color: FpColores.borde)),
+            ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: 110,
             child: Text(
               etiqueta,
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: FpColores.textoTenue,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           Expanded(
@@ -171,7 +233,7 @@ class _Dato extends StatelessWidget {
               vacio ? '(vacío)' : valor!,
               style: vacio
                   ? TextStyle(color: Theme.of(context).colorScheme.error)
-                  : null,
+                  : const TextStyle(color: FpColores.texto, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -211,9 +273,8 @@ class _CampanaNotificacionesState extends State<_CampanaNotificaciones> {
   }
 
   Future<void> _abrir() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const NotificacionesScreen()),
-    );
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const NotificacionesScreen()));
     _contar();
   }
 
@@ -225,7 +286,9 @@ class _CampanaNotificacionesState extends State<_CampanaNotificaciones> {
       icon: Badge(
         isLabelVisible: _noLeidas > 0,
         label: Text(_noLeidas > 9 ? '9+' : '$_noLeidas'),
-        child: Icon(_noLeidas > 0 ? Icons.notifications_active_outlined : Icons.notifications_outlined),
+        child: Icon(
+          _noLeidas > 0 ? Icons.notifications_active_outlined : Icons.notifications_outlined,
+        ),
       ),
     );
   }
@@ -241,18 +304,15 @@ class _BotonCarrito extends StatelessWidget {
   Widget build(BuildContext context) {
     final piezas = context.watch<CarritoRevendedorProvider>().totalPiezas;
 
-    return FilledButton.tonalIcon(
-      onPressed: habilitado
-          ? () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const PedidoRevendedorScreen()),
-            )
+    return FpAccion(
+      icono: Icons.shopping_cart_outlined,
+      titulo: piezas > 0 ? 'Mi pedido acumulado ($piezas)' : 'Mi pedido acumulado',
+      subtitulo: piezas > 0 ? 'Listo para revisar y enviar' : 'Tu carrito está vacío',
+      alTocar: habilitado
+          ? () =>
+                Navigator.of(context)
+                    .push(MaterialPageRoute<void>(builder: (_) => const PedidoRevendedorScreen()))
           : null,
-      icon: Badge(
-        isLabelVisible: piezas > 0,
-        label: Text('$piezas'),
-        child: const Icon(Icons.shopping_cart_outlined),
-      ),
-      label: Text(piezas > 0 ? 'Mi pedido acumulado ($piezas)' : 'Mi pedido acumulado'),
     );
   }
 }

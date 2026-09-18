@@ -21,6 +21,17 @@ class FpLineaMarca extends StatelessWidget {
   }
 }
 
+/// La misma línea, para ponerla en el `bottom` de un AppBar.
+class FpBordeMarca extends StatelessWidget implements PreferredSizeWidget {
+  const FpBordeMarca({super.key});
+
+  @override
+  Size get preferredSize => const Size.fromHeight(2);
+
+  @override
+  Widget build(BuildContext context) => const FpLineaMarca();
+}
+
 /// El logo circular de Footwear Point, como en el menú de la web.
 class FpLogo extends StatelessWidget {
   const FpLogo({super.key, this.tamano = 40});
