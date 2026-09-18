@@ -10,6 +10,7 @@ class PedidoResumen {
     required this.estado,
     required this.total,
     required this.pagado,
+    required this.pagadoConVales,
     required this.saldo,
     required this.anticipoRequerido,
     required this.anticipoPendiente,
@@ -19,7 +20,12 @@ class PedidoResumen {
   final String folio;
   final String estado;
   final double total;
+
+  /// Todo lo pagado, incluido lo aplicado con vales (TG-167).
   final double pagado;
+
+  /// La parte de [pagado] que se cubrió con vales.
+  final double pagadoConVales;
 
   /// Lo que falta pagar del pedido completo.
   final double saldo;
@@ -39,6 +45,7 @@ class PedidoResumen {
       estado: json['estado'] as String? ?? '',
       total: numero('total'),
       pagado: numero('pagado'),
+      pagadoConVales: numero('pagado_con_vales'),
       saldo: numero('saldo'),
       anticipoRequerido: numero('anticipo_requerido'),
       anticipoPendiente: numero('anticipo_pendiente'),
