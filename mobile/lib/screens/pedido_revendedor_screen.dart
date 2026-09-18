@@ -3,15 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/carrito_revendedor_provider.dart';
 import '../services/api_service.dart';
-
-/// Sucursal a la que se mandan los pedidos desde la app.
-///
-/// PENDIENTE (backend, Kevin): la app no tiene forma de saber la sucursal de
-/// su distribuidora, y el servidor la busca dentro de la distribuidora del
-/// usuario. Con 1 funciona en los datos demo, pero en otra distribuidora
-/// fallaría con "La sucursal no existe". Se deja en un solo lugar para
-/// cambiarlo cuando el servidor la resuelva solo o la mande en auth/me.
-const sucursalPedidosApp = 1;
+import '../services/pedido_service.dart';
 
 /// El pedido acumulado del revendedor (E9-01 / E9-03). Lee el carrito de
 /// [CarritoRevendedorProvider], ligado a la sesión (TG-165).
@@ -32,41 +24,26 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
     setState(() => _enviando = true);
 
     try {
-      final api = context.read<AuthProvider>().api;
-
-      // 1. Creamos el pedido maestro base
-      final respuestaPedido = await api.post('/pedidos', cuerpo: {
-        'tipo': 'revendedor',
-        // El servidor usa al revendedor de la sesión; se manda porque el
-        // endpoint lo exige (lo comparte con la web).
-        'propietario_id': 1,
-        'sucursal_id': sucursalPedidosApp,
-      });
-
-      final pedidoId = respuestaPedido['data']?['id'] ?? respuestaPedido['id'];
-
-      if (pedidoId == null) {
-        throw ApiException('No se pudo obtener el ID del pedido creado.');
-      }
-
-      // 2. Agregamos cada línea utilizando el producto_campana_id correcto y la variante correspondiente a ese producto
-      for (final item in carrito.items) {
-        await api.post('/pedidos/$pedidoId/lineas', cuerpo: {
-          'producto_campana_id': item.producto.id,
-          'variante_id': item.variante.varianteId,
-          'cantidad': item.cantidad,
-        });
-      }
-
-      // 3. Enviamos formalmente el pedido a la distribuidora
-      await api.post('/pedidos/$pedidoId/enviar');
+      // Mismos pasos que el pedido directo (crear, líneas, enviar): viven en
+      // PedidoService. Sin precio: lo decide el servidor (TG-165).
+      final pedido = await PedidoService(context.read<AuthProvider>().api).crearYEnviar(
+        tipo: 'revendedor',
+        lineas: [
+          for (final item in carrito.items)
+            (
+              productoCampanaId: item.producto.id,
+              varianteId: item.variante.varianteId,
+              cantidad: item.cantidad,
+            ),
+        ],
+      );
 
       if (!mounted) return;
 
       setState(() => _enviando = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Pedido enviado a la distribuidora a nombre del revendedor con éxito!')),
+        SnackBar(content: Text('Pedido ${pedido.folio} enviado a la distribuidora a tu nombre.')),
       );
 
       carrito.vaciar();
