@@ -55,6 +55,7 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones — FootwearPoint')] clas
             $n->leida_at = now();
             $n->save();
             $this->mensaje = 'Marcada como leída.';
+            $this->dispatch('notificaciones-actualizadas');
         }
     }
 
@@ -66,6 +67,7 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones — FootwearPoint')] clas
             ->update(['leida_at' => now()]);
 
         $this->mensaje = 'Todas marcadas como leídas.';
+        $this->dispatch('notificaciones-actualizadas');
     }
 };
 ?>
