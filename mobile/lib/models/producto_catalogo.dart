@@ -27,6 +27,13 @@ enum Disponibilidad {
       _ => Disponibilidad.noDisponible,
     };
   }
+
+  /// El valor como lo manda el servidor (lo contrario de [desdeJson]).
+  String aJson() => switch (this) {
+    Disponibilidad.disponible => 'disponible',
+    Disponibilidad.bajoPedido => 'bajo_pedido',
+    Disponibilidad.noDisponible => 'no_disponible',
+  };
 }
 
 /// Marca, línea o categoría: el backend las manda igual, { id, nombre }.
@@ -41,6 +48,8 @@ class Referencia {
 
     return Referencia(id: json['id'] as int, nombre: json['nombre'] as String);
   }
+
+  Map<String, dynamic> aJson() => {'id': id, 'nombre': nombre};
 }
 
 class ImagenCatalogo {
@@ -64,6 +73,8 @@ class ImagenCatalogo {
       esPrincipal: json['es_principal'] as bool,
     );
   }
+
+  Map<String, dynamic> aJson() => {'id': id, 'url': url, 'orden': orden, 'es_principal': esPrincipal};
 }
 
 class VarianteCatalogo {
@@ -100,6 +111,15 @@ class VarianteCatalogo {
       disponibilidad: Disponibilidad.desdeJson(json['disponibilidad'] as String),
     );
   }
+
+  Map<String, dynamic> aJson() => {
+    'variante_id': varianteId,
+    'sku': sku,
+    'talla': talla,
+    'color': color,
+    'nombre_color_comercial': nombreColorComercial,
+    'disponibilidad': disponibilidad.aJson(),
+  };
 }
 
 /// Un producto publicado en una campaña activa.
@@ -210,6 +230,26 @@ class ProductoCatalogo {
           .toList(),
     );
   }
+
+  /// Con la misma forma que manda el servidor, para que [desdeJson] lo vuelva
+  /// a leer. Lo usa el carrito del revendedor para guardarse en el teléfono
+  /// (TG-165). Sin mayorista si no venía: así no aparece donde no debe.
+  Map<String, dynamic> aJson() => {
+    'id': id,
+    'producto': {
+      'id': productoId,
+      'modelo': modelo,
+      'nombre': nombre,
+      'marca': marca?.aJson(),
+      'linea': linea?.aJson(),
+      'categoria': categoria?.aJson(),
+    },
+    'codigo_catalogo': codigoCatalogo,
+    'precio_minorista_sugerido': precioMinoristaSugerido,
+    if (precioMayorista != null) 'precio_mayorista': precioMayorista,
+    'imagenes': [for (final imagen in imagenes) imagen.aJson()],
+    'variantes': [for (final variante in variantes) variante.aJson()],
+  };
 }
 
 /// Una línea con sus productos, para la primera pantalla del catálogo.

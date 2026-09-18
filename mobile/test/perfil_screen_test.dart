@@ -72,6 +72,8 @@ void main() {
     await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: servidor.cliente)));
     await tester.pumpAndSettle();
 
+    // En pantallas chicas el inicio se desliza: primero se lleva el botón a la vista.
+    await tester.ensureVisible(find.text('Mi perfil'));
     await tester.tap(find.text('Mi perfil'));
     await tester.pumpAndSettle();
   }
@@ -85,6 +87,8 @@ void main() {
     await tester.pumpAndSettle();
     servidor.usuario = {...servidor.usuario, 'telefono': '9630000000'};
 
+    // En pantallas chicas el inicio se desliza: primero se lleva el botón a la vista.
+    await tester.ensureVisible(find.text('Mi perfil'));
     await tester.tap(find.text('Mi perfil'));
     await tester.pumpAndSettle();
 
