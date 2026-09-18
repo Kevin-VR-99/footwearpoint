@@ -30,7 +30,12 @@ new class extends Component
 <a href="{{ route('notificaciones.index') }}"
     wire:navigate
     class="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40 {{ request()->routeIs('notificaciones.*') ? 'bg-slate-100 text-slate-900' : '' }}"
-    aria-label="Notificaciones{{ ->noLeidasCount > 0 ? ' (' . ->noLeidasCount . ' sin leer)' : '' }}">
+    @if (->noLeidasCount > 0)
+        aria-label="Notificaciones ({{ ->noLeidasCount }} sin leer)"
+    @else
+        aria-label="Notificaciones"
+    @endif
+>
     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
     </svg>
