@@ -9,34 +9,37 @@ new #[Layout('layouts.panel')] class extends Component {
 ?>
 
 <div>
-    <h1 class="text-xl font-semibold text-slate-800 mb-4">Catálogo</h1>
+    <div class="mb-6">
+        <h1 class="text-xl font-semibold tracking-tight text-slate-900">Catálogo</h1>
+        <p class="mt-1 text-sm text-slate-500">Gestiona productos, líneas, marcas, temporadas y categorías.</p>
+    </div>
 
     <div x-data="{ visible: false, mensaje: '' }"
         x-on:guardado.window="mensaje = $event.detail.mensaje; visible = true; setTimeout(() => visible = false, 3000)"
         x-show="visible" x-transition
-        class="mb-4 rounded-md bg-fp-badge-success-bg text-fp-badge-success-fg px-4 py-2 text-sm" style="display: none;">
+        class="mb-5 rounded-lg bg-fp-badge-success-bg text-fp-badge-success-fg px-4 py-2.5 text-sm" style="display: none;">
         <span x-text="mensaje"></span>
     </div>
 
-    <div class="border-b border-slate-200 mb-6 flex gap-6 flex-wrap">
+    <div class="mb-8 flex flex-wrap gap-1.5 rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-sm">
         <button type="button" wire:click="$set('pestanaActiva', 'productos')"
-            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'productos' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
+            class="rounded-lg px-3.5 py-2 text-sm font-medium transition-colors {{ $pestanaActiva === 'productos' ? 'bg-fp-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
             Productos
         </button>
         <button type="button" wire:click="$set('pestanaActiva', 'lineas')"
-            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'lineas' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
+            class="rounded-lg px-3.5 py-2 text-sm font-medium transition-colors {{ $pestanaActiva === 'lineas' ? 'bg-fp-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
             Líneas
         </button>
         <button type="button" wire:click="$set('pestanaActiva', 'marcas')"
-            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'marcas' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
+            class="rounded-lg px-3.5 py-2 text-sm font-medium transition-colors {{ $pestanaActiva === 'marcas' ? 'bg-fp-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
             Marcas
         </button>
         <button type="button" wire:click="$set('pestanaActiva', 'campanas')"
-            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'campanas' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
+            class="rounded-lg px-3.5 py-2 text-sm font-medium transition-colors {{ $pestanaActiva === 'campanas' ? 'bg-fp-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
             Temporadas
         </button>
         <button type="button" wire:click="$set('pestanaActiva', 'categorias')"
-            class="pb-3 text-sm font-medium {{ $pestanaActiva === 'categorias' ? 'border-b-2 border-fp-primary text-fp-primary' : 'text-slate-500' }}">
+            class="rounded-lg px-3.5 py-2 text-sm font-medium transition-colors {{ $pestanaActiva === 'categorias' ? 'bg-fp-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
             Categorías
         </button>
     </div>

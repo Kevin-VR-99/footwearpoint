@@ -48,23 +48,24 @@
             ->implode('') ?: 'FP';
     @endphp
 
-    <div class="min-h-screen flex">
-        {{-- Backdrop móvil --}}
+    <div class="min-h-screen flex flex-col">
+        {{-- Backdrop (desktop y móvil) --}}
         <div
             x-show="sidebarOpen"
             x-cloak
             x-transition.opacity
-            class="fixed inset-0 z-40 bg-black/40 lg:hidden"
+            class="fixed inset-0 z-40 bg-black/40"
             @click="sidebarOpen = false"
             aria-hidden="true"
         ></div>
 
-        {{-- Sidebar --}}
+        {{-- Sidebar deslizable (drawer en todos los anchos) --}}
         <aside
-            class="fixed inset-y-0 left-0 z-50 w-64 bg-fp-sidebar text-white flex flex-col shrink-0 transform transition-transform duration-200 ease-out lg:static lg:translate-x-0 lg:z-auto"
+            class="fixed inset-y-0 left-0 z-50 w-64 bg-fp-sidebar text-white flex flex-col shrink-0 transform transition-transform duration-200 ease-out"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+            :aria-hidden="(!sidebarOpen).toString()"
         >
-            {{-- Brand --}}
+            {{-- Brand + cerrar --}}
             <div class="px-4 py-4 border-b border-white/10 flex items-center justify-between gap-3">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 min-w-0" @click="sidebarOpen = false">
                     <img
@@ -80,7 +81,7 @@
                 </a>
                 <button
                     type="button"
-                    class="lg:hidden rounded-md p-1.5 text-white/70 hover:bg-white/10 hover:text-white"
+                    class="rounded-md p-1.5 text-white/70 hover:bg-white/10 hover:text-white"
                     @click="sidebarOpen = false"
                     aria-label="Cerrar menú"
                 >
@@ -223,36 +224,31 @@
                     </div>
                 @endif
             </nav>
-
-
         </aside>
 
         <div class="flex-1 flex flex-col min-w-0">
-            {{-- Top bar: menú + usuario --}}
+            {{-- Top bar: logo+nombre (abre sidebar) + usuario --}}
             <header class="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200/80 bg-white/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-white/80">
                 <button
                     type="button"
-                    class="lg:hidden rounded-md p-2 text-slate-700 hover:bg-slate-100"
-                    @click="sidebarOpen = true"
-                    aria-label="Abrir menú"
+                    class="flex items-center gap-2.5 rounded-lg py-1 pr-2 pl-1 text-left hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40"
+                    @click="sidebarOpen = !sidebarOpen"
+                    :aria-expanded="sidebarOpen.toString()"
+                    aria-label="Abrir o cerrar menú"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fp-sidebar ring-1 ring-slate-200/80">
+                        <img
+                            src="{{ asset('brand/logo-mark-white-40.png') }}"
+                            alt=""
+                            class="h-8 w-8 rounded-full object-cover"
+                            width="32"
+                            height="32"
+                        >
+                    </span>
+                    <span class="truncate text-sm font-semibold text-slate-900">Footwear Point</span>
                 </button>
 
-                <div class="flex flex-1 items-center gap-2 min-w-0 lg:hidden">
-                    <img
-                        src="{{ asset('brand/logo-mark-white-40.png') }}"
-                        alt=""
-                        class="h-8 w-8 shrink-0 rounded-full object-cover"
-                        width="32"
-                        height="32"
-                    >
-                    <span class="truncate text-sm font-semibold text-slate-900">Footwear Point</span>
-                </div>
-
-                <div class="hidden lg:block flex-1"></div>
+                <div class="flex-1"></div>
 
                 {{-- Menú usuario (arriba derecha) --}}
                 <div class="relative" @click.outside="userMenuOpen = false">
