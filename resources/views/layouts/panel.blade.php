@@ -83,11 +83,7 @@
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('vales.*') ? 'bg-white/15' : '' }}">
                     Vales
                 </a>
-                <a href="{{ route('notificaciones.index') }}"
-                    @click="sidebarOpen = false"
-                    class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('notificaciones.*') ? 'bg-white/15' : '' }}">
-                    Notificaciones
-                </a>
+                <livewire:notificaciones.nav-badge />
                 <a href="{{ route('reportes.index') }}"
                     @click="sidebarOpen = false"
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('reportes.*') ? 'bg-white/15' : '' }}">
