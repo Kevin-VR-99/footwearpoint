@@ -23,10 +23,12 @@
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('dashboard') ? 'bg-white/15' : '' }}">
                     Inicio
                 </a>
-                <a href="{{ route('distribuidora.catalogo') }}"
+                                @if (auth()->user()?->hasRole('admin_distribuidora'))
+<a href="{{ route('distribuidora.catalogo') }}"
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'bg-white/15' : '' }}">
                     Catálogo
                 </a>
+                @endif
                 <a href="{{ route('stock.index') }}"
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('stock.*') ? 'bg-white/15' : '' }}">
                     Stock
@@ -55,10 +57,12 @@
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('reportes.*') ? 'bg-white/15' : '' }}">
                     Reportes
                 </a>
-                <a href="{{ route('distribuidora.configuracion') }}"
+                                @if (auth()->user()?->hasRole('admin_distribuidora'))
+<a href="{{ route('distribuidora.configuracion') }}"
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('distribuidora.configuracion') ? 'bg-white/15' : '' }}">
                     Configuración
                 </a>
+                @endif
             </nav>
             <div class="p-4 border-t border-white/10 text-sm">
                 <p class="text-white/70 truncate">{{ auth()->user()->nombre ?? '' }}</p>
