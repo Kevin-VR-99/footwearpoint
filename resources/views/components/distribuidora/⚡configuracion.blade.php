@@ -606,7 +606,7 @@ new #[Layout('layouts.panel')] class extends Component {
                 <input type="file" wire:model="logotipo" accept="image/png,image/jpeg">
                 <p class="text-xs text-fp-text-muted mt-1">PNG o JPG, hasta 2MB.</p>
             </div>
-            <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar Cambios</button>
+            <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar Cambios</button>
         </form>
     </div>
 
@@ -643,7 +643,7 @@ new #[Layout('layouts.panel')] class extends Component {
                 <label class="block text-sm font-medium text-slate-700 mb-1">Zona horaria</label>
                 <input type="text" wire:model="zona_horaria" class="w-full rounded-md border-slate-300">
             </div>
-            <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar Cambios</button>
+            <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar Cambios</button>
         </form>
     </div>
 
@@ -731,7 +731,7 @@ new #[Layout('layouts.panel')] class extends Component {
                     Marcar como configuración activa
                 </label>
                 <div class="flex gap-2">
-                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar</button>
                     <button type="button" wire:click="cancelarFormularioCiclo" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>
@@ -812,7 +812,7 @@ new #[Layout('layouts.panel')] class extends Component {
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                        <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar</button>
                         <button type="button" wire:click="cancelarFormularioEmpleado" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                     </div>
                 </form>
@@ -937,7 +937,7 @@ new #[Layout('layouts.panel')] class extends Component {
                         </div>
                     @endif
                     <div class="flex gap-2">
-                        <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                        <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar</button>
                         <button type="button" wire:click="cancelarFormularioRevendedor" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                     </div>
                 </form>
@@ -1055,7 +1055,7 @@ new #[Layout('layouts.panel')] class extends Component {
                     </div>
                 @endif
                 <div class="flex gap-2">
-                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar</button>
                     <button type="button" wire:click="cancelarFormularioCliente" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>

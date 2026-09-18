@@ -693,7 +693,7 @@ new #[Layout('layouts.panel')] class extends Component {
                 @endif
                 <div class="flex gap-2">
                     <button type="submit"
-                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar
+                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar
                         Producto</button>
                     <button type="button" wire:click="cancelarFormularioProducto"
                         class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
@@ -812,7 +812,7 @@ new #[Layout('layouts.panel')] class extends Component {
                 @endif
                 <div class="flex gap-2">
                     <button type="submit"
-                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar
+                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar
                         línea</button>
                     <button type="button" wire:click="cancelarFormularioLinea"
                         class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
@@ -899,7 +899,7 @@ new #[Layout('layouts.panel')] class extends Component {
                 @endif
                 <div class="flex gap-2">
                     <button type="submit"
-                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar</button>
                     <button type="button" wire:click="cancelarFormularioMarca"
                         class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
@@ -973,12 +973,12 @@ new #[Layout('layouts.panel')] class extends Component {
                                 </td>
                                 <td class="py-2 text-right">
                                     @if ($campana->estado === 'activa')
-                                        <button type="button" wire:click="desactivarTemporada({{ $campana->id }})"
+                                        <button type="button" wire:click="desactivarTemporada({{ $campana->id }})" wire:confirm="¿Desactivar esta temporada?"
                                             class="text-fp-primary text-xs font-medium">
                                             Desactivar
                                         </button>
                                     @else
-                                        <button type="button" wire:click="activarTemporada({{ $campana->id }})"
+                                        <button type="button" wire:click="activarTemporada({{ $campana->id }})" wire:confirm="¿Activar esta temporada? Las demás activas se desactivarán."
                                             class="text-fp-primary text-xs font-medium">
                                             Activar
                                         </button>
@@ -1047,7 +1047,7 @@ new #[Layout('layouts.panel')] class extends Component {
 
                 <div class="flex gap-2">
                     <button type="submit"
-                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar</button>
                     <button type="button" wire:click="cancelarFormularioCampana"
                         class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
@@ -1111,7 +1111,7 @@ new #[Layout('layouts.panel')] class extends Component {
                 @endif
                 <div class="flex gap-2">
                     <button type="submit"
-                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium">Guardar</button>
+                        class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar</button>
                     <button type="button" wire:click="cancelarFormularioCategoria"
                         class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>

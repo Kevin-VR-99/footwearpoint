@@ -80,6 +80,8 @@
         </main>
     </div>
 
+    <x-ui.toast-global />
+
     @livewireScripts
 </body>
 
