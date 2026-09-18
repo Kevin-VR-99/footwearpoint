@@ -204,7 +204,7 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
               const SizedBox(height: 16),
 
               Card(
-                color: tema.colorScheme.surfaceVariant.withOpacity(0.3),
+                color: tema.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
