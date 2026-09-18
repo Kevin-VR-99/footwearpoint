@@ -23,15 +23,19 @@ class _ClientesPrivadosScreenState extends State<ClientesPrivadosScreen> {
 
   Future<void> _cargarClientes() async {
     setState(() => _cargando = true);
+    // Después de cada await se revisa `mounted`: si la persona salió de la
+    // pantalla mientras el servidor contestaba, ya no se debe tocar (tronaba).
     try {
       final lista = await _service.listar();
+      if (!mounted) return;
       setState(() => _clientes = lista);
     } on ApiException catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.mensaje), backgroundColor: Colors.red),
       );
     } finally {
-      setState(() => _cargando = false);
+      if (mounted) setState(() => _cargando = false);
     }
   }
 
@@ -126,9 +130,12 @@ class _ClientesPrivadosScreenState extends State<ClientesPrivadosScreen> {
                     notas: notasController.text,
                   );
                 }
-                Navigator.pop(context);
-                _cargarClientes();
+                // Aquí `context` es el del diálogo: pudo cerrarse tocando fuera
+                // mientras se guardaba. `mounted` es el de la pantalla.
+                if (context.mounted) Navigator.pop(context);
+                if (mounted) _cargarClientes();
               } on ApiException catch (e) {
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(e.mensaje), backgroundColor: Colors.red),
                 );
@@ -144,8 +151,9 @@ class _ClientesPrivadosScreenState extends State<ClientesPrivadosScreen> {
   Future<void> _eliminarCliente(int id) async {
     try {
       await _service.eliminar(id);
-      _cargarClientes();
+      if (mounted) _cargarClientes();
     } on ApiException catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.mensaje), backgroundColor: Colors.red),
       );
