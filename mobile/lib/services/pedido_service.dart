@@ -38,6 +38,21 @@ class PedidoService {
     return PedidoResumen.desdeJson(enviado['data'] as Map<String, dynamic>);
   }
 
+  /// "Mis pedidos": el servidor ya regresa solo los de quien inició sesión
+  /// (PropietarioActual), del más nuevo al más viejo, máximo 100.
+  ///
+  /// Sin borradores: son pedidos que nunca se enviaron (por ejemplo, si se
+  /// cortó la conexión a medio envío) y desde la app no se pueden continuar.
+  Future<List<PedidoResumen>> listar() async {
+    final respuesta = await _api.get('pedidos');
+
+    return [
+      for (final p in respuesta['data'] as List<dynamic>)
+        PedidoResumen.desdeJson(p as Map<String, dynamic>),
+    ].where((p) => p.estado != 'borrador').toList();
+  }
+
+  /// El detalle, con líneas y pagos.
   Future<PedidoResumen> ver(int pedidoId) async {
     final respuesta = await _api.get('pedidos/$pedidoId');
 

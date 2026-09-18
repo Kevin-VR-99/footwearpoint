@@ -129,6 +129,8 @@ void main() {
     expect(carrito().totalPiezas, 1);
 
     // Cierra sesión y entra Roberto en el mismo teléfono.
+    // En pantallas chicas el inicio se desliza: primero se lleva el botón a la vista.
+    await tester.ensureVisible(find.text('Cerrar sesión'));
     await tester.tap(find.text('Cerrar sesión'));
     await tester.pumpAndSettle();
 

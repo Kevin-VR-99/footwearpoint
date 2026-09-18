@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import 'catalogo_screen.dart';
+import 'mis_pedidos_screen.dart';
 import 'perfil_screen.dart';
 import 'clientes_privados_screen.dart';
 import 'vales_screen.dart';
@@ -27,76 +28,114 @@ class InicioScreen extends StatelessWidget {
             onPressed: auth.ocupado
                 ? null
                 : () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(builder: (_) => const NotificacionesScreen()),
+                    MaterialPageRoute<void>(
+                      builder: (_) => const NotificacionesScreen(),
                     ),
+                  ),
           ),
           const SizedBox(width: 8),
         ],
       ),
+      // Se puede deslizar si no cabe (celulares chicos): con tantos botones, la
+      // columna fija se desbordaba y tapaba "Cerrar sesión". En pantallas
+      // grandes se ve igual que antes: la altura mínima deja los botones abajo.
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Sesión iniciada',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        child: LayoutBuilder(
+          builder: (context, limites) => SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: limites.maxHeight - 48),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Sesión iniciada',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _Dato(etiqueta: 'Nombre', valor: usuario?.nombre),
+                    _Dato(etiqueta: 'Correo', valor: usuario?.email),
+                    _Dato(etiqueta: 'Rol', valor: auth.rol),
+                    _Dato(
+                      etiqueta: 'Distribuidora',
+                      valor: auth.distribuidoraId?.toString(),
+                    ),
+                    const Spacer(),
+                    FilledButton.icon(
+                      onPressed: auth.ocupado
+                          ? null
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const CatalogoScreen(),
+                              ),
+                            ),
+                      icon: const Icon(Icons.storefront_outlined),
+                      label: const Text('Ver catálogo'),
+                    ),
+                    const SizedBox(height: 12),
+                    // TG-165: ver el estado de los pedidos propios desde la app.
+                    FilledButton.tonalIcon(
+                      onPressed: auth.ocupado
+                          ? null
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const MisPedidosScreen(),
+                              ),
+                            ),
+                      icon: const Icon(Icons.receipt_long_outlined),
+                      label: const Text('Mis pedidos'),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.tonalIcon(
+                      onPressed: auth.ocupado
+                          ? null
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const ClientesPrivadosScreen(),
+                              ),
+                            ),
+                      icon: const Icon(Icons.group_outlined),
+                      label: const Text('Mis Clientes Particulares'),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.tonalIcon(
+                      onPressed: auth.ocupado
+                          ? null
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const ValesScreen(),
+                              ),
+                            ),
+                      icon: const Icon(Icons.confirmation_number_outlined),
+                      label: const Text('Consultar y Aplicar Vales'),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.tonalIcon(
+                      onPressed: auth.ocupado
+                          ? null
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const PerfilScreen(),
+                              ),
+                            ),
+                      icon: const Icon(Icons.person_outline),
+                      label: const Text('Mi perfil'),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: auth.ocupado
+                          ? null
+                          : () => context.read<AuthProvider>().logout(),
+                      child: const Text('Cerrar sesión'),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              _Dato(etiqueta: 'Nombre', valor: usuario?.nombre),
-              _Dato(etiqueta: 'Correo', valor: usuario?.email),
-              _Dato(etiqueta: 'Rol', valor: auth.rol),
-              _Dato(
-                etiqueta: 'Distribuidora',
-                valor: auth.distribuidoraId?.toString(),
-              ),
-              const Spacer(),
-              FilledButton.icon(
-                onPressed: auth.ocupado
-                    ? null
-                    : () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(builder: (_) => const CatalogoScreen()),
-                        ),
-                icon: const Icon(Icons.storefront_outlined),
-                label: const Text('Ver catálogo'),
-              ),
-              const SizedBox(height: 12),
-              FilledButton.tonalIcon(
-                onPressed: auth.ocupado
-                    ? null
-                    : () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(builder: (_) => const ClientesPrivadosScreen()),
-                        ),
-                icon: const Icon(Icons.group_outlined),
-                label: const Text('Mis Clientes Particulares'),
-              ),
-              const SizedBox(height: 12),
-              FilledButton.tonalIcon(
-                onPressed: auth.ocupado
-                    ? null
-                    : () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(builder: (_) => const ValesScreen()),
-                        ),
-                icon: const Icon(Icons.confirmation_number_outlined),
-                label: const Text('Consultar y Aplicar Vales'),
-              ),
-              const SizedBox(height: 12),
-              FilledButton.tonalIcon(
-                onPressed: auth.ocupado
-                    ? null
-                    : () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(builder: (_) => const PerfilScreen()),
-                        ),
-                icon: const Icon(Icons.person_outline),
-                label: const Text('Mi perfil'),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: auth.ocupado ? null : () => context.read<AuthProvider>().logout(),
-                child: const Text('Cerrar sesión'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -121,7 +160,10 @@ class _Dato extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text(etiqueta, style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              etiqueta,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
           Expanded(
             child: Text(
