@@ -7,6 +7,7 @@ use App\Models\ProductoCampana;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Sucursal;
 use App\Services\Pedido\AgregarLineaPedidoAction;
+use App\Services\Pedido\QuitarLineaPedidoAction;
 use App\Services\Pedido\CrearPedidoBorradorAction;
 use App\Services\Pedido\EnviarPedidoAction;
 use App\Support\Tenant;
@@ -223,6 +224,29 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         }
     }
 
+
+    public function quitarLinea(int $lineaId, QuitarLineaPedidoAction $accion)
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        if (! $this->pedidoId) {
+            $this->errorMsg = 'Primero crea el borrador.';
+
+            return;
+        }
+
+        try {
+            $pedido = Pedido::query()->findOrFail($this->pedidoId);
+            $accion->ejecutar($pedido, $lineaId);
+            $this->mensaje = 'Línea quitada del pedido.';
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo quitar la línea.';
+        } catch (\Throwable $e) {
+            $this->errorMsg = $e->getMessage();
+        }
+    }
+
     public function enviar(EnviarPedidoAction $accion)
     {
         $this->mensaje = '';
@@ -419,20 +443,30 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                         <th class="px-4 py-2">Color</th>
                         <th class="px-4 py-2 text-right">Cant.</th>
                         <th class="px-4 py-2 text-right">Subtotal</th>
+                        <th class="px-4 py-2 text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($this->pedido?->detalle ?? [] as $l)
-                        <tr>
+                        <tr wire:key="pedido-linea-{{ $l->id }}">
                             <td class="px-4 py-3">{{ $l->producto_nombre }}</td>
                             <td class="px-4 py-3">{{ $l->talla }}</td>
                             <td class="px-4 py-3">{{ $l->color }}</td>
                             <td class="px-4 py-3 text-right">{{ $l->cantidad }}</td>
                             <td class="px-4 py-3 text-right">${{ number_format((float) $l->subtotal, 2) }}</td>
+                            <td class="px-4 py-3 text-right">
+                                <button type="button"
+                                    wire:click="quitarLinea({{ $l->id }})"
+                                    wire:confirm="¿Quitar esta línea del pedido?"
+                                    wire:loading.attr="disabled"
+                                    class="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50">
+                                    Quitar
+                                </button>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-4 py-8 text-center text-slate-500">Sin líneas aún</td>
+                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">Sin líneas aún</td>
                         </tr>
                     @endforelse
                 </tbody>
