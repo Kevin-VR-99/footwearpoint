@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Pedido;
+use App\Services\Pedido\EntregaPedidoAction;
 use App\Services\Pedido\EnviarPedidoAction;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
 use App\Support\Tenant;
@@ -68,6 +69,33 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         }
     }
 
+    public function marcarListo(EntregaPedidoAction $accion)
+    {
+        $this->pasoDeEntrega(fn () => $accion->marcarListo($this->pedido), 'Pedido listo para entrega. Se le avisó al cliente.');
+    }
+
+    public function marcarEntregado(EntregaPedidoAction $accion)
+    {
+        $this->pasoDeEntrega(fn () => $accion->marcarEntregado($this->pedido), 'Pedido entregado.');
+    }
+
+    protected function pasoDeEntrega(callable $paso, string $exito): void
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $paso();
+            unset($this->pedido);
+            unset($this->resumen);
+            $this->mensaje = $exito;
+        } catch (ValidationException $e) {
+            $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo cambiar el estado.';
+        } catch (\Throwable $e) {
+            $this->errorMsg = $e->getMessage();
+        }
+    }
+
     public function registrarPago(RegistrarPagoPedidoAction $accion)
     {
         $this->mensaje = '';
@@ -126,6 +154,25 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 Enviar pedido
             </button>
         @endif
+
+        @if (in_array($this->pedido->estado, ['recibido_distribuidora', 'listo_entrega'], true))
+            <div class="flex flex-wrap gap-2">
+                @if ($this->pedido->estado === 'recibido_distribuidora')
+                    <button type="button" wire:click="marcarListo"
+                        wire:confirm="¿Marcar listo para entrega? Se le avisará al cliente para que pase a recoger."
+                        class="rounded-lg border border-[#1E2F52] px-4 py-2 text-sm font-medium text-[#1E2F52] hover:bg-slate-50">
+                        Marcar listo para entrega
+                    </button>
+                @endif
+                <button type="button" wire:click="marcarEntregado"
+                    wire:confirm="¿Confirmar que el cliente se llevó su pedido?"
+                    @disabled($this->resumen['saldo'] > 0)
+                    @if ($this->resumen['saldo'] > 0) title="Cobra el saldo antes de entregar" @endif
+                    class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB] disabled:cursor-not-allowed disabled:opacity-50">
+                    Marcar entregado
+                </button>
+            </div>
+        @endif
     </div>
 
     @if ($this->pedido->estado === 'borrador')
@@ -145,6 +192,9 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 Cobra el saldo abajo antes de entregar.
             @else
                 No hay saldo pendiente.
+            @endif
+            @if ($this->pedido->estado === 'listo_entrega' && $this->pedido->fecha_limite_recoleccion)
+                Tiene hasta el {{ $this->pedido->fecha_limite_recoleccion->format('d/m/Y') }} para recogerlo.
             @endif
         </div>
     @endif
