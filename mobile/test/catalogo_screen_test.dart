@@ -106,7 +106,10 @@ void main() {
         }, 200);
       }
 
-      return catalogo();
+      // Solo el catálogo responde lo que diga cada prueba. Lo demás (por
+      // ejemplo, el conteo de notificaciones de la campana) responde vacío.
+      if (peticion.url.path.endsWith('/catalogo')) return catalogo();
+      return _json({'data': <Object>[]}, 200);
     });
 
     await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: servidor)));

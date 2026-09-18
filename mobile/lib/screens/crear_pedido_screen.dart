@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,7 +7,7 @@ import '../models/vale.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/pedido_service.dart';
-import '../services/vale_service.dart';
+import '../widgets/selector_vale.dart';
 import 'login_screen.dart';
 import 'producto_detalle_screen.dart';
 
@@ -38,14 +36,11 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
   // Con el ApiService de AuthProvider (no uno propio): así, si la sesión
   // expira aquí, el 401 regresa al login como en el resto de la app.
   late final _api = context.read<AuthProvider>().api;
-  late final _valeService = ValeService(api: _api);
   late final _pedidos = PedidoService(_api);
 
   static const _cantidadMaxima = 20;
 
   int _cantidad = 1;
-  bool _cargandoVales = true;
-  List<Vale> _valesVigentes = [];
   Vale? _valeSeleccionado;
 
   bool _enviando = false;
@@ -61,34 +56,6 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
   /// servidor según el tipo de pedido (TG-166).
   double get _precioUnitarioEstimado =>
       _esRevendedor ? widget.producto.precioMayorista! : widget.producto.precioMinoristaSugerido;
-
-  @override
-  void initState() {
-    super.initState();
-    _cargarValesVigentes();
-  }
-
-  Future<void> _cargarValesVigentes() async {
-    try {
-      final vales = await _valeService.listarValesVigentes();
-      if (!mounted) return;
-
-      final ahora = DateTime.now();
-      setState(() {
-        // Solo los que el servidor aceptaría: activos, con saldo y sin vencer.
-        _valesVigentes = vales
-            .where((v) =>
-                v.estado == 'activo' &&
-                v.saldoActual > 0 &&
-                (v.fechaVencimiento == null || v.fechaVencimiento!.isAfter(ahora)))
-            .toList();
-        _cargandoVales = false;
-      });
-    } on ApiException {
-      // Sin vales no se detiene el pedido: solo no se ofrecen.
-      if (mounted) setState(() => _cargandoVales = false);
-    }
-  }
 
   Future<void> _enviar() async {
     setState(() {
@@ -111,21 +78,9 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
 
       final vale = _valeSeleccionado;
       if (vale != null) {
-        // Se aplica al pedido REAL y ya enviado (a un borrador no se puede).
-        // El servidor solo toma lo que falta por pagar y lo cuenta como pago,
-        // también del anticipo (TG-167); la app pide lo mismo desde aquí.
-        final monto = math.min(vale.saldoActual, pedido.saldo);
-
-        if (monto > 0) {
-          try {
-            await _valeService.aplicarVale(valeId: vale.id, monto: monto, pedidoId: pedido.id);
-            // Se vuelve a pedir para mostrar pagado, saldo y anticipo ya con el vale.
-            pedido = await _pedidos.ver(pedido.id);
-          } on ApiException catch (e) {
-            // El pedido ya se envió: no se pierde, solo se avisa del vale.
-            aviso = e.errores.values.isNotEmpty ? e.errores.values.first.first : e.mensaje;
-          }
-        }
+        final resultado = await aplicarValeAlPedido(api: _api, vale: vale, pedido: pedido);
+        pedido = resultado.pedido;
+        aviso = resultado.aviso;
       }
 
       if (!mounted) return;
@@ -232,7 +187,11 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        _seccionVale(context),
+        SelectorVale(
+          api: _api,
+          habilitado: !_enviando,
+          alCambiar: (vale) => _valeSeleccionado = vale,
+        ),
         const SizedBox(height: 16),
         _Nota(
           icono: Icons.storefront_outlined,
@@ -254,72 +213,6 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
           label: Text(_enviando ? 'Enviando pedido...' : 'Enviar pedido'),
         ),
       ],
-    );
-  }
-
-  Widget _seccionVale(BuildContext context) {
-    final tema = Theme.of(context);
-
-    return Card(
-      margin: EdgeInsets.zero,
-      color: tema.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('¿Quieres usar un vale?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 4),
-            Text(
-              'Se aplica a este pedido al enviarlo, como máximo por lo que debas.',
-              style: tema.textTheme.bodySmall?.copyWith(color: tema.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 12),
-            if (_cargandoVales)
-              const LinearProgressIndicator()
-            else if (_valesVigentes.isEmpty)
-              const Text('No tienes vales vigentes.', style: TextStyle(color: Colors.grey))
-            else
-              Row(
-                children: [
-                  Expanded(
-                    // `value` (y no `initialValue`) a propósito: "Quitar vale"
-                    // limpia la selección desde el código.
-                    child: DropdownButtonFormField<Vale?>(
-                      // ignore: deprecated_member_use
-                      value: _valeSeleccionado,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Vale (opcional)',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        const DropdownMenuItem<Vale?>(value: null, child: Text('Sin vale')),
-                        for (final vale in _valesVigentes)
-                          DropdownMenuItem<Vale?>(
-                            value: vale,
-                            child: Text(
-                              '${vale.folio} · disponible ${formatoPrecio(vale.saldoActual)}',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                      ],
-                      onChanged: _enviando ? null : (vale) => setState(() => _valeSeleccionado = vale),
-                    ),
-                  ),
-                  if (_valeSeleccionado != null) ...[
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: Icon(Icons.clear, color: tema.colorScheme.error),
-                      tooltip: 'Quitar vale',
-                      onPressed: _enviando ? null : () => setState(() => _valeSeleccionado = null),
-                    ),
-                  ],
-                ],
-              ),
-          ],
-        ),
-      ),
     );
   }
 
