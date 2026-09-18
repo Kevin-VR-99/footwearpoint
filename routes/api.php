@@ -12,7 +12,10 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::post('/ping', function () {
+// GET a propósito: es para comprobar que el servidor responde (desde el
+// navegador, curl o un monitor), y ninguno de esos manda POST. Se había
+// cambiado a POST sin motivo en E9-04; se regresó en TG-162.
+Route::get('/ping', function () {
     return response()->json(['status' => 'ok']);
 });
 
