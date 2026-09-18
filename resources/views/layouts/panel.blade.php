@@ -219,7 +219,7 @@
         <div class="flex min-w-0 flex-1 flex-col transition-[margin] duration-200 ease-out">
             {{-- Top bar: logo+nombre (abre sidebar) + usuario --}}
             <header class="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200/80 bg-white/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-                <button
+                <button x-show="!sidebarOpen" x-cloak x-transition.opacity
                     type="button"
                     class="flex items-center gap-2.5 rounded-lg py-1 pr-2 pl-1 text-left hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40"
                     @click="sidebarOpen = !sidebarOpen"
