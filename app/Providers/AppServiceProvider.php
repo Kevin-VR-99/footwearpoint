@@ -22,5 +22,9 @@ class AppServiceProvider extends ServiceProvider
             URL::forceRootUrl($appUrl);
             URL::forceScheme('https');
         }
+
+        if (! $this->app->runningInConsole()) {
+            header('Content-Security-Policy: upgrade-insecure-requests');
+        }
     }
 }
