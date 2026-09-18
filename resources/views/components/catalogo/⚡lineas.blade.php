@@ -169,99 +169,129 @@ new class extends Component {
 
 <div>
     @if ($errorNegocio)
-        <div class="mb-4 rounded-md bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-2 text-sm">
+        <div class="mb-4 rounded-xl border border-fp-badge-danger-fg/15 bg-fp-badge-danger-bg px-4 py-3 text-sm text-fp-badge-danger-fg">
             {{ $errorNegocio }}</div>
     @endif
     @if (!$mostrandoFormularioLinea)
-        <div class="bg-white rounded-lg shadow-sm p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-sm font-semibold text-slate-700">Líneas comerciales</h2>
-                <div class="flex items-center gap-3">
+        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+            <div class="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div class="min-w-0">
+                    <h2 class="text-base font-semibold tracking-tight text-slate-900">Líneas comerciales</h2>
+                    <p class="mt-0.5 text-sm text-fp-text-muted">Líneas asociadas a temporadas y marcas.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
                     @if ($lineasLimitePlan === null)
-                        <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20">
+                        <span class="inline-flex items-center rounded-full bg-fp-badge-warning-bg px-2.5 py-1 text-xs font-medium text-fp-badge-warning-fg ring-1 ring-inset ring-amber-600/15">
                             Sin plan activo
                         </span>
                     @else
                         <span
-                            class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset {{ $cupoLineasAlcanzado ? 'bg-fp-badge-danger-bg text-fp-badge-danger-fg ring-red-600/20' : 'bg-slate-50 text-slate-700 ring-slate-500/20' }}"
+                            class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset {{ $cupoLineasAlcanzado ? 'bg-fp-badge-danger-bg text-fp-badge-danger-fg ring-red-600/15' : 'bg-fp-page text-slate-700 ring-slate-500/15' }}"
                             title="Líneas activas que cuentan para el cupo del plan">
                             Cupo: {{ $lineasActivasCount }} / {{ $lineasLimitePlan }}
                         </span>
                     @endif
                     <button type="button" wire:click="abrirFormularioCrearLinea"
                         @disabled($cupoLineasAlcanzado)
-                        class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">+ Nueva
-                        línea</button>
+                        class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-fp-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-fp-primary/25 transition hover:bg-fp-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Nueva línea
+                    </button>
                 </div>
             </div>
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-slate-500 border-b">
-                        <th class="py-2">Nombre</th>
-                        <th class="py-2">Temporada</th>
-                        <th class="py-2">Marcas</th>
-                        <th class="py-2">Estado</th>
-                        <th class="py-2"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($lineas as $linea)
-                        <tr class="border-b last:border-0">
-                            <td class="py-2 font-medium">{{ $linea->nombre }}</td>
-                            <td class="py-2">{{ $linea->campana?->nombre ?? '—' }}</td>
-                            <td class="py-2">{{ $linea->marcas->pluck('nombre')->join(', ') ?: '—' }}</td>
-                            <td class="py-2">{{ $linea->activa ? 'Activa' : 'Inactiva' }}</td>
-                            <td class="py-2 text-right">
-                                <button type="button"
-                                    wire:click="abrirFormularioEditarLinea({{ $linea->id }})"
-                                    class="text-fp-primary text-xs font-medium">Editar</button>
-                            </td>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-y border-slate-100 bg-fp-page/80 text-left text-[11px] font-semibold uppercase tracking-wide text-fp-text-muted">
+                            <th class="px-6 py-3">Nombre</th>
+                            <th class="px-6 py-3">Temporada</th>
+                            <th class="px-6 py-3">Marcas</th>
+                            <th class="px-6 py-3">Estado</th>
+                            <th class="px-6 py-3"></th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="py-8 text-center text-slate-500">No hay líneas.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse ($lineas as $linea)
+                            <tr class="transition-colors hover:bg-fp-page/70">
+                                <td class="px-6 py-3.5 font-medium text-slate-800">{{ $linea->nombre }}</td>
+                                <td class="px-6 py-3.5 text-slate-600">{{ $linea->campana?->nombre ?? '—' }}</td>
+                                <td class="px-6 py-3.5 text-slate-600">{{ $linea->marcas->pluck('nombre')->join(', ') ?: '—' }}</td>
+                                <td class="px-6 py-3.5">
+                                    <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $linea->activa ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
+                                        {{ $linea->activa ? 'Activa' : 'Inactiva' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-3.5 text-right">
+                                    <button type="button"
+                                        wire:click="abrirFormularioEditarLinea({{ $linea->id }})"
+                                        class="text-sm font-medium text-fp-primary hover:underline">Editar</button>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-6 py-14 text-center">
+                                    <p class="text-sm font-medium text-fp-sidebar">No hay líneas</p>
+                                    <p class="mt-1 text-sm text-fp-text-muted">Crea la primera para organizar tu temporada.</p>
+                                    @unless ($cupoLineasAlcanzado)
+                                        <button type="button" wire:click="abrirFormularioCrearLinea"
+                                            class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-fp-primary px-3 py-2 text-xs font-semibold text-white hover:bg-fp-accent">
+                                            Nueva línea
+                                        </button>
+                                    @endunless
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     @else
-        <form wire:submit="guardarLinea" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
-            <h2 class="text-sm font-semibold text-slate-700">
-                {{ $lineaEditandoId ? 'Editar línea' : 'Nueva línea' }}</h2>
+        <form wire:submit="guardarLinea" class="mx-auto max-w-2xl space-y-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+            <div>
+                <h2 class="text-base font-semibold tracking-tight text-slate-900">
+                    {{ $lineaEditandoId ? 'Editar línea' : 'Nueva línea' }}</h2>
+                <p class="mt-0.5 text-sm text-fp-text-muted">
+                    {{ $lineaEditandoId ? 'Actualiza la línea y sus marcas asociadas.' : 'Asocia la línea a una temporada y marcas.' }}
+                </p>
+            </div>
             @if (!$lineaEditandoId)
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Temporada</label>
-                    <select wire:model="linea_campana_id" class="w-full rounded-md border-slate-300">
+                    <label class="mb-1.5 block text-sm font-medium text-slate-700">Temporada</label>
+                    <select wire:model="linea_campana_id"
+                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
                         <option value="">Seleccionar temporada</option>
                         @foreach ($campanas as $campana)
                             <option value="{{ $campana->id }}">{{ $campana->nombre }}</option>
                         @endforeach
                     </select>
                     @error('linea_campana_id')
-                        <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                        <span class="mt-1 block text-xs text-fp-badge-danger-fg">{{ $message }}</span>
                     @enderror
                 </div>
             @endif
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                <input type="text" wire:model="linea_nombre" class="w-full rounded-md border-slate-300">
+                <label class="mb-1.5 block text-sm font-medium text-slate-700">Nombre</label>
+                <input type="text" wire:model="linea_nombre"
+                    class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
                 @error('linea_nombre')
-                    <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                    <span class="mt-1 block text-xs text-fp-badge-danger-fg">{{ $message }}</span>
                 @enderror
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
-                <textarea wire:model="linea_descripcion" rows="2" class="w-full rounded-md border-slate-300"></textarea>
+                <label class="mb-1.5 block text-sm font-medium text-slate-700">Descripción</label>
+                <textarea wire:model="linea_descripcion" rows="2"
+                    class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20"></textarea>
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Marcas asociadas</label>
-                <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-3">
+                <label class="mb-1.5 block text-sm font-medium text-slate-700">Marcas asociadas</label>
+                <div class="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto rounded-xl border border-slate-200 p-3">
                     @foreach ($marcas as $marca)
                         @if ($marca->activa)
-                            <label class="flex items-center gap-2 text-sm">
+                            <label class="flex items-center gap-2 text-sm text-slate-700">
                                 <input type="checkbox" wire:model="linea_marca_ids" value="{{ $marca->id }}"
-                                    class="rounded border-slate-300">
+                                    class="rounded border-slate-300 text-fp-primary focus:ring-fp-primary/30">
                                 {{ $marca->nombre }}
                             </label>
                         @endif
@@ -269,17 +299,18 @@ new class extends Component {
                 </div>
             </div>
             @if ($lineaEditandoId)
-                <label class="flex items-center gap-2 text-sm text-slate-700">
-                    <input type="checkbox" wire:model="linea_activa" class="rounded border-slate-300">
+                <label class="flex items-center gap-2.5 text-sm text-slate-700">
+                    <input type="checkbox" wire:model="linea_activa"
+                        class="rounded border-slate-300 text-fp-primary focus:ring-fp-primary/30">
                     Línea activa (cuenta para el cupo del plan)
                 </label>
             @endif
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-3 border-t border-slate-100 pt-5">
                 <button type="submit"
-                    class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar
-                    línea</button>
+                    class="inline-flex items-center justify-center rounded-xl bg-fp-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-fp-primary/25 transition hover:bg-fp-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary focus-visible:ring-offset-2 disabled:opacity-60"
+                    wire:loading.attr="disabled">Guardar línea</button>
                 <button type="button" wire:click="cancelarFormularioLinea"
-                    class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
+                    class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">Cancelar</button>
             </div>
         </form>
     @endif

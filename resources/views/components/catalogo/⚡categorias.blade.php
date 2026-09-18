@@ -75,62 +75,95 @@ new class extends Component {
 
 <div>
     @if (!$mostrandoFormularioCategoria)
-        <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-sm font-semibold text-slate-700">Categorías</h2>
+        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+            <div class="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                <div class="min-w-0">
+                    <h2 class="text-base font-semibold tracking-tight text-slate-900">Categorías</h2>
+                    <p class="mt-0.5 text-sm text-fp-text-muted">Clasificación de productos del catálogo.</p>
+                </div>
                 <button type="button" wire:click="abrirFormularioCrearCategoria"
-                    class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nueva
-                    categoría</button>
+                    class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-fp-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-fp-primary/25 transition hover:bg-fp-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary focus-visible:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Nueva categoría
+                </button>
             </div>
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-slate-500 border-b">
-                        <th class="py-2">Nombre</th>
-                        <th class="py-2">Estado</th>
-                        <th class="py-2"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($categorias as $categoria)
-                        <tr class="border-b last:border-0">
-                            <td class="py-2">{{ $categoria->nombre }}</td>
-                            <td class="py-2">{{ $categoria->activa ? 'Activa' : 'Inactiva' }}</td>
-                            <td class="py-2 text-right">
-                                <button type="button"
-                                    wire:click="abrirFormularioEditarCategoria({{ $categoria->id }})"
-                                    class="text-fp-primary text-xs font-medium">Editar</button>
-                            </td>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-y border-slate-100 bg-fp-page/80 text-left text-[11px] font-semibold uppercase tracking-wide text-fp-text-muted">
+                            <th class="px-6 py-3">Nombre</th>
+                            <th class="px-6 py-3">Estado</th>
+                            <th class="px-6 py-3"></th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse ($categorias as $categoria)
+                            <tr class="transition-colors hover:bg-fp-page/70">
+                                <td class="px-6 py-3.5 font-medium text-slate-800">{{ $categoria->nombre }}</td>
+                                <td class="px-6 py-3.5">
+                                    <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium {{ $categoria->activa ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
+                                        {{ $categoria->activa ? 'Activa' : 'Inactiva' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-3.5 text-right">
+                                    <button type="button"
+                                        wire:click="abrirFormularioEditarCategoria({{ $categoria->id }})"
+                                        class="text-sm font-medium text-fp-primary hover:underline">Editar</button>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="3" class="px-6 py-14 text-center">
+                                    <p class="text-sm font-medium text-fp-sidebar">Aún no hay categorías</p>
+                                    <p class="mt-1 text-sm text-fp-text-muted">Crea categorías para clasificar productos.</p>
+                                    <button type="button" wire:click="abrirFormularioCrearCategoria"
+                                        class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-fp-primary px-3 py-2 text-xs font-semibold text-white hover:bg-fp-accent">
+                                        Nueva categoría
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     @else
-        <form wire:submit="guardarCategoria" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
-            <h2 class="text-sm font-semibold text-slate-700">
-                {{ $categoriaEditandoId ? 'Editar categoría' : 'Nueva categoría' }}</h2>
+        <form wire:submit="guardarCategoria" class="mx-auto max-w-2xl space-y-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                <input type="text" wire:model="categoria_nombre" class="w-full rounded-md border-slate-300">
+                <h2 class="text-base font-semibold tracking-tight text-slate-900">
+                    {{ $categoriaEditandoId ? 'Editar categoría' : 'Nueva categoría' }}</h2>
+                <p class="mt-0.5 text-sm text-fp-text-muted">
+                    {{ $categoriaEditandoId ? 'Actualiza los datos de la categoría.' : 'Crea una categoría para clasificar productos.' }}
+                </p>
+            </div>
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-slate-700">Nombre</label>
+                <input type="text" wire:model="categoria_nombre"
+                    class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
                 @error('categoria_nombre')
-                    <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span>
+                    <span class="mt-1 block text-xs text-fp-badge-danger-fg">{{ $message }}</span>
                 @enderror
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
-                <textarea wire:model="categoria_descripcion" rows="2" class="w-full rounded-md border-slate-300"></textarea>
+                <label class="mb-1.5 block text-sm font-medium text-slate-700">Descripción</label>
+                <textarea wire:model="categoria_descripcion" rows="2"
+                    class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20"></textarea>
             </div>
             @if ($categoriaEditandoId)
-                <label class="flex items-center gap-2 text-sm text-slate-700">
-                    <input type="checkbox" wire:model="categoria_activa" class="rounded border-slate-300">
+                <label class="flex items-center gap-2.5 text-sm text-slate-700">
+                    <input type="checkbox" wire:model="categoria_activa"
+                        class="rounded border-slate-300 text-fp-primary focus:ring-fp-primary/30">
                     Categoría activa
                 </label>
             @endif
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-3 border-t border-slate-100 pt-5">
                 <button type="submit"
-                    class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar</button>
+                    class="inline-flex items-center justify-center rounded-xl bg-fp-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-fp-primary/25 transition hover:bg-fp-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary focus-visible:ring-offset-2 disabled:opacity-60"
+                    wire:loading.attr="disabled">Guardar</button>
                 <button type="button" wire:click="cancelarFormularioCategoria"
-                    class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
+                    class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">Cancelar</button>
             </div>
         </form>
     @endif
