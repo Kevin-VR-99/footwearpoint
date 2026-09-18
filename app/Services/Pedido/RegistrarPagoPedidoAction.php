@@ -12,6 +12,9 @@ use Illuminate\Validation\ValidationException;
 
 class RegistrarPagoPedidoAction
 {
+    /** Estados en los que un pedido ya no recibe pagos ni vales. */
+    public const ESTADOS_CERRADOS = ['rechazado', 'descartado', 'no_surtido', 'vencido_recoleccion'];
+
     public function __construct(
         protected RegistrarAuditoriaAction $auditoria
     ) {}
@@ -34,8 +37,7 @@ class RegistrarPagoPedidoAction
             ]);
         }
 
-        $cerrados = ['rechazado', 'descartado', 'no_surtido', 'vencido_recoleccion'];
-        if (in_array($pedido->estado, $cerrados, true)) {
+        if (in_array($pedido->estado, self::ESTADOS_CERRADOS, true)) {
             throw ValidationException::withMessages([
                 'pedido' => ['Este pedido ya no admite pagos (estado: '.$pedido->estado.').'],
             ]);
@@ -111,22 +113,32 @@ class RegistrarPagoPedidoAction
 
     public function resumen(Pedido $pedido): array
     {
-        $pedido->loadMissing('detalle', 'pagos');
+        $pedido->loadMissing('detalle', 'pagos', 'aplicacionesVale');
 
         $entradas = $pedido->pagos
             ->where('estado', 'aplicado')
             ->where('direccion', 'entrada');
 
-        $pagado = round((float) $entradas->sum('monto'), 2);
+        // Lo aplicado con vales cuenta como pago (TG-167). Antes el vale
+        // perdía su saldo y el pedido seguía debiendo lo mismo.
+        $conVales = round((float) $pedido->aplicacionesVale->sum('monto'), 2);
+
+        $pagado = round((float) $entradas->sum('monto') + $conVales, 2);
         $total = round((float) $pedido->total, 2);
         $saldo = round(max(0, $total - $pagado), 2);
 
+        // El vale también cubre el anticipo (decisión del equipo en TG-167):
+        // es dinero que la distribuidora ya tiene del cliente. Solo cuenta
+        // hasta lo que faltaba de anticipo.
         $anticipoRequerido = round((float) $pedido->detalle->sum('anticipo_requerido'), 2);
-        $anticipoPagado = round((float) $entradas->where('tipo', 'anticipo')->sum('monto'), 2);
+        $anticipoEnPagos = (float) $entradas->where('tipo', 'anticipo')->sum('monto');
+        $anticipoConVales = min($conVales, max(0, $anticipoRequerido - $anticipoEnPagos));
+        $anticipoPagado = round($anticipoEnPagos + $anticipoConVales, 2);
         $anticipoPendiente = round(max(0, $anticipoRequerido - $anticipoPagado), 2);
 
         return [
             'pagado'             => $pagado,
+            'pagado_con_vales'   => $conVales,
             'saldo'              => $saldo,
             'anticipo_requerido' => $anticipoRequerido,
             'anticipo_pagado'    => $anticipoPagado,

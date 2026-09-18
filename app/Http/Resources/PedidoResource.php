@@ -20,6 +20,7 @@ class PedidoResource extends JsonResource
             'subtotal'  => (float) $this->subtotal,
             'total'     => (float) $this->total,
             'pagado'    => $resumen['pagado'],
+            'pagado_con_vales' => $resumen['pagado_con_vales'],
             'saldo'     => $resumen['saldo'],
             'anticipo_requerido' => $resumen['anticipo_requerido'],
             'anticipo_pagado'    => $resumen['anticipo_pagado'],

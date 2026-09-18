@@ -169,6 +169,9 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         <div class="bg-white rounded-xl border border-slate-200 p-4">
             <p class="text-xs text-slate-500">Pagado</p>
             <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['pagado'], 2) }}</p>
+            @if ($this->resumen['pagado_con_vales'] > 0)
+                <p class="text-xs text-slate-500 tabular-nums">Incluye ${{ number_format($this->resumen['pagado_con_vales'], 2) }} en vales</p>
+            @endif
         </div>
         <div class="bg-white rounded-xl border border-slate-200 p-4">
             <p class="text-xs text-slate-500">Saldo</p>
