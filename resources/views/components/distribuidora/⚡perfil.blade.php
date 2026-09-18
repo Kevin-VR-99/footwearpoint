@@ -58,33 +58,33 @@ new class extends Component {
 ?>
 
 <div>
-    <form wire:submit="guardarPerfil" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
+    <form wire:submit="guardarPerfil" class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 space-y-4 max-w-2xl">
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Nombre Comercial</label>
-            <input type="text" wire:model="nombre_comercial" class="w-full rounded-md border-slate-300">
+            <input type="text" wire:model="nombre_comercial" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
             @error('nombre_comercial') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
         </div>
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
-            <textarea wire:model="descripcion_publica" rows="3" class="w-full rounded-md border-slate-300"></textarea>
+            <textarea wire:model="descripcion_publica" rows="3" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary"></textarea>
         </div>
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Dirección</label>
-            <input type="text" wire:model="direccion_publica" class="w-full rounded-md border-slate-300">
+            <input type="text" wire:model="direccion_publica" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
         </div>
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                <input type="text" wire:model="telefono_publico" placeholder="+52 55 1234 5678" class="w-full rounded-md border-slate-300">
+                <input type="text" wire:model="telefono_publico" placeholder="+52 55 1234 5678" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-                <input type="email" wire:model="email_publico" class="w-full rounded-md border-slate-300">
+                <input type="email" wire:model="email_publico" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
             </div>
         </div>
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Horario</label>
-            <input type="text" wire:model="horario_publico" placeholder="Lunes a sábado, 9:00 a 19:00" class="w-full rounded-md border-slate-300">
+            <input type="text" wire:model="horario_publico" placeholder="Lunes a sábado, 9:00 a 19:00" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
         </div>
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Logotipo</label>
@@ -96,6 +96,6 @@ new class extends Component {
             <input type="file" wire:model="logotipo" accept="image/png,image/jpeg">
             <p class="text-xs text-fp-text-muted mt-1">PNG o JPG, hasta 2MB.</p>
         </div>
-        <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar Cambios</button>
+        <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar Cambios</button>
     </form>
 </div>

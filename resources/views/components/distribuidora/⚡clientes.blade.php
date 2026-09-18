@@ -138,11 +138,11 @@ new class extends Component {
 
 <div>
     @if (! $mostrandoFormularioCliente)
-        <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
+        <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Clientes Directos</h2>
                 <button type="button" wire:click="abrirFormularioCrearCliente"
-                    class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nuevo cliente</button>
+                    class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">+ Nuevo cliente</button>
             </div>
             <table class="w-full text-sm">
                 <thead>
@@ -183,28 +183,28 @@ new class extends Component {
             </table>
         </div>
     @else
-        <form wire:submit="guardarCliente" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
+        <form wire:submit="guardarCliente" class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 space-y-4 max-w-2xl">
             <h2 class="text-sm font-semibold text-slate-700">
                 {{ $clienteEditandoId ? 'Editar cliente directo' : 'Nuevo cliente directo' }}
             </h2>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                <input type="text" wire:model="cliente_nombre" class="w-full rounded-md border-slate-300">
+                <input type="text" wire:model="cliente_nombre" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                 @error('cliente_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                    <input type="text" wire:model="cliente_telefono" class="w-full rounded-md border-slate-300">
+                    <input type="text" wire:model="cliente_telefono" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-                    <input type="email" wire:model="cliente_email" class="w-full rounded-md border-slate-300">
+                    <input type="email" wire:model="cliente_email" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                 </div>
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Dirección de contacto</label>
-                <input type="text" wire:model="cliente_direccion_contacto" class="w-full rounded-md border-slate-300">
+                <input type="text" wire:model="cliente_direccion_contacto" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
             </div>
             {{-- E3-07 (TG-133): cuenta para entrar a la app móvil --}}
             <div class="border-t border-slate-200 pt-4">
@@ -220,17 +220,17 @@ new class extends Component {
                     <div class="grid grid-cols-2 gap-4">
                         <div class="col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Correo para entrar a la app</label>
-                            <input type="email" wire:model="cliente_acceso_email" autocomplete="off" class="w-full rounded-md border-slate-300">
+                            <input type="email" wire:model="cliente_acceso_email" autocomplete="off" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                             @error('cliente_acceso_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-                            <input type="password" wire:model="cliente_acceso_password" autocomplete="new-password" class="w-full rounded-md border-slate-300">
+                            <input type="password" wire:model="cliente_acceso_password" autocomplete="new-password" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                             @error('cliente_acceso_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-                            <input type="password" wire:model="cliente_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-md border-slate-300">
+                            <input type="password" wire:model="cliente_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                         </div>
                     </div>
                 @endif
@@ -245,7 +245,7 @@ new class extends Component {
                 </div>
             @endif
             <div class="flex gap-2">
-                <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar</button>
+                <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar</button>
                 <button type="button" wire:click="cancelarFormularioCliente" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
             </div>
         </form>

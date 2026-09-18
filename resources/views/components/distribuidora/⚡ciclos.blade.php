@@ -101,10 +101,10 @@ new class extends Component {
 
 <div>
     @if (! $mostrandoFormularioCiclo)
-        <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
+        <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Configuraciones de ciclo</h2>
-                <button type="button" wire:click="abrirFormularioCrearCiclo" class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">+ Nueva configuración</button>
+                <button type="button" wire:click="abrirFormularioCrearCiclo" class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">+ Nueva configuración</button>
             </div>
             <table class="w-full text-sm">
                 <thead>
@@ -138,12 +138,12 @@ new class extends Component {
             </table>
         </div>
     @else
-        <form wire:submit="guardarCiclo" class="bg-white rounded-lg shadow-sm p-6 space-y-4 max-w-2xl">
+        <form wire:submit="guardarCiclo" class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 space-y-4 max-w-2xl">
             <h2 class="text-sm font-semibold text-slate-700">{{ $cicloEditandoId ? 'Editar configuración de ciclo' : 'Nueva configuración de ciclo' }}</h2>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Día de cierre</label>
-                    <select wire:model="ciclo_dia_cierre" class="w-full rounded-md border-slate-300">
+                    <select wire:model="ciclo_dia_cierre" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                         @foreach ($diasSemanaNombres as $numero => $nombre)
                             <option value="{{ $numero }}">{{ $nombre }}</option>
                         @endforeach
@@ -151,11 +151,11 @@ new class extends Component {
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Hora de cierre</label>
-                    <input type="time" wire:model="ciclo_hora_cierre" class="w-full rounded-md border-slate-300">
+                    <input type="time" wire:model="ciclo_hora_cierre" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Día de solicitud a fábrica</label>
-                    <select wire:model="ciclo_dia_solicitud_fabrica" class="w-full rounded-md border-slate-300">
+                    <select wire:model="ciclo_dia_solicitud_fabrica" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                         @foreach ($diasSemanaNombres as $numero => $nombre)
                             <option value="{{ $numero }}">{{ $nombre }}</option>
                         @endforeach
@@ -163,7 +163,7 @@ new class extends Component {
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Días estimados de llegada</label>
-                    <input type="number" wire:model="ciclo_dias_estimados_llegada" class="w-full rounded-md border-slate-300">
+                    <input type="number" wire:model="ciclo_dias_estimados_llegada" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                 </div>
             </div>
             <div>
@@ -182,7 +182,7 @@ new class extends Component {
                 Marcar como configuración activa
             </label>
             <div class="flex gap-2">
-                <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar</button>
+                <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar</button>
                 <button type="button" wire:click="cancelarFormularioCiclo" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
             </div>
         </form>

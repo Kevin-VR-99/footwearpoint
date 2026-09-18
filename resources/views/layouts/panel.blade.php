@@ -51,7 +51,15 @@
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('dashboard') ? 'bg-white/15' : '' }}">
                     Inicio
                 </a>
-                @if (auth()->user()?->hasRole('admin_distribuidora'))
+                @php
+                    $esAdminDistribuidora = false;
+                    if (auth()->check()) {
+                        app(\Spatie\Permission\PermissionRegistrar::class)
+                            ->setPermissionsTeamId(\App\Support\Tenant::id() ?? 0);
+                        $esAdminDistribuidora = auth()->user()->hasRole('admin_distribuidora');
+                    }
+                @endphp
+                @if ($esAdminDistribuidora)
                     <a href="{{ route('distribuidora.catalogo') }}"
                         @click="sidebarOpen = false"
                         class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'bg-white/15' : '' }}">
@@ -89,11 +97,14 @@
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('reportes.*') ? 'bg-white/15' : '' }}">
                     Reportes
                 </a>
-                @if (auth()->user()?->hasRole('admin_distribuidora'))
+                @if ($esAdminDistribuidora)
                     <a href="{{ route('distribuidora.configuracion') }}"
                         @click="sidebarOpen = false"
-                        class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('distribuidora.configuracion') ? 'bg-white/15' : '' }}">
-                        Configuración
+                        class="mt-2 block rounded-lg border border-white/10 px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('distribuidora.configuracion') ? 'bg-white/15 ring-1 ring-fp-danger/50' : '' }}">
+                        <span class="flex items-center justify-between gap-2">
+                            <span>Configuración</span>
+                            <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-fp-danger"></span>
+                        </span>
                     </a>
                 @endif
             </nav>

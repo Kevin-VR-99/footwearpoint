@@ -230,12 +230,12 @@ new class extends Component {
 <div class="space-y-6">
 
     {{-- Empleados: listado o formulario inline --}}
-    <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
+    <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioEmpleado)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Empleados</h2>
                 <button type="button" wire:click="abrirFormularioInvitarEmpleado"
-                    class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
+                    class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
                     + Invitar empleado
                 </button>
             </div>
@@ -276,31 +276,31 @@ new class extends Component {
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                        <input type="text" wire:model="empleado_nombre" class="w-full rounded-md border-slate-300">
+                        <input type="text" wire:model="empleado_nombre" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                         @error('empleado_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-                        <input type="email" wire:model="empleado_email" class="w-full rounded-md border-slate-300">
+                        <input type="email" wire:model="empleado_email" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                         @error('empleado_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                        <input type="text" wire:model="empleado_telefono" class="w-full rounded-md border-slate-300">
+                        <input type="text" wire:model="empleado_telefono" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                     </div>
                     <div></div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-                        <input type="password" wire:model="empleado_password" class="w-full rounded-md border-slate-300">
+                        <input type="password" wire:model="empleado_password" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                         @error('empleado_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-                        <input type="password" wire:model="empleado_password_confirmation" class="w-full rounded-md border-slate-300">
+                        <input type="password" wire:model="empleado_password_confirmation" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar</button>
+                    <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar</button>
                     <button type="button" wire:click="cancelarFormularioEmpleado" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>
@@ -308,12 +308,12 @@ new class extends Component {
     </div>
 
     {{-- Revendedores --}}
-    <div class="bg-white rounded-lg shadow-sm p-6 max-w-3xl">
+    <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioRevendedor)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Revendedores</h2>
                 <button type="button" wire:click="abrirFormularioAfiliarRevendedor"
-                    class="bg-fp-primary text-white px-3 py-1.5 rounded-md text-sm font-medium">
+                    class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
                     + Afiliar revendedor
                 </button>
             </div>
@@ -369,20 +369,20 @@ new class extends Component {
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                        <input type="text" wire:model="revendedor_nombre" class="w-full rounded-md border-slate-300">
+                        <input type="text" wire:model="revendedor_nombre" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                         @error('revendedor_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Código interno</label>
-                        <input type="text" wire:model="revendedor_codigo_interno" class="w-full rounded-md border-slate-300">
+                        <input type="text" wire:model="revendedor_codigo_interno" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                        <input type="text" wire:model="revendedor_telefono" placeholder="+52 55 1234 5678" class="w-full rounded-md border-slate-300">
+                        <input type="text" wire:model="revendedor_telefono" placeholder="+52 55 1234 5678" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-                        <input type="email" wire:model="revendedor_email" class="w-full rounded-md border-slate-300">
+                        <input type="email" wire:model="revendedor_email" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                     </div>
                 </div>
                 {{-- E3-07 (TG-133): cuenta para entrar a la app móvil --}}
@@ -399,17 +399,17 @@ new class extends Component {
                         <div class="grid grid-cols-2 gap-4">
                             <div class="col-span-2">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Correo para entrar a la app</label>
-                                <input type="email" wire:model="revendedor_acceso_email" autocomplete="off" class="w-full rounded-md border-slate-300">
+                                <input type="email" wire:model="revendedor_acceso_email" autocomplete="off" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                                 @error('revendedor_acceso_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-                                <input type="password" wire:model="revendedor_acceso_password" autocomplete="new-password" class="w-full rounded-md border-slate-300">
+                                <input type="password" wire:model="revendedor_acceso_password" autocomplete="new-password" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                                 @error('revendedor_acceso_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-                                <input type="password" wire:model="revendedor_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-md border-slate-300">
+                                <input type="password" wire:model="revendedor_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
                             </div>
                         </div>
                     @endif
@@ -425,7 +425,7 @@ new class extends Component {
                     </div>
                 @endif
                 <div class="flex gap-2">
-                    <button type="submit" class="bg-fp-primary text-white px-4 py-2 rounded-md text-sm font-medium" wire:loading.attr="disabled">Guardar</button>
+                    <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar</button>
                     <button type="button" wire:click="cancelarFormularioRevendedor" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>
