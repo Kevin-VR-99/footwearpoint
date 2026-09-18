@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/auth_provider.dart';
+import 'providers/carrito_revendedor_provider.dart';
 import 'screens/inicio_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/api_service.dart';
@@ -30,8 +31,18 @@ class FootwearPointApp extends StatelessWidget {
     // AuthProvider se crea aquí arriba de todo para que cualquier pantalla
     // pueda preguntarle quién inició sesión. Al crearse, revisa si el token
     // guardado en el teléfono todavía sirve.
-    return ChangeNotifierProvider(
-      create: (_) => AuthProvider(api: api)..restaurarSesion(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(api: api)..restaurarSesion(),
+        ),
+        // El carrito del revendedor, ligado a la sesión: se vacía solo cuando
+        // cambia el usuario o se cierra sesión (TG-165).
+        ChangeNotifierProxyProvider<AuthProvider, CarritoRevendedorProvider>(
+          create: (_) => CarritoRevendedorProvider(),
+          update: (_, auth, carrito) => carrito!..usarSesion(auth.usuario?.id),
+        ),
+      ],
       child: MaterialApp(
         title: 'FootwearPoint',
         debugShowCheckedModeBanner: false,

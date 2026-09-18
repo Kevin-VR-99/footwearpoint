@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../models/producto_catalogo.dart';
-import '../models/item_pedido_revendedor.dart';
+import '../providers/carrito_revendedor_provider.dart';
 import 'crear_pedido_screen.dart';
 import 'pedido_revendedor_screen.dart';
 
@@ -18,9 +20,6 @@ class ProductoDetalleScreen extends StatefulWidget {
 class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   int _fotoActual = 0;
   VarianteCatalogo? _varianteSeleccionada;
-  
-  // Carrito global estático en memoria para que persista al navegar entre productos
-  static final List<ItemPedidoRevendedor> _carritoGlobalRevendedor = [];
 
   void _seleccionarVariante(VarianteCatalogo variante) {
     if (variante.disponibilidad == Disponibilidad.noDisponible) return;
@@ -33,22 +32,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   void _agregarAlPedidoRevendedor() {
     if (_varianteSeleccionada == null) return;
 
-    setState(() {
-      final index = _carritoGlobalRevendedor.indexWhere(
-        (item) => item.variante.varianteId == _varianteSeleccionada!.varianteId,
-      );
-
-      if (index >= 0) {
-        _carritoGlobalRevendedor[index].cantidad++;
-      } else {
-        _carritoGlobalRevendedor.add(
-          ItemPedidoRevendedor(
-            producto: widget.producto,
-            variante: _varianteSeleccionada!,
-          ),
-        );
-      }
-    });
+    // El carrito vive ligado a la sesión (TG-165), no en esta pantalla: así
+    // persiste al navegar entre productos pero no pasa a otra cuenta.
+    context.read<CarritoRevendedorProvider>().agregar(widget.producto, _varianteSeleccionada!);
 
     // Sin SnackBars molestos: la confirmación ocurre visualmente actualizando el contador del carrito en la AppBar.
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -66,7 +52,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     ].join(' · ');
 
     final esRevendedor = producto.precioMayorista != null;
-    final totalItemsCarrito = _carritoGlobalRevendedor.fold<int>(0, (sum, i) => sum + i.cantidad);
+    final totalItemsCarrito = context.watch<CarritoRevendedorProvider>().totalPiezas;
 
     return Scaffold(
       appBar: AppBar(
@@ -84,7 +70,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => PedidoRevendedorScreen(itemsIniciales: _carritoGlobalRevendedor),
+                    builder: (_) => const PedidoRevendedorScreen(),
                   ),
                 );
               },

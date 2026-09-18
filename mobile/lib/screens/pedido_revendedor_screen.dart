@@ -1,70 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/item_pedido_revendedor.dart';
 import '../providers/auth_provider.dart';
+import '../providers/carrito_revendedor_provider.dart';
 import '../services/api_service.dart';
+import '../services/pedido_service.dart';
 
+/// El pedido acumulado del revendedor (E9-01 / E9-03). Lee el carrito de
+/// [CarritoRevendedorProvider], ligado a la sesión (TG-165).
 class PedidoRevendedorScreen extends StatefulWidget {
-  const PedidoRevendedorScreen({super.key, required this.itemsIniciales});
-
-  final List<ItemPedidoRevendedor> itemsIniciales;
+  const PedidoRevendedorScreen({super.key});
 
   @override
   State<PedidoRevendedorScreen> createState() => _PedidoRevendedorScreenState();
 }
 
 class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
-  late List<ItemPedidoRevendedor> _items;
   bool _enviando = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _items = widget.itemsIniciales;
-  }
-
   void _enviarPedido() async {
-    if (_items.isEmpty) return;
+    final carrito = context.read<CarritoRevendedorProvider>();
+    if (carrito.vacio) return;
 
     setState(() => _enviando = true);
 
     try {
-      final api = context.read<AuthProvider>().api;
-
-      // 1. Creamos el pedido maestro base
-      final respuestaPedido = await api.post('/pedidos', cuerpo: {
-        'tipo': 'revendedor',
-        'propietario_id': 1,
-        'sucursal_id': 1,
-      });
-
-      final pedidoId = respuestaPedido['data']?['id'] ?? respuestaPedido['id'];
-
-      if (pedidoId == null) {
-        throw ApiException('No se pudo obtener el ID del pedido creado.');
-      }
-
-      // 2. Agregamos cada línea utilizando el producto_campana_id correcto y la variante correspondiente a ese producto
-      for (var item in _items) {
-        await api.post('/pedidos/$pedidoId/lineas', cuerpo: {
-          'producto_campana_id': item.producto.id,
-          'variante_id': item.variante.varianteId,
-          'cantidad': item.cantidad,
-        });
-      }
-
-      // 3. Enviamos formalmente el pedido a la distribuidora
-      await api.post('/pedidos/$pedidoId/enviar');
+      // Mismos pasos que el pedido directo (crear, líneas, enviar): viven en
+      // PedidoService. Sin precio: lo decide el servidor (TG-165).
+      final pedido = await PedidoService(context.read<AuthProvider>().api).crearYEnviar(
+        tipo: 'revendedor',
+        lineas: [
+          for (final item in carrito.items)
+            (
+              productoCampanaId: item.producto.id,
+              varianteId: item.variante.varianteId,
+              cantidad: item.cantidad,
+            ),
+        ],
+      );
 
       if (!mounted) return;
 
       setState(() => _enviando = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Pedido enviado a la distribuidora a nombre del revendedor con éxito!')),
+        SnackBar(content: Text('Pedido ${pedido.folio} enviado a la distribuidora a tu nombre.')),
       );
-      
-      _items.clear();
+
+      carrito.vaciar();
       Navigator.popUntil(context, (route) => route.isFirst);
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -84,19 +66,21 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
-    final totalGeneral = _items.fold<double>(0, (suma, item) => suma + item.subtotal);
+    final carrito = context.watch<CarritoRevendedorProvider>();
+    final items = carrito.items;
+    final totalGeneral = carrito.total;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pedido Acumulado de Revendedor')),
-      body: _items.isEmpty
+      body: items.isEmpty
           ? const Center(child: Text('No hay productos agregados al pedido.'))
           : Column(
               children: [
                 Expanded(
                   child: ListView.builder(
-                    itemCount: _items.length,
+                    itemCount: items.length,
                     itemBuilder: (context, index) {
-                      final item = _items[index];
+                      final item = items[index];
                       final precioUnitario = item.producto.precioMayorista ?? item.producto.precioMinoristaSugerido;
 
                       return Card(
@@ -120,14 +104,22 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                                 children: [
                                   IconButton(
                                     icon: const Icon(Icons.remove_circle_outline),
+                                    tooltip: 'Una pieza menos',
                                     onPressed: item.cantidad > 1
-                                        ? () => setState(() => item.cantidad--)
+                                        ? () => carrito.cambiarCantidad(item, item.cantidad - 1)
                                         : null,
                                   ),
                                   Text('${item.cantidad}', style: const TextStyle(fontWeight: FontWeight.bold)),
                                   IconButton(
                                     icon: const Icon(Icons.add_circle_outline),
-                                    onPressed: () => setState(() => item.cantidad++),
+                                    tooltip: 'Una pieza más',
+                                    onPressed: () => carrito.cambiarCantidad(item, item.cantidad + 1),
+                                  ),
+                                  // Antes no había forma de sacar un producto del carrito.
+                                  IconButton(
+                                    icon: Icon(Icons.delete_outline, color: tema.colorScheme.error),
+                                    tooltip: 'Quitar del pedido',
+                                    onPressed: _enviando ? null : () => carrito.quitar(item),
                                   ),
                                 ],
                               ),

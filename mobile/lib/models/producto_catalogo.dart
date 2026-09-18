@@ -89,10 +89,6 @@ class VarianteCatalogo {
   /// El nombre comercial si hay; si no, el color base.
   String get colorParaMostrar => nombreColorComercial ?? color;
 
-  /// Lo usa la pantalla de crear pedido (E8-01). Mismo valor que
-  /// [colorParaMostrar].
-  String? get colorForDisplay => nombreColorComercial ?? color;
-
   factory VarianteCatalogo.desdeJson(Map<String, dynamic> json) {
     return VarianteCatalogo(
       varianteId: json['variante_id'] as int,
