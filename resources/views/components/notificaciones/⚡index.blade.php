@@ -7,15 +7,15 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('layouts.panel')] #[Title('Notificaciones — FootwearPoint')] class extends Component
+new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class extends Component
 {
-    public string $filtro = 'todas'; // todas | no_leidas
-    public string $mensaje = '';
+    public string  = 'todas'; // todas | no_leidas
+    public string  = '';
 
     public function mount()
     {
         if (! Auth::check()) {
-            return $this->redirect(route('login'), navigate: true);
+            return ->redirect(route('login'), navigate: true);
         }
 
         if (Tenant::id() === null) {
@@ -25,15 +25,15 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones — FootwearPoint')] clas
 
     public function getNotificacionesProperty()
     {
-        $query = Notificacion::query()
+         = Notificacion::query()
             ->where('usuario_id', Auth::id())
             ->orderByDesc('created_at');
 
-        if ($this->filtro === 'no_leidas') {
-            $query->whereNull('leida_at');
+        if (->filtro === 'no_leidas') {
+            ->whereNull('leida_at');
         }
 
-        return $query->limit(50)->get();
+        return ->limit(50)->get();
     }
 
     public function getNoLeidasCountProperty()
@@ -44,18 +44,18 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones — FootwearPoint')] clas
             ->count();
     }
 
-    public function marcarLeida(int $id)
+    public function marcarLeida(int )
     {
-        $n = Notificacion::query()
+         = Notificacion::query()
             ->where('usuario_id', Auth::id())
-            ->where('id', $id)
+            ->where('id', )
             ->first();
 
-        if ($n && $n->leida_at === null) {
-            $n->leida_at = now();
-            $n->save();
-            $this->mensaje = 'Marcada como leída.';
-            $this->dispatch('notificaciones-actualizadas');
+        if ( && ->leida_at === null) {
+            ->leida_at = now();
+            ->save();
+            ->mensaje = 'Marcada como leída.';
+            ->dispatch('notificaciones-actualizadas');
         }
     }
 
@@ -66,75 +66,92 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones — FootwearPoint')] clas
             ->whereNull('leida_at')
             ->update(['leida_at' => now()]);
 
-        $this->mensaje = 'Todas marcadas como leídas.';
-        $this->dispatch('notificaciones-actualizadas');
+        ->mensaje = 'Todas marcadas como leídas.';
+        ->dispatch('notificaciones-actualizadas');
     }
 };
 ?>
 
-<div>
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+<div class="mx-auto max-w-3xl">
+    <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <h2 class="text-2xl font-bold text-slate-900">Notificaciones</h2>
-            <p class="text-sm text-slate-500 mt-1">
-                Avisos internos del panel
-                @if ($this->noLeidasCount > 0)
-                    <span class="ml-1 inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs font-medium">
-                        {{ $this->noLeidasCount }} sin leer
-                    </span>
+            <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Centro de avisos</p>
+            <h1 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Notificaciones</h1>
+            <p class="mt-1 text-sm text-slate-500">
+                @if (->noLeidasCount > 0)
+                    {{ ->noLeidasCount }} sin leer
+                @else
+                    Todo al día
                 @endif
             </p>
         </div>
-        <div class="flex items-center gap-2">
-            <select wire:model.live="filtro"
-                    class="rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]">
-                <option value="todas">Todas</option>
-                <option value="no_leidas">Solo no leídas</option>
-            </select>
-            @if ($this->noLeidasCount > 0)
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+                <button type="button" wire:click="('filtro', 'todas')"
+                    @class([
+                        'rounded-md px-3 py-1.5 text-sm font-medium transition',
+                        'bg-slate-900 text-white shadow-sm' =>  === 'todas',
+                        'text-slate-600 hover:text-slate-900' =>  !== 'todas',
+                    ])>Todas</button>
+                <button type="button" wire:click="('filtro', 'no_leidas')"
+                    @class([
+                        'rounded-md px-3 py-1.5 text-sm font-medium transition',
+                        'bg-slate-900 text-white shadow-sm' =>  === 'no_leidas',
+                        'text-slate-600 hover:text-slate-900' =>  !== 'no_leidas',
+                    ])>Sin leer</button>
+            </div>
+            @if (->noLeidasCount > 0)
                 <button type="button" wire:click="marcarTodasLeidas"
-                        class="text-sm text-[#2563EB] hover:underline">
+                    class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
                     Marcar todas leídas
                 </button>
             @endif
         </div>
     </div>
 
-    @if ($mensaje)
-        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
-            {{ $mensaje }}
+    @if ()
+        <div class="mb-4 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {{  }}
         </div>
     @endif
 
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm divide-y divide-slate-100">
-        @forelse ($this->notificaciones as $n)
-            <div class="px-5 py-4 flex gap-3 {{ $n->leida_at ? 'bg-white' : 'bg-blue-50/40' }}">
-                <div class="mt-1 shrink-0">
-                    @if ($n->leida_at)
-                        <span class="block w-2 h-2 rounded-full bg-slate-300"></span>
-                    @else
-                        <span class="block w-2 h-2 rounded-full bg-[#2563EB]"></span>
-                    @endif
+    <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+        @forelse (->notificaciones as )
+            <div @class([
+                'flex gap-4 border-b border-slate-100 px-5 py-4 last:border-0',
+                'bg-slate-50/70' => ! ->leida_at,
+                'bg-white' => ->leida_at,
+            ])>
+                <div class="mt-1.5 shrink-0">
+                    <span @class([
+                        'block h-2 w-2 rounded-full',
+                        'bg-blue-600' => ! ->leida_at,
+                        'bg-slate-200' => ->leida_at,
+                    ])></span>
                 </div>
-                <div class="flex-1 min-w-0">
+                <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-start justify-between gap-2">
-                        <h3 class="text-sm font-semibold text-slate-900">{{ $n->titulo }}</h3>
-                        <span class="text-xs text-slate-400">
-                            {{ optional($n->created_at)->format('d/m/Y H:i') }}
-                        </span>
+                        <h2 class="text-sm font-semibold text-slate-900">{{ ->titulo }}</h2>
+                        <time class="text-xs tabular-nums text-slate-400">{{ optional(->created_at)->format('d/m/Y H:i') }}</time>
                     </div>
-                    <p class="text-sm text-slate-600 mt-1">{{ $n->mensaje }}</p>
-                    @if (! $n->leida_at)
-                        <button type="button" wire:click="marcarLeida({{ $n->id }})"
-                                class="mt-2 text-xs text-[#2563EB] hover:underline">
+                    <p class="mt-1 text-sm leading-relaxed text-slate-600">{{ ->mensaje }}</p>
+                    @if (! ->leida_at)
+                        <button type="button" wire:click="marcarLeida({{ ->id }})"
+                            class="mt-3 text-xs font-medium text-blue-700 hover:underline">
                             Marcar como leída
                         </button>
                     @endif
                 </div>
             </div>
         @empty
-            <div class="px-5 py-10 text-center text-slate-500 text-sm">
-                No tienes notificaciones.
+            <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
+                <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
+                    </svg>
+                </div>
+                <p class="text-sm font-medium text-slate-800">Sin notificaciones</p>
+                <p class="mt-1 text-sm text-slate-500">Cuando haya avisos nuevos aparecerán aquí.</p>
             </div>
         @endforelse
     </div>

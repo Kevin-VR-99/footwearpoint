@@ -20,7 +20,7 @@
         userMenuOpen: false,
         openCatalogo: {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'true' : 'false' }},
         openOperacion: {{ request()->routeIs('stock.*', 'punto-venta.*', 'ciclo.*', 'pedidos.*', 'vales.*') ? 'true' : 'false' }},
-        openMas: {{ request()->routeIs('notificaciones.*', 'reportes.*', 'auditoria.*') ? 'true' : 'false' }},
+        openMas: {{ request()->routeIs('reportes.*', 'auditoria.*') ? 'true' : 'false' }},
         openSistema: {{ request()->routeIs('distribuidora.configuracion') ? 'true' : 'false' }},
     }"
     @keydown.escape.window="sidebarOpen = false; userMenuOpen = false"
@@ -48,26 +48,17 @@
             ->implode('') ?: 'FP';
     @endphp
 
-    <div class="min-h-screen flex flex-col">
-        {{-- Backdrop (desktop y móvil) --}}
-        <div
-            x-show="sidebarOpen"
-            x-cloak
-            x-transition.opacity
-            class="fixed inset-0 z-40 bg-black/40"
-            @click="sidebarOpen = false"
-            aria-hidden="true"
-        ></div>
-
+    <div class="min-h-screen flex">
         {{-- Sidebar deslizable (drawer en todos los anchos) --}}
         <aside
-            class="fixed inset-y-0 left-0 z-50 w-64 bg-fp-sidebar text-white flex flex-col shrink-0 transform transition-transform duration-200 ease-out"
-            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+            class="sticky top-0 z-40 h-screen shrink-0 overflow-hidden bg-fp-sidebar text-white flex flex-col transition-[width] duration-200 ease-out"
+            :class="sidebarOpen ? 'w-64' : 'w-0'"
             :aria-hidden="(!sidebarOpen).toString()"
         >
+            <div class="flex h-full w-64 flex-col">
             {{-- Brand + cerrar --}}
             <div class="px-4 py-4 border-b border-white/10 flex items-center justify-between gap-3">
-                <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 min-w-0" @click="sidebarOpen = false">
+                <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 min-w-0">
                     <img
                         src="{{ asset('brand/logo-mark-white-40.png') }}"
                         alt=""
@@ -82,6 +73,7 @@
                 <button
                     type="button"
                     class="rounded-md p-1.5 text-white/70 hover:bg-white/10 hover:text-white"
+                   
                     @click="sidebarOpen = false"
                     aria-label="Cerrar menú"
                 >
@@ -94,7 +86,7 @@
             <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
                 {{-- Inicio --}}
                 <a href="{{ route('dashboard') }}"
-                    @click="sidebarOpen = false"
+                   
                     class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('dashboard') ? 'bg-white/15 font-medium' : '' }}">
                     Inicio
                 </a>
@@ -115,7 +107,7 @@
                         </button>
                         <div x-show="openCatalogo" x-cloak class="mt-0.5 space-y-0.5 border-l border-white/10 ml-3 pl-2">
                             <a href="{{ route('distribuidora.catalogo') }}"
-                                @click="sidebarOpen = false"
+                               
                                 class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'bg-white/15 font-medium' : 'text-white/80' }}">
                                 Temporadas y productos
                             </a>
@@ -138,27 +130,27 @@
                     </button>
                     <div x-show="openOperacion" x-cloak class="mt-0.5 space-y-0.5 border-l border-white/10 ml-3 pl-2">
                         <a href="{{ route('stock.index') }}"
-                            @click="sidebarOpen = false"
+                           
                             class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('stock.*') ? 'bg-white/15 font-medium' : 'text-white/80' }}">
                             Stock
                         </a>
                         <a href="{{ route('punto-venta.index') }}"
-                            @click="sidebarOpen = false"
+                           
                             class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('punto-venta.*') ? 'bg-white/15 font-medium' : 'text-white/80' }}">
                             Punto de Venta
                         </a>
                         <a href="{{ route('ciclo.index') }}"
-                            @click="sidebarOpen = false"
+                           
                             class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('ciclo.*') ? 'bg-white/15 font-medium' : 'text-white/80' }}">
                             Ciclo de compra
                         </a>
                         <a href="{{ route('pedidos.index') }}"
-                            @click="sidebarOpen = false"
+                           
                             class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('pedidos.*') ? 'bg-white/15 font-medium' : 'text-white/80' }}">
                             Pedidos
                         </a>
                         <a href="{{ route('vales.index') }}"
-                            @click="sidebarOpen = false"
+                           
                             class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('vales.*') ? 'bg-white/15 font-medium' : 'text-white/80' }}">
                             Vales
                         </a>
@@ -179,17 +171,14 @@
                         </svg>
                     </button>
                     <div x-show="openMas" x-cloak class="mt-0.5 space-y-0.5 border-l border-white/10 ml-3 pl-2">
-                        <div @click="sidebarOpen = false">
-                            <livewire:notificaciones.nav-badge />
-                        </div>
-                        <a href="{{ route('reportes.index') }}"
-                            @click="sidebarOpen = false"
+<a href="{{ route('reportes.index') }}"
+                           
                             class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('reportes.*') ? 'bg-white/15 font-medium' : 'text-white/80' }}">
                             Reportes
                         </a>
                         @if ($esAdminDistribuidora)
                             <a href="{{ route('auditoria.index') }}"
-                                @click="sidebarOpen = false"
+                               
                                 class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('auditoria.*') ? 'bg-white/15 font-medium' : 'text-white/80' }}">
                                 Auditoría
                             </a>
@@ -213,7 +202,7 @@
                         </button>
                         <div x-show="openSistema" x-cloak class="mt-0.5 space-y-0.5 border-l border-white/10 ml-3 pl-2">
                             <a href="{{ route('distribuidora.configuracion') }}"
-                                @click="sidebarOpen = false"
+                               
                                 class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('distribuidora.configuracion') ? 'bg-white/15 font-medium ring-1 ring-fp-danger/40' : 'text-white/80' }}">
                                 <span class="flex items-center justify-between gap-2">
                                     <span>Configuración</span>
@@ -224,9 +213,10 @@
                     </div>
                 @endif
             </nav>
+            </div>
         </aside>
 
-        <div class="flex-1 flex flex-col min-w-0">
+        <div class="flex min-w-0 flex-1 flex-col transition-[margin] duration-200 ease-out">
             {{-- Top bar: logo+nombre (abre sidebar) + usuario --}}
             <header class="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200/80 bg-white/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-white/80">
                 <button
@@ -249,6 +239,9 @@
                 </button>
 
                 <div class="flex-1"></div>
+
+
+                <livewire:notificaciones.nav-badge />
 
                 {{-- Menú usuario (arriba derecha) --}}
                 <div class="relative" @click.outside="userMenuOpen = false">

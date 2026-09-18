@@ -81,7 +81,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
         </div>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-3 mb-8">
+    <div class="grid gap-6 sm:grid-cols-2 mb-8">
         <a href="{{ route('pedidos.create') }}"
            class="block bg-white rounded-xl border border-slate-200 p-4 hover:border-[#2563EB] shadow-sm">
             <p class="font-medium text-slate-900">Nuevo pedido</p>
@@ -92,14 +92,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
             <p class="font-medium text-slate-900">Vales</p>
             <p class="text-sm text-slate-500 mt-1">Emitir y consultar</p>
         </a>
-        <a href="{{ route('notificaciones.index') }}"
-           class="block bg-white rounded-xl border border-slate-200 p-4 hover:border-[#2563EB] shadow-sm">
-            <p class="font-medium text-slate-900">Notificaciones</p>
-            <p class="text-sm text-slate-500 mt-1">
-                {{ $this->resumen['notif_sin_leer'] }} sin leer
-            </p>
-        </a>
-    </div>
+</div>
 
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">

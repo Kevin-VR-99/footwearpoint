@@ -10,7 +10,7 @@ new class extends Component
     #[On('notificaciones-actualizadas')]
     public function refrescar(): void
     {
-        // Re-render so the unread count updates after mark-read.
+        // Re-render unread badge.
     }
 
     public function getNoLeidasCountProperty(): int
@@ -28,13 +28,15 @@ new class extends Component
 ?>
 
 <a href="{{ route('notificaciones.index') }}"
-    @click="sidebarOpen = false"
     wire:navigate
-    class="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('notificaciones.*') ? 'bg-white/15' : '' }}">
-    <span>Notificaciones</span>
-    @if ($this->noLeidasCount > 0)
-        <span class="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-            {{ $this->noLeidasCount > 99 ? '99+' : $this->noLeidasCount }}
+    class="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40 {{ request()->routeIs('notificaciones.*') ? 'bg-slate-100 text-slate-900' : '' }}"
+    aria-label="Notificaciones{{ ->noLeidasCount > 0 ? ' (' . ->noLeidasCount . ' sin leer)' : '' }}">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
+    </svg>
+    @if (->noLeidasCount > 0)
+        <span class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-red-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
+            {{ ->noLeidasCount > 99 ? '99+' : ->noLeidasCount }}
         </span>
     @endif
 </a>
