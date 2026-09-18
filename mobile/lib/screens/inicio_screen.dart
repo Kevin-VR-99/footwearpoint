@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
+import '../services/notificacion_service.dart';
 import 'catalogo_screen.dart';
 import 'mis_pedidos_screen.dart';
 import 'perfil_screen.dart';
@@ -21,18 +23,8 @@ class InicioScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('FootwearPoint'),
         actions: [
-          // Ícono de campana de notificaciones clásico en la esquina superior derecha
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            tooltip: 'Bandeja de Notificaciones',
-            onPressed: auth.ocupado
-                ? null
-                : () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const NotificacionesScreen(),
-                    ),
-                  ),
-          ),
+          // TG-165: con el número de no leídas, como el panel web (TG-156).
+          _CampanaNotificaciones(habilitada: !auth.ocupado),
           const SizedBox(width: 8),
         ],
       ),
@@ -174,6 +166,57 @@ class _Dato extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// La campana de la barra de arriba, con un globito del número de
+/// notificaciones sin leer. Se vuelve a contar al regresar de la bandeja.
+class _CampanaNotificaciones extends StatefulWidget {
+  const _CampanaNotificaciones({required this.habilitada});
+
+  final bool habilitada;
+
+  @override
+  State<_CampanaNotificaciones> createState() => _CampanaNotificacionesState();
+}
+
+class _CampanaNotificacionesState extends State<_CampanaNotificaciones> {
+  late final _servicio = NotificacionService(context.read<AuthProvider>().api);
+  int _noLeidas = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _contar();
+  }
+
+  Future<void> _contar() async {
+    try {
+      final total = await _servicio.contarNoLeidas();
+      if (mounted) setState(() => _noLeidas = total);
+    } on ApiException {
+      // Sin el número la campana sigue sirviendo; un 401 lo atiende AuthProvider.
+    }
+  }
+
+  Future<void> _abrir() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const NotificacionesScreen()),
+    );
+    _contar();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: _noLeidas > 0 ? 'Notificaciones ($_noLeidas sin leer)' : 'Notificaciones',
+      onPressed: widget.habilitada ? _abrir : null,
+      icon: Badge(
+        isLabelVisible: _noLeidas > 0,
+        label: Text(_noLeidas > 9 ? '9+' : '$_noLeidas'),
+        child: Icon(_noLeidas > 0 ? Icons.notifications_active_outlined : Icons.notifications_outlined),
       ),
     );
   }
