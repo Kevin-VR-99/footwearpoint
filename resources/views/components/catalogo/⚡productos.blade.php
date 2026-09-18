@@ -159,22 +159,22 @@ new class extends Component {
 
 <div>
     @if ($errorNegocio)
-        <div class="mb-4 rounded-lg bg-fp-badge-danger-bg text-fp-badge-danger-fg px-4 py-3 text-sm">
+        <div class="mb-4 rounded-xl border border-fp-badge-danger-fg/15 bg-fp-badge-danger-bg px-4 py-3 text-sm text-fp-badge-danger-fg">
             {{ $errorNegocio }}
         </div>
     @endif
 
     @if (!$mostrandoFormularioProducto)
-        <div class="bg-white rounded-xl border border-slate-200/80 shadow-sm">
+        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
             <div class="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
                 <div class="min-w-0">
-                    <h2 class="text-base font-semibold text-slate-900">Productos</h2>
-                    <p class="mt-0.5 text-sm text-slate-500">Catálogo de modelos de tu distribuidora.</p>
+                    <h2 class="text-base font-semibold tracking-tight text-slate-900">Productos</h2>
+                    <p class="mt-0.5 text-sm text-fp-text-muted">Catálogo de modelos de tu distribuidora.</p>
                 </div>
                 <button type="button" wire:click="abrirFormularioCrearProducto"
-                    class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-fp-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-fp-primary/25 transition hover:bg-fp-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary focus-visible:ring-offset-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
                     Nuevo producto
                 </button>
@@ -182,8 +182,8 @@ new class extends Component {
 
             <div class="px-6 py-4">
                 <label class="relative block">
-                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
                         </svg>
                     </span>
@@ -191,7 +191,7 @@ new class extends Component {
                         type="search"
                         wire:model.live.debounce.300ms="busqueda"
                         placeholder="Buscar por código o nombre…"
-                        class="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2.5 pl-10 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-fp-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-fp-primary/20"
+                        class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20"
                     >
                 </label>
             </div>
@@ -199,7 +199,7 @@ new class extends Component {
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
-                        <tr class="border-y border-slate-100 bg-slate-50/60 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                        <tr class="border-y border-slate-100 bg-fp-page/80 text-left text-[11px] font-semibold uppercase tracking-wide text-fp-text-muted">
                             <th class="px-6 py-3">Código</th>
                             <th class="px-6 py-3">Nombre</th>
                             <th class="px-6 py-3">Marca</th>
@@ -211,9 +211,9 @@ new class extends Component {
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($productos as $producto)
-                            <tr class="transition-colors hover:bg-slate-50/80">
-                                <td class="px-6 py-3.5 font-medium text-slate-800">{{ $producto->modelo }}</td>
-                                <td class="px-6 py-3.5 text-slate-700">{{ $producto->nombre }}</td>
+                            <tr class="transition-colors hover:bg-fp-page/70">
+                                <td class="px-6 py-3.5 font-medium text-fp-primary">{{ $producto->modelo }}</td>
+                                <td class="px-6 py-3.5 text-slate-800">{{ $producto->nombre }}</td>
                                 <td class="px-6 py-3.5 text-slate-600">{{ $producto->marca?->nombre ?? '—' }}</td>
                                 <td class="px-6 py-3.5 text-slate-600">{{ $producto->linea?->nombre ?? '—' }}</td>
                                 <td class="px-6 py-3.5 text-slate-600">{{ $producto->categoria?->nombre ?? '—' }}</td>
@@ -234,10 +234,14 @@ new class extends Component {
                                 <td colspan="7" class="px-6 py-14 text-center">
                                     @if (trim($busqueda) !== '')
                                         <p class="text-sm font-medium text-slate-700">Sin coincidencias</p>
-                                        <p class="mt-1 text-sm text-slate-500">No encontramos productos para «{{ $busqueda }}». Prueba con otro código o nombre.</p>
+                                        <p class="mt-1 text-sm text-fp-text-muted">No encontramos productos para «{{ $busqueda }}». Prueba con otro código o nombre.</p>
                                     @else
-                                        <p class="text-sm font-medium text-slate-700">Aún no hay productos</p>
-                                        <p class="mt-1 text-sm text-slate-500">Crea el primero con el botón «Nuevo producto».</p>
+                                        <p class="text-sm font-medium text-fp-sidebar">Aún no hay productos</p>
+                                        <p class="mt-1 text-sm text-fp-text-muted">Crea el primero para empezar tu catálogo.</p>
+                                        <button type="button" wire:click="abrirFormularioCrearProducto"
+                                            class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-fp-primary px-3 py-2 text-xs font-semibold text-white hover:bg-fp-accent">
+                                            Nuevo producto
+                                        </button>
                                     @endif
                                 </td>
                             </tr>
@@ -247,12 +251,12 @@ new class extends Component {
             </div>
         </div>
     @else
-        <form wire:submit="guardarProducto" class="mx-auto max-w-2xl space-y-6 rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
+        <form wire:submit="guardarProducto" class="mx-auto max-w-2xl space-y-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8">
             <div>
-                <h2 class="text-base font-semibold text-slate-900">
+                <h2 class="text-base font-semibold tracking-tight text-slate-900">
                     {{ $productoEditandoId ? 'Editar producto' : 'Nuevo producto' }}
                 </h2>
-                <p class="mt-0.5 text-sm text-slate-500">
+                <p class="mt-0.5 text-sm text-fp-text-muted">
                     {{ $productoEditandoId ? 'Actualiza los datos del modelo.' : 'Completa los datos del nuevo modelo.' }}
                 </p>
             </div>
@@ -261,7 +265,7 @@ new class extends Component {
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-slate-700">Código</label>
                     <input type="text" wire:model="producto_modelo"
-                        class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
+                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
                     @error('producto_modelo')
                         <span class="mt-1 block text-xs text-fp-badge-danger-fg">{{ $message }}</span>
                     @enderror
@@ -269,7 +273,7 @@ new class extends Component {
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-slate-700">Nombre</label>
                     <input type="text" wire:model="producto_nombre"
-                        class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
+                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
                     @error('producto_nombre')
                         <span class="mt-1 block text-xs text-fp-badge-danger-fg">{{ $message }}</span>
                     @enderror
@@ -279,14 +283,14 @@ new class extends Component {
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-slate-700">Descripción</label>
                 <textarea wire:model="producto_descripcion" rows="3"
-                    class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20"></textarea>
+                    class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20"></textarea>
             </div>
 
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-slate-700">Marca</label>
                     <select wire:model="producto_marca_id"
-                        class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
+                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
                         <option value="">—</option>
                         @foreach ($marcas as $m)
                             <option value="{{ $m->id }}">{{ $m->nombre }}</option>
@@ -299,7 +303,7 @@ new class extends Component {
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-slate-700">Línea</label>
                     <select wire:model="producto_linea_id"
-                        class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
+                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
                         <option value="">—</option>
                         @foreach ($lineas as $l)
                             <option value="{{ $l->id }}">{{ $l->nombre }}</option>
@@ -312,7 +316,7 @@ new class extends Component {
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-slate-700">Categoría</label>
                     <select wire:model="producto_categoria_id"
-                        class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
+                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-fp-primary focus:outline-none focus:ring-2 focus:ring-fp-primary/20">
                         <option value="">—</option>
                         @foreach ($categorias as $c)
                             <option value="{{ $c->id }}">{{ $c->nombre }}</option>
@@ -334,12 +338,12 @@ new class extends Component {
 
             <div class="flex flex-wrap gap-3 border-t border-slate-100 pt-5">
                 <button type="submit"
-                    class="inline-flex items-center justify-center rounded-lg bg-fp-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40 disabled:opacity-60"
+                    class="inline-flex items-center justify-center rounded-xl bg-fp-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-fp-primary/25 transition hover:bg-fp-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary focus-visible:ring-offset-2 disabled:opacity-60"
                     wire:loading.attr="disabled">
                     Guardar producto
                 </button>
                 <button type="button" wire:click="cancelarFormularioProducto"
-                    class="inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                    class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">
                     Cancelar
                 </button>
             </div>
