@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/pedido_resumen.dart';
+import '../models/vale.dart';
 import '../providers/auth_provider.dart';
 import '../providers/carrito_revendedor_provider.dart';
 import '../services/api_service.dart';
 import '../services/pedido_service.dart';
+import '../widgets/selector_vale.dart';
+import 'login_screen.dart';
 
 /// El pedido acumulado del revendedor (E9-01 / E9-03). Lee el carrito de
 /// [CarritoRevendedorProvider], ligado a la sesión (TG-165).
+///
+/// TG-165: también se le puede aplicar un vale, igual que al pedido directo,
+/// y al enviarlo se ven los números que calculó el servidor.
 class PedidoRevendedorScreen extends StatefulWidget {
   const PedidoRevendedorScreen({super.key});
 
@@ -15,7 +22,14 @@ class PedidoRevendedorScreen extends StatefulWidget {
 }
 
 class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
+  late final _api = context.read<AuthProvider>().api;
+
   bool _enviando = false;
+  Vale? _valeSeleccionado;
+
+  /// El pedido ya enviado. Mientras sea null se ve el carrito.
+  PedidoResumen? _pedido;
+  String? _avisoVale;
 
   void _enviarPedido() async {
     final carrito = context.read<CarritoRevendedorProvider>();
@@ -26,7 +40,7 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
     try {
       // Mismos pasos que el pedido directo (crear, líneas, enviar): viven en
       // PedidoService. Tipo, dueño, sucursal y precio los pone el servidor.
-      final pedido = await PedidoService(context.read<AuthProvider>().api).crearYEnviar(
+      var pedido = await PedidoService(_api).crearYEnviar(
         lineas: [
           for (final item in carrito.items)
             (
@@ -37,16 +51,25 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
         ],
       );
 
-      if (!mounted) return;
-
-      setState(() => _enviando = false);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Pedido ${pedido.folio} enviado a la distribuidora a tu nombre.')),
-      );
-
+      // El pedido ya se envió: aunque el vale falle, no debe quedar en el
+      // carrito (se enviaría dos veces).
       carrito.vaciar();
-      Navigator.popUntil(context, (route) => route.isFirst);
+
+      String? aviso;
+
+      final vale = _valeSeleccionado;
+      if (vale != null) {
+        final resultado = await aplicarValeAlPedido(api: _api, vale: vale, pedido: pedido);
+        pedido = resultado.pedido;
+        aviso = resultado.aviso;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _pedido = pedido;
+        _avisoVale = aviso;
+        _enviando = false;
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _enviando = false);
@@ -68,6 +91,24 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
     final carrito = context.watch<CarritoRevendedorProvider>();
     final items = carrito.items;
     final totalGeneral = carrito.total;
+
+    final pedido = _pedido;
+    if (pedido != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Pedido enviado')),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: _Enviado(pedido: pedido, avisoVale: _avisoVale),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pedido Acumulado de Revendedor')),
@@ -159,6 +200,12 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                             ],
                           ),
                         ),
+                        SelectorVale(
+                          api: _api,
+                          habilitado: !_enviando,
+                          alCambiar: (vale) => _valeSeleccionado = vale,
+                        ),
+                        const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -180,6 +227,102 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+/// Después de enviar: los números que calculó el servidor, ya con el vale.
+class _Enviado extends StatelessWidget {
+  const _Enviado({required this.pedido, required this.avisoVale});
+
+  final PedidoResumen pedido;
+  final String? avisoVale;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final otrosPagos = pedido.pagado - pedido.pagadoConVales;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Icon(Icons.check_circle_outline, size: 72, color: Colors.green.shade600),
+        const SizedBox(height: 12),
+        Text('¡Pedido enviado!', textAlign: TextAlign.center, style: tema.textTheme.headlineSmall),
+        const SizedBox(height: 4),
+        Text(
+          'Folio ${pedido.folio}',
+          textAlign: TextAlign.center,
+          style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Enviado a la distribuidora a tu nombre.',
+          textAlign: TextAlign.center,
+          style: tema.textTheme.bodyMedium?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 24),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _Fila(etiqueta: 'Total del pedido', valor: formatoPrecio(pedido.total)),
+                // "pagado" ya incluye lo del vale: se separa para no contarlo dos veces.
+                if (pedido.pagadoConVales > 0)
+                  _Fila(etiqueta: 'Pagado con vale', valor: '-${formatoPrecio(pedido.pagadoConVales)}'),
+                if (otrosPagos > 0.009)
+                  _Fila(etiqueta: 'Otros pagos', valor: '-${formatoPrecio(otrosPagos)}'),
+                const Divider(height: 24),
+                _Fila(etiqueta: 'Pendiente por pagar', valor: formatoPrecio(pedido.saldo), destacado: true),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Paga en mostrador; ahí registran tu pago. Te avisaremos cuando tu pedido llegue.',
+          textAlign: TextAlign.center,
+          style: tema.textTheme.bodyMedium,
+        ),
+        if (avisoVale != null) ...[
+          const SizedBox(height: 12),
+          AvisoError(mensaje: 'Tu pedido sí se envió, pero no se pudo aplicar el vale: $avisoVale'),
+        ],
+        const SizedBox(height: 24),
+        FilledButton(
+          onPressed: () => Navigator.of(context).popUntil((ruta) => ruta.isFirst),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+          child: const Text('Volver al inicio'),
+        ),
+      ],
+    );
+  }
+}
+
+class _Fila extends StatelessWidget {
+  const _Fila({required this.etiqueta, required this.valor, this.destacado = false});
+
+  final String etiqueta;
+  final String valor;
+  final bool destacado;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final estilo = destacado
+        ? tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: tema.colorScheme.primary)
+        : tema.textTheme.bodyLarge;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(child: Text(etiqueta, style: estilo)),
+          Text(valor, style: estilo),
+        ],
+      ),
     );
   }
 }
