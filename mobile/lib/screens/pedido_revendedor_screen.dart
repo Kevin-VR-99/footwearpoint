@@ -1,30 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/item_pedido_revendedor.dart';
 import '../providers/auth_provider.dart';
+import '../providers/carrito_revendedor_provider.dart';
 import '../services/api_service.dart';
 
-class PedidoRevendedorScreen extends StatefulWidget {
-  const PedidoRevendedorScreen({super.key, required this.itemsIniciales});
+/// Sucursal a la que se mandan los pedidos desde la app.
+///
+/// PENDIENTE (backend, Kevin): la app no tiene forma de saber la sucursal de
+/// su distribuidora, y el servidor la busca dentro de la distribuidora del
+/// usuario. Con 1 funciona en los datos demo, pero en otra distribuidora
+/// fallaría con "La sucursal no existe". Se deja en un solo lugar para
+/// cambiarlo cuando el servidor la resuelva solo o la mande en auth/me.
+const sucursalPedidosApp = 1;
 
-  final List<ItemPedidoRevendedor> itemsIniciales;
+/// El pedido acumulado del revendedor (E9-01 / E9-03). Lee el carrito de
+/// [CarritoRevendedorProvider], ligado a la sesión (TG-165).
+class PedidoRevendedorScreen extends StatefulWidget {
+  const PedidoRevendedorScreen({super.key});
 
   @override
   State<PedidoRevendedorScreen> createState() => _PedidoRevendedorScreenState();
 }
 
 class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
-  late List<ItemPedidoRevendedor> _items;
   bool _enviando = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _items = widget.itemsIniciales;
-  }
-
   void _enviarPedido() async {
-    if (_items.isEmpty) return;
+    final carrito = context.read<CarritoRevendedorProvider>();
+    if (carrito.vacio) return;
 
     setState(() => _enviando = true);
 
@@ -34,8 +37,10 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
       // 1. Creamos el pedido maestro base
       final respuestaPedido = await api.post('/pedidos', cuerpo: {
         'tipo': 'revendedor',
+        // El servidor usa al revendedor de la sesión; se manda porque el
+        // endpoint lo exige (lo comparte con la web).
         'propietario_id': 1,
-        'sucursal_id': 1,
+        'sucursal_id': sucursalPedidosApp,
       });
 
       final pedidoId = respuestaPedido['data']?['id'] ?? respuestaPedido['id'];
@@ -45,7 +50,7 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
       }
 
       // 2. Agregamos cada línea utilizando el producto_campana_id correcto y la variante correspondiente a ese producto
-      for (var item in _items) {
+      for (final item in carrito.items) {
         await api.post('/pedidos/$pedidoId/lineas', cuerpo: {
           'producto_campana_id': item.producto.id,
           'variante_id': item.variante.varianteId,
@@ -63,8 +68,8 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('¡Pedido enviado a la distribuidora a nombre del revendedor con éxito!')),
       );
-      
-      _items.clear();
+
+      carrito.vaciar();
       Navigator.popUntil(context, (route) => route.isFirst);
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -84,19 +89,21 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
-    final totalGeneral = _items.fold<double>(0, (suma, item) => suma + item.subtotal);
+    final carrito = context.watch<CarritoRevendedorProvider>();
+    final items = carrito.items;
+    final totalGeneral = carrito.total;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pedido Acumulado de Revendedor')),
-      body: _items.isEmpty
+      body: items.isEmpty
           ? const Center(child: Text('No hay productos agregados al pedido.'))
           : Column(
               children: [
                 Expanded(
                   child: ListView.builder(
-                    itemCount: _items.length,
+                    itemCount: items.length,
                     itemBuilder: (context, index) {
-                      final item = _items[index];
+                      final item = items[index];
                       final precioUnitario = item.producto.precioMayorista ?? item.producto.precioMinoristaSugerido;
 
                       return Card(
@@ -120,14 +127,22 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                                 children: [
                                   IconButton(
                                     icon: const Icon(Icons.remove_circle_outline),
+                                    tooltip: 'Una pieza menos',
                                     onPressed: item.cantidad > 1
-                                        ? () => setState(() => item.cantidad--)
+                                        ? () => carrito.cambiarCantidad(item, item.cantidad - 1)
                                         : null,
                                   ),
                                   Text('${item.cantidad}', style: const TextStyle(fontWeight: FontWeight.bold)),
                                   IconButton(
                                     icon: const Icon(Icons.add_circle_outline),
-                                    onPressed: () => setState(() => item.cantidad++),
+                                    tooltip: 'Una pieza más',
+                                    onPressed: () => carrito.cambiarCantidad(item, item.cantidad + 1),
+                                  ),
+                                  // Antes no había forma de sacar un producto del carrito.
+                                  IconButton(
+                                    icon: Icon(Icons.delete_outline, color: tema.colorScheme.error),
+                                    tooltip: 'Quitar del pedido',
+                                    onPressed: _enviando ? null : () => carrito.quitar(item),
                                   ),
                                 ],
                               ),
