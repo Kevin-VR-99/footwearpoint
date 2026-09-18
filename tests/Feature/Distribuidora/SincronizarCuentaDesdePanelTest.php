@@ -161,7 +161,7 @@ class SincronizarCuentaDesdePanelTest extends TestCase
     {
         $this->comoAdminPanel();
 
-        Livewire::test('distribuidora.configuracion')
+        Livewire::test('distribuidora.usuarios')
             ->call('abrirFormularioEditarRevendedor', $this->afiliacionDeMaria()->id)
             ->set('revendedor_nombre', 'María López Ruiz')
             ->set('revendedor_telefono', '9631230000')
@@ -177,7 +177,7 @@ class SincronizarCuentaDesdePanelTest extends TestCase
     {
         $this->comoAdminPanel();
 
-        Livewire::test('distribuidora.configuracion')
+        Livewire::test('distribuidora.clientes')
             ->call('abrirFormularioEditarCliente', $this->fichaDeJose()->id)
             ->set('cliente_telefono', '')
             ->call('guardarCliente')

@@ -42,7 +42,7 @@ class CuentaAccesoPanelTest extends TestCase
 
     public function test_el_admin_afilia_un_revendedor_con_cuenta_desde_el_panel(): void
     {
-        Livewire::test('distribuidora.configuracion')
+        Livewire::test('distribuidora.usuarios')
             ->call('abrirFormularioAfiliarRevendedor')
             ->set('revendedor_nombre', 'María López')
             ->set('revendedor_acceso_email', 'maria@revendedor.test')
@@ -61,7 +61,7 @@ class CuentaAccesoPanelTest extends TestCase
     {
         $cliente = ClienteDirecto::where('email', 'ana.garcia@cliente.test')->firstOrFail();
 
-        $pantalla = Livewire::test('distribuidora.configuracion')
+        $pantalla = Livewire::test('distribuidora.clientes')
             ->call('abrirFormularioEditarCliente', $cliente->id)
             ->assertSet('cliente_cuenta_email_actual', null)
             ->set('cliente_acceso_email', 'ana@cliente.test')
@@ -88,7 +88,7 @@ class CuentaAccesoPanelTest extends TestCase
     {
         $cliente = ClienteDirecto::where('email', 'ana.garcia@cliente.test')->firstOrFail();
 
-        Livewire::test('distribuidora.configuracion')
+        Livewire::test('distribuidora.clientes')
             ->call('abrirFormularioEditarCliente', $cliente->id)
             ->set('cliente_telefono', '9630000000')
             ->call('guardarCliente')
@@ -102,7 +102,7 @@ class CuentaAccesoPanelTest extends TestCase
     {
         $antes = Revendedor::count();
 
-        Livewire::test('distribuidora.configuracion')
+        Livewire::test('distribuidora.usuarios')
             ->call('abrirFormularioAfiliarRevendedor')
             ->set('revendedor_nombre', 'Otra Persona')
             ->set('revendedor_acceso_email', 'empleado@calzadosramirez.test')
@@ -118,7 +118,7 @@ class CuentaAccesoPanelTest extends TestCase
 
     public function test_el_correo_sin_contrasena_no_se_acepta(): void
     {
-        Livewire::test('distribuidora.configuracion')
+        Livewire::test('distribuidora.usuarios')
             ->call('abrirFormularioAfiliarRevendedor')
             ->set('revendedor_nombre', 'María López')
             ->set('revendedor_acceso_email', 'maria@revendedor.test')
