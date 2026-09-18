@@ -38,17 +38,20 @@ http.Response _json(Object cuerpo, int codigo) => http.Response(
   headers: {'content-type': 'application/json; charset=utf-8'},
 );
 
-/// El pedido como lo manda PedidoResource.
-Map<String, dynamic> _pedido({double pagado = 0}) => {
+/// El pedido como lo manda PedidoResource. Con [conVale], como queda después
+/// de aplicar un vale que cubre todo (TG-167: cuenta como pago y cubre el
+/// anticipo; "pagado" ya lo incluye).
+Map<String, dynamic> _pedido({bool conVale = false}) => {
   'id': 55,
   'folio': 'PED-20260918-0007',
   'estado': 'colocado',
   'total': 1600.0,
-  'pagado': pagado,
-  'saldo': 1600.0 - pagado,
+  'pagado': conVale ? 1600.0 : 0.0,
+  'pagado_con_vales': conVale ? 1600.0 : 0.0,
+  'saldo': conVale ? 0.0 : 1600.0,
   'anticipo_requerido': 200.0,
-  'anticipo_pagado': 0.0,
-  'anticipo_pendiente': 200.0,
+  'anticipo_pagado': conVale ? 200.0 : 0.0,
+  'anticipo_pendiente': conVale ? 0.0 : 200.0,
 };
 
 /// Un servidor falso que anota todo lo que se le pide.
@@ -59,6 +62,7 @@ class _Servidor {
   final bool aplicarFalla;
   final bool lineaFalla;
   final peticiones = <http.Request>[];
+  var valeAplicado = false;
 
   MockClient get cliente => MockClient((peticion) async {
     peticiones.add(peticion);
@@ -82,9 +86,12 @@ class _Servidor {
       if (aplicarFalla) {
         return _json({'message': 'El vale está vencido.', 'errors': {'vale': ['El vale está vencido.']}}, 422);
       }
+      valeAplicado = true;
       return _json({'data': {}, 'message': 'Vale aplicado correctamente.'}, 200);
     }
-    if (ruta.endsWith('/pedidos/55') && peticion.method == 'GET') return _json({'data': _pedido()}, 200);
+    if (ruta.endsWith('/pedidos/55') && peticion.method == 'GET') {
+      return _json({'data': _pedido(conVale: valeAplicado)}, 200);
+    }
 
     return _json({'message': 'Not Found'}, 404);
   });
@@ -129,7 +136,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('crea el pedido de verdad: crear, línea sin precio y enviar', (tester) async {
+  testWidgets('crea el pedido de verdad sin mandar tipo, dueño, sucursal ni precio', (tester) async {
     final servidor = _Servidor();
     await abrir(tester, servidor);
 
@@ -144,11 +151,10 @@ void main() {
       'POST /pedidos/55/enviar',
     ]));
 
-    expect(servidor.cuerpo('/pedidos')['tipo'], 'cliente_directo');
-    final linea = servidor.cuerpo('/pedidos/55/lineas');
-    expect(linea, {'producto_campana_id': 12, 'variante_id': 9, 'cantidad': 2});
-    // El precio lo decide el servidor (Kevin, #166).
-    expect(linea.containsKey('precio_unitario'), isFalse);
+    // Tipo, dueño y sucursal los pone el servidor según la sesión (TG-166).
+    expect(servidor.cuerpo('/pedidos'), isEmpty);
+    // Y el precio también (TG-166).
+    expect(servidor.cuerpo('/pedidos/55/lineas'), {'producto_campana_id': 12, 'variante_id': 9, 'cantidad': 2});
     // Ya no se aplica ningún vale a un pedido inventado.
     expect(servidor.rutas.where((r) => r.contains('aplicar')), isEmpty);
   });
@@ -183,7 +189,14 @@ void main() {
       'GET /pedidos/55',
     ]));
     expect(servidor.cuerpo('/aplicar'), {'monto': 1600.0, 'pedido_id': 55});
-    expect(find.text('Vale aplicado'), findsOneWidget);
+
+    // Lo que muestra sale del servidor: el vale pagó todo, incluido el anticipo.
+    expect(find.text('Pagado con vale'), findsOneWidget);
+    expect(find.text(r'-$1,600.00'), findsOneWidget);
+    expect(find.text('Anticipo a pagar en mostrador'), findsOneWidget);
+    expect(find.text(r'$0.00'), findsNWidgets(2));
+    // "pagado" incluye el vale: no se muestra otra vez como otro pago.
+    expect(find.text('Otros pagos'), findsNothing);
   });
 
   testWidgets('si el vale falla, el pedido igual queda enviado y se avisa', (tester) async {
@@ -210,14 +223,12 @@ void main() {
     expect(find.text('Enviar pedido'), findsOneWidget);
   });
 
-  testWidgets('un revendedor manda su pedido directo como revendedor y ve lo pendiente', (tester) async {
-    final servidor = _Servidor();
-    await abrir(tester, servidor, revendedor: true);
+  testWidgets('un revendedor ve precio mayorista y, al enviar, lo pendiente por pagar', (tester) async {
+    await abrir(tester, _Servidor(), revendedor: true);
 
     expect(find.text('Precio mayorista'), findsOneWidget);
     await enviar(tester);
 
-    expect(servidor.cuerpo('/pedidos')['tipo'], 'revendedor');
     expect(find.text('Pendiente por pagar'), findsOneWidget);
     expect(find.text('Anticipo a pagar en mostrador'), findsNothing);
   });

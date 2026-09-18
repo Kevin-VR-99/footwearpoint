@@ -53,13 +53,12 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
 
   /// El pedido ya enviado. Mientras sea null se ve el formulario.
   PedidoResumen? _pedido;
-  double? _valeAplicado;
   String? _avisoVale;
 
   bool get _esRevendedor => widget.producto.precioMayorista != null;
 
   /// Solo para orientar antes de enviar. El total de verdad lo calcula el
-  /// servidor según el tipo de pedido (Kevin, #166).
+  /// servidor según el tipo de pedido (TG-166).
   double get _precioUnitarioEstimado =>
       _esRevendedor ? widget.producto.precioMayorista! : widget.producto.precioMinoristaSugerido;
 
@@ -99,7 +98,6 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
 
     try {
       var pedido = await _pedidos.crearYEnviar(
-        tipo: _esRevendedor ? 'revendedor' : 'cliente_directo',
         lineas: [
           (
             productoCampanaId: widget.producto.id,
@@ -109,20 +107,19 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
         ],
       );
 
-      double? aplicado;
       String? aviso;
 
       final vale = _valeSeleccionado;
       if (vale != null) {
-        // Se aplica al pedido REAL, y como mucho lo que se debe: hoy el
-        // servidor solo limita al saldo del vale, así que mandar todo el saldo
-        // gastaría el vale completo aunque el pedido costara menos.
+        // Se aplica al pedido REAL y ya enviado (a un borrador no se puede).
+        // El servidor solo toma lo que falta por pagar y lo cuenta como pago,
+        // también del anticipo (TG-167); la app pide lo mismo desde aquí.
         final monto = math.min(vale.saldoActual, pedido.saldo);
 
         if (monto > 0) {
           try {
             await _valeService.aplicarVale(valeId: vale.id, monto: monto, pedidoId: pedido.id);
-            aplicado = monto;
+            // Se vuelve a pedir para mostrar pagado, saldo y anticipo ya con el vale.
             pedido = await _pedidos.ver(pedido.id);
           } on ApiException catch (e) {
             // El pedido ya se envió: no se pierde, solo se avisa del vale.
@@ -134,7 +131,6 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
       if (!mounted) return;
       setState(() {
         _pedido = pedido;
-        _valeAplicado = aplicado;
         _avisoVale = aviso;
         _enviando = false;
       });
@@ -354,9 +350,11 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
             child: Column(
               children: [
                 _Fila(etiqueta: 'Total del pedido', valor: formatoPrecio(pedido.total)),
-                if (_valeAplicado != null)
-                  _Fila(etiqueta: 'Vale aplicado', valor: '-${formatoPrecio(_valeAplicado!)}'),
-                if (pedido.pagado > 0) _Fila(etiqueta: 'Pagado', valor: formatoPrecio(pedido.pagado)),
+                // "pagado" ya incluye lo del vale: se separa para no contarlo dos veces.
+                if (pedido.pagadoConVales > 0)
+                  _Fila(etiqueta: 'Pagado con vale', valor: '-${formatoPrecio(pedido.pagadoConVales)}'),
+                if (pedido.pagado - pedido.pagadoConVales > 0.009)
+                  _Fila(etiqueta: 'Otros pagos', valor: '-${formatoPrecio(pedido.pagado - pedido.pagadoConVales)}'),
                 const Divider(height: 24),
                 if (_esRevendedor)
                   _Fila(etiqueta: 'Pendiente por pagar', valor: formatoPrecio(pedido.saldo), destacado: true)

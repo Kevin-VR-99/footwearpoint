@@ -1,17 +1,8 @@
 import '../models/pedido_resumen.dart';
 import 'api_service.dart';
 
-/// Sucursal a la que se mandan los pedidos desde la app.
-///
-/// PENDIENTE (Kevin, #166): el servidor va a poner solo la sucursal principal
-/// y el propietario cuando el pedido lo crea un revendedor o cliente desde la
-/// app, e ignorará lo que se mande. Mientras tanto se manda 1, que funciona
-/// con los datos demo. Cuando eso llegue a main, se quitan esta constante y
-/// los campos sucursal_id y propietario_id de [PedidoService.crearYEnviar].
-const sucursalPedidosApp = 1;
-
 /// Una línea para un pedido nuevo. Sin precio: lo decide el servidor según el
-/// tipo de pedido (Kevin, #166).
+/// tipo de pedido (TG-166).
 typedef LineaPedidoNueva = ({int productoCampanaId, int varianteId, int cantidad});
 
 /// Crear y consultar pedidos desde la app (E8-01, E9-03; TG-165).
@@ -26,18 +17,11 @@ class PedidoService {
   /// Crea el pedido en borrador, le agrega las líneas y lo envía. Regresa el
   /// pedido ya enviado, con los importes que calculó el servidor.
   ///
-  /// [tipo] es 'cliente_directo' o 'revendedor'. El servidor ya lo toma de la
-  /// sesión para revendedor y cliente directo; se manda porque el endpoint lo
-  /// exige (lo comparte con la web, donde el empleado sí lo elige).
-  Future<PedidoResumen> crearYEnviar({
-    required String tipo,
-    required List<LineaPedidoNueva> lineas,
-  }) async {
-    final creado = await _api.post('pedidos', cuerpo: {
-      'tipo': tipo,
-      'propietario_id': 1,
-      'sucursal_id': sucursalPedidosApp,
-    });
+  /// No se manda tipo, dueño, sucursal ni precio: cuando el pedido lo crea un
+  /// revendedor o cliente desde la app, el servidor los pone solo según la
+  /// sesión e ignora lo que venga (TG-166).
+  Future<PedidoResumen> crearYEnviar({required List<LineaPedidoNueva> lineas}) async {
+    final creado = await _api.post('pedidos');
 
     final pedidoId = (creado['data'] as Map<String, dynamic>)['id'] as int;
 

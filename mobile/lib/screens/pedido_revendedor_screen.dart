@@ -25,9 +25,8 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
 
     try {
       // Mismos pasos que el pedido directo (crear, líneas, enviar): viven en
-      // PedidoService. Sin precio: lo decide el servidor (TG-165).
+      // PedidoService. Tipo, dueño, sucursal y precio los pone el servidor.
       final pedido = await PedidoService(context.read<AuthProvider>().api).crearYEnviar(
-        tipo: 'revendedor',
         lineas: [
           for (final item in carrito.items)
             (
