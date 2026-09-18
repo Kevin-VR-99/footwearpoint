@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../models/vale.dart';
 import '../services/vale_service.dart';
 
@@ -10,7 +12,9 @@ class ValesScreen extends StatefulWidget {
 }
 
 class _ValesScreenState extends State<ValesScreen> {
-  final ValeService _valeService = ValeService();
+  // Con el ApiService de AuthProvider (no uno propio): así, si la sesión
+  // expira aquí, el 401 regresa al login como en el resto de la app.
+  late final ValeService _valeService = ValeService(api: context.read<AuthProvider>().api);
   bool _cargando = true;
   List<Vale> _vales = [];
   String? _error;
