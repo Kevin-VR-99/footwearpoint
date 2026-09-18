@@ -6,6 +6,8 @@ import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'cambiar_password_screen.dart';
 import 'login_screen.dart';
+import '../tema/fp_colores.dart';
+import '../widgets/fp_componentes.dart';
 
 /// Ver y editar los datos propios (E1-05).
 ///
@@ -115,10 +117,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
     try {
       final respuesta = await auth.api.patch(
         'perfil',
-        cuerpo: {
-          'nombre': _nombre.text.trim(),
-          'telefono': _telefono.text.trim(),
-        },
+        cuerpo: {'nombre': _nombre.text.trim(), 'telefono': _telefono.text.trim()},
       );
       final usuario = Usuario.desdeJson(respuesta['data'] as Map<String, dynamic>);
 
@@ -145,9 +144,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
   Future<void> _abrirCambiarPassword() async {
     final mensajero = ScaffoldMessenger.of(context);
 
-    final mensaje = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const CambiarPasswordScreen()),
-    );
+    final mensaje = await Navigator.of(context)
+        .push<String>(MaterialPageRoute(builder: (_) => const CambiarPasswordScreen()));
 
     if (mensaje != null) {
       mensajero.showSnackBar(SnackBar(content: Text(mensaje)));
@@ -172,7 +170,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mi perfil')),
+      appBar: AppBar(title: const Text('Mi perfil'), bottom: const FpBordeMarca()),
       body: SafeArea(child: _contenido(context)),
     );
   }
@@ -190,6 +188,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const FpIconoGrande(
+                icono: Icons.person_off_outlined,
+                fondo: FpColores.peligroSuave,
+                color: FpColores.peligro,
+              ),
+              const SizedBox(height: 16),
               AvisoError(mensaje: _errorCarga!),
               const SizedBox(height: 16),
               FilledButton.icon(
@@ -203,11 +207,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
       );
     }
 
-    final tema = Theme.of(context);
-
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Form(
@@ -216,69 +218,85 @@ class _PerfilScreenState extends State<PerfilScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Mis datos', style: tema.textTheme.titleMedium),
-                const SizedBox(height: 16),
-                TextFormField(
-                  initialValue: _usuario!.email,
-                  readOnly: true,
-                  enabled: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Correo',
-                    helperText: 'El correo no se puede cambiar.',
-                    prefixIcon: Icon(Icons.mail_outline),
-                    border: OutlineInputBorder(),
+                FpTarjeta(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          FpAvatar(nombre: _usuario!.nombre, tamano: 32),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'Mis datos',
+                            style: TextStyle(
+                              color: FpColores.sidebar,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        initialValue: _usuario!.email,
+                        readOnly: true,
+                        enabled: false,
+                        decoration: const InputDecoration(
+                          labelText: 'Correo',
+                          helperText: 'El correo no se puede cambiar.',
+                          prefixIcon: Icon(Icons.mail_outline),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _nombre,
+                        enabled: !_guardando,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre',
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                        textCapitalization: TextCapitalization.words,
+                        textInputAction: TextInputAction.next,
+                        validator: _validarNombre,
+                        onChanged: (_) => _limpiarErrorServidor('nombre'),
+                        forceErrorText: _erroresServidor['nombre']?.first,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _telefono,
+                        enabled: !_guardando,
+                        decoration: const InputDecoration(
+                          labelText: 'Teléfono (opcional)',
+                          prefixIcon: Icon(Icons.phone_outlined),
+                        ),
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _guardar(),
+                        validator: _validarTelefono,
+                        onChanged: (_) => _limpiarErrorServidor('telefono'),
+                        forceErrorText: _erroresServidor['telefono']?.first,
+                      ),
+                      if (_errorGuardar != null) ...[
+                        const SizedBox(height: 16),
+                        AvisoError(mensaje: _errorGuardar!),
+                      ],
+                      const SizedBox(height: 24),
+                      FilledButton(
+                        onPressed: _guardando ? null : _guardar,
+                        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                        child: _guardando
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('Guardar cambios'),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _nombre,
-                  enabled: !_guardando,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre',
-                    prefixIcon: Icon(Icons.person_outline),
-                    border: OutlineInputBorder(),
-                  ),
-                  textCapitalization: TextCapitalization.words,
-                  textInputAction: TextInputAction.next,
-                  validator: _validarNombre,
-                  onChanged: (_) => _limpiarErrorServidor('nombre'),
-                  forceErrorText: _erroresServidor['nombre']?.first,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _telefono,
-                  enabled: !_guardando,
-                  decoration: const InputDecoration(
-                    labelText: 'Teléfono (opcional)',
-                    prefixIcon: Icon(Icons.phone_outlined),
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _guardar(),
-                  validator: _validarTelefono,
-                  onChanged: (_) => _limpiarErrorServidor('telefono'),
-                  forceErrorText: _erroresServidor['telefono']?.first,
-                ),
-                if (_errorGuardar != null) ...[
-                  const SizedBox(height: 16),
-                  AvisoError(mensaje: _errorGuardar!),
-                ],
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _guardando ? null : _guardar,
-                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                  child: _guardando
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Guardar cambios'),
-                ),
-                const SizedBox(height: 32),
-                Text('Seguridad', style: tema.textTheme.titleMedium),
-                const SizedBox(height: 8),
+                const SizedBox(height: 20),
+                const FpTituloSeccion('Seguridad'),
                 OutlinedButton.icon(
                   onPressed: _guardando ? null : _abrirCambiarPassword,
                   style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),

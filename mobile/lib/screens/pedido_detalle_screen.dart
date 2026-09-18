@@ -6,7 +6,9 @@ import '../models/pedido_resumen.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/pedido_service.dart';
+import '../tema/fp_colores.dart';
 import 'producto_detalle_screen.dart';
+import '../widgets/fp_componentes.dart';
 
 /// El detalle de un pedido propio (TG-165): su estado explicado, lo que se
 /// pidió, cuánto se ha pagado y cuánto falta. Recibe el id y lo pide al
@@ -57,32 +59,27 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
     final pedido = _pedido;
 
     return Scaffold(
-      appBar: AppBar(title: Text(pedido?.folio ?? 'Pedido')),
+      appBar: AppBar(title: Text(pedido?.folio ?? 'Pedido'), bottom: const FpBordeMarca()),
       body: SafeArea(
         child: _cargando
             ? const Center(child: CircularProgressIndicator())
             : pedido == null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(_error ?? 'No se pudo cargar el pedido.', textAlign: TextAlign.center),
-                          const SizedBox(height: 16),
-                          FilledButton.icon(
-                            onPressed: () {
-                              setState(() => _cargando = true);
-                              _cargar();
-                            },
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Reintentar'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : RefreshIndicator(onRefresh: _cargar, child: _detalle(context, pedido)),
+            ? Center(
+                child: FpEstadoVacio(
+                  error: true,
+                  icono: Icons.receipt_long_outlined,
+                  titulo: _error ?? 'No se pudo cargar el pedido.',
+                  accion: FilledButton.icon(
+                    onPressed: () {
+                      setState(() => _cargando = true);
+                      _cargar();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Reintentar'),
+                  ),
+                ),
+              )
+            : RefreshIndicator(onRefresh: _cargar, child: _detalle(context, pedido)),
       ),
     );
   }
@@ -96,107 +93,125 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         // Estado
-        Card(
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: Text('Estado', style: tema.textTheme.titleMedium)),
-                    EtiquetaEstadoPedido(estado: pedido.estado),
-                  ],
-                ),
-                if (estado.descripcion != null) ...[
-                  const SizedBox(height: 8),
-                  Text(estado.descripcion!, style: tema.textTheme.bodyLarge),
-                ],
-                if (pedido.fecha != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Enviado el ${formatoFecha(pedido.fecha!)}',
-                    style: tema.textTheme.bodySmall?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+        FpTarjeta(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const FpIconoCuadro(icono: Icons.local_shipping_outlined, tamano: 36),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Estado',
+                      style: TextStyle(color: FpColores.sidebar, fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
                   ),
+                  EtiquetaEstadoPedido(estado: pedido.estado),
                 ],
+              ),
+              if (estado.descripcion != null) ...[
+                const SizedBox(height: 8),
+                Text(estado.descripcion!, style: tema.textTheme.bodyLarge),
               ],
-            ),
+              if (pedido.fecha != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Enviado el ${formatoFecha(pedido.fecha!)}',
+                  style: tema.textTheme.bodySmall?.copyWith(color: FpColores.textoTenue),
+                ),
+              ],
+            ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
 
         // Productos
-        Text('Productos', style: tema.textTheme.titleMedium),
-        const SizedBox(height: 8),
+        const FpTituloSeccion('Productos'),
         for (final linea in pedido.lineas)
           Card(
             margin: const EdgeInsets.only(bottom: 8),
             child: ListTile(
+              leading: const FpIconoCuadro(icono: Icons.inventory_2_outlined, tamano: 36),
               title: Text(linea.productoNombre, style: const TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text(
                 'Modelo ${linea.modelo} · Talla ${linea.talla} · ${linea.color}\n'
                 '${linea.cantidad} × ${formatoPrecio(linea.precioUnitario)}',
               ),
               isThreeLine: true,
-              trailing: Text(formatoPrecio(linea.subtotal), style: const TextStyle(fontWeight: FontWeight.w600)),
+              trailing: Text(
+                formatoPrecio(linea.subtotal),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
           ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
 
         // Pagos
-        Card(
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _Fila(etiqueta: 'Total del pedido', valor: formatoPrecio(pedido.total)),
-                if (pedido.pagadoConVales > 0)
-                  _Fila(etiqueta: 'Pagado con vale', valor: '-${formatoPrecio(pedido.pagadoConVales)}'),
-                if (otrosPagos > 0.009)
-                  _Fila(etiqueta: 'Pagado en mostrador', valor: '-${formatoPrecio(otrosPagos)}'),
-                const Divider(height: 24),
-                if (!pedido.esRevendedor && pedido.anticipoPendiente > 0)
-                  _Fila(
-                    etiqueta: 'Anticipo pendiente',
-                    valor: formatoPrecio(pedido.anticipoPendiente),
-                    destacado: true,
-                  ),
+        FpTarjeta(
+          child: Column(
+            children: [
+              _Fila(etiqueta: 'Total del pedido', valor: formatoPrecio(pedido.total)),
+              if (pedido.pagadoConVales > 0)
+                _Fila(etiqueta: 'Pagado con vale', valor: '-${formatoPrecio(pedido.pagadoConVales)}'),
+              if (otrosPagos > 0.009)
+                _Fila(etiqueta: 'Pagado en mostrador', valor: '-${formatoPrecio(otrosPagos)}'),
+              const Divider(height: 24),
+              if (!pedido.esRevendedor && pedido.anticipoPendiente > 0)
                 _Fila(
-                  etiqueta: 'Saldo pendiente',
-                  valor: formatoPrecio(pedido.saldo),
-                  destacado: pedido.esRevendedor || pedido.anticipoPendiente <= 0,
+                  etiqueta: 'Anticipo pendiente',
+                  valor: formatoPrecio(pedido.anticipoPendiente),
+                  destacado: true,
                 ),
-              ],
-            ),
+              _Fila(
+                etiqueta: 'Saldo pendiente',
+                valor: formatoPrecio(pedido.saldo),
+                destacado: pedido.esRevendedor || pedido.anticipoPendiente <= 0,
+              ),
+            ],
           ),
         ),
         if (pedido.saldo > 0) ...[
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.storefront_outlined, size: 20, color: tema.colorScheme.primary),
-              const SizedBox(width: 8),
-              const Expanded(child: Text('Los pagos se hacen y se registran en mostrador.')),
-            ],
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: FpColores.primario.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: FpColores.primario.withValues(alpha: 0.15)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.storefront_outlined, size: 20, color: FpColores.primario),
+                SizedBox(width: 10),
+                Expanded(child: Text('Los pagos se hacen y se registran en mostrador.')),
+              ],
+            ),
           ),
         ],
 
         if (pedido.pagos.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text('Pagos registrados', style: tema.textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: 20),
+          const FpTituloSeccion('Pagos registrados'),
           for (final pago in pedido.pagos)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.payments_outlined),
-              title: Text('${pago.tipoParaMostrar} · ${formatoPrecio(pago.monto)}'),
-              subtitle: Text([
-                pago.folio,
-                if (pago.metodo.isNotEmpty) pago.metodo,
-                if (pago.fecha != null) formatoFecha(pago.fecha!, conHora: false),
-              ].join(' · ')),
+            Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: const FpIconoCuadro(
+                  icono: Icons.payments_outlined,
+                  tamano: 36,
+                  fondo: FpColores.insigniaExitoFondo,
+                  color: FpColores.insigniaExitoTexto,
+                ),
+                title: Text('${pago.tipoParaMostrar} · ${formatoPrecio(pago.monto)}'),
+                subtitle: Text(
+                  [
+                    pago.folio,
+                    if (pago.metodo.isNotEmpty) pago.metodo,
+                    if (pago.fecha != null) formatoFecha(pago.fecha!, conHora: false),
+                  ].join(' · '),
+                ),
+              ),
             ),
         ],
       ],

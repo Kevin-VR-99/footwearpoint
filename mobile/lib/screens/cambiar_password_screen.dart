@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'login_screen.dart';
+import '../tema/fp_colores.dart';
+import '../widgets/fp_componentes.dart';
 
 /// Cambiar la contraseña desde el perfil (E1-05).
 ///
@@ -96,7 +98,7 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
     final tema = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Cambiar contraseña')),
+      appBar: AppBar(title: const Text('Cambiar contraseña'), bottom: const FpBordeMarca()),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -110,11 +112,28 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        'Al cambiarla se cerrará tu sesión en tus otros dispositivos. '
-                        'En este seguirás dentro.',
-                        style: tema.textTheme.bodyMedium?.copyWith(
-                          color: tema.colorScheme.onSurfaceVariant,
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: FpColores.primario.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: FpColores.primario.withValues(alpha: 0.15)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.info_outline, size: 20, color: FpColores.primario),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Al cambiarla se cerrará tu sesión en tus otros dispositivos. '
+                                'En este seguirás dentro.',
+                                style: tema.textTheme.bodyMedium?.copyWith(
+                                  color: tema.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -224,7 +243,6 @@ class _CampoPasswordState extends State<_CampoPassword> {
         labelText: widget.etiqueta,
         helperText: widget.ayuda,
         prefixIcon: const Icon(Icons.lock_outline),
-        border: const OutlineInputBorder(),
         suffixIcon: IconButton(
           tooltip: _visible ? 'Ocultar contraseña' : 'Mostrar contraseña',
           icon: Icon(_visible ? Icons.visibility_off_outlined : Icons.visibility_outlined),

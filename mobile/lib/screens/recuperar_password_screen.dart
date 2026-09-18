@@ -5,6 +5,8 @@ import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../validaciones.dart';
 import 'login_screen.dart';
+import '../tema/fp_colores.dart';
+import '../widgets/fp_componentes.dart';
 
 /// Pedir el enlace para cambiar la contraseña (E1-02).
 ///
@@ -93,7 +95,7 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Recuperar contraseña')),
+      appBar: AppBar(title: const Text('Recuperar contraseña'), bottom: const FpBordeMarca()),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -119,7 +121,11 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(Icons.lock_reset, size: 64, color: tema.colorScheme.primary),
+          FpIconoGrande(
+            icono: Icons.lock_reset,
+            fondo: FpColores.primario.withValues(alpha: 0.08),
+            color: FpColores.primario,
+          ),
           const SizedBox(height: 16),
           Text(
             'Escribe el correo de tu cuenta y te mandaremos un enlace para crear una nueva contraseña.',
@@ -135,7 +141,6 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
             decoration: const InputDecoration(
               labelText: 'Correo',
               prefixIcon: Icon(Icons.mail_outline),
-              border: OutlineInputBorder(),
             ),
             keyboardType: TextInputType.emailAddress,
             autofillHints: const [AutofillHints.email],
@@ -175,12 +180,12 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(Icons.mark_email_read_outlined, size: 64, color: tema.colorScheme.primary),
+        const FpIconoGrande(icono: Icons.mark_email_read_outlined),
         const SizedBox(height: 16),
         Text(
           'Revisa tu bandeja',
           textAlign: TextAlign.center,
-          style: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          style: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: FpColores.sidebar),
         ),
         const SizedBox(height: 12),
         Text(

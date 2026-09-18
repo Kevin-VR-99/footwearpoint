@@ -461,3 +461,90 @@ class FpPildora extends StatelessWidget {
     );
   }
 }
+
+/// Pantalla vacía o con error: ícono en un círculo suave, un título, un
+/// texto opcional y un botón opcional. [error] la pinta en rojo.
+class FpEstadoVacio extends StatelessWidget {
+  const FpEstadoVacio({
+    super.key,
+    required this.icono,
+    required this.titulo,
+    this.texto,
+    this.accion,
+    this.error = false,
+  });
+
+  final IconData icono;
+  final String titulo;
+  final String? texto;
+  final Widget? accion;
+  final bool error;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = error ? FpColores.peligro : FpColores.primario;
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              color: error ? FpColores.peligroSuave : color.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icono, size: 42, color: color),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            titulo,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: FpColores.sidebar, fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          if (texto != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              texto!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: FpColores.textoTenue, fontSize: 13),
+            ),
+          ],
+          if (accion != null) ...[
+            const SizedBox(height: 20),
+            accion!,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Ícono grande dentro de un círculo de color suave (p. ej. "¡Pedido
+/// enviado!"). Por defecto, en los colores de éxito de la web.
+class FpIconoGrande extends StatelessWidget {
+  const FpIconoGrande({
+    super.key,
+    required this.icono,
+    this.fondo = FpColores.insigniaExitoFondo,
+    this.color = FpColores.insigniaExitoTexto,
+  });
+
+  final IconData icono;
+  final Color fondo;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 88,
+        height: 88,
+        decoration: BoxDecoration(color: fondo, shape: BoxShape.circle),
+        child: Icon(icono, size: 46, color: color),
+      ),
+    );
+  }
+}

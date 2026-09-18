@@ -8,6 +8,8 @@ import '../screens/producto_detalle_screen.dart';
 import '../services/api_service.dart';
 import '../services/pedido_service.dart';
 import '../services/vale_service.dart';
+import '../tema/fp_colores.dart';
+import 'fp_componentes.dart';
 
 /// Solo los vales que el servidor aceptaría (AplicarValeAction): activos,
 /// con saldo y sin vencer.
@@ -107,13 +109,29 @@ class _SelectorValeState extends State<SelectorVale> {
 
     return Card(
       margin: EdgeInsets.zero,
-      color: tema.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('¿Quieres usar un vale?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Row(
+              children: [
+                FpIconoCuadro(
+                  icono: Icons.confirmation_number_outlined,
+                  tamano: 32,
+                  fondo: FpColores.peligroSuave,
+                  color: FpColores.peligro,
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    '¿Quieres usar un vale?',
+                    style: TextStyle(color: FpColores.sidebar, fontWeight: FontWeight.w600, fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 4),
             Text(
               'Se aplica a este pedido al enviarlo, como máximo por lo que debas.',
@@ -134,10 +152,7 @@ class _SelectorValeState extends State<SelectorVale> {
                       // ignore: deprecated_member_use
                       value: _seleccionado,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Vale (opcional)',
-                        border: OutlineInputBorder(),
-                      ),
+                      decoration: const InputDecoration(labelText: 'Vale (opcional)'),
                       items: [
                         const DropdownMenuItem<Vale?>(value: null, child: Text('Sin vale')),
                         for (final vale in _vales)

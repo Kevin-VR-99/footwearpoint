@@ -8,6 +8,8 @@ import '../services/api_service.dart';
 import '../services/pedido_service.dart';
 import '../widgets/selector_vale.dart';
 import 'login_screen.dart';
+import '../tema/fp_colores.dart';
+import '../widgets/fp_componentes.dart';
 
 /// El pedido acumulado del revendedor (E9-01 / E9-03). Lee el carrito de
 /// [CarritoRevendedorProvider], ligado a la sesión (TG-165).
@@ -95,7 +97,7 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
     final pedido = _pedido;
     if (pedido != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Pedido enviado')),
+        appBar: AppBar(title: const Text('Pedido enviado'), bottom: const FpBordeMarca()),
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -111,9 +113,15 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pedido Acumulado de Revendedor')),
+      appBar: AppBar(title: const Text('Pedido Acumulado de Revendedor'), bottom: const FpBordeMarca()),
       body: items.isEmpty
-          ? const Center(child: Text('No hay productos agregados al pedido.'))
+          ? const Center(
+              child: FpEstadoVacio(
+                icono: Icons.shopping_cart_outlined,
+                titulo: 'No hay productos agregados al pedido.',
+                texto: 'Agrega productos desde el catálogo con "Agregar a pedido".',
+              ),
+            )
           : Column(
               children: [
                 Expanded(
@@ -124,7 +132,7 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                       final precioUnitario = item.producto.precioMayorista ?? item.producto.precioMinoristaSugerido;
 
                       return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        margin: EdgeInsets.fromLTRB(16, index == 0 ? 16 : 6, 16, 6),
                         child: Padding(
                           padding: const EdgeInsets.all(12.0),
                           child: Row(
@@ -133,10 +141,20 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(item.producto.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    Text(
+                                      item.producto.nombre,
+                                      style: const TextStyle(color: FpColores.sidebar, fontWeight: FontWeight.w600),
+                                    ),
                                     const SizedBox(height: 4),
-                                    Text('Color: ${item.variante.colorParaMostrar} | Talla: ${item.variante.talla}'),
-                                    Text('Precio revendedor: ${formatoPrecio(precioUnitario)}', style: TextStyle(color: tema.colorScheme.primary)),
+                                    Text(
+                                      'Color: ${item.variante.colorParaMostrar} | Talla: ${item.variante.talla}',
+                                      style: const TextStyle(color: FpColores.textoTenue, fontSize: 13),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Precio revendedor: ${formatoPrecio(precioUnitario)}',
+                                      style: TextStyle(color: tema.colorScheme.primary, fontWeight: FontWeight.w600),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -170,11 +188,15 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                     },
                   ),
                 ),
+                // Panel de abajo: blanco, con borde y sombra suaves (como las
+                // tarjetas de la web).
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: tema.colorScheme.surfaceContainerHighest,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    border: Border(top: BorderSide(color: FpColores.borde)),
+                    boxShadow: [BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, -2))],
                   ),
                   child: SafeArea(
                     child: Column(
@@ -184,8 +206,9 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                           padding: const EdgeInsets.all(10),
                           margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
-                            color: tema.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(8),
+                            color: FpColores.primario.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: FpColores.primario.withValues(alpha: 0.15)),
                           ),
                           child: Row(
                             children: [
@@ -209,7 +232,10 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Total estimado:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            const Text(
+                              'Total estimado:',
+                              style: TextStyle(color: FpColores.sidebar, fontSize: 16, fontWeight: FontWeight.w600),
+                            ),
                             Text(formatoPrecio(totalGeneral), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: tema.colorScheme.primary)),
                           ],
                         ),
@@ -246,9 +272,13 @@ class _Enviado extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(Icons.check_circle_outline, size: 72, color: Colors.green.shade600),
+        const FpIconoGrande(icono: Icons.check_rounded),
         const SizedBox(height: 12),
-        Text('¡Pedido enviado!', textAlign: TextAlign.center, style: tema.textTheme.headlineSmall),
+        Text(
+          '¡Pedido enviado!',
+          textAlign: TextAlign.center,
+          style: tema.textTheme.headlineSmall?.copyWith(color: FpColores.sidebar, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 4),
         Text(
           'Folio ${pedido.folio}',

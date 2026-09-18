@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/notificacion_service.dart';
 import 'pedido_detalle_screen.dart';
+import '../widgets/fp_componentes.dart';
 
 /// Bandeja de notificaciones dentro de la app (E16-01).
 ///
@@ -81,37 +82,28 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Notificaciones')),
+      appBar: AppBar(title: const Text('Notificaciones'), bottom: const FpBordeMarca()),
       body: SafeArea(child: _contenido(context)),
     );
   }
 
   Widget _contenido(BuildContext context) {
-    final tema = Theme.of(context);
-
     if (_cargando) return const Center(child: CircularProgressIndicator());
 
     final lista = _notificaciones;
     if (lista == null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_off_outlined, size: 64, color: tema.colorScheme.error),
-              const SizedBox(height: 16),
-              Text(_error ?? 'No se pudieron cargar tus notificaciones.', textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () {
-                  setState(() => _cargando = true);
-                  _cargar();
-                },
-                icon: const Icon(Icons.refresh),
-                label: const Text('Reintentar'),
-              ),
-            ],
+        child: FpEstadoVacio(
+          error: true,
+          icono: Icons.cloud_off_outlined,
+          titulo: _error ?? 'No se pudieron cargar tus notificaciones.',
+          accion: FilledButton.icon(
+            onPressed: () {
+              setState(() => _cargando = true);
+              _cargar();
+            },
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
           ),
         ),
       );
@@ -121,11 +113,12 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
       onRefresh: _cargar,
       child: lista.isEmpty
           ? ListView(
-              children: [
-                const SizedBox(height: 120),
-                Icon(Icons.notifications_none, size: 64, color: tema.colorScheme.onSurfaceVariant),
-                const SizedBox(height: 16),
-                const Text('No tienes notificaciones recientes.', textAlign: TextAlign.center),
+              children: const [
+                SizedBox(height: 80),
+                FpEstadoVacio(
+                  icono: Icons.notifications_none,
+                  titulo: 'No tienes notificaciones recientes.',
+                ),
               ],
             )
           : ListView.separated(
@@ -165,8 +158,10 @@ class _TarjetaNotificacion extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                nueva ? Icons.notifications_active : Icons.notifications_none,
+              FpIconoCuadro(
+                icono: nueva ? Icons.notifications_active_outlined : Icons.notifications_none,
+                tamano: 36,
+                fondo: nueva ? colores.primary.withValues(alpha: 0.12) : colores.surfaceContainerHighest,
                 color: nueva ? colores.primary : colores.onSurfaceVariant,
               ),
               const SizedBox(width: 12),

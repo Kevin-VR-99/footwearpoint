@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../models/producto_catalogo.dart';
 import '../providers/carrito_revendedor_provider.dart';
+import '../tema/fp_colores.dart';
+import '../widgets/fp_componentes.dart';
 import 'crear_pedido_screen.dart';
 import 'pedido_revendedor_screen.dart';
 
@@ -23,7 +25,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
 
   void _seleccionarVariante(VarianteCatalogo variante) {
     if (variante.disponibilidad == Disponibilidad.noDisponible) return;
-    
+
     setState(() {
       _varianteSeleccionada = variante;
     });
@@ -57,6 +59,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(producto.nombre),
+        bottom: const FpBordeMarca(),
         actions: [
           // El icono del carrito ahora siempre se muestra para revendedores si hay ítems acumulados
           if (esRevendedor)
@@ -67,66 +70,65 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                 child: const Icon(Icons.shopping_cart),
               ),
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const PedidoRevendedorScreen(),
-                  ),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PedidoRevendedorScreen()));
               },
             ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: esRevendedor
-              ? Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _varianteSeleccionada == null ? null : _agregarAlPedidoRevendedor,
-                        icon: const Icon(Icons.add_shopping_cart),
-                        label: const Text('Agregar a pedido'),
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: FpColores.borde)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: esRevendedor
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _varianteSeleccionada == null ? null : _agregarAlPedidoRevendedor,
+                          icon: const Icon(Icons.add_shopping_cart),
+                          label: const Text('Agregar a pedido'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _varianteSeleccionada == null 
-                            ? null 
-                            : () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => CrearPedidoScreen(
-                                      producto: producto,
-                                      variante: _varianteSeleccionada!,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: _varianteSeleccionada == null
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => CrearPedidoScreen(
+                                        producto: producto,
+                                        variante: _varianteSeleccionada!,
+                                      ),
                                     ),
-                                  ),
-                                );
-                              },
-                        child: const Text('Pedido directo'),
+                                  );
+                                },
+                          child: const Text('Pedido directo'),
+                        ),
                       ),
-                    ),
-                  ],
-                )
-              : FilledButton(
-                  onPressed: _varianteSeleccionada == null 
-                      ? null 
-                      : () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CrearPedidoScreen(
-                                producto: producto,
-                                variante: _varianteSeleccionada!,
+                    ],
+                  )
+                : FilledButton(
+                    onPressed: _varianteSeleccionada == null
+                        ? null
+                        : () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    CrearPedidoScreen(producto: producto, variante: _varianteSeleccionada!),
                               ),
-                            ),
-                          );
-                        },
-                  child: const Text('Hacer pedido'),
-                ),
+                            );
+                          },
+                    child: const Text('Hacer pedido'),
+                  ),
+          ),
         ),
       ),
       body: SafeArea(
@@ -160,7 +162,11 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                 children: [
                   Text(
                     producto.nombre,
-                    style: tema.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                    style: tema.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: FpColores.sidebar,
+                      letterSpacing: -0.4,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(subtitulo, style: tema.textTheme.bodyMedium),
@@ -171,30 +177,42 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       if (producto.categoria != null) producto.categoria!.nombre,
                       'Código ${producto.codigoCatalogo}',
                     ].join(' · '),
-                    style: tema.textTheme.bodySmall?.copyWith(
-                      color: tema.colorScheme.onSurfaceVariant,
-                    ),
+                    style: tema.textTheme.bodySmall?.copyWith(color: tema.colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 16),
                   _Precios(producto: producto),
-                  const SizedBox(height: 24),
-                  Text('Tallas y colores', style: tema.textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  const _Leyenda(),
-                  const SizedBox(height: 16),
-                  if (producto.variantes.isEmpty)
-                    Text(
-                      'Este producto todavía no tiene tallas ni colores registrados.',
-                      style: tema.textTheme.bodyMedium,
-                    )
-                  else
-                    for (final grupo in producto.variantesPorColor.entries)
-                      _GrupoColor(
-                        color: grupo.key, 
-                        variantes: grupo.value,
-                        varianteSeleccionada: _varianteSeleccionada,
-                        onSeleccionar: _seleccionarVariante,
-                      ),
+                  const SizedBox(height: 20),
+                  FpTarjeta(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Tallas y colores',
+                          style: TextStyle(
+                            color: FpColores.sidebar,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const _Leyenda(),
+                        const Divider(height: 28),
+                        if (producto.variantes.isEmpty)
+                          Text(
+                            'Este producto todavía no tiene tallas ni colores registrados.',
+                            style: tema.textTheme.bodyMedium,
+                          )
+                        else
+                          for (final grupo in producto.variantesPorColor.entries)
+                            _GrupoColor(
+                              color: grupo.key,
+                              variantes: grupo.value,
+                              varianteSeleccionada: _varianteSeleccionada,
+                              onSeleccionar: _seleccionarVariante,
+                            ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -216,52 +234,51 @@ class _Precios extends StatelessWidget {
     final mayorista = producto.precioMayorista;
     final ganancia = mayorista != null ? producto.precioMinoristaSugerido - mayorista : null;
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _FilaPrecio(
-              etiqueta: 'Precio sugerido de venta',
-              precio: producto.precioMinoristaSugerido,
-              estilo: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+    return FpTarjeta(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _FilaPrecio(
+            etiqueta: 'Precio sugerido de venta',
+            precio: producto.precioMinoristaSugerido,
+            estilo: tema.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: FpColores.sidebar,
             ),
-            if (mayorista != null) ...[
-              const Divider(height: 24),
-              _FilaPrecio(
-                etiqueta: 'Precio mayorista',
-                precio: mayorista,
-                estilo: tema.textTheme.titleMedium?.copyWith(
-                  color: tema.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
+          ),
+          if (mayorista != null) ...[
+            const Divider(height: 24),
+            _FilaPrecio(
+              etiqueta: 'Precio mayorista',
+              precio: mayorista,
+              estilo: tema.textTheme.titleMedium?.copyWith(
+                color: tema.colorScheme.primary,
+                fontWeight: FontWeight.w600,
               ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: tema.colorScheme.primaryContainer.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Ganancia estimada:', style: TextStyle(fontWeight: FontWeight.w500)),
-                    Text(
-                      formatoPrecio(ganancia!),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: tema.colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: FpColores.insigniaExitoFondo.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Ganancia estimada:',
+                    style: TextStyle(fontWeight: FontWeight.w500, color: FpColores.insigniaExitoTexto),
+                  ),
+                  Text(
+                    formatoPrecio(ganancia!),
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: FpColores.insigniaExitoTexto),
+                  ),
+                ],
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -278,7 +295,9 @@ class _FilaPrecio extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Text(etiqueta)),
+        Expanded(
+          child: Text(etiqueta, style: const TextStyle(color: FpColores.textoTenue)),
+        ),
         Text(formatoPrecio(precio), style: estilo),
       ],
     );
@@ -303,7 +322,7 @@ class _Leyenda extends StatelessWidget {
 
 class _GrupoColor extends StatelessWidget {
   const _GrupoColor({
-    required this.color, 
+    required this.color,
     required this.variantes,
     required this.varianteSeleccionada,
     required this.onSeleccionar,
@@ -321,13 +340,16 @@ class _GrupoColor extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(color, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(
+            color,
+            style: const TextStyle(color: FpColores.sidebar, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final variante in variantes) 
+              for (final variante in variantes)
                 _Talla(
                   variante: variante,
                   seleccionada: variante == varianteSeleccionada,
@@ -342,11 +364,7 @@ class _GrupoColor extends StatelessWidget {
 }
 
 class _Talla extends StatelessWidget {
-  const _Talla({
-    required this.variante,
-    required this.seleccionada,
-    required this.onTap,
-  });
+  const _Talla({required this.variante, required this.seleccionada, required this.onTap});
 
   final VarianteCatalogo variante;
   final bool seleccionada;
@@ -362,7 +380,7 @@ class _Talla extends StatelessWidget {
       message: 'Talla ${variante.talla}: ${variante.disponibilidad.etiqueta}',
       child: InkWell(
         onTap: noDisponible ? null : onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         child: Container(
           constraints: const BoxConstraints(minWidth: 52),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -372,7 +390,7 @@ class _Talla extends StatelessWidget {
               color: seleccionada ? tema.colorScheme.primary : estilo.borde,
               width: seleccionada ? 2 : 1,
             ),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
             variante.talla,
@@ -424,20 +442,21 @@ class EstiloDisponibilidad {
 
   static EstiloDisponibilidad de(Disponibilidad disponibilidad) {
     return switch (disponibilidad) {
-      Disponibilidad.disponible => EstiloDisponibilidad(
-        fondo: Colors.green.shade50,
-        borde: Colors.green.shade400,
-        texto: Colors.green.shade900,
+      // Los mismos colores de insignia de la web (success / warning / neutral).
+      Disponibilidad.disponible => const EstiloDisponibilidad(
+        fondo: FpColores.insigniaExitoFondo,
+        borde: Color(0xFF6EE7B7), // emerald-300
+        texto: FpColores.insigniaExitoTexto,
       ),
-      Disponibilidad.bajoPedido => EstiloDisponibilidad(
-        fondo: Colors.orange.shade50,
-        borde: Colors.orange.shade400,
-        texto: Colors.orange.shade900,
+      Disponibilidad.bajoPedido => const EstiloDisponibilidad(
+        fondo: FpColores.insigniaAvisoFondo,
+        borde: Color(0xFFFDBA74), // orange-300
+        texto: FpColores.insigniaAvisoTexto,
       ),
-      Disponibilidad.noDisponible => EstiloDisponibilidad(
-        fondo: Colors.grey.shade100,
-        borde: Colors.grey.shade400,
-        texto: Colors.grey.shade600,
+      Disponibilidad.noDisponible => const EstiloDisponibilidad(
+        fondo: FpColores.fondoSuave,
+        borde: FpColores.bordeFuerte,
+        texto: FpColores.textoTenue,
       ),
     };
   }
@@ -454,14 +473,10 @@ class EtiquetaDisponibilidad extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: estilo.fondo,
-        border: Border.all(color: estilo.borde),
-        borderRadius: BorderRadius.circular(16),
-      ),
+      decoration: BoxDecoration(color: estilo.fondo, borderRadius: BorderRadius.circular(999)),
       child: Text(
         disponibilidad.etiqueta,
-        style: TextStyle(color: estilo.texto, fontSize: 12, fontWeight: FontWeight.w600),
+        style: TextStyle(color: estilo.texto, fontSize: 12, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -498,10 +513,7 @@ class ImagenProducto extends StatelessWidget {
 
 String formatoPrecio(double precio) {
   final partes = precio.toStringAsFixed(2).split('.');
-  final entero = partes[0].replaceAllMapped(
-    RegExp(r'\B(?=(\d{3})+(?!\d))'),
-    (_) => ',',
-  );
+  final entero = partes[0].replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
 
   return '\$$entero.${partes[1]}';
 }
