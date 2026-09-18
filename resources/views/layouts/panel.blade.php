@@ -98,6 +98,13 @@
                     Reportes
                 </a>
                 @if ($esAdminDistribuidora)
+                    <a href="{{ route('auditoria.index') }}"
+                        @click="sidebarOpen = false"
+                        class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('auditoria.*') ? 'bg-white/15' : '' }}">
+                        Auditoría
+                    </a>
+                @endif
+                @if ($esAdminDistribuidora)
                     <a href="{{ route('distribuidora.configuracion') }}"
                         @click="sidebarOpen = false"
                         class="mt-2 block rounded-lg border border-white/10 px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('distribuidora.configuracion') ? 'bg-white/15 ring-1 ring-fp-danger/50' : '' }}">

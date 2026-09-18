@@ -115,6 +115,11 @@ Route::middleware(['auth', 'tenant.team'])->group(function () {
     Route::livewire('/reportes', 'reportes.index')
         ->name('reportes.index');
 
+    // TG-160 — bitácora de auditoría (solo admin_distribuidora)
+    Route::livewire('/auditoria', 'auditoria.index')
+        ->name('auditoria.index')
+        ->middleware('role:admin_distribuidora');
+
     /*
     |--------------------------------------------------------------------------
     | Alias del menú layouts.distribuidora
