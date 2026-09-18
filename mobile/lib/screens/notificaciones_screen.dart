@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 
 class NotificacionesScreen extends StatefulWidget {
@@ -9,7 +11,9 @@ class NotificacionesScreen extends StatefulWidget {
 }
 
 class _NotificacionesScreenState extends State<NotificacionesScreen> {
-  final ApiService _api = ApiService();
+  // El de AuthProvider (no uno propio): así, si la sesión expira aquí, el
+  // 401 regresa al login como en el resto de la app.
+  late final ApiService _api = context.read<AuthProvider>().api;
   bool _cargando = true;
   List<dynamic> _notificaciones = [];
   String? _error;

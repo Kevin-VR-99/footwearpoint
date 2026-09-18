@@ -3,6 +3,7 @@
 /// Los nombres de los campos salen tal cual de
 /// App\Http\Resources\Catalogo\CatalogoResource y de docs/contrato-api.md
 /// (sección 3). No se inventó ninguno.
+library;
 
 /// Disponibilidad de una variante en la campaña: columna `estado` de
 /// disponibilidad_variante_campana.
@@ -21,6 +22,8 @@ enum Disponibilidad {
       'disponible' => Disponibilidad.disponible,
       'bajo_pedido' => Disponibilidad.bajoPedido,
       'no_disponible' => Disponibilidad.noDisponible,
+      // Si el backend agregara un estado nuevo, mejor no ofrecerlo como
+      // disponible por error.
       _ => Disponibilidad.noDisponible,
     };
   }
@@ -85,12 +88,16 @@ class VarianteCatalogo {
 
   /// El nombre comercial si hay; si no, el color base.
   String get colorParaMostrar => nombreColorComercial ?? color;
+
+  /// Lo usa la pantalla de crear pedido (E8-01). Mismo valor que
+  /// [colorParaMostrar].
   String? get colorForDisplay => nombreColorComercial ?? color;
 
   factory VarianteCatalogo.desdeJson(Map<String, dynamic> json) {
     return VarianteCatalogo(
       varianteId: json['variante_id'] as int,
       sku: json['sku'] as String,
+      // talla.valor es varchar en la base ("24", "24.5"): se lee como texto.
       talla: json['talla'].toString(),
       color: json['color'] as String,
       nombreColorComercial: json['nombre_color_comercial'] as String?,
@@ -116,20 +123,31 @@ class ProductoCatalogo {
     this.precioMayorista,
   });
 
+  /// id de producto_campana (la publicación). Es el que se usa al armar un
+  /// pedido (producto_campana_id), no el id del producto.
   final int id;
+
   final int productoId;
   final String modelo;
   final String nombre;
   final Referencia? marca;
+
+  /// Puede no tener línea (productos.linea_id admite null).
   final Referencia? linea;
+
   final Referencia? categoria;
   final String codigoCatalogo;
   final double precioMinoristaSugerido;
+
+  /// Solo viene para revendedor (y personal interno). Para un cliente directo
+  /// la llave NO viene en el JSON, y aquí queda en null: es el precio de
+  /// costo del revendedor y no se le debe mostrar a nadie más.
   final double? precioMayorista;
 
   final List<ImagenCatalogo> imagenes;
   final List<VarianteCatalogo> variantes;
 
+  /// La marcada como principal; si ninguna lo está, la de menor orden.
   ImagenCatalogo? get imagenPrincipal {
     if (imagenes.isEmpty) return null;
 
@@ -140,6 +158,7 @@ class ProductoCatalogo {
     return ([...imagenes]..sort((a, b) => a.orden.compareTo(b.orden))).first;
   }
 
+  /// Las imágenes en el orden en que se deben mostrar: la principal primero.
   List<ImagenCatalogo> get imagenesOrdenadas {
     return [...imagenes]..sort((a, b) {
       if (a.esPrincipal != b.esPrincipal) return a.esPrincipal ? -1 : 1;
@@ -147,6 +166,8 @@ class ProductoCatalogo {
     });
   }
 
+  /// La mejor disponibilidad entre sus variantes, para un resumen rápido en
+  /// la lista. Null si no tiene variantes cargadas.
   Disponibilidad? get mejorDisponibilidad {
     if (variantes.isEmpty) return null;
 
@@ -155,6 +176,8 @@ class ProductoCatalogo {
         .reduce((mejor, otra) => otra.index < mejor.index ? otra : mejor);
   }
 
+  /// Variantes agrupadas por color, y en cada color las tallas de menor a
+  /// mayor. Los colores quedan en el orden en que aparecen.
   Map<String, List<VarianteCatalogo>> get variantesPorColor {
     final grupos = <String, List<VarianteCatalogo>>{};
 
@@ -197,12 +220,15 @@ class ProductoCatalogo {
 class LineaCatalogo {
   const LineaCatalogo({required this.nombre, required this.productos, this.id});
 
+  /// Null para el grupo "Sin línea".
   final int? id;
   final String nombre;
   final List<ProductoCatalogo> productos;
 
   static const nombreSinLinea = 'Sin línea';
 
+  /// Agrupa por línea, en orden alfabético, con "Sin línea" al final. Dentro
+  /// de cada línea, los productos quedan por nombre.
   static List<LineaCatalogo> agrupar(List<ProductoCatalogo> productos) {
     final porId = <int?, List<ProductoCatalogo>>{};
     final nombres = <int?, String>{};
@@ -220,12 +246,18 @@ class LineaCatalogo {
       return LineaCatalogo(id: grupo.key, nombre: nombres[grupo.key]!, productos: ordenados);
     }).toList();
 
-    lineas.sort((a, b) => (a.id == null ? 1 : (b.id == null ? -1 : a.nombre.toLowerCase().compareTo(b.nombre.toLowerCase()))));
+    lineas.sort((a, b) {
+      if (a.id == null) return 1;
+      if (b.id == null) return -1;
+      return a.nombre.toLowerCase().compareTo(b.nombre.toLowerCase());
+    });
 
     return lineas;
   }
 }
 
+/// Ordena tallas como números cuando se puede ("22", "22.5", "23") y como
+/// texto cuando no ("CH", "M").
 int _compararTallas(String a, String b) {
   final numeroA = double.tryParse(a);
   final numeroB = double.tryParse(b);

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import 'package:flutter/services.dart';
 import '../models/producto_catalogo.dart';
 import '../models/vale.dart';
@@ -22,7 +24,9 @@ class CrearPedidoScreen extends StatefulWidget {
 
 class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
   final _formKey = GlobalKey<FormState>();
-  final ValeService _valeService = ValeService();
+  // Con el ApiService de AuthProvider (no uno propio): así, si la sesión
+  // expira aquí, el 401 regresa al login como en el resto de la app.
+  late final ValeService _valeService = ValeService(api: context.read<AuthProvider>().api);
   
   bool _enviando = false;
   bool _cargandoVales = false;
@@ -204,7 +208,7 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
               const SizedBox(height: 16),
 
               Card(
-                color: tema.colorScheme.surfaceVariant.withOpacity(0.3),
+                color: tema.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
