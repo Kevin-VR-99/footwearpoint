@@ -2,18 +2,19 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * La prueba de ejemplo que trae Laravel, puesta al día (TG-213).
+ *
+ * Esperaba un 200 en "/", pero FootwearPoint no tiene página pública ahí:
+ * manda al login. Llevaba meses en rojo por eso y estorbaba para ver las
+ * fallas de verdad.
+ */
 class ExampleTest extends TestCase
 {
-    /**
-     * A basic test example.
-     */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_la_raiz_del_sitio_manda_al_login(): void
     {
-        $response = $this->get('/');
-
-        $response->assertStatus(200);
+        $this->get('/')->assertRedirect(route('login'));
     }
 }

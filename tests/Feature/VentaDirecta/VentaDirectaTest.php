@@ -101,7 +101,7 @@ class VentaDirectaTest extends TestCase
                 'message',
             ]);
 
-        $esperado = round(3 * (float) $publicacion->precio_minorista_sugerido, 2);
+        $esperado = round(3 * (float) $publicacion->precio_publico, 2);
         $this->assertSame($esperado, $respuesta->json('data.total'));
 
         // El desglose de IVA es aritmético sobre el total, no una columna.
