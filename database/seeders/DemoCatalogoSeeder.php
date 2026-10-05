@@ -7,6 +7,7 @@ use App\Models\CategoriaProducto;
 use App\Models\Color;
 use App\Models\Distribuidora;
 use App\Models\DisponibilidadVarianteCampana;
+use App\Models\Linea;
 use App\Models\Marca;
 use App\Models\Producto;
 use App\Models\ProductoCampana;
@@ -16,6 +17,17 @@ use App\Models\Talla;
 use App\Models\Variante;
 use Illuminate\Database\Seeder;
 
+/**
+ * Catálogo de prueba, ya con el catálogo compartido (TG-209).
+ *
+ * El catálogo (línea, temporada, marcas, productos y disponibilidad) existe
+ * una sola vez para todo el sistema; lo único que sigue siendo de la
+ * distribuidora demo es su stock.
+ *
+ * Es el mínimo para que migrate:fresh --seed siga funcionando y las pruebas
+ * tengan con qué trabajar. El catálogo realista, con datos de catálogos de
+ * verdad, es la tarea K11.
+ */
 class DemoCatalogoSeeder extends Seeder
 {
     public function run(): void
@@ -23,24 +35,20 @@ class DemoCatalogoSeeder extends Seeder
         $distribuidora = Distribuidora::where('slug', 'calzados-ramirez')->firstOrFail();
         $sucursal = Sucursal::where('distribuidora_id', $distribuidora->id)->where('es_principal', true)->firstOrFail();
 
-        // --- Marcas ---
+        $linea = Linea::firstOrCreate(['nombre' => 'Línea Demo'], ['activa' => true]);
+
         $marcas = [];
         foreach (['Nike', 'Adidas', 'Flexi'] as $nombreMarca) {
-            $marcas[] = Marca::firstOrCreate(
-                ['distribuidora_id' => $distribuidora->id, 'nombre' => $nombreMarca],
-                ['activa' => true]
-            );
+            $marca = Marca::firstOrCreate(['nombre' => $nombreMarca], ['activa' => true]);
+            $linea->marcas()->syncWithoutDetaching([$marca->id]);
+            $marcas[] = $marca;
         }
 
-        // --- Categoría ---
-        $categoria = CategoriaProducto::firstOrCreate(
-            ['distribuidora_id' => $distribuidora->id, 'nombre' => 'Calzado deportivo'],
-            ['activa' => true]
-        );
+        $categoria = CategoriaProducto::firstOrCreate(['nombre' => 'Calzado deportivo'], ['activa' => true]);
 
-        // --- Campaña activa ---
+        // Solo una temporada activa por línea (D7).
         $campana = Campana::firstOrCreate(
-            ['distribuidora_id' => $distribuidora->id, 'marca_id' => $marcas[0]->id, 'nombre' => 'Temporada Demo 2026'],
+            ['linea_id' => $linea->id, 'nombre' => 'Temporada Demo 2026'],
             [
                 'fecha_inicio' => now()->subDays(10),
                 'fecha_fin' => now()->addMonths(3),
@@ -52,7 +60,6 @@ class DemoCatalogoSeeder extends Seeder
         $colorNegro = Color::where('nombre', 'Negro')->firstOrFail();
         $colorBlanco = Color::where('nombre', 'Blanco')->firstOrFail();
 
-        // --- 10 productos de prueba, repartidos entre las 3 marcas ---
         $nombresProductos = [
             'Urban Runner', 'Classic Leather', 'Trail Max', 'Elegance Heel', 'Air Comfort',
             'Street Style', 'Casual Walk', 'Sport Flex', 'Retro Court', 'Daily Wear',
@@ -63,9 +70,8 @@ class DemoCatalogoSeeder extends Seeder
 
             $producto = Producto::firstOrCreate(
                 [
-                    'distribuidora_id' => $distribuidora->id,
                     'marca_id' => $marca->id,
-                    'modelo' => 'MOD-' . str_pad($i + 1, 3, '0', STR_PAD_LEFT),
+                    'modelo' => 'MOD-'.str_pad($i + 1, 3, '0', STR_PAD_LEFT),
                 ],
                 [
                     'categoria_id' => $categoria->id,
@@ -75,41 +81,35 @@ class DemoCatalogoSeeder extends Seeder
                 ]
             );
 
-            $precioMayorista = 650 + ($i * 20);
-            $precioMinorista = round($precioMayorista * 1.55, 2);
-
+            // Un solo precio, el de menudeo: es lo que traen los catálogos de
+            // fábrica (D8). El mayoreo lo pone cada distribuidora.
             $productoCampana = ProductoCampana::firstOrCreate(
                 [
-                    'distribuidora_id' => $distribuidora->id,
                     'producto_id' => $producto->id,
                     'campana_id' => $campana->id,
                 ],
                 [
-                    'codigo_catalogo' => 'ZP-' . str_pad($i + 1, 4, '0', STR_PAD_LEFT),
-                    'precio_mayorista' => $precioMayorista,
-                    'precio_minorista_sugerido' => $precioMinorista,
-                    'estado_disponibilidad' => 'disponible',
-                    'publicado' => true,
+                    'codigo_catalogo' => 'ZP-'.str_pad($i + 1, 4, '0', STR_PAD_LEFT),
+                    'precio_publico' => round((650 + ($i * 20)) * 1.55, 2),
+                    'activo' => true,
                 ]
             );
 
             foreach ($tallasDisponibles->take(2) as $talla) {
                 $variante = Variante::firstOrCreate(
                     [
-                        'distribuidora_id' => $distribuidora->id,
                         'producto_id' => $producto->id,
                         'talla_id' => $talla->id,
                         'color_id' => $i % 2 === 0 ? $colorNegro->id : $colorBlanco->id,
                     ],
                     [
-                        'sku' => 'SKU-' . str_pad($i + 1, 4, '0', STR_PAD_LEFT) . '-' . $talla->valor,
+                        'sku' => 'SKU-'.str_pad($i + 1, 4, '0', STR_PAD_LEFT).'-'.$talla->valor,
                         'activa' => true,
                     ]
                 );
 
                 DisponibilidadVarianteCampana::firstOrCreate(
                     [
-                        'distribuidora_id' => $distribuidora->id,
                         'producto_campana_id' => $productoCampana->id,
                         'variante_id' => $variante->id,
                     ],
@@ -119,6 +119,7 @@ class DemoCatalogoSeeder extends Seeder
                     ]
                 );
 
+                // El stock sí es de la distribuidora y su sucursal.
                 StockLocal::firstOrCreate(
                     [
                         'distribuidora_id' => $distribuidora->id,
@@ -133,6 +134,6 @@ class DemoCatalogoSeeder extends Seeder
             }
         }
 
-        $this->command->info('Catálogo demo creado: 3 marcas, 1 campaña, 10 productos con variantes y stock.');
+        $this->command->info('Catálogo compartido demo: 1 línea, 1 temporada activa, 3 marcas y 10 productos con variantes; stock para la distribuidora demo.');
     }
 }
