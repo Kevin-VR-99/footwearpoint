@@ -14,10 +14,10 @@ class ProductoCampanaResource extends JsonResource
             'producto_id'               => $this->producto_id,
             'campana_id'                => $this->campana_id,
             'codigo_catalogo'           => $this->codigo_catalogo,
-            'precio_mayorista'          => (float) $this->precio_mayorista,
-            'precio_minorista_sugerido' => (float) $this->precio_minorista_sugerido,
-            'estado_disponibilidad'     => $this->estado_disponibilidad,
-            'publicado'                 => (bool) $this->publicado,
+            // Un solo precio: el de menudeo del catálogo (D8). El mayoreo de
+            // cada distribuidora se calcula con PrecioEfectivo.
+            'precio_publico'            => (float) $this->precio_publico,
+            'activo'                    => (bool) $this->activo,
         ];
     }
 }

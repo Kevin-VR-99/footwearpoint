@@ -61,6 +61,15 @@ class LineasDeLaDistribuidoraTest extends TestCase
     }
 
     /** Deja la suscripción de la distribuidora demo con el límite que pida la prueba. */
+    /**
+     * Cada prueba parte de cero: el seeder demo ya le activa una línea a la
+     * distribuidora, y aquí se mide el cupo con números exactos.
+     */
+    private function sinLineasActivas(): void
+    {
+        DistribuidoraLinea::query()->delete();
+    }
+
     private function conPlanDe(int $incluidas, int $extras = 0): void
     {
         $plan = PlanSuscripcion::firstOrCreate(
@@ -73,6 +82,8 @@ class LineasDeLaDistribuidoraTest extends TestCase
                 'activo' => true,
             ]
         );
+
+        $this->sinLineasActivas();
 
         Suscripcion::withoutGlobalScopes()->updateOrCreate(
             ['distribuidora_id' => $this->distribuidoraDemo()->id, 'estado' => 'activa'],
@@ -278,9 +289,10 @@ class LineasDeLaDistribuidoraTest extends TestCase
 
         Tenant::olvidarCache();
 
-        // Y desde la demo, también solo lo suyo.
-        $this->assertSame(1, DistribuidoraLinea::count());
-        $this->assertSame($miLinea->id, (int) DistribuidoraLinea::firstOrFail()->linea_id);
+        // Y desde la demo, también solo lo suyo (más la línea del seeder demo).
+        $mias = DistribuidoraLinea::pluck('linea_id');
+        $this->assertTrue($mias->contains($miLinea->id));
+        $this->assertFalse($mias->contains($lineaDeLaOtra->id));
 
         // No puede desactivar la de la otra: para ella, no existe.
         $this->expectException(OperacionInvalidaException::class);

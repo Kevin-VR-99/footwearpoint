@@ -5,6 +5,7 @@ namespace Tests\Feature\Sprint4;
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\Auditoria;
 use App\Models\Distribuidora;
+use App\Models\DistribuidoraLinea;
 use App\Models\Linea;
 use App\Models\PlanSuscripcion;
 use App\Models\Suscripcion;
@@ -61,6 +62,15 @@ class LineaExtraConCargoTest extends TestCase
         return app(CobroSuscripcion::class);
     }
 
+    /**
+     * Cada prueba parte de cero: el seeder demo ya le activa una línea a la
+     * distribuidora, y aquí se mide el cupo con números exactos.
+     */
+    private function sinLineasActivas(): void
+    {
+        DistribuidoraLinea::query()->delete();
+    }
+
     private function conPlanDe(int $incluidas, float $precioExtra = self::PRECIO_EXTRA): void
     {
         $plan = PlanSuscripcion::firstOrCreate(
@@ -73,6 +83,8 @@ class LineaExtraConCargoTest extends TestCase
                 'activo' => true,
             ]
         );
+
+        $this->sinLineasActivas();
 
         Suscripcion::withoutGlobalScopes()->updateOrCreate(
             [

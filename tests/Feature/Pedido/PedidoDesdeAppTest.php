@@ -3,6 +3,7 @@
 namespace Tests\Feature\Pedido;
 
 use App\Models\ClienteDirecto;
+use App\Models\ConfiguracionDistribuidora;
 use App\Models\DisponibilidadVarianteCampana;
 use App\Models\Distribuidora;
 use App\Models\Pedido;
@@ -10,6 +11,7 @@ use App\Models\ProductoCampana;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Sucursal;
 use App\Models\Usuario;
+use App\Services\Catalogo\PrecioEfectivo;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -63,21 +65,34 @@ class PedidoDesdeAppTest extends TestCase
             ->firstOrFail();
     }
 
-    /** Una variante que se puede pedir, con precio mayorista y minorista distintos. */
+    /**
+     * Una variante que se puede pedir. Para que menudeo y mayoreo salgan
+     * distintos, la distribuidora demo tiene un descuento de mayoreo (TG-212).
+     */
     private function variantePedible(): DisponibilidadVarianteCampana
     {
         $disponibilidad = DisponibilidadVarianteCampana::withoutGlobalScopes()
             ->where('estado', 'disponible')
             ->whereHas('productoCampana', fn ($q) => $q->withoutGlobalScopes()
-                ->where('publicado', true)
-                ->whereColumn('precio_mayorista', '<>', 'precio_minorista_sugerido')
+                ->where('activo', true)
                 ->whereHas('campana', fn ($c) => $c->withoutGlobalScopes()->where('estado', 'activa')))
             ->orderBy('id')
             ->first();
 
-        $this->assertNotNull($disponibilidad, 'El seeder demo no dejó una variante pedible con dos precios distintos.');
+        $this->assertNotNull($disponibilidad, 'El seeder demo no dejó ninguna variante que se pueda pedir.');
+
+        // Se fija directo en la base: esto corre antes de iniciar sesión.
+        ConfiguracionDistribuidora::withoutGlobalScopes()
+            ->where('distribuidora_id', Distribuidora::where('slug', 'calzados-ramirez')->value('id'))
+            ->update(['descuento_mayorista_pct' => 25]);
 
         return $disponibilidad;
+    }
+
+    /** Nuevo en cada consulta: el servicio recuerda lo que ya leyó. */
+    private function precios(): PrecioEfectivo
+    {
+        return new PrecioEfectivo();
     }
 
     private function productoCampana(DisponibilidadVarianteCampana $variante): ProductoCampana
@@ -181,13 +196,13 @@ class PedidoDesdeAppTest extends TestCase
         $pedidoId = $this->pedidoDesdeLaApp();
         $respuesta = $this->agregarLinea($pedidoId, $variante);
 
-        $minorista = (float) $this->productoCampana($variante)->precio_minorista_sugerido;
+        $minorista = $this->precios()->menudeo($this->productoCampana($variante));
 
         $this->assertEqualsWithDelta($minorista, (float) $this->pedido($pedidoId)->detalle->first()->precio_unitario, 0.001);
         $this->assertEqualsWithDelta($minorista, (float) $this->pedido($pedidoId)->total, 0.001);
 
         // Y el precio de costo del revendedor no le llega en ningún lado.
-        $mayorista = (float) $this->productoCampana($variante)->precio_mayorista;
+        $mayorista = $this->precios()->mayoreo($this->productoCampana($variante));
         $this->assertNotContains($mayorista, collect($respuesta->json('data.lineas'))->pluck('precio_unitario')->map(fn ($p) => (float) $p));
     }
 
@@ -200,7 +215,7 @@ class PedidoDesdeAppTest extends TestCase
         $this->agregarLinea($pedidoId, $variante);
 
         $this->assertEqualsWithDelta(
-            (float) $this->productoCampana($variante)->precio_mayorista,
+            $this->precios()->mayoreo($this->productoCampana($variante)),
             (float) $this->pedido($pedidoId)->detalle->first()->precio_unitario,
             0.001
         );
@@ -220,8 +235,8 @@ class PedidoDesdeAppTest extends TestCase
         $this->agregarLinea($deMaria, $variante, ['precio_unitario' => 1]);
 
         $pc = $this->productoCampana($variante);
-        $this->assertEqualsWithDelta((float) $pc->precio_minorista_sugerido, (float) $this->pedido($deJose)->detalle->first()->precio_unitario, 0.001);
-        $this->assertEqualsWithDelta((float) $pc->precio_mayorista, (float) $this->pedido($deMaria)->detalle->first()->precio_unitario, 0.001);
+        $this->assertEqualsWithDelta($this->precios()->menudeo($pc), (float) $this->pedido($deJose)->detalle->first()->precio_unitario, 0.001);
+        $this->assertEqualsWithDelta($this->precios()->mayoreo($pc), (float) $this->pedido($deMaria)->detalle->first()->precio_unitario, 0.001);
     }
 
     /** En el mostrador, un pedido de cliente directo también va a precio minorista. */
@@ -239,7 +254,7 @@ class PedidoDesdeAppTest extends TestCase
         $this->agregarLinea($pedidoId, $variante);
 
         $this->assertEqualsWithDelta(
-            (float) $this->productoCampana($variante)->precio_minorista_sugerido,
+            $this->precios()->menudeo($this->productoCampana($variante)),
             (float) $this->pedido($pedidoId)->detalle->first()->precio_unitario,
             0.001
         );

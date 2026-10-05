@@ -7,6 +7,8 @@ use App\Models\Pedido;
 use App\Models\PedidoDetalle;
 use App\Models\ProductoCampana;
 use App\Models\Variante;
+use App\Services\Catalogo\CatalogoVisible;
+use App\Services\Catalogo\PrecioEfectivo;
 use App\Support\PropietarioActual;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -14,6 +16,11 @@ use App\Models\DisponibilidadVarianteCampana;
 
 class AgregarLineaPedidoAction
 {
+    public function __construct(
+        private CatalogoVisible $catalogo,
+        private PrecioEfectivo $precios,
+    ) {}
+
     public function ejecutar(Pedido $pedido, array $datos): Pedido
     {
         if ($pedido->estado !== 'borrador') {
@@ -22,13 +29,17 @@ class AgregarLineaPedidoAction
             ]);
         }
 
-        $pc = ProductoCampana::with('producto')
-            ->where('id', $datos['producto_campana_id'])
+        // El catálogo es compartido, así que no basta con que el producto
+        // exista: tiene que estar en lo que ESTA distribuidora vende, o sea
+        // temporada activa, de una línea suya, activo y no oculto (TG-213).
+        $pc = $this->catalogo->consulta()
+            ->with('producto')
+            ->whereKey($datos['producto_campana_id'])
             ->first();
 
         if (! $pc) {
             throw ValidationException::withMessages([
-                'producto_campana_id' => ['El producto de campaña no existe en esta distribuidora.'],
+                'producto_campana_id' => ['Ese producto no está disponible en el catálogo de tu distribuidora.'],
             ]);
         }
 
@@ -66,37 +77,23 @@ class AgregarLineaPedidoAction
             ]);
         }
 
-        // Solo productos de campaña publicados en campaña activa
-        if (! $pc->publicado) {
-            throw ValidationException::withMessages([
-                'producto_campana_id' => ['El producto de campaña no está publicado.'],
-            ]);
-        }
-
-        $pc->loadMissing('campana');
-        if ($pc->campana && $pc->campana->estado !== 'activa') {
-            throw ValidationException::withMessages([
-                'producto_campana_id' => ['La campaña no está activa.'],
-            ]);
-        }
-
         $cantidad = (int) $datos['cantidad'];
 
         // El precio lo decide el servidor según de quién es el pedido (TG-166):
-        // el cliente directo paga el minorista, igual que en la venta directa
-        // del mostrador, y el revendedor el mayorista. Antes siempre se usaba
-        // el mayorista, así que el cliente pagaba (y veía) el precio de costo
-        // del revendedor.
+        // el cliente directo paga el menudeo del catálogo y el revendedor el
+        // mayoreo de ESTA distribuidora (su descuento general o el precio
+        // propio del producto). Lo calcula PrecioEfectivo, que es el único
+        // lugar donde se saca un precio (TG-212).
         //
         // Solo el personal puede poner otro precio. Si lo manda la app se
         // ignora: si no, cualquiera podría pedir un par a $1.
         $precioDeLista = $pedido->tipo === 'cliente_directo'
-            ? $pc->precio_minorista_sugerido
-            : $pc->precio_mayorista;
+            ? $this->precios->menudeo($pc)
+            : $this->precios->mayoreo($pc);
 
         $precio = PropietarioActual::esDeLaCasa() && isset($datos['precio_unitario'])
             ? round((float) $datos['precio_unitario'], 2)
-            : round((float) $precioDeLista, 2);
+            : $precioDeLista;
 
         $subtotalLinea = round($precio * $cantidad, 2);
 

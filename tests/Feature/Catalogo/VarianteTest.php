@@ -9,18 +9,23 @@ use App\Models\Usuario;
 use App\Models\Variante;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\CreaAdminGeneral;
 use Tests\TestCase;
 
 class VarianteTest extends TestCase
 {
+    use CreaAdminGeneral;
     use RefreshDatabase;
 
     protected bool $seed = true;
 
+    /**
+     * Desde TG-213 el catálogo lo escribe solo el admin general: es uno solo
+     * para todo FootwearPoint y no pertenece a ninguna distribuidora.
+     */
     private function autenticarComoAdmin(): void
     {
-        $usuario = Usuario::where('email', 'admin@calzadosramirez.test')->firstOrFail();
-        Sanctum::actingAs($usuario);
+        Sanctum::actingAs($this->adminGeneral());
     }
 
     public function test_crear_una_variante_genera_su_sku_automatico(): void
