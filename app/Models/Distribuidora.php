@@ -112,6 +112,12 @@ class Distribuidora extends Model
         return $this->hasMany(Vale::class, 'distribuidora_id');
     }
 
+    /** Las líneas del catálogo que esta distribuidora vende (TG-210). */
+    public function lineas()
+    {
+        return $this->hasMany(DistribuidoraLinea::class, 'distribuidora_id');
+    }
+
     // Las importaciones de catálogo con IA ya no son de una distribuidora:
     // el catálogo es uno solo y lo importa el admin general (TG-208).
 
