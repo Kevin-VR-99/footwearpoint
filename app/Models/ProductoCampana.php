@@ -3,34 +3,33 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Concerns\BelongsToTenant;
 
+/**
+ * Un producto dentro de una temporada, con su código y su precio de catálogo.
+ *
+ * precio_publico es el precio de MENUDEO y es igual para todas las
+ * distribuidoras (D8). El mayoreo no vive aquí: lo pone cada distribuidora con
+ * su descuento general o con un precio propio (ofertas_distribuidora).
+ *
+ * activo deja que el admin general retire un producto de la temporada sin
+ * borrarlo (TG-209).
+ */
 class ProductoCampana extends Model
 {
-    use BelongsToTenant;
     protected $table = 'producto_campana';
 
     protected $fillable = [
-        'distribuidora_id',
         'producto_id',
         'campana_id',
         'codigo_catalogo',
-        'precio_mayorista',
-        'precio_minorista_sugerido',
-        'estado_disponibilidad',
-        'publicado',
+        'activo',
+        'precio_publico',
     ];
 
     protected $casts = [
-        'publicado' => 'boolean',
-        'precio_mayorista' => 'decimal:2',
-        'precio_minorista_sugerido' => 'decimal:2',
+        'activo' => 'boolean',
+        'precio_publico' => 'decimal:2',
     ];
-
-    public function distribuidora()
-    {
-        return $this->belongsTo(Distribuidora::class, 'distribuidora_id');
-    }
 
     public function producto()
     {

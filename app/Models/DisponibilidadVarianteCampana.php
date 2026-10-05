@@ -3,18 +3,21 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Concerns\BelongsToTenant;
 
+/**
+ * Qué tan disponible está cada talla dentro de una temporada.
+ *
+ * Del catálogo compartido: la define la fábrica y es igual para todas las
+ * distribuidoras (D2, TG-209).
+ */
 class DisponibilidadVarianteCampana extends Model
 {
-    use BelongsToTenant;
     protected $table = 'disponibilidad_variante_campana';
 
     // Esta tabla solo tiene updated_at, no created_at.
     const CREATED_AT = null;
 
     protected $fillable = [
-        'distribuidora_id',
         'producto_campana_id',
         'variante_id',
         'estado',

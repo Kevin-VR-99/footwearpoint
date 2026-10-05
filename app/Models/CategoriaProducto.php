@@ -3,15 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Concerns\BelongsToTenant;
 
+/** Categoría de calzado del catálogo compartido (TG-209). */
 class CategoriaProducto extends Model
 {
-    use BelongsToTenant;
     protected $table = 'categorias_producto';
 
     protected $fillable = [
-        'distribuidora_id',
         'nombre',
         'descripcion',
         'activa',
@@ -21,8 +19,8 @@ class CategoriaProducto extends Model
         'activa' => 'boolean',
     ];
 
-    public function distribuidora()
+    public function productos()
     {
-        return $this->belongsTo(Distribuidora::class, 'distribuidora_id');
+        return $this->hasMany(Producto::class, 'categoria_id');
     }
 }
