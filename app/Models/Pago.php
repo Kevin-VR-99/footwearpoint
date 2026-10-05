@@ -17,6 +17,7 @@ class Pago extends Model
         'distribuidora_id',
         'pedido_id',
         'venta_directa_id',
+        'suscripcion_id',
         'folio',
         'tipo',
         'direccion',
@@ -26,6 +27,9 @@ class Pago extends Model
         'referencia',
         'proveedor_pago',
         'referencia_externa',
+        // Id de la preferencia de Checkout Pro, con el que se liga el aviso
+        // que manda Mercado Pago después (TG-208).
+        'preferencia_externa',
         'estado',
         'registrado_por_staff_id',
     ];
@@ -38,6 +42,12 @@ class Pago extends Model
     public function pedido()
     {
         return $this->belongsTo(Pedido::class, 'pedido_id');
+    }
+
+    /** Solo en los pagos de tipo 'suscripcion': qué mensualidad se pagó. */
+    public function suscripcion()
+    {
+        return $this->belongsTo(Suscripcion::class, 'suscripcion_id');
     }
 
     public function ventaDirecta()
