@@ -10,7 +10,7 @@ class GuardarLineaRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin_distribuidora') ?? false;
+        return $this->user()?->hasRole('admin_general') ?? false;
     }
 
     public function rules(): array
@@ -19,22 +19,15 @@ class GuardarLineaRequest extends FormRequest
         $requerido = $esCreacion ? 'required' : 'sometimes';
 
         return [
-            'campana_id' => [
-                $esCreacion ? 'required' : 'prohibited',
-                'integer',
-                Rule::exists('campanas', 'id')->where(
-                    fn($q) => $q->where('distribuidora_id', Tenant::id())
-                ),
-            ],
+            // La línea ya no cuelga de una temporada: es al revés (D1).
             'nombre' => [$requerido, 'string', 'max:150'],
             'descripcion' => ['nullable', 'string'],
+            'logotipo_url' => ['nullable', 'string', 'max:500'],
             'activa' => ['sometimes', 'boolean'],
             'marca_ids' => ['sometimes', 'array'],
             'marca_ids.*' => [
                 'integer',
-                Rule::exists('marcas', 'id')->where(
-                    fn($q) => $q->where('distribuidora_id', Tenant::id())
-                ),
+                Rule::exists('marcas', 'id'),
             ],
         ];
     }
