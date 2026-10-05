@@ -121,7 +121,11 @@ class LineasDeLaDistribuidoraTest extends TestCase
         $this->assertSame(1, DistribuidoraLinea::where('linea_id', $linea->id)->count());
     }
 
-    public function test_no_se_puede_pasar_del_limite_del_plan(): void
+    /**
+     * Pasarse del plan no ocurre solo: desde TG-211 se puede, pero pagando una
+     * línea extra y confirmándolo. Sin confirmar, no se activa nada.
+     */
+    public function test_no_se_pasa_del_limite_del_plan_sin_confirmar(): void
     {
         $this->conPlanDe(1);
         $this->activar()->ejecutar($this->nuevaLinea('Primera')->id);
@@ -130,9 +134,9 @@ class LineasDeLaDistribuidoraTest extends TestCase
 
         try {
             $this->activar()->ejecutar($segunda->id);
-            $this->fail('Dejó pasar el límite del plan.');
+            $this->fail('Dejó pasar el límite del plan sin confirmar el cargo.');
         } catch (OperacionInvalidaException $e) {
-            $this->assertStringContainsString('Tu plan permite 1 línea(s) activa(s)', $e->getMessage());
+            $this->assertStringContainsString('Confirma', $e->getMessage());
         }
 
         $this->assertSame(0, DistribuidoraLinea::where('linea_id', $segunda->id)->count());
