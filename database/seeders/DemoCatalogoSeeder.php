@@ -7,6 +7,7 @@ use App\Models\CategoriaProducto;
 use App\Models\Color;
 use App\Models\Distribuidora;
 use App\Models\DisponibilidadVarianteCampana;
+use App\Models\DistribuidoraLinea;
 use App\Models\Linea;
 use App\Models\Marca;
 use App\Models\Producto;
@@ -36,6 +37,13 @@ class DemoCatalogoSeeder extends Seeder
         $sucursal = Sucursal::where('distribuidora_id', $distribuidora->id)->where('es_principal', true)->firstOrFail();
 
         $linea = Linea::firstOrCreate(['nombre' => 'Línea Demo'], ['activa' => true]);
+
+        // La distribuidora demo vende esa línea: sin esto, el catálogo
+        // compartido existe pero ella no ve nada (regla 4.4, TG-213).
+        DistribuidoraLinea::firstOrCreate(
+            ['distribuidora_id' => $distribuidora->id, 'linea_id' => $linea->id],
+            ['es_extra' => false, 'activa' => true, 'fecha_activacion' => now()]
+        );
 
         $marcas = [];
         foreach (['Nike', 'Adidas', 'Flexi'] as $nombreMarca) {
