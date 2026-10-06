@@ -73,15 +73,21 @@ class ActivarCuentaAccesoAction
         }
 
         return DB::transaction(function () use ($titular, $distribuidoraId, $rol, $email, $password) {
+            // La cuenta guarda SOLO el acceso (TG-216): el nombre y el
+            // telefono siguen viviendo en su registro de contacto, que es el
+            // que edita el panel y el que la app muestra en el perfil.
             $usuario = Usuario::create([
-                'nombre'   => $titular->nombre,
                 'email'    => $email,
                 'password' => Hash::make($password),
-                'telefono' => $titular->telefono,
                 'estado'   => 'activo',
             ]);
 
             $titular->usuario_id = $usuario->id;
+
+            // Desde ahora su correo es el de acceso y vive en la cuenta: el
+            // del contacto se vacia para no tener dos correos distintos (D4).
+            $titular->email = null;
+
             $titular->save();
 
             $this->asignarRol($usuario, $rol, $distribuidoraId);
