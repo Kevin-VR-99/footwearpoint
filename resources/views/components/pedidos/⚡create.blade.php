@@ -124,7 +124,9 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             ->whereHas('producto', fn ($q) => $q->where('activo', true))
             ->with([
                 'producto',
-                'disponibilidadPorVariante' => fn ($q) => $q->where('estado', 'disponible'),
+                // También las "bajo pedido": se pueden pedir, solo tardan más
+                // en llegar de fábrica (TG-214).
+                'disponibilidadPorVariante' => fn ($q) => $q->sePuedenPedir(),
                 'disponibilidadPorVariante.variante.talla',
                 'disponibilidadPorVariante.variante.color',
             ])
@@ -419,6 +421,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                             Talla {{ $d->variante?->talla?->valor ?? '?' }}
                             / {{ $d->variante?->color?->nombre ?? '?' }}
                             ({{ $d->variante?->sku }})
+                            @if ($d->estado === 'bajo_pedido') · Bajo pedido @endif
                         </option>
                     @endforeach
                 </select>
