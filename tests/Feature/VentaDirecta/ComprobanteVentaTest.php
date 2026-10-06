@@ -211,7 +211,12 @@ class ComprobanteVentaTest extends TestCase
         Tenant::olvidarCache();
         $this->actingAs(Usuario::where('email', 'maria.lopez@revendedor.test')->firstOrFail());
 
-        $this->get($this->urlComprobante($venta))->assertForbidden();
+        // TG-184: el panel web es solo para el personal. Antes esto daba 403;
+        // ahora, antes de llegar a la ruta, se le cierra la sesion y se le
+        // regresa al login con el aviso de que entre por la app. Sigue sin
+        // poder ver el comprobante, que es lo que cuida esta prueba.
+        $this->get($this->urlComprobante($venta))->assertRedirect(route('login'));
+        $this->assertGuest();
     }
 
     public function test_sin_iniciar_sesion_manda_al_login(): void
