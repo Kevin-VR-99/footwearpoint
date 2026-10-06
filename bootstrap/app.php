@@ -19,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'tenant.team' => \App\Http\Middleware\SetTenantTeam::class,
+            // TG-184: el panel web es solo para el personal.
+            'solo.personal' => \App\Http\Middleware\SoloPersonalPanel::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
