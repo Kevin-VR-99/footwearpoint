@@ -59,7 +59,20 @@ Route::middleware(['auth', 'tenant.team'])->group(function () {
 
         return redirect()->route('login');
     })->name('logout');
+});
 
+/*
+|--------------------------------------------------------------------------
+| Panel de la distribuidora — solo personal (TG-184)
+|--------------------------------------------------------------------------
+| Antes estas rutas solo pedían sesión, así que un revendedor o un cliente
+| con cuenta entraba al panel. Ahora pasan por 'solo.personal', que cierra la
+| sesión y regresa al login con un aviso en español.
+|
+| /logout queda FUERA de este grupo a propósito: si no, quien pierde el
+| acceso quedaría atrapado sin poder cerrar sesión.
+*/
+Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
     Route::livewire('/dashboard', 'dashboard.index')
         ->name('dashboard');
 
