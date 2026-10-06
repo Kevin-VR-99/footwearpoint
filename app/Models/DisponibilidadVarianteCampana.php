@@ -28,6 +28,36 @@ class DisponibilidadVarianteCampana extends Model
         'fecha_verificacion' => 'datetime',
     ];
 
+    /**
+     * Estados con los que una talla se puede pedir (TG-214).
+     *
+     * El pedido se surte de fábrica por ciclo, no del mostrador: por eso
+     * "bajo pedido" también se pide, solo que tarda más. Lo único que se
+     * bloquea es lo que la fábrica ya no da.
+     */
+    public const ESTADOS_QUE_SE_PUEDEN_PEDIR = ['disponible', 'bajo_pedido'];
+
+    public function sePuedePedir(): bool
+    {
+        return in_array($this->estado, self::ESTADOS_QUE_SE_PUEDEN_PEDIR, true);
+    }
+
+    /** Las tallas que se pueden pedir: para el catálogo y la captura de pedidos. */
+    public function scopeSePuedenPedir($consulta)
+    {
+        return $consulta->whereIn('estado', self::ESTADOS_QUE_SE_PUEDEN_PEDIR);
+    }
+
+    /** Para la pantalla: "Bajo pedido" avisa que esa talla tarda más. */
+    public function etiqueta(): string
+    {
+        return match ($this->estado) {
+            'disponible' => 'Disponible',
+            'bajo_pedido' => 'Bajo pedido',
+            default => 'No disponible',
+        };
+    }
+
     public function productoCampana()
     {
         return $this->belongsTo(ProductoCampana::class, 'producto_campana_id');

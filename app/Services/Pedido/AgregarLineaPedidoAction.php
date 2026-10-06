@@ -66,15 +66,13 @@ class AgregarLineaPedidoAction
             ->where('variante_id', $variante->id)
             ->first();
 
-        if (! $disponibilidad) {
+        // Se pueden pedir las tallas "disponible" y también las "bajo pedido":
+        // el pedido se surte de fábrica por ciclo, no del mostrador (TG-214).
+        // Solo se bloquea lo que la fábrica ya no da, y lo que ni siquiera
+        // tiene disponibilidad registrada en esa temporada.
+        if (! $disponibilidad || ! $disponibilidad->sePuedePedir()) {
             throw ValidationException::withMessages([
-                'variante_id' => ['Esta variante no tiene disponibilidad registrada en la campaña.'],
-            ]);
-        }
-
-        if ($disponibilidad->estado !== 'disponible') {
-            throw ValidationException::withMessages([
-                'variante_id' => ['La variante no está disponible en catálogo (estado: ' . $disponibilidad->estado . ').'],
+                'variante_id' => ['Esa talla no está disponible por ahora.'],
             ]);
         }
 
