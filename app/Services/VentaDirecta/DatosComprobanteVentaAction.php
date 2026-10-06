@@ -104,7 +104,7 @@ class DatosComprobanteVentaAction
                 ? ['nombre' => (string) $cliente->nombre, 'email' => $cliente->email]
                 : null,
 
-            'atendio' => $staff?->usuario?->nombre,
+            'atendio' => $staff?->usuario?->nombreVisible(),
 
             'lineas' => $lineas,
 

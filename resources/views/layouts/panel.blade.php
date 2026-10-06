@@ -38,7 +38,7 @@
                 $logotipoDistribuidora = \App\Models\Distribuidora::query()->whereKey($tenantId)->value('logotipo_url');
             }
         }
-        $nombreUsuario = auth()->user()->nombre ?? '';
+        $nombreUsuario = auth()->user()->nombreVisible() ?? '';
         $emailUsuario = auth()->user()->email ?? '';
         $iniciales =
             collect(preg_split('/\s+/', trim($nombreUsuario)))
