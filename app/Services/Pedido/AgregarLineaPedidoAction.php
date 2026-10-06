@@ -19,6 +19,7 @@ class AgregarLineaPedidoAction
     public function __construct(
         private CatalogoVisible $catalogo,
         private PrecioEfectivo $precios,
+        private AnticipoDeLinea $anticipo,
     ) {}
 
     public function ejecutar(Pedido $pedido, array $datos): Pedido
@@ -97,8 +98,9 @@ class AgregarLineaPedidoAction
 
         $subtotalLinea = round($precio * $cantidad, 2);
 
-        $anticipoUnitario = (float) (ConfiguracionDistribuidora::query()->value('anticipo_por_producto') ?? 0);
-        $anticipoRequerido = round($anticipoUnitario * $cantidad, 2);
+        // El anticipo nunca puede ser mayor que el precio del par, y solo lo
+        // da el cliente directo (TG-215). La cuenta vive en AnticipoDeLinea.
+        $anticipoRequerido = $this->anticipo->calcular($pedido, $precio, $cantidad);
 
         $productoNombre = $pc->producto?->nombre
             ?? $variante->producto?->nombre
