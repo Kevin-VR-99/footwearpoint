@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Usuario;
+use App\Services\Auth\AccesoPanelWebService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Layout;
@@ -27,8 +28,18 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         }
 
         $usuario = Auth::user();
+        $acceso = app(AccesoPanelWebService::class);
 
-        $staff = \App\Models\DistribuidoraStaff::withoutGlobalScopes()->where('usuario_id', $usuario->id)->where('estado', 'activo')->first();
+        // TG-184: el panel es solo para el personal. Si quedo una sesion de
+        // un revendedor o un cliente (de antes de esta correccion), se cierra
+        // y se le dice que entre por la app, en vez de mandarlo al panel.
+        if (! $acceso->esPersonal($usuario)) {
+            $this->cerrarSesionAjena();
+
+            return;
+        }
+
+        $staff = $acceso->staffActivo($usuario);
 
         if ($staff) {
             setPermissionsTeamId($staff->distribuidora_id);
@@ -41,6 +52,16 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         }
 
         return $this->redirect(route('dashboard'), navigate: true);
+    }
+
+    /** Cierra la sesion de quien no es personal y deja el aviso a la vista. */
+    private function cerrarSesionAjena(): void
+    {
+        Auth::logout();
+        session()->invalidate();
+        session()->regenerateToken();
+
+        session()->flash('aviso_acceso', AccesoPanelWebService::MENSAJE_SOLO_PERSONAL);
     }
 
     protected function messages(): array
@@ -68,10 +89,24 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
             return;
         }
 
+        $acceso = app(AccesoPanelWebService::class);
+
+        // TG-184: revendedores y clientes entran por la app, no por aqui. Se
+        // revisa ANTES de crear la sesion, para no dejarles una sesion valida
+        // a quien se esta rechazando (igual que hace la API en
+        // AuthController::login con el personal).
+        if (! $acceso->esPersonal($usuario)) {
+            $this->addError('email', AccesoPanelWebService::MENSAJE_SOLO_PERSONAL);
+
+            return;
+        }
+
         Auth::login($usuario, $this->remember);
         session()->regenerate();
 
-        $staff = \App\Models\DistribuidoraStaff::withoutGlobalScopes()->where('usuario_id', $usuario->id)->first();
+        // Solo el personal activo da contexto de distribuidora: un empleado
+        // desactivado ya no lo toma (antes se buscaba sin mirar su estado).
+        $staff = $acceso->staffActivo($usuario);
 
         if ($staff) {
             setPermissionsTeamId($staff->distribuidora_id);
@@ -97,6 +132,13 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         >
         <p class="text-sm text-slate-500 mt-3">Inicia sesión en tu cuenta</p>
     </div>
+
+    {{-- TG-184: a quien no es personal se le explica que entre por la app. --}}
+    @if (session('aviso_acceso'))
+        <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {{ session('aviso_acceso') }}
+        </div>
+    @endif
 
     <form wire:submit="login" class="space-y-5">
         <div>

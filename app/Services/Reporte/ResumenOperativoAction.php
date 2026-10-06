@@ -49,7 +49,7 @@ class ResumenOperativoAction
                     ?? $p->revendedorAfiliacion?->revendedor?->nombre
                     ?? '—';
 
-                $capturadoPor = $p->capturadoPor?->usuario?->nombre;
+                $capturadoPor = $p->capturadoPor?->usuario?->nombreVisible();
 
                 $descripcion = $p->detalle
                     ->map(fn ($d) => trim(
@@ -122,7 +122,7 @@ class ResumenOperativoAction
                         'id'            => $v->id,
                         'folio'         => $v->folio,
                         'quien'         => $v->clienteDirecto?->nombre ?? 'Público general',
-                        'capturado_por' => $v->registradaPor?->usuario?->nombre,
+                        'capturado_por' => $v->registradaPor?->usuario?->nombreVisible(),
                         'sucursal'      => $v->sucursal?->nombre,
                         'fecha'         => optional($v->fecha_venta)?->format('d/m/Y H:i'),
                         'estado'        => $v->estado,

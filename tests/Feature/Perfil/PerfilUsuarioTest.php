@@ -87,9 +87,9 @@ class PerfilUsuarioTest extends TestCase
             ->assertExactJson([
                 'data' => [
                     'id'       => $maria->id,
-                    'nombre'   => $maria->nombre,
+                    'nombre'   => $maria->nombreVisible(),
                     'email'    => self::MARIA,
-                    'telefono' => $maria->telefono,
+                    'telefono' => $maria->telefonoVisible(),
                     'estado'   => 'activo',
                 ],
             ]);
@@ -99,7 +99,7 @@ class PerfilUsuarioTest extends TestCase
     // Editar nombre y teléfono
     // ------------------------------------------------------------------
 
-    public function test_un_revendedor_edita_su_nombre_y_telefono_y_se_actualiza_tambien_su_registro(): void
+    public function test_un_revendedor_edita_su_nombre_y_telefono_en_su_registro_de_contacto(): void
     {
         $token = $this->iniciarSesion(self::MARIA);
         $maria = $this->usuario(self::MARIA);
@@ -112,10 +112,11 @@ class PerfilUsuarioTest extends TestCase
             ->assertJsonPath('data.nombre', 'María López Ruiz')
             ->assertJsonPath('data.telefono', '9630001111');
 
+        // La cuenta no guarda nombre ni teléfono: solo el acceso (TG-216).
         $this->assertDatabaseHas('usuarios', [
             'id'       => $maria->id,
-            'nombre'   => 'María López Ruiz',
-            'telefono' => '9630001111',
+            'nombre'   => null,
+            'telefono' => null,
         ]);
 
         // Lo que ve el empleado en el panel web.
@@ -126,7 +127,7 @@ class PerfilUsuarioTest extends TestCase
         ]);
     }
 
-    public function test_un_cliente_directo_edita_su_perfil_y_se_actualiza_tambien_su_registro(): void
+    public function test_un_cliente_directo_edita_su_perfil_en_su_registro_de_contacto(): void
     {
         $token = $this->iniciarSesion(self::JOSE);
         $jose = $this->usuario(self::JOSE);
@@ -136,7 +137,7 @@ class PerfilUsuarioTest extends TestCase
             'telefono' => '9632223333',
         ])->assertOk();
 
-        $this->assertDatabaseHas('usuarios', ['id' => $jose->id, 'nombre' => 'José Hernández Díaz']);
+        $this->assertDatabaseHas('usuarios', ['id' => $jose->id, 'nombre' => null]);
         $this->assertDatabaseHas('clientes_directos', [
             'usuario_id' => $jose->id,
             'nombre'     => 'José Hernández Díaz',
@@ -171,7 +172,7 @@ class PerfilUsuarioTest extends TestCase
         ]);
     }
 
-    public function test_un_telefono_vacio_se_guarda_como_sin_telefono_en_los_dos_lugares(): void
+    public function test_un_telefono_vacio_se_guarda_como_sin_telefono(): void
     {
         $token = $this->iniciarSesion(self::MARIA);
         $maria = $this->usuario(self::MARIA);
@@ -181,7 +182,6 @@ class PerfilUsuarioTest extends TestCase
             'telefono' => '   ',
         ])->assertOk()->assertJsonPath('data.telefono', null);
 
-        $this->assertDatabaseHas('usuarios', ['id' => $maria->id, 'telefono' => null]);
         $this->assertDatabaseHas('revendedores', ['usuario_id' => $maria->id, 'telefono' => null]);
     }
 

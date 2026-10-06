@@ -35,7 +35,7 @@
         </aside>
         <div class="flex-1 flex flex-col">
             <header class="bg-white border-b px-6 py-3 flex justify-end items-center">
-                <span class="text-sm text-fp-text-muted">{{ auth()->user()->nombre ?? '' }}</span>
+                <span class="text-sm text-fp-text-muted">{{ auth()->user()->nombreVisible() ?? '' }}</span>
             </header>
             <main class="flex-1 p-6">
                 {{ $slot }}
