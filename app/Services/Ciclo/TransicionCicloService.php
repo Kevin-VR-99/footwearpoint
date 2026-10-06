@@ -72,7 +72,6 @@ class TransicionCicloService
         return $this->resultado($this->buscarCiclo($cicloId, bloquear: false));
     }
 
-    /** abierto -> cerrado. No toca pedidos: solo deja de aceptar nuevos. */
     /**
      * Los pedidos que NO se van a mandar a fabrica por anticipo pendiente
      * (TG-215). Lo usa la pantalla para avisarle al personal antes de
@@ -89,6 +88,7 @@ class TransicionCicloService
         );
     }
 
+    /** abierto -> cerrado. No toca pedidos: solo deja de aceptar nuevos. */
     public function cerrar(int $cicloId): ResultadoCiclo
     {
         return DB::transaction(function () use ($cicloId) {
