@@ -61,7 +61,7 @@ class PedidoRevendedorCicloYPagosTest extends TestCase
         $disponibilidad = DisponibilidadVarianteCampana::withoutGlobalScopes()
             ->where('estado', 'disponible')
             ->whereHas('productoCampana', fn ($q) => $q->withoutGlobalScopes()
-                ->where('publicado', true)
+                ->where('activo', true)
                 ->whereHas('campana', fn ($c) => $c->withoutGlobalScopes()->where('estado', 'activa')))
             ->orderBy('id')
             ->first();

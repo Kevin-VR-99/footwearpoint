@@ -39,7 +39,7 @@
             </nav>
 
             <div class="p-4 border-t border-white/10 text-sm">
-                <p class="text-white/70 truncate">{{ auth()->user()->nombre ?? '' }}</p>
+                <p class="text-white/70 truncate">{{ auth()->user()->nombreVisible() ?? '' }}</p>
                 <form method="POST" action="{{ route('logout') }}" class="mt-2">
                     @csrf
                     <button class="text-xs text-white/50 hover:text-white">Cerrar sesión</button>

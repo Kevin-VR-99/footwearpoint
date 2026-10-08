@@ -175,7 +175,11 @@ new class extends Component {
         $payload = [
             'nombre' => $datos['revendedor_nombre'],
             'telefono' => $datos['revendedor_telefono'],
-            'email' => $datos['revendedor_email'],
+            // Si ya tiene cuenta, su correo es el de acceso y vive en la
+            // cuenta: desde aquí no se toca (D4, TG-216).
+            ...($this->revendedor_cuenta_email_actual === null
+                ? ['email' => $datos['revendedor_email']]
+                : []),
             'codigo_interno' => $datos['revendedor_codigo_interno'],
             'estado' => $this->revendedor_estado,
         ];
@@ -252,7 +256,7 @@ new class extends Component {
                 <tbody>
                     @foreach ($empleados as $empleado)
                         <tr class="border-b last:border-0">
-                            <td class="py-2">{{ $empleado->usuario?->nombre ?? '—' }}</td>
+                            <td class="py-2">{{ $empleado->usuario?->nombreVisible() ?? '—' }}</td>
                             <td class="py-2">{{ $empleado->usuario?->email ?? '—' }}</td>
                             <td class="py-2">{{ $empleado->usuario?->telefono ?? '—' }}</td>
                             <td class="py-2">
@@ -382,7 +386,13 @@ new class extends Component {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-                        <input type="email" wire:model="revendedor_email" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                        @if ($revendedor_cuenta_email_actual !== null)
+                            <input type="email" value="{{ $revendedor_cuenta_email_actual }}" disabled
+                                class="w-full rounded-lg border-slate-200 bg-slate-100 text-sm text-slate-500 shadow-sm">
+                            <p class="mt-1 text-xs text-fp-text-muted">Es su correo para entrar a la app.</p>
+                        @else
+                            <input type="email" wire:model="revendedor_email" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                        @endif
                     </div>
                 </div>
                 {{-- E3-07 (TG-133): cuenta para entrar a la app móvil --}}

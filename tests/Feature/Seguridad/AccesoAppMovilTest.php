@@ -6,6 +6,8 @@ use App\Models\Campana;
 use App\Models\CategoriaProducto;
 use App\Models\ClienteDirecto;
 use App\Models\Distribuidora;
+use App\Models\DistribuidoraLinea;
+use App\Models\Linea;
 use App\Models\Marca;
 use App\Models\Notificacion;
 use App\Models\Producto;
@@ -78,40 +80,48 @@ class AccesoAppMovilTest extends TestCase
     }
 
     /**
-     * Una publicación completa y visible en el catálogo: hace falta que el
-     * producto-campaña esté publicado Y que su campaña esté activa.
+     * Un producto visible en el catálogo de esa distribuidora (TG-213).
+     *
+     * El catálogo es compartido, así que lo que decide quién lo ve es la línea:
+     * se crea la línea en el catálogo y se le activa a esa distribuidora.
      */
     private function crearPublicacion(int $distribuidoraId, string $sufijo): ProductoCampana
     {
-        return Tenant::forzar($distribuidoraId, function () use ($sufijo) {
-            $marca = Marca::create(['nombre' => 'Marca ' . $sufijo, 'activa' => true]);
-            $categoria = CategoriaProducto::create(['nombre' => 'Categoria ' . $sufijo, 'activa' => true]);
+        $linea = Linea::create(['nombre' => 'Linea ' . $sufijo, 'activa' => true]);
+        $marca = Marca::create(['nombre' => 'Marca ' . $sufijo, 'activa' => true]);
+        $categoria = CategoriaProducto::create(['nombre' => 'Categoria ' . $sufijo, 'activa' => true]);
 
-            $producto = Producto::create([
-                'marca_id'     => $marca->id,
-                'categoria_id' => $categoria->id,
-                'modelo'       => 'MOD-' . $sufijo,
-                'nombre'       => 'Producto ' . $sufijo,
-                'activo'       => true,
-            ]);
+        $producto = Producto::create([
+            'marca_id'     => $marca->id,
+            'categoria_id' => $categoria->id,
+            'modelo'       => 'MOD-' . $sufijo,
+            'nombre'       => 'Producto ' . $sufijo,
+            'activo'       => true,
+        ]);
 
-            $campana = Campana::create([
-                'marca_id' => $marca->id,
-                'nombre'   => 'Campana ' . $sufijo,
-            ]);
-            $campana->update(['estado' => 'activa']);
+        $campana = Campana::create([
+            'linea_id' => $linea->id,
+            'nombre'   => 'Temporada ' . $sufijo,
+            'estado'   => 'activa',
+        ]);
 
-            $publicacion = ProductoCampana::create([
-                'producto_id'               => $producto->id,
-                'campana_id'                => $campana->id,
-                'codigo_catalogo'           => 'CAT-' . $sufijo,
-                'precio_mayorista'          => 500,
-                'precio_minorista_sugerido' => 800,
-            ]);
-            $publicacion->update(['publicado' => true]);
+        $publicacion = ProductoCampana::create([
+            'producto_id'     => $producto->id,
+            'campana_id'      => $campana->id,
+            'codigo_catalogo' => 'CAT-' . $sufijo,
+            'precio_publico'  => 800,
+            'activo'          => true,
+        ]);
 
-            return $publicacion;
-        });
+        DistribuidoraLinea::withoutGlobalScopes()->create([
+            'distribuidora_id' => $distribuidoraId,
+            'linea_id'         => $linea->id,
+            'es_extra'         => false,
+            'activa'           => true,
+            'fecha_activacion' => now(),
+        ]);
+
+        return $publicacion;
     }
 
     private function asignarRol(Usuario $usuario, string $rol, int $distribuidoraId): void

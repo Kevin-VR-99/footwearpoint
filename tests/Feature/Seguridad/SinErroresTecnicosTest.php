@@ -4,6 +4,7 @@ namespace Tests\Feature\Seguridad;
 
 use App\Exceptions\RespuestaErrorApi;
 use App\Models\DisponibilidadVarianteCampana;
+use App\Services\Catalogo\CatalogoVisible;
 use App\Models\Distribuidora;
 use App\Models\DistribuidoraStaff;
 use App\Models\Revendedor;
@@ -86,12 +87,15 @@ class SinErroresTecnicosTest extends TestCase
 
     private function comoAdminGeneral(): void
     {
-        $admin = Usuario::create([
-            'nombre'   => 'Admin General',
-            'email'    => 'admin.general@footwearpoint.test',
-            'password' => Hash::make('password'),
-            'estado'   => 'activo',
-        ]);
+        // Desde TG-186 el admin general ya viene del seeder: aqui solo se usa.
+        $admin = Usuario::firstOrCreate(
+            ['email' => 'admin.general@footwearpoint.test'],
+            [
+                'nombre'   => 'Admin General',
+                'password' => Hash::make('password'),
+                'estado'   => 'activo',
+            ]
+        );
 
         $registrar = app(PermissionRegistrar::class);
         $registrar->setPermissionsTeamId(0);
@@ -129,11 +133,11 @@ class SinErroresTecnicosTest extends TestCase
                 ->value('id'),
         ])->assertCreated()->json('data.id');
 
+        // El catálogo es compartido (TG-213): lo que se puede pedir es lo que
+        // esta distribuidora vende, no lo que esté "publicado" en el catálogo.
         $variante = DisponibilidadVarianteCampana::withoutGlobalScopes()
             ->where('estado', 'disponible')
-            ->whereHas('productoCampana', fn ($q) => $q->withoutGlobalScopes()
-                ->where('publicado', true)
-                ->whereHas('campana', fn ($c) => $c->withoutGlobalScopes()->where('estado', 'activa')))
+            ->whereIn('producto_campana_id', app(CatalogoVisible::class)->consulta()->select('producto_campana.id'))
             ->orderBy('id')
             ->firstOrFail();
 

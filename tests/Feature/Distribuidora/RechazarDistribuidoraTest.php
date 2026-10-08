@@ -45,12 +45,15 @@ class RechazarDistribuidoraTest extends TestCase
         Tenant::olvidarCache();
         PropietarioActual::olvidarCache();
 
-        $this->adminGeneral = Usuario::create([
-            'nombre'   => 'Admin General',
-            'email'    => 'admin.general@footwearpoint.test',
-            'password' => Hash::make('password'),
-            'estado'   => 'activo',
-        ]);
+        // Desde TG-186 el admin general ya viene del seeder: aqui solo se usa.
+        $this->adminGeneral = Usuario::firstOrCreate(
+            ['email' => 'admin.general@footwearpoint.test'],
+            [
+                'nombre'   => 'Admin General',
+                'password' => Hash::make('password'),
+                'estado'   => 'activo',
+            ]
+        );
 
         $registrar = app(PermissionRegistrar::class);
         $registrar->setPermissionsTeamId(0);

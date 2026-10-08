@@ -86,10 +86,15 @@ new class extends Component {
         $payload = [
             'nombre' => $datos['cliente_nombre'],
             'telefono' => $datos['cliente_telefono'],
-            'email' => $datos['cliente_email'],
             'direccion_contacto' => $datos['cliente_direccion_contacto'],
             'estado' => $this->cliente_estado,
         ];
+
+        // Si ya tiene cuenta, su correo es el de acceso y vive en la cuenta:
+        // desde aquí no se toca (D4, TG-216).
+        if ($this->cliente_cuenta_email_actual === null) {
+            $payload['email'] = $datos['cliente_email'];
+        }
 
         $accion = app(GestionarClienteDirectoAction::class);
 
@@ -199,7 +204,13 @@ new class extends Component {
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-                    <input type="email" wire:model="cliente_email" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                    @if ($cliente_cuenta_email_actual !== null)
+                        <input type="email" value="{{ $cliente_cuenta_email_actual }}" disabled
+                            class="w-full rounded-lg border-slate-200 bg-slate-100 text-sm text-slate-500 shadow-sm">
+                        <p class="mt-1 text-xs text-fp-text-muted">Es su correo para entrar a la app.</p>
+                    @else
+                        <input type="email" wire:model="cliente_email" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                    @endif
                 </div>
             </div>
             <div>

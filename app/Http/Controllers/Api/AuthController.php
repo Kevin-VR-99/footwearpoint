@@ -179,9 +179,9 @@ class AuthController extends Controller
         return [
             'usuario' => [
                 'id'       => $usuario->id,
-                'nombre'   => $usuario->nombre,
+                'nombre'   => $usuario->nombreVisible(),
                 'email'    => $usuario->email,
-                'telefono' => $usuario->telefono,
+                'telefono' => $usuario->telefonoVisible(),
                 'estado'   => $usuario->estado,
             ],
             'rol'              => $rol,
@@ -256,9 +256,9 @@ class AuthController extends Controller
             return response()->json([
                 'data' => [
                     'id'               => $usuario->id,
-                    'nombre'           => $usuario->nombre,
+                    'nombre'           => $usuario->nombreVisible(),
                     'email'            => $usuario->email,
-                    'telefono'         => $usuario->telefono,
+                    'telefono'         => $usuario->telefonoVisible(),
                     'estado'           => $usuario->estado,
                     'rol'              => 'empleado',
                     'distribuidora_id' => $distribuidoraId,

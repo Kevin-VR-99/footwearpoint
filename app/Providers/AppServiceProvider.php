@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Catalogo\PrecioEfectivo;
 use App\Services\Notificacion\Push\EnviadorPush;
 use App\Http\Middleware\SoloPersonalPanel;
 use App\Services\Notificacion\Push\EnviadorPushFirebase;
@@ -14,6 +15,10 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(EnviadorPush::class, EnviadorPushFirebase::class);
+
+        // Uno solo por petición: guarda el descuento y los precios propios que
+        // ya consultó, para no repetir consultas al armar el catálogo (TG-213).
+        $this->app->scoped(PrecioEfectivo::class);
     }
 
     public function boot(): void

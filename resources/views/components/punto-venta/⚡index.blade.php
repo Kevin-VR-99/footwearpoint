@@ -4,6 +4,8 @@ use App\Exceptions\OperacionInvalidaException;
 use App\Models\ClienteDirecto;
 use App\Models\Color;
 use App\Models\ProductoCampana;
+use App\Services\Catalogo\CatalogoVisible;
+use App\Services\Catalogo\PrecioEfectivo;
 use App\Models\StockLocal;
 use App\Models\Talla;
 use App\Services\VentaDirecta\RegistrarVentaDirectaService;
@@ -74,11 +76,14 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
 
         $variantes = $existencias->pluck('variante');
 
-        $publicaciones = ProductoCampana::query()
-            ->where('publicado', true)
+        // Solo lo que esta distribuidora vende del catálogo compartido
+        // (TG-213). El precio es el de menudeo del catálogo (D8).
+        $publicaciones = app(CatalogoVisible::class)->consulta()
             ->whereIn('producto_id', $variantes->pluck('producto_id')->unique()->all())
             ->get()
             ->groupBy('producto_id');
+
+        $precios = app(PrecioEfectivo::class)->precargar($publicaciones->flatten());
 
         // tallas y colores son catálogos GLOBALES: no llevan distribuidora_id.
         $tallas = Talla::query()
@@ -94,7 +99,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
         $termino = mb_strtolower(trim($this->busqueda));
 
         return $existencias
-            ->flatMap(function ($existencia) use ($publicaciones, $tallas, $colores) {
+            ->flatMap(function ($existencia) use ($publicaciones, $tallas, $colores, $precios) {
                 $variante = $existencia->variante;
                 $delProducto = $publicaciones->get($variante->producto_id, collect());
 
@@ -113,7 +118,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     'nombre' => (string) ($variante->producto?->nombre ?? ''),
                     'talla' => $textoTalla,
                     'color' => $textoColor,
-                    'precio' => round((float) $publicacion->precio_minorista_sugerido, 2),
+                    'precio' => $precios->menudeo($publicacion),
                     'disponible' => (int) $existencia->cantidad_disponible,
                 ]);
             })

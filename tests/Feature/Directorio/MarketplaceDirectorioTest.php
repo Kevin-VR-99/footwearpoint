@@ -5,6 +5,7 @@ namespace Tests\Feature\Directorio;
 use App\Models\CategoriaDirectorio;
 use App\Models\Distribuidora;
 use App\Models\Usuario;
+use Database\Seeders\AdminGeneralSeeder;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
 use App\Services\Distribuidora\CambiarVisibilidadMarketplaceAction;
 use App\Services\Distribuidora\CrearDistribuidoraAction;
@@ -40,12 +41,15 @@ class MarketplaceDirectorioTest extends TestCase
         Tenant::olvidarCache();
         PropietarioActual::olvidarCache();
 
-        $this->adminGeneral = Usuario::create([
-            'nombre'   => 'Admin General',
-            'email'    => 'admin.general@footwearpoint.test',
-            'password' => Hash::make('password'),
-            'estado'   => 'activo',
-        ]);
+        // Desde TG-186 el admin general ya viene del seeder: aqui solo se usa.
+        $this->adminGeneral = Usuario::firstOrCreate(
+            ['email' => AdminGeneralSeeder::EMAIL],
+            [
+                'nombre'   => 'Admin General',
+                'password' => Hash::make('password'),
+                'estado'   => 'activo',
+            ]
+        );
 
         $registrar = app(PermissionRegistrar::class);
         $registrar->setPermissionsTeamId(0);

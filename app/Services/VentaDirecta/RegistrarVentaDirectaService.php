@@ -10,6 +10,7 @@ use App\Models\Producto;
 use App\Models\ProductoCampana;
 use App\Models\Talla;
 use App\Models\Variante;
+use App\Services\Catalogo\PrecioEfectivo;
 use App\Models\VentaDirecta;
 use App\Models\VentaDirectaDetalle;
 use App\Support\ContextoOperativo;
@@ -21,6 +22,7 @@ class RegistrarVentaDirectaService
     public function __construct(
         private ContextoOperativo $contexto,
         private DescuentoStockVentaDirectaService $descuentoStock,
+        private PrecioEfectivo $precios,
     ) {
     }
 
@@ -158,19 +160,16 @@ class RegistrarVentaDirectaService
         $productoCampanaId = (int) $linea['producto_campana_id'];
         $cantidad = (int) $linea['cantidad'];
 
-        $variante = Variante::query()
-            ->where('distribuidora_id', $distribuidoraId)
-            ->whereKey($varianteId)
-            ->first();
+        // El catalogo es compartido (TG-213): la variante no es de nadie en
+        // particular. Lo que si es de la distribuidora es su stock, y eso se
+        // valida mas abajo al bloquearlo.
+        $variante = Variante::query()->whereKey($varianteId)->first();
 
         if ($variante === null) {
             throw new OperacionInvalidaException('La variante no existe.', 404);
         }
 
-        $productoCampana = ProductoCampana::query()
-            ->where('distribuidora_id', $distribuidoraId)
-            ->whereKey($productoCampanaId)
-            ->first();
+        $productoCampana = ProductoCampana::query()->whereKey($productoCampanaId)->first();
 
         if ($productoCampana === null) {
             throw new OperacionInvalidaException('La publicacion de catalogo no existe.', 404);
@@ -185,10 +184,7 @@ class RegistrarVentaDirectaService
 
         // No se valida el estado de la campana: el stock fisico se puede vender
         // aunque la campana ya este finalizada, con su ultimo precio conocido.
-        $producto = Producto::query()
-            ->where('distribuidora_id', $distribuidoraId)
-            ->whereKey($variante->producto_id)
-            ->first();
+        $producto = Producto::query()->whereKey($variante->producto_id)->first();
 
         if ($producto === null) {
             throw new OperacionInvalidaException('El producto de la variante no existe.', 404);
@@ -205,7 +201,8 @@ class RegistrarVentaDirectaService
             $sucursalId
         );
 
-        $precioUnitario = round((float) $productoCampana->precio_minorista_sugerido, 2);
+        // El mostrador cobra el precio de menudeo del catalogo (D8).
+        $precioUnitario = $this->precios->menudeo($productoCampana);
 
         return [
             'stock' => $stock,

@@ -12,6 +12,7 @@ use App\Models\Pago;
 use App\Models\Pedido;
 use App\Models\Sucursal;
 use App\Models\Usuario;
+use App\Services\Catalogo\CatalogoVisible;
 use App\Services\MercadoPago\MercadoPagoException;
 use App\Services\Pago\AplicarPagoMercadoPagoAction;
 use App\Support\PropietarioActual;
@@ -122,10 +123,21 @@ class AnticipoCheckoutProTest extends TestCase
         ], $cambios)));
     }
 
+    /**
+     * Desde TG-216 el contacto se queda sin correo cuando se le activa la
+     * cuenta: primero se busca su ficha por la cuenta y, si no tiene cuenta,
+     * por su propio correo de contacto.
+     */
     private function fichaDe(string $email): int
     {
+        $usuarioId = Usuario::where('email', $email)->value('id');
+
         return (int) ClienteDirecto::withoutGlobalScopes()
-            ->where('email', $email)
+            ->when(
+                $usuarioId,
+                fn ($consulta) => $consulta->where('usuario_id', $usuarioId),
+                fn ($consulta) => $consulta->where('email', $email)
+            )
             ->value('id');
     }
 
@@ -140,11 +152,16 @@ class AnticipoCheckoutProTest extends TestCase
             'sucursal_id'    => Sucursal::withoutGlobalScopes()->where('es_principal', true)->orderBy('id')->value('id'),
         ])->assertCreated()->json('data.id');
 
+        // El catalogo es compartido (TG-209, TG-213): lo que la distribuidora
+        // vende lo decide CatalogoVisible, ya no una columna del producto.
+        $queVende = Tenant::forzar(
+            $this->distribuidoraId(),
+            fn () => app(CatalogoVisible::class)->consulta()->pluck('producto_campana.id')
+        );
+
         $variante = DisponibilidadVarianteCampana::withoutGlobalScopes()
             ->where('estado', 'disponible')
-            ->whereHas('productoCampana', fn ($q) => $q->withoutGlobalScopes()
-                ->where('publicado', true)
-                ->whereHas('campana', fn ($c) => $c->withoutGlobalScopes()->where('estado', 'activa')))
+            ->whereIn('producto_campana_id', $queVende)
             ->orderBy('id')
             ->firstOrFail();
 

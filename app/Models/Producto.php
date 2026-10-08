@@ -2,19 +2,22 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Un producto del catálogo compartido: un modelo en un color, como viene en
+ * los catálogos de fábrica (D9). Sus variantes son las tallas.
+ *
+ * Ya no se amarra a una línea (D5): el mismo modelo puede salir en los
+ * catálogos de dos líneas, cada uno con su propio código. La línea se sabe por
+ * la temporada en la que está publicado (TG-209).
+ */
 class Producto extends Model
 {
-    use BelongsToTenant;
-
     protected $table = 'productos';
 
     protected $fillable = [
-        'distribuidora_id',
         'marca_id',
-        'linea_id',
         'categoria_id',
         'modelo',
         'nombre',
@@ -26,19 +29,9 @@ class Producto extends Model
         'activo' => 'boolean',
     ];
 
-    public function distribuidora()
-    {
-        return $this->belongsTo(Distribuidora::class, 'distribuidora_id');
-    }
-
     public function marca()
     {
         return $this->belongsTo(Marca::class, 'marca_id');
-    }
-
-    public function linea()
-    {
-        return $this->belongsTo(Linea::class, 'linea_id');
     }
 
     public function categoria()

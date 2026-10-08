@@ -8,6 +8,7 @@ use App\Models\DistribuidoraStaff;
 use App\Models\Marca;
 use App\Models\Revendedor;
 use App\Models\RevendedorDistribuidora;
+use App\Models\Sucursal;
 use App\Models\Usuario;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
@@ -180,18 +181,24 @@ class ResolucionTenantMultiRolTest extends TestCase
     // Aislamiento real de datos
     // ------------------------------------------------------------------
 
-    public function test_un_revendedor_solo_ve_las_marcas_de_su_distribuidora(): void
+    public function test_un_revendedor_solo_ve_los_datos_de_su_distribuidora(): void
     {
         $distribuidoraA = $this->distribuidoraA();
         $distribuidoraB = $this->crearDistribuidoraB();
 
-        $marcaDeA = Tenant::forzar($distribuidoraA->id, fn () => Marca::create([
-            'nombre' => 'Marca Propia',
+        // Desde TG-213 el catálogo (marcas, productos...) es compartido, así
+        // que el aislamiento se mide con algo que sí es de cada distribuidora.
+        $sucursalDeA = Tenant::forzar($distribuidoraA->id, fn () => Sucursal::create([
+            'nombre' => 'Sucursal Propia',
+            'direccion' => 'Calle 1',
+            'es_principal' => false,
             'activa' => true,
         ]));
 
-        $marcaDeB = Tenant::forzar($distribuidoraB->id, fn () => Marca::create([
-            'nombre' => 'Marca Rival',
+        $sucursalDeB = Tenant::forzar($distribuidoraB->id, fn () => Sucursal::create([
+            'nombre' => 'Sucursal Rival',
+            'direccion' => 'Calle 2',
+            'es_principal' => false,
             'activa' => true,
         ]));
 
@@ -200,27 +207,31 @@ class ResolucionTenantMultiRolTest extends TestCase
         $this->actingAs($usuario);
         Tenant::olvidarCache();
 
-        $idsVisibles = Marca::pluck('id');
+        $idsVisibles = Sucursal::pluck('id');
 
         // No basta con que no vea la ajena: si el filtro estuviera bloqueando
         // todo por error, la prueba pasaría sin probar nada. Por eso también
         // se confirma que SÍ ve la suya.
-        $this->assertContains($marcaDeA->id, $idsVisibles);
-        $this->assertNotContains($marcaDeB->id, $idsVisibles);
+        $this->assertContains($sucursalDeA->id, $idsVisibles);
+        $this->assertNotContains($sucursalDeB->id, $idsVisibles);
     }
 
-    public function test_un_cliente_directo_solo_ve_las_marcas_de_su_distribuidora(): void
+    public function test_un_cliente_directo_solo_ve_los_datos_de_su_distribuidora(): void
     {
         $distribuidoraA = $this->distribuidoraA();
         $distribuidoraB = $this->crearDistribuidoraB();
 
-        $marcaDeA = Tenant::forzar($distribuidoraA->id, fn () => Marca::create([
-            'nombre' => 'Marca Propia',
+        $sucursalDeA = Tenant::forzar($distribuidoraA->id, fn () => Sucursal::create([
+            'nombre' => 'Sucursal Propia',
+            'direccion' => 'Calle 1',
+            'es_principal' => false,
             'activa' => true,
         ]));
 
-        $marcaDeB = Tenant::forzar($distribuidoraB->id, fn () => Marca::create([
-            'nombre' => 'Marca Rival',
+        $sucursalDeB = Tenant::forzar($distribuidoraB->id, fn () => Sucursal::create([
+            'nombre' => 'Sucursal Rival',
+            'direccion' => 'Calle 2',
+            'es_principal' => false,
             'activa' => true,
         ]));
 
@@ -229,10 +240,10 @@ class ResolucionTenantMultiRolTest extends TestCase
         $this->actingAs($usuario);
         Tenant::olvidarCache();
 
-        $idsVisibles = Marca::pluck('id');
+        $idsVisibles = Sucursal::pluck('id');
 
-        $this->assertContains($marcaDeA->id, $idsVisibles);
-        $this->assertNotContains($marcaDeB->id, $idsVisibles);
+        $this->assertContains($sucursalDeA->id, $idsVisibles);
+        $this->assertNotContains($sucursalDeB->id, $idsVisibles);
     }
 
     /**
@@ -335,13 +346,17 @@ class ResolucionTenantMultiRolTest extends TestCase
         $distribuidoraA = $this->distribuidoraA();
         $distribuidoraB = $this->crearDistribuidoraB();
 
-        Tenant::forzar($distribuidoraA->id, fn () => Marca::create([
-            'nombre' => 'Marca Propia',
+        Tenant::forzar($distribuidoraA->id, fn () => Sucursal::create([
+            'nombre' => 'Sucursal Propia',
+            'direccion' => 'Calle 1',
+            'es_principal' => false,
             'activa' => true,
         ]));
 
-        Tenant::forzar($distribuidoraB->id, fn () => Marca::create([
-            'nombre' => 'Marca Rival',
+        Tenant::forzar($distribuidoraB->id, fn () => Sucursal::create([
+            'nombre' => 'Sucursal Rival',
+            'direccion' => 'Calle 2',
+            'es_principal' => false,
             'activa' => true,
         ]));
 
@@ -355,7 +370,7 @@ class ResolucionTenantMultiRolTest extends TestCase
         Tenant::olvidarCache();
 
         // Suspender a alguien tiene que quitarle acceso, no dárselo todo.
-        $this->assertSame(0, Marca::count());
+        $this->assertSame(0, Sucursal::count());
     }
 
     public function test_un_empleado_dado_de_baja_no_ve_datos_de_ninguna_distribuidora(): void
@@ -370,7 +385,7 @@ class ResolucionTenantMultiRolTest extends TestCase
         Tenant::olvidarCache();
 
         $this->assertNull(Tenant::id());
-        $this->assertSame(0, Marca::count());
+        $this->assertSame(0, Sucursal::count());
     }
 
     /**
@@ -392,12 +407,15 @@ class ResolucionTenantMultiRolTest extends TestCase
             'activa' => true,
         ]));
 
-        $usuario = Usuario::create([
-            'nombre'   => 'Admin General',
-            'email'    => 'admin.general@footwearpoint.test',
-            'password' => Hash::make('password'),
-            'estado'   => 'activo',
-        ]);
+        // Desde TG-186 el admin general ya viene del seeder: aqui solo se usa.
+        $usuario = Usuario::firstOrCreate(
+            ['email' => 'admin.general@footwearpoint.test'],
+            [
+                'nombre'   => 'Admin General',
+                'password' => Hash::make('password'),
+                'estado'   => 'activo',
+            ]
+        );
 
         // El rol admin_general vive fuera de toda distribuidora (equipo 0).
         app(PermissionRegistrar::class)->setPermissionsTeamId(0);

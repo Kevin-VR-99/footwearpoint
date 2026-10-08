@@ -206,7 +206,7 @@ new #[Layout('layouts.panel')] #[Title('Auditoría — FootwearPoint')] class ex
                                 {{ optional($row->created_at)->format('d/m/Y H:i:s') }}
                             </td>
                             <td class="px-4 py-3">
-                                <div class="font-medium text-slate-800">{{ $row->usuario?->nombre ?? '—' }}</div>
+                                <div class="font-medium text-slate-800">{{ $row->usuario?->nombreVisible() ?? '—' }}</div>
                                 <div class="text-xs text-slate-500">{{ $row->usuario?->email }}</div>
                             </td>
                             <td class="px-4 py-3">
