@@ -30,6 +30,9 @@ new #[Layout('layouts.guest')] #[Title('Pago con Mercado Pago — FootwearPoint'
 
     public string $resultado = 'otro';
 
+    /** TG-227 (G8): tipo del pago que regresó ('anticipo', 'saldo_pedido' o '' si no se sabe). */
+    public string $tipo = '';
+
     public function mount(): void
     {
         $status = request()->query('status', request()->query('collection_status'));
@@ -46,7 +49,7 @@ new #[Layout('layouts.guest')] #[Title('Pago con Mercado Pago — FootwearPoint'
         }
     }
 
-    /** true si el anticipo quedó aplicado con este payment_id. */
+    /** true si el pago (anticipo o saldo) quedó aplicado con este payment_id. */
     private function confirmar(): bool
     {
         $pagoMpId = request()->query('payment_id', request()->query('collection_id'));
@@ -78,6 +81,8 @@ new #[Layout('layouts.guest')] #[Title('Pago con Mercado Pago — FootwearPoint'
                 if ($pago === null) {
                     return false;
                 }
+
+                $this->tipo = (string) $pago->tipo;
 
                 // Ya se había confirmado con este mismo pago de Mercado Pago.
                 if ($pago->estado === 'aplicado') {
@@ -121,7 +126,7 @@ new #[Layout('layouts.guest')] #[Title('Pago con Mercado Pago — FootwearPoint'
     <p class="text-xs font-semibold uppercase tracking-wider text-fp-primary">FootwearPoint</p>
 
     @if ($resultado === 'recibido')
-        <h1 class="mt-2 text-xl font-semibold text-slate-900">¡Recibimos tu anticipo!</h1>
+        <h1 class="mt-2 text-xl font-semibold text-slate-900">{{ $tipo === 'saldo_pedido' ? '¡Recibimos el pago de tu saldo!' : '¡Recibimos tu anticipo!' }}</h1>
         <p class="mt-2 text-sm text-slate-600">Mercado Pago confirmó tu pago y ya quedó registrado en tu pedido.</p>
     @elseif ($resultado === 'aprobado')
         <h1 class="mt-2 text-xl font-semibold text-slate-900">¡Gracias por tu pago!</h1>
@@ -137,6 +142,6 @@ new #[Layout('layouts.guest')] #[Title('Pago con Mercado Pago — FootwearPoint'
     @endif
 
     <p class="mt-4 text-sm text-slate-600">
-        Regresa a la app de FootwearPoint y abre tu pedido para ver el estado de tu anticipo.
+        Regresa a la app de FootwearPoint y abre tu pedido para ver el estado de {{ $tipo === 'anticipo' ? 'tu anticipo' : 'tu pago' }}.
     </p>
 </div>
