@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Pago\VerificarPagoMercadoPagoRequest;
 use App\Http\Resources\PedidoResource;
 use App\Models\Pedido;
 use App\Services\Pago\CrearPagoAnticipoMercadoPagoAction;
@@ -25,6 +26,7 @@ class PagoMercadoPagoController extends Controller
         VerificarPagoMercadoPagoAction::PENDIENTE => 'Tu pago todavía no se confirma. Revisa de nuevo en unos minutos.',
         VerificarPagoMercadoPagoAction::RECHAZADO => 'Mercado Pago rechazó el pago. Puedes intentarlo de nuevo con otro medio de pago.',
         VerificarPagoMercadoPagoAction::VENCIDO   => 'El enlace de pago venció. Genera uno nuevo para pagar tu anticipo.',
+        VerificarPagoMercadoPagoAction::NO_CUADRA => 'Mercado Pago tiene un pago que no coincide con este anticipo, así que no se aplicó. No vuelvas a pagar: la distribuidora lo revisará contigo.',
     ];
 
     public function crearAnticipo(int $id, CrearPagoAnticipoMercadoPagoAction $accion): JsonResponse
@@ -48,11 +50,15 @@ class PagoMercadoPagoController extends Controller
         ], $reutilizado ? 200 : 201);
     }
 
-    public function verificar(int $id, VerificarPagoMercadoPagoAction $accion): JsonResponse
+    /**
+     * payment_id (opcional): el que Mercado Pago puso en la URL de regreso.
+     * Con él se confirma directo con GET /v1/payments/{id}.
+     */
+    public function verificar(int $id, VerificarPagoMercadoPagoRequest $request, VerificarPagoMercadoPagoAction $accion): JsonResponse
     {
         $pedido = $this->pedido($id);
 
-        $resultado = $accion->ejecutar($pedido);
+        $resultado = $accion->ejecutar($pedido, $request->pagoMpId(), 'api');
 
         return response()->json([
             'data'      => new PedidoResource(

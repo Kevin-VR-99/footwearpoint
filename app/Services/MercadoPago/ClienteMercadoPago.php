@@ -154,9 +154,10 @@ class ClienteMercadoPago
 
     /**
      * Pagos de Mercado Pago con esa external_reference, del más nuevo al más
-     * viejo.
+     * viejo. Es el último recurso: la búsqueda de Mercado Pago puede tardar
+     * en mostrar un pago recién aprobado.
      *
-     * @return list<array>
+     * @return array{resultados: list<array>, total: int|null}
      */
     public function buscarPagos(string $token, string $externalReference): array
     {
@@ -168,14 +169,62 @@ class ClienteMercadoPago
             ]));
 
         $resultados = $datos['results'] ?? [];
+        $total = $datos['paging']['total'] ?? null;
 
-        return is_array($resultados) ? array_values(array_filter($resultados, 'is_array')) : [];
+        return [
+            'resultados' => is_array($resultados) ? array_values(array_filter($resultados, 'is_array')) : [],
+            'total'      => is_numeric($total) ? (int) $total : null,
+        ];
+    }
+
+    /**
+     * TG-226 (bugfix) — Los ids de los pagos que Mercado Pago asoció a una
+     * preferencia, a través de sus órdenes (merchant orders). No depende del
+     * índice de búsqueda de pagos.
+     *
+     * @return array{ordenes: int, pagos: list<string>}
+     */
+    public function pagosDeLaPreferencia(string $token, string $preferenciaId): array
+    {
+        $datos = $this->llamarSiExiste('buscar las órdenes de la preferencia', fn () => $this->conToken($token)
+            ->get($this->config('url_api').'/merchant_orders/search', [
+                'preference_id' => $preferenciaId,
+            ])) ?? [];
+
+        $ordenes = is_array($datos['elements'] ?? null) ? array_filter($datos['elements'], 'is_array') : [];
+        $pagos = [];
+
+        foreach ($ordenes as $orden) {
+            foreach (is_array($orden['payments'] ?? null) ? $orden['payments'] : [] as $pago) {
+                $id = is_array($pago) ? ($pago['id'] ?? null) : null;
+
+                if (is_scalar($id) && preg_match('/^\d{1,20}$/', (string) $id) === 1) {
+                    $pagos[(string) $id] = (string) $id;
+                }
+            }
+        }
+
+        // Los más nuevos primero (los ids de Mercado Pago crecen con el tiempo).
+        krsort($pagos, SORT_NUMERIC);
+
+        return ['ordenes' => count($ordenes), 'pagos' => array_values($pagos)];
     }
 
     /** Un pago de Mercado Pago por su id (lo usará el aviso de G9). */
     public function obtenerPago(string $token, string $pagoId): array
     {
         return $this->llamar('consultar el pago', fn () => $this->conToken($token)
+            ->get($this->config('url_api').'/v1/payments/'.rawurlencode($pagoId)));
+    }
+
+    /**
+     * TG-226 (bugfix) — Igual que obtenerPago(), pero si Mercado Pago no lo
+     * encuentra con este token (404) regresa null en lugar de fallar: el id
+     * puede venir del cliente y no ser de esta distribuidora.
+     */
+    public function obtenerPagoSiExiste(string $token, string $pagoId): ?array
+    {
+        return $this->llamarSiExiste('consultar el pago', fn () => $this->conToken($token)
             ->get($this->config('url_api').'/v1/payments/'.rawurlencode($pagoId)));
     }
 
@@ -198,12 +247,27 @@ class ClienteMercadoPago
      */
     private function llamar(string $accion, callable $peticion): array
     {
+        return $this->enviar($accion, $peticion, false) ?? [];
+    }
+
+    /** Como llamar(), pero un 404 de Mercado Pago regresa null. */
+    private function llamarSiExiste(string $accion, callable $peticion): ?array
+    {
+        return $this->enviar($accion, $peticion, true);
+    }
+
+    private function enviar(string $accion, callable $peticion, bool $noEncontradoEsNull): ?array
+    {
         try {
             $respuesta = $peticion();
         } catch (ConnectionException) {
             report(new RuntimeException("Mercado Pago no respondió al {$accion}."));
 
             throw MercadoPagoException::con(MercadoPagoException::SIN_RESPUESTA);
+        }
+
+        if ($noEncontradoEsNull && $respuesta->status() === 404) {
+            return null;
         }
 
         if ($respuesta->failed()) {

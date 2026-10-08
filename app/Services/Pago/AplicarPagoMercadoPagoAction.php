@@ -59,6 +59,17 @@ class AplicarPagoMercadoPagoAction
         return Tenant::forzar((int) $pago->distribuidora_id, fn () => $this->aplicar($pago, $pagoMp));
     }
 
+    /**
+     * TG-226 (bugfix) — Por qué un pago de Mercado Pago NO corresponde a este
+     * pago nuestro (otra external_reference, moneda, monto o cuenta), o null
+     * si sí corresponde. No revisa el status ni deja nada en el log: así la
+     * verificación puede decidir qué contestar antes de aplicar.
+     */
+    public function motivoNoCuadra(Pago $pago, array $pagoMp): ?string
+    {
+        return Tenant::forzar((int) $pago->distribuidora_id, fn () => $this->problema($pago, $pagoMp));
+    }
+
     private function aplicar(Pago $pago, array $pagoMp): string
     {
         if (($pagoMp['status'] ?? null) !== 'approved') {
@@ -137,23 +148,7 @@ class AplicarPagoMercadoPagoAction
      */
     private function esDeEstePago(Pago $pago, array $pagoMp): bool
     {
-        $configuracion = ConfiguracionDistribuidora::query()
-            ->where('distribuidora_id', $pago->distribuidora_id)
-            ->first();
-
-        $moneda = $configuracion?->moneda ?: 'MXN';
-        $cuenta = $configuracion?->mercado_pago_account_id;
-
-        $problema = match (true) {
-            ! isset($pagoMp['id']) || ! is_scalar($pagoMp['id']) => 'sin id',
-            $pago->metodo !== 'mercado_pago' => 'el pago no es de Mercado Pago',
-            ($pagoMp['external_reference'] ?? null) !== $pago->referenciaMercadoPago() => 'otra external_reference',
-            ($pagoMp['currency_id'] ?? null) !== $moneda => 'otra moneda',
-            abs((float) ($pagoMp['transaction_amount'] ?? 0) - (float) $pago->monto) > 0.009 => 'otro monto',
-            // El dinero tiene que haber llegado a la cuenta de esta distribuidora.
-            $cuenta !== null && isset($pagoMp['collector_id']) && (string) $pagoMp['collector_id'] !== (string) $cuenta => 'otra cuenta',
-            default => null,
-        };
+        $problema = $this->problema($pago, $pagoMp);
 
         if ($problema !== null) {
             report(new RuntimeException(
@@ -164,6 +159,27 @@ class AplicarPagoMercadoPagoAction
         }
 
         return true;
+    }
+
+    private function problema(Pago $pago, array $pagoMp): ?string
+    {
+        $configuracion = ConfiguracionDistribuidora::query()
+            ->where('distribuidora_id', $pago->distribuidora_id)
+            ->first();
+
+        $moneda = $configuracion?->moneda ?: 'MXN';
+        $cuenta = $configuracion?->mercado_pago_account_id;
+
+        return match (true) {
+            ! isset($pagoMp['id']) || ! is_scalar($pagoMp['id']) => 'sin id',
+            $pago->metodo !== 'mercado_pago' => 'el pago no es de Mercado Pago',
+            ($pagoMp['external_reference'] ?? null) !== $pago->referenciaMercadoPago() => 'otra external_reference',
+            ($pagoMp['currency_id'] ?? null) !== $moneda => 'otra moneda',
+            abs((float) ($pagoMp['transaction_amount'] ?? 0) - (float) $pago->monto) > 0.009 => 'otro monto',
+            // El dinero tiene que haber llegado a la cuenta de esta distribuidora.
+            $cuenta !== null && isset($pagoMp['collector_id']) && (string) $pagoMp['collector_id'] !== (string) $cuenta => 'otra cuenta',
+            default => null,
+        };
     }
 
     private function fechaAprobacion(array $pagoMp): Carbon
