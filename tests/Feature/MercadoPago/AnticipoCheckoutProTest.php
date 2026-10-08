@@ -26,7 +26,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Laravel\Sanctum\Sanctum;
 use Livewire\Livewire;
@@ -356,8 +355,8 @@ class AnticipoCheckoutProTest extends TestCase
                 && abs($vence->diffInMinutes(now()->addHours(24))) < 2
                 && $datos['back_urls'] === ['success' => $retorno, 'pending' => $retorno, 'failure' => $retorno]
                 && $datos['auto_return'] === 'approved'
-                // Sin webhook todavía (G9), sin correo del comprador y sin comisión.
-                && ! array_key_exists('notification_url', $datos)
+                // TG-228 (G9): el aviso llega al webhook; sin correo del comprador y sin comisión.
+                && $datos['notification_url'] === 'https://footwearpoint.test/api/webhooks/mercado-pago?source_news=webhooks&d='.$this->distribuidoraId()
                 && ! array_key_exists('payer', $datos)
                 && ! array_key_exists('marketplace_fee', $datos);
         });
@@ -385,21 +384,19 @@ class AnticipoCheckoutProTest extends TestCase
         $this->crearAnticipo($pedidoId)->assertCreated();
 
         Http::assertSent(fn (PeticionHttp $peticion) => ! array_key_exists('back_urls', $peticion->data())
-            && ! array_key_exists('auto_return', $peticion->data()));
+            && ! array_key_exists('auto_return', $peticion->data())
+            && ! array_key_exists('notification_url', $peticion->data()));
     }
 
-    public function test_manda_notification_url_solo_cuando_existe_la_ruta_del_webhook(): void
+    public function test_manda_notification_url_al_webhook_de_g9(): void
     {
-        Route::post('/mercado-pago/webhook', fn () => response()->noContent())->name('mercado-pago.webhook');
-        Route::getRoutes()->refreshNameLookups();
-
         $pedidoId = $this->pedido();
         $this->fingirMercadoPago();
 
         $this->crearAnticipo($pedidoId)->assertCreated();
 
         $this->assertSame(
-            'https://footwearpoint.test/mercado-pago/webhook',
+            'https://footwearpoint.test/api/webhooks/mercado-pago?source_news=webhooks&d='.$this->distribuidoraId(),
             Http::recorded()[0][0]->data()['notification_url'] ?? null
         );
     }

@@ -6,6 +6,7 @@ use App\Exceptions\MensajeParaUsuario;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * TG-225 (G6) — Algo impidió conectar la cuenta de Mercado Pago. El mensaje
@@ -66,6 +67,28 @@ class MercadoPagoException extends Exception implements MensajeParaUsuario
     {
         // Cuando Mercado Pago no responde no es culpa de quien pide: 503.
         return new self($mensaje, $estadoHttp ?? ($mensaje === self::SIN_RESPUESTA ? 503 : 422));
+    }
+
+    /**
+     * TG-228 — Estos errores son avisos para el usuario (un 422 esperado, o
+     * Mercado Pago que no respondió), no fallas del sistema: se registran
+     * como info (warning si es 5xx) y sin la traza. La causa técnica, cuando
+     * la hay, ya se reportó aparte (ClienteMercadoPago, VincularMercadoPagoService).
+     *
+     * Laravel llama a este método en lugar de su registro normal (que lo
+     * dejaba como production.ERROR con toda la traza).
+     */
+    public function report(): void
+    {
+        $contexto = ['http' => $this->estadoHttp];
+
+        if ($this->estadoHttp >= 500) {
+            Log::warning('Mercado Pago (aviso al usuario): '.$this->getMessage(), $contexto);
+
+            return;
+        }
+
+        Log::info('Mercado Pago (aviso al usuario): '.$this->getMessage(), $contexto);
     }
 
     /**
