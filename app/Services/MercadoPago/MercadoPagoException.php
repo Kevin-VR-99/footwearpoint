@@ -28,15 +28,16 @@ class MercadoPagoException extends Exception implements MensajeParaUsuario
 
     public const CUENTA_EN_USO = 'Esa cuenta de Mercado Pago ya está conectada a otra distribuidora. Cada distribuidora debe usar su propia cuenta.';
 
-    // --- TG-226 (G7): pagar el anticipo con Checkout Pro ---
+    // --- TG-226 (G7): pagar el anticipo con Checkout Pro (los mensajes de
+    // cobro también los usa el saldo de G8) ---
 
-    public const NO_ACEPTA_MP = 'Esta distribuidora todavía no recibe pagos con Mercado Pago. Puedes pagar tu anticipo en mostrador.';
+    public const NO_ACEPTA_MP = 'Esta distribuidora todavía no recibe pagos con Mercado Pago. Puedes pagar en mostrador.';
 
-    public const CUENTA_DESCONECTADA = 'La distribuidora necesita volver a conectar su cuenta de Mercado Pago. Mientras tanto, puedes pagar tu anticipo en mostrador.';
+    public const CUENTA_DESCONECTADA = 'La distribuidora necesita volver a conectar su cuenta de Mercado Pago. Mientras tanto, puedes pagar en mostrador.';
 
-    public const NO_SE_PUDO_COBRAR = 'No se pudo preparar el pago con Mercado Pago. Intenta de nuevo en unos minutos o paga tu anticipo en mostrador.';
+    public const NO_SE_PUDO_COBRAR = 'No se pudo preparar el pago con Mercado Pago. Intenta de nuevo en unos minutos o paga en mostrador.';
 
-    public const SOLO_CLIENTE_DIRECTO = 'El anticipo con Mercado Pago es para pedidos de cliente directo.';
+    public const SOLO_CLIENTE_DIRECTO = 'El pago con Mercado Pago es para pedidos de cliente directo.';
 
     public const PEDIDO_BORRADOR = 'Envía tu pedido antes de pagar el anticipo.';
 
@@ -47,6 +48,14 @@ class MercadoPagoException extends Exception implements MensajeParaUsuario
     public const PAGO_EN_PREPARACION = 'Ya estamos preparando tu pago. Espera unos segundos e intenta de nuevo.';
 
     public const SIN_PAGO_POR_CONFIRMAR = 'Este pedido no tiene un pago con Mercado Pago por confirmar.';
+
+    // --- TG-227 (G8): pagar el saldo con Checkout Pro ---
+
+    public const SALDO_ANTES_DE_ANTICIPO = 'Primero paga tu anticipo; después podrás pagar el saldo.';
+
+    public const SALDO_TODAVIA_NO = 'Podrás pagar el saldo con Mercado Pago cuando tu pedido llegue a la distribuidora.';
+
+    public const SIN_SALDO_PENDIENTE = 'Este pedido ya no tiene saldo pendiente.';
 
     public function __construct(string $mensaje, private int $estadoHttp = 422)
     {
