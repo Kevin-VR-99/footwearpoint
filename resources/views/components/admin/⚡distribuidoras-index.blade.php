@@ -1,14 +1,20 @@
 <?php
 
 use App\Exceptions\OperacionInvalidaException;
+use App\Models\CategoriaDirectorio;
 use App\Models\Distribuidora;
 use App\Models\PlanSuscripcion;
 use App\Models\Suscripcion;
 use App\Services\Distribuidora\AprobacionDistribuidoraException;
+use App\Services\Directorio\AsignarCategoriasDirectorioAction;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
+use App\Services\Distribuidora\CambiarVisibilidadMarketplaceAction;
+use App\Services\Distribuidora\CambioEstadoDistribuidora;
 use App\Services\Distribuidora\CrearDistribuidoraAction;
 use App\Services\Distribuidora\DatosSolicitudDistribuidoraAction;
+use App\Services\Distribuidora\ReactivarDistribuidoraAction;
 use App\Services\Distribuidora\RechazarDistribuidoraAction;
+use App\Services\Distribuidora\SuspenderDistribuidoraAction;
 use App\Support\MensajeError;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -53,6 +59,9 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     // Revisar los datos antes de aprobar o rechazar (TG-195)
     public ?int $distribuidoraDetalleId = null;
+
+    // Categorías del directorio de la distribuidora en "Ver datos" (TG-197)
+    public array $categoriasSeleccionadas = [];
 
     // Rechazar con motivo (TG-195)
     public ?int $distribuidoraRechazoId = null;
@@ -213,6 +222,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 'suscripciones' => function ($q) {
                     $q->where('estado', 'activa')->latest('id');
                 },
+                // TG-197: sus categorías activas, para mostrarlas en la tabla.
+                'categoriasDirectorio' => fn ($q) => $q->activas()->orderBy('nombre'),
             ])
             ->orderByDesc('id');
 
@@ -233,7 +244,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         $distribuidora = Distribuidora::findOrFail($id);
 
         try {
-            app(AprobarDistribuidoraAction::class)->ejecutar($distribuidora);
+            $cambio = app(AprobarDistribuidoraAction::class)->ejecutar($distribuidora);
         } catch (AprobacionDistribuidoraException $e) {
             $this->mensaje = $e->esNoPendiente()
                 ? 'Solo se pueden aprobar distribuidoras pendientes.'
@@ -241,19 +252,64 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             return;
         }
 
-        $this->mensaje = "Distribuidora «{$distribuidora->nombre_comercial}» aprobada.";
+        $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$distribuidora->nombre_comercial}» aprobada.");
     }
 
     /** TG-195: muestra los datos de la distribuidora para revisarla. */
     public function verDatos(int $id): void
     {
-        $this->distribuidoraDetalleId = Distribuidora::findOrFail($id)->id;
+        $distribuidora = Distribuidora::findOrFail($id);
+
+        $this->distribuidoraDetalleId = $distribuidora->id;
         $this->mensaje = '';
+        $this->resetErrorBag('categoriasSeleccionadas');
+
+        // TG-197: se marcan las categorías activas que ya tiene.
+        $this->categoriasSeleccionadas = $distribuidora->categoriasDirectorio()
+            ->activas()
+            ->pluck('categorias_directorio.id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
     }
 
     public function cerrarDatos(): void
     {
         $this->distribuidoraDetalleId = null;
+        $this->categoriasSeleccionadas = [];
+    }
+
+    /** TG-197: categorías activas que se pueden asignar, por nombre. */
+    public function getCategoriasDisponiblesProperty()
+    {
+        return CategoriaDirectorio::activas()->orderBy('nombre')->get(['id', 'nombre']);
+    }
+
+    /**
+     * TG-197 (G16) — Guarda en qué categorías del directorio aparece la
+     * distribuidora que se está viendo. Solo el admin general (E2-05).
+     */
+    public function guardarCategorias(): void
+    {
+        $this->mensaje = '';
+        $this->resetErrorBag('categoriasSeleccionadas');
+
+        if ($this->distribuidoraDetalleId === null) {
+            return;
+        }
+
+        try {
+            $distribuidora = Distribuidora::findOrFail($this->distribuidoraDetalleId);
+            app(AsignarCategoriasDirectorioAction::class)->ejecutar($distribuidora, $this->categoriasSeleccionadas);
+        } catch (ValidationException $e) {
+            $this->addError('categoriasSeleccionadas', collect($e->errors())->flatten()->first() ?? AsignarCategoriasDirectorioAction::MENSAJE_NO_DISPONIBLE);
+            return;
+        } catch (\Throwable $e) {
+            // TG-224 (G3): el detalle técnico va al log, nunca a la pantalla.
+            $this->addError('categoriasSeleccionadas', MensajeError::paraUsuario($e, 'No se pudieron guardar las categorías. Intenta de nuevo.'));
+            return;
+        }
+
+        $this->mensaje = "Categorías de «{$distribuidora->nombre_comercial}» guardadas.";
     }
 
     /** Datos del panel "Ver datos" (los mismos que da la API). */
@@ -307,7 +363,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         ]);
 
         try {
-            $distribuidora = app(RechazarDistribuidoraAction::class)->ejecutar(
+            $cambio = app(RechazarDistribuidoraAction::class)->ejecutar(
                 Distribuidora::findOrFail($this->distribuidoraRechazoId),
                 $this->motivo_rechazo,
             );
@@ -326,45 +382,68 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         }
 
         $this->cancelarRechazo();
-        $this->mensaje = "Distribuidora «{$distribuidora->nombre_comercial}» rechazada.";
+        $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$cambio->distribuidora->nombre_comercial}» rechazada.");
     }
 
+    /**
+     * TG-196 (G5) — Suspende una distribuidora activa: conserva sus datos,
+     * pero ni su personal ni sus revendedores y clientes pueden operar hasta
+     * reactivarla. Se le avisa por correo.
+     */
     public function suspender(int $id)
     {
-        $d = Distribuidora::findOrFail($id);
-
-        if ($d->estado !== 'activa') {
-            $this->mensaje = 'Solo se pueden suspender distribuidoras activas.';
+        try {
+            $cambio = app(SuspenderDistribuidoraAction::class)->ejecutar(Distribuidora::findOrFail($id));
+        } catch (OperacionInvalidaException $e) {
+            $this->mensaje = $e->getMessage();
+            return;
+        } catch (\Throwable $e) {
+            $this->mensaje = MensajeError::paraUsuario($e, 'No se pudo suspender la distribuidora. Intenta de nuevo.');
             return;
         }
 
-        $d->update(['estado' => 'suspendida']);
-        $this->mensaje = "Distribuidora «{$d->nombre_comercial}» suspendida.";
+        $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$cambio->distribuidora->nombre_comercial}» suspendida.");
     }
 
+    /** TG-196 (G5) — Reactiva una distribuidora suspendida y le avisa por correo. */
     public function reactivar(int $id)
     {
-        $d = Distribuidora::findOrFail($id);
-
-        if ($d->estado !== 'suspendida') {
-            $this->mensaje = 'Solo se pueden reactivar distribuidoras suspendidas.';
+        try {
+            $cambio = app(ReactivarDistribuidoraAction::class)->ejecutar(Distribuidora::findOrFail($id));
+        } catch (OperacionInvalidaException $e) {
+            $this->mensaje = $e->getMessage();
+            return;
+        } catch (\Throwable $e) {
+            $this->mensaje = MensajeError::paraUsuario($e, 'No se pudo reactivar la distribuidora. Intenta de nuevo.');
             return;
         }
 
-        $d->update(['estado' => 'activa']);
-        $this->mensaje = "Distribuidora «{$d->nombre_comercial}» reactivada.";
+        $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$cambio->distribuidora->nombre_comercial}» reactivada.");
     }
 
+    /** TG-196 (G5): si el correo no salió, el cambio quedó, pero se avisa al admin. */
+    private function conAviso(CambioEstadoDistribuidora $cambio, string $mensaje): string
+    {
+        return $cambio->avisoEnviado
+            ? $mensaje
+            : $mensaje . ' No se pudo enviar el aviso por correo a la distribuidora.';
+    }
+
+    /** Mostrar u ocultar en el marketplace (E2-05). Misma regla que la API (TG-197). */
     public function toggleMarketplace(int $id)
     {
         $d = Distribuidora::findOrFail($id);
 
-        if ($d->estado !== 'activa' && !$d->marketplace_visible) {
-            $this->mensaje = 'Solo distribuidoras activas pueden ser visibles en marketplace.';
+        try {
+            $d = app(CambiarVisibilidadMarketplaceAction::class)->ejecutar($d, ! $d->marketplace_visible);
+        } catch (OperacionInvalidaException $e) {
+            $this->mensaje = $e->getMessage();
+            return;
+        } catch (\Throwable $e) {
+            $this->mensaje = MensajeError::paraUsuario($e, 'No se pudo cambiar la visibilidad en el marketplace. Intenta de nuevo.');
             return;
         }
 
-        $d->update(['marketplace_visible' => !$d->marketplace_visible]);
         $estado = $d->marketplace_visible ? 'visible' : 'oculta';
         $this->mensaje = "Marketplace: «{$d->nombre_comercial}» ahora está {$estado}.";
     }
@@ -711,6 +790,44 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 @endif
             </dl>
 
+            {{-- TG-197: categorías del directorio (solo el admin general las asigna) --}}
+            <div class="mt-5 border-t pt-4">
+                <h4 class="text-sm font-medium text-slate-800">Categorías del directorio</h4>
+                <p class="text-xs text-slate-500 mb-3">Con ellas la encuentran en el marketplace.</p>
+
+                @if ($this->categoriasDisponibles->isEmpty())
+                    <p class="text-sm text-slate-500">
+                        Aún no hay categorías activas.
+                        <a href="{{ route('admin.categorias-directorio') }}" class="text-[#2563EB] hover:underline">Créalas en Categorías del directorio</a>.
+                    </p>
+                @else
+                    <div class="flex flex-wrap gap-x-5 gap-y-2">
+                        @foreach ($this->categoriasDisponibles as $categoria)
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" wire:model="categoriasSeleccionadas" value="{{ $categoria->id }}"
+                                    class="rounded border-slate-300">
+                                {{ $categoria->nombre }}
+                            </label>
+                        @endforeach
+                    </div>
+                    @error('categoriasSeleccionadas') <p class="text-xs text-red-600 mt-2">{{ $message }}</p> @enderror
+                    <button type="button" wire:click="guardarCategorias" wire:loading.attr="disabled"
+                        class="mt-3 rounded-lg border border-slate-300 text-sm px-3 py-1.5 hover:bg-slate-50">
+                        Guardar categorías
+                    </button>
+                @endif
+
+                @php
+                    $inactivas = collect($detalle['categorias_directorio'])->where('activa', false);
+                @endphp
+                @if ($inactivas->isNotEmpty())
+                    <p class="text-xs text-slate-500 mt-2">
+                        También tiene categorías inactivas (no se muestran en el marketplace):
+                        {{ $inactivas->pluck('nombre')->join(', ') }}.
+                    </p>
+                @endif
+            </div>
+
             @if ($detalle['estado'] === 'pendiente')
                 <div class="mt-5 flex gap-2">
                     <button type="button" wire:click="aprobar({{ $detalle['id'] }})"
@@ -798,6 +915,13 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         <td class="px-4 py-3">
                             <div class="font-medium">{{ $d->nombre_comercial }}</div>
                             <div class="text-xs text-slate-400">{{ $d->slug }}</div>
+                            @if ($d->categoriasDirectorio->isNotEmpty())
+                                <div class="mt-1 flex flex-wrap gap-1">
+                                    @foreach ($d->categoriasDirectorio as $categoria)
+                                        <span class="text-[11px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{{ $categoria->nombre }}</span>
+                                    @endforeach
+                                </div>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
                             <span
@@ -830,6 +954,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                             @endif
                             @if ($d->estado === 'activa')
                                 <button wire:click="suspender({{ $d->id }})"
+                                    wire:confirm="Su personal, revendedores y clientes no podrán usar FootwearPoint hasta reactivarla. Su información se conserva. ¿Continuar?"
                                     class="text-xs text-red-600 hover:underline">Suspender</button>
                             @endif
                             @if ($d->estado === 'suspendida')

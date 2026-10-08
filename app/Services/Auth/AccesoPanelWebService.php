@@ -2,7 +2,6 @@
 
 namespace App\Services\Auth;
 
-use App\Models\Distribuidora;
 use App\Models\DistribuidoraStaff;
 use App\Models\Usuario;
 use Spatie\Permission\PermissionRegistrar;
@@ -28,6 +27,10 @@ class AccesoPanelWebService
     public const MENSAJE_SOLO_PERSONAL = 'Este panel es solo para el personal de la distribuidora. '
         .'Si eres cliente o cliente mayorista, entra desde la app FootwearPoint.';
 
+    /** TG-196 (G5): lo que ve el personal de una distribuidora suspendida. */
+    public const MENSAJE_DISTRIBUIDORA_SUSPENDIDA = 'Tu distribuidora está suspendida, así que por ahora no puede usar '
+        .'FootwearPoint. Tu información se conserva. Comunícate con FootwearPoint para reactivarla.';
+
     /** TG-195 (G4): lo que ve el personal de una distribuidora rechazada. */
     public const MENSAJE_DISTRIBUIDORA_RECHAZADA = 'La solicitud de tu distribuidora fue rechazada, '
         .'así que no puede usar FootwearPoint.';
@@ -39,8 +42,10 @@ class AccesoPanelWebService
      *  - No es personal (revendedor, cliente)  -> MENSAJE_SOLO_PERSONAL.
      *  - Su distribuidora fue rechazada        -> mensaje con el motivo, para
      *    que sepa qué le faltó (E2-01: una rechazada no puede operar).
+     *  - Su distribuidora está suspendida      -> MENSAJE_DISTRIBUIDORA_SUSPENDIDA
+     *    (TG-196, E2-02: no puede operar, pero conserva su información).
      *
-     * Pendientes y suspendidas siguen entrando como hasta ahora.
+     * Las pendientes siguen entrando como hasta ahora.
      */
     public function motivoSinAcceso(Usuario $usuario): ?string
     {
@@ -52,8 +57,10 @@ class AccesoPanelWebService
 
         $distribuidora = $staff->distribuidora;
 
-        if ($distribuidora !== null && in_array($distribuidora->estado, Distribuidora::ESTADOS_SIN_OPERACION, true)) {
-            return self::mensajeDistribuidoraRechazada($distribuidora->motivo_rechazo);
+        if ($distribuidora !== null && ! $distribuidora->puedeOperar()) {
+            return $distribuidora->estado === 'rechazada'
+                ? self::mensajeDistribuidoraRechazada($distribuidora->motivo_rechazo)
+                : self::MENSAJE_DISTRIBUIDORA_SUSPENDIDA;
         }
 
         return null;

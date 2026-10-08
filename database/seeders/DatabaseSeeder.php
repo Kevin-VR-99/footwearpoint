@@ -37,6 +37,7 @@ class DatabaseSeeder extends Seeder
             DemoDistribuidoraSeeder::class,
             DemoCatalogoSeeder::class,
             DemoContactosSeeder::class,
+            CategoriaDirectorioSeeder::class,
         ]);
 
         $this->resumen();

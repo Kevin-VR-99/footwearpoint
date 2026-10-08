@@ -185,4 +185,8 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_general'])->group(function
 
     Route::livewire('/admin/planes', 'admin.planes-index')
         ->name('admin.planes');
+
+    // TG-197 (G16): categorías generales del directorio público.
+    Route::livewire('/admin/categorias-directorio', 'admin.categorias-directorio-index')
+        ->name('admin.categorias-directorio');
 });

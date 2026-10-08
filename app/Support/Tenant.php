@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\ClienteDirecto;
+use App\Models\Distribuidora;
 use App\Models\DistribuidoraStaff;
 use App\Models\Revendedor;
 use App\Models\RevendedorDistribuidora;
@@ -64,12 +65,45 @@ class Tenant
      * Se expone como método público — y no solo dentro de id() — porque hay
      * puntos del sistema que necesitan resolver la distribuidora de un usuario
      * que todavía NO es el usuario autenticado (por ejemplo, el login).
+     *
+     * TG-196 (G5): solo cuentan las distribuidoras que pueden operar. Una
+     * suspendida o rechazada (Distribuidora::ESTADOS_SIN_OPERACION) no se le
+     * resuelve a nadie, así que su personal, revendedores y clientes quedan
+     * sin distribuidora y el TenantScope no les muestra nada, aunque traigan
+     * un token o una sesión de antes. Sus datos no se tocan.
      */
     public static function paraUsuario(int $usuarioId): ?int
     {
         return static::desdeStaff($usuarioId)
             ?? static::desdeRevendedor($usuarioId)
             ?? static::desdeClienteDirecto($usuarioId);
+    }
+
+    /**
+     * TG-196 (G5) — La distribuidora que este usuario tendría, si no fuera
+     * porque está suspendida o rechazada. Null si sí tiene una distribuidora
+     * que opera, o si no tiene ninguna por otro motivo (afiliación
+     * suspendida, cuenta mal ligada).
+     *
+     * Sirve para explicarle por qué no puede entrar (login y /me de la API).
+     */
+    public static function distribuidoraSinOperacionDe(int $usuarioId): ?Distribuidora
+    {
+        if (static::paraUsuario($usuarioId) !== null) {
+            return null;
+        }
+
+        $distribuidoraId = static::desdeStaff($usuarioId, false)
+            ?? static::desdeRevendedor($usuarioId, false)
+            ?? static::desdeClienteDirecto($usuarioId, false);
+
+        if ($distribuidoraId === null) {
+            return null;
+        }
+
+        $distribuidora = Distribuidora::find($distribuidoraId);
+
+        return $distribuidora !== null && ! $distribuidora->puedeOperar() ? $distribuidora : null;
     }
 
     // ------------------------------------------------------------------
@@ -80,19 +114,32 @@ class Tenant
     // pasar por el TenantScope — se llamarían a sí mismas sin parar hasta
     // agotar la memoria. RevendedorDistribuidora y ClienteDirecto usan
     // BelongsToTenant, así que la trampa es real en ambas.
+    //
+    // $soloOperativas (TG-196): con true, se ignoran las distribuidoras
+    // suspendidas o rechazadas. Solo distribuidoraSinOperacionDe() lo pasa
+    // en false, para saber cuál era.
     // ------------------------------------------------------------------
 
-    protected static function desdeStaff(int $usuarioId): ?int
+    /** Subconsulta con los id de las distribuidoras que no pueden operar. */
+    protected static function idsSinOperacion()
+    {
+        return DB::table('distribuidoras')
+            ->select('id')
+            ->whereIn('estado', Distribuidora::ESTADOS_SIN_OPERACION);
+    }
+
+    protected static function desdeStaff(int $usuarioId, bool $soloOperativas = true): ?int
     {
         $staff = DistribuidoraStaff::withoutGlobalScopes()
             ->where('usuario_id', $usuarioId)
             ->where('estado', 'activo')
+            ->when($soloOperativas, fn ($q) => $q->whereNotIn('distribuidora_id', static::idsSinOperacion()))
             ->first();
 
         return $staff !== null ? (int) $staff->distribuidora_id : null;
     }
 
-    protected static function desdeRevendedor(int $usuarioId): ?int
+    protected static function desdeRevendedor(int $usuarioId, bool $soloOperativas = true): ?int
     {
         // La tabla revendedores es global (no tiene distribuidora_id): un
         // revendedor es una persona, y su relación con cada distribuidora
@@ -119,18 +166,20 @@ class Tenant
         $afiliacion = RevendedorDistribuidora::withoutGlobalScopes()
             ->where('revendedor_id', $revendedor->id)
             ->where('estado', 'activo')
+            ->when($soloOperativas, fn ($q) => $q->whereNotIn('distribuidora_id', static::idsSinOperacion()))
             ->orderBy('distribuidora_id')
             ->first();
 
         return $afiliacion !== null ? (int) $afiliacion->distribuidora_id : null;
     }
 
-    protected static function desdeClienteDirecto(int $usuarioId): ?int
+    protected static function desdeClienteDirecto(int $usuarioId, bool $soloOperativas = true): ?int
     {
         // Mismo criterio de desempate que en desdeRevendedor.
         $cliente = ClienteDirecto::withoutGlobalScopes()
             ->where('usuario_id', $usuarioId)
             ->where('estado', 'activo')
+            ->when($soloOperativas, fn ($q) => $q->whereNotIn('distribuidora_id', static::idsSinOperacion()))
             ->orderBy('distribuidora_id')
             ->first();
 
