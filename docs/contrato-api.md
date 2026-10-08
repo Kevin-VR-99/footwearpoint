@@ -52,6 +52,7 @@ Algunos endpoints de listado regresan solo `data`, sin `message`.
 | 403 | El rol no tiene permitido ese endpoint |
 | 404 | No existe **o no es tuyo**. Ver la nota de abajo |
 | 422 | Validación: revisar `errors` |
+| 500 | Error del servidor. Solo trae `{ "message": "Ocurrió un error en el servidor. Intenta de nuevo más tarde." }`, nunca el detalle técnico (TG-224) |
 
 **Dos reglas invisibles pero importantes:**
 
