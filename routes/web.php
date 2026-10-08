@@ -17,6 +17,18 @@ Route::get('/', function () {
 Route::livewire('/marketplace', 'marketplace.index')
     ->name('marketplace');
 
+// TG-233 (G14): tienda pública de cada distribuidora (solo las activas). Con
+// sesión o sin ella se ve igual: el catálogo y el precio de menudeo de ESA
+// distribuidora (ver App\Services\Tienda\TiendaPublica).
+Route::livewire('/tienda/{slug}', 'tienda.index')
+    ->where('slug', '[a-z0-9-]+')
+    ->name('tienda');
+
+Route::livewire('/tienda/{slug}/productos/{productoCampana}', 'tienda.producto')
+    ->where('slug', '[a-z0-9-]+')
+    ->whereNumber('productoCampana')
+    ->name('tienda.producto');
+
 // TG-226 (G7): a donde regresa Mercado Pago después de pagar (back_urls).
 // Pública. Si trae payment_id y external_reference confirma el pago con la
 // API de Mercado Pago (nunca le cree a la URL); la app también puede

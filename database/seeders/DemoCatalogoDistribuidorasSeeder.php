@@ -6,6 +6,7 @@ use App\Models\Campana;
 use App\Models\Distribuidora;
 use App\Models\Linea;
 use App\Models\ProductoCampana;
+use App\Models\ProductoDestacado;
 use App\Models\StockLocal;
 use App\Models\Sucursal;
 use App\Services\Distribuidora\ActivarLineaDistribuidoraAction;
@@ -42,6 +43,8 @@ class DemoCatalogoDistribuidorasSeeder extends Seeder
             30.00,
             ['IR1458102' => 1990.00],
             ['JQ7143'],
+            // TG-233 (G14): los que muestra primero en su tienda pública.
+            ['IR1458102', 'JR4616', '468-NEGRO'],
         );
 
         $this->paraDistribuidora(
@@ -57,6 +60,7 @@ class DemoCatalogoDistribuidorasSeeder extends Seeder
      * @param  array<int, string>  $nombresLineas  líneas que activa
      * @param  array<string, float>  $preciosPropios  modelo => precio de mayoreo
      * @param  array<int, string>  $ocultos  modelos que no les muestra a sus clientes
+     * @param  array<int, string>  $destacados  modelos destacados en su tienda pública, en orden
      */
     private function paraDistribuidora(
         string $slug,
@@ -64,10 +68,11 @@ class DemoCatalogoDistribuidorasSeeder extends Seeder
         float $descuento,
         array $preciosPropios,
         array $ocultos,
+        array $destacados = [],
     ): void {
         $distribuidora = Distribuidora::where('slug', $slug)->firstOrFail();
 
-        Tenant::forzar($distribuidora->id, function () use ($distribuidora, $nombresLineas, $descuento, $preciosPropios, $ocultos) {
+        Tenant::forzar($distribuidora->id, function () use ($distribuidora, $nombresLineas, $descuento, $preciosPropios, $ocultos, $destacados) {
             $activar = app(ActivarLineaDistribuidoraAction::class);
             $ofertas = app(GestionarOfertaDistribuidoraAction::class);
 
@@ -87,6 +92,13 @@ class DemoCatalogoDistribuidorasSeeder extends Seeder
 
             foreach ($ocultos as $modelo) {
                 $ofertas->ocultar($this->productoCampana($modelo)->id);
+            }
+
+            foreach (array_values($destacados) as $posicion => $modelo) {
+                ProductoDestacado::firstOrCreate(
+                    ['producto_campana_id' => $this->productoCampana($modelo)->id],
+                    ['orden' => $posicion + 1, 'activo' => true]
+                );
             }
 
             $this->stock($distribuidora, $lineas);
