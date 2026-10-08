@@ -11,6 +11,7 @@ use App\Models\Revendedor;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Suscripcion;
 use App\Models\Usuario;
+use Database\Seeders\AdminGeneralSeeder;
 use App\Services\Auth\AccesoPanelWebService;
 use App\Services\Distribuidora\CrearDistribuidoraAction;
 use App\Services\Distribuidora\NotificarCambioEstadoDistribuidoraAction as Notificar;
@@ -58,12 +59,15 @@ class SuspensionDistribuidoraTest extends TestCase
 
         $this->olvidarSesionEnMemoria();
 
-        $this->adminGeneral = Usuario::create([
-            'nombre'   => 'Admin General',
-            'email'    => 'admin.general@footwearpoint.test',
-            'password' => Hash::make('password'),
-            'estado'   => 'activo',
-        ]);
+        // Desde TG-186 el admin general ya viene del seeder: aqui solo se usa.
+        $this->adminGeneral = Usuario::firstOrCreate(
+            ['email' => AdminGeneralSeeder::EMAIL],
+            [
+                'nombre'   => 'Admin General',
+                'password' => Hash::make('password'),
+                'estado'   => 'activo',
+            ]
+        );
 
         $registrar = app(PermissionRegistrar::class);
         $registrar->setPermissionsTeamId(0);
@@ -415,7 +419,10 @@ class SuspensionDistribuidoraTest extends TestCase
             'fecha_aprobacion' => now(),
         ]);
 
-        $revendedor = Revendedor::where('email', self::REVENDEDOR)->firstOrFail();
+        // Por su cuenta: desde TG-216 el correo del contacto se vacia al activarla.
+        $revendedor = Revendedor::withoutGlobalScopes()
+            ->where('usuario_id', Usuario::where('email', self::REVENDEDOR)->value('id'))
+            ->firstOrFail();
         RevendedorDistribuidora::create([
             'distribuidora_id' => $otra->id,
             'revendedor_id'    => $revendedor->id,
@@ -448,7 +455,10 @@ class SuspensionDistribuidoraTest extends TestCase
     public function test_una_afiliacion_suspendida_sigue_como_antes(): void
     {
         Mail::fake();
-        $revendedor = Revendedor::where('email', self::REVENDEDOR)->firstOrFail();
+        // Por su cuenta: desde TG-216 el correo del contacto se vacia al activarla.
+        $revendedor = Revendedor::withoutGlobalScopes()
+            ->where('usuario_id', Usuario::where('email', self::REVENDEDOR)->value('id'))
+            ->firstOrFail();
 
         RevendedorDistribuidora::withoutGlobalScopes()
             ->where('revendedor_id', $revendedor->id)
