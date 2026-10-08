@@ -7,8 +7,10 @@ use App\Models\ClienteDirecto;
 use App\Models\ConfiguracionDistribuidora;
 use App\Models\DisponibilidadVarianteCampana;
 use App\Models\Distribuidora;
+use App\Models\DistribuidoraStaff;
 use App\Models\Notificacion;
 use App\Models\Pago;
+use App\Models\Pedido;
 use App\Models\Sucursal;
 use App\Models\Usuario;
 use App\Models\WebhookMercadoPago;
@@ -160,6 +162,40 @@ class WebhookMercadoPagoTest extends TestCase
         $pagoId = $this->postJson("/api/pedidos/{$pedidoId}/anticipo/mercado-pago")->assertCreated()->json('data.pago_id');
 
         return Pago::withoutGlobalScopes()->findOrFail($pagoId);
+    }
+
+    /** Un pago con Mercado Pago pendiente de un pedido de OTRA distribuidora. */
+    private function pagoPendienteDeOtraDistribuidora(): Pago
+    {
+        $otra = (int) Distribuidora::where('slug', '!=', 'calzados-ramirez')->orderBy('id')->value('id');
+
+        return Tenant::forzar($otra, function () use ($otra) {
+            $pedido = Pedido::create([
+                'distribuidora_id'       => $otra,
+                'sucursal_id'            => Sucursal::query()->where('distribuidora_id', $otra)->orderBy('id')->value('id'),
+                'folio'                  => 'PED-OTRA-0001',
+                'tipo'                   => 'cliente_directo',
+                'estado'                 => 'colocado',
+                'subtotal'               => 549,
+                'total'                  => 549,
+                'fecha_colocacion'       => now(),
+                'capturado_por_staff_id' => DistribuidoraStaff::query()->where('distribuidora_id', $otra)->orderBy('id')->value('id'),
+            ]);
+
+            return Pago::create([
+                'distribuidora_id'    => $otra,
+                'pedido_id'           => $pedido->id,
+                'folio'               => 'PAG-OTRA-0001',
+                'tipo'                => 'anticipo',
+                'direccion'           => 'entrada',
+                'metodo'              => 'mercado_pago',
+                'monto'               => 100,
+                'fecha_pago'          => now(),
+                'proveedor_pago'      => 'mercado_pago',
+                'preferencia_externa' => '111111111-cccccccc-1111-2222-3333-444444444444',
+                'estado'              => 'pendiente',
+            ]);
+        });
     }
 
     private function fingirMercadoPago(): void
@@ -435,6 +471,52 @@ class WebhookMercadoPagoTest extends TestCase
         $this->assertStringStartsWith('Sin manejador', WebhookMercadoPago::where('recurso_id', '555000503')->value('error'));
 
         $this->assertSame('pendiente', $pago->fresh()->estado);
+    }
+
+    /**
+     * Pedido por Kevin en la revisión de G9: el pago SÍ existe en Mercado Pago
+     * (con el token de esta distribuidora), pero su external_reference apunta
+     * a un pago real de OTRA distribuidora. No se aplica ni el ajeno ni el
+     * nuestro.
+     */
+    public function test_un_pago_que_si_existe_pero_apunta_a_un_pago_de_otra_distribuidora_no_se_aplica(): void
+    {
+        $nuestro = $this->pagoPendiente();
+        $ajeno = $this->pagoPendienteDeOtraDistribuidora();
+        $otra = (int) $ajeno->distribuidora_id;
+        $this->assertNotSame($this->distribuidoraId(), $otra);
+
+        // 1. La referencia dice la verdad: es de la otra distribuidora.
+        $this->enMercadoPago($this->aprobado($ajeno, ['id' => 555000601]));
+        $this->assertSame('FWP-'.$otra.'-'.$ajeno->id, $this->pagosPorId['555000601']['external_reference']);
+        $this->aviso(555000601)->assertOk();
+
+        $aviso = WebhookMercadoPago::where('recurso_id', '555000601')->sole();
+        $this->assertSame($this->distribuidoraId(), (int) $aviso->distribuidora_id);
+        $this->assertNotNull($aviso->procesado_at);
+        $this->assertSame('La referencia del pago es de otra distribuidora.', $aviso->error);
+
+        // 2. La referencia se disfraza con nuestra distribuidora y el id del
+        // pago ajeno: con el scope de esta distribuidora no existe.
+        $this->enMercadoPago($this->aprobado($ajeno, ['id' => 555000602, 'external_reference' => 'FWP-'.$this->distribuidoraId().'-'.$ajeno->id]));
+        $this->aviso(555000602)->assertOk();
+        $this->assertSame('No existe el pago de la referencia.', WebhookMercadoPago::where('recurso_id', '555000602')->value('error'));
+
+        // Mercado Pago sí se consultó (el pago existe), pero nada se aplicó.
+        $this->assertSame(2, $this->consultasDePagos());
+        foreach ([$nuestro, $ajeno] as $pago) {
+            $this->assertSame('pendiente', $pago->fresh()->estado);
+            $this->assertNull($pago->fresh()->referencia_externa);
+        }
+        $this->assertSame(0, Auditoria::where('accion', 'pago.mercado_pago.aplicado')->count());
+        $this->assertSame(0, Notificacion::withoutGlobalScopes()->where('tipo', 'pago_mercado_pago')->count());
+
+        // Y aunque alguien lo intentara con nuestro pago, la referencia no cuadra.
+        $this->assertSame(
+            AplicarPagoMercadoPagoAction::NO_APLICA,
+            app(AplicarPagoMercadoPagoAction::class)->ejecutar($nuestro, $this->pagosPorId['555000601'])
+        );
+        $this->assertSame('pendiente', $nuestro->fresh()->estado);
     }
 
     public function test_un_pago_que_mercado_pago_no_encuentra_con_el_token_no_se_aplica(): void
