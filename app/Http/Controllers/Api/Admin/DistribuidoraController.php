@@ -8,8 +8,11 @@ use App\Models\PlanSuscripcion;
 use App\Models\Suscripcion;
 use App\Services\Distribuidora\AprobacionDistribuidoraException;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
+use App\Services\Distribuidora\CambioEstadoDistribuidora;
 use App\Services\Distribuidora\DatosSolicitudDistribuidoraAction;
+use App\Services\Distribuidora\ReactivarDistribuidoraAction;
 use App\Services\Distribuidora\RechazarDistribuidoraAction;
+use App\Services\Distribuidora\SuspenderDistribuidoraAction;
 use Illuminate\Http\Request;
 use App\Http\Requests\Admin\AsignarSuscripcionRequest;
 use App\Http\Requests\Admin\MarketplaceConfigRequest;
@@ -62,20 +65,19 @@ class DistribuidoraController extends Controller
      */
     public function rechazar(RechazarDistribuidoraRequest $request, RechazarDistribuidoraAction $rechazar, int $id)
     {
-        $distribuidora = $rechazar->ejecutar(
+        $cambio = $rechazar->ejecutar(
             Distribuidora::findOrFail($id),
             $request->validated('motivo_rechazo'),
         );
 
-        return response()->json([
-            'data' => [
-                'id'               => $distribuidora->id,
-                'nombre_comercial' => $distribuidora->nombre_comercial,
-                'estado'           => $distribuidora->estado,
-                'motivo_rechazo'   => $distribuidora->motivo_rechazo,
-            ],
-            'message' => 'Distribuidora rechazada correctamente.',
-        ]);
+        $distribuidora = $cambio->distribuidora;
+
+        return $this->respuestaCambio($cambio, [
+            'id'               => $distribuidora->id,
+            'nombre_comercial' => $distribuidora->nombre_comercial,
+            'estado'           => $distribuidora->estado,
+            'motivo_rechazo'   => $distribuidora->motivo_rechazo,
+        ], 'Distribuidora rechazada correctamente.');
     }
 
     public function aprobar(AprobarDistribuidoraAction $aprobar, int $id)
@@ -83,7 +85,7 @@ class DistribuidoraController extends Controller
         $distribuidora = Distribuidora::findOrFail($id);
 
         try {
-            $distribuidora = $aprobar->ejecutar($distribuidora);
+            $cambio = $aprobar->ejecutar($distribuidora);
         } catch (AprobacionDistribuidoraException $e) {
             if ($e->esNoPendiente()) {
                 return response()->json([
@@ -96,45 +98,43 @@ class DistribuidoraController extends Controller
             ], 500);
         }
 
-        return response()->json([
-            'data'    => $distribuidora,
-            'message' => 'Distribuidora aprobada correctamente.',
-        ]);
+        return $this->respuestaCambio($cambio, $cambio->distribuidora, 'Distribuidora aprobada correctamente.');
     }
 
-    public function suspender(int $id)
+    /**
+     * TG-196 (G5) — Suspende una distribuidora activa. Conserva todos sus
+     * datos; mientras siga suspendida no puede operar. Si no está activa, la
+     * acción lanza OperacionInvalidaException (422 con su mensaje).
+     */
+    public function suspender(SuspenderDistribuidoraAction $suspender, int $id)
     {
-        $distribuidora = Distribuidora::findOrFail($id);
+        $cambio = $suspender->ejecutar(Distribuidora::findOrFail($id));
 
-        if ($distribuidora->estado !== 'activa') {
-            return response()->json([
-                'message' => 'Solo se pueden suspender distribuidoras activas.',
-            ], 422);
-        }
-
-        $distribuidora->update(['estado' => 'suspendida']);
-
-        return response()->json([
-            'data'    => $distribuidora,
-            'message' => 'Distribuidora suspendida correctamente.',
-        ]);
+        return $this->respuestaCambio($cambio, $cambio->distribuidora, 'Distribuidora suspendida correctamente.');
     }
 
-    public function reactivar(int $id)
+    /** TG-196 (G5) — Reactiva una distribuidora suspendida. */
+    public function reactivar(ReactivarDistribuidoraAction $reactivar, int $id)
     {
-        $distribuidora = Distribuidora::findOrFail($id);
+        $cambio = $reactivar->ejecutar(Distribuidora::findOrFail($id));
 
-        if ($distribuidora->estado !== 'suspendida') {
-            return response()->json([
-                'message' => 'Solo se pueden reactivar distribuidoras suspendidas.',
-            ], 422);
+        return $this->respuestaCambio($cambio, $cambio->distribuidora, 'Distribuidora reactivada correctamente.');
+    }
+
+    /**
+     * TG-196 (G5) — Respuesta de un cambio de estado. Dice si se avisó a la
+     * distribuidora por correo; si no, el cambio igual quedó hecho.
+     */
+    private function respuestaCambio(CambioEstadoDistribuidora $cambio, mixed $data, string $mensaje)
+    {
+        if (! $cambio->avisoEnviado) {
+            $mensaje = rtrim($mensaje, '.') . ', pero no se pudo enviar el aviso por correo a la distribuidora.';
         }
 
-        $distribuidora->update(['estado' => 'activa']);
-
         return response()->json([
-            'data'    => $distribuidora,
-            'message' => 'Distribuidora reactivada correctamente.',
+            'data'          => $data,
+            'message'       => $mensaje,
+            'aviso_enviado' => $cambio->avisoEnviado,
         ]);
     }
 

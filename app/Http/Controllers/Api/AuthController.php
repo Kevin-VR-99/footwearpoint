@@ -47,6 +47,18 @@ class AuthController extends Controller
             ]);
         }
 
+        // TG-196 (G5): si su distribuidora está suspendida o rechazada no
+        // puede operar. Se revisa ANTES de la regla del personal (TG-93):
+        // sin distribuidora, el rol del personal saldría en null y esa regla
+        // ya no lo detendría. Tampoco se crea token.
+        $sinOperacion = Tenant::distribuidoraSinOperacionDe((int) $usuario->id);
+
+        if ($sinOperacion !== null) {
+            throw ValidationException::withMessages([
+                'email' => [$sinOperacion->mensajeSinOperacionParaApp()],
+            ]);
+        }
+
         $sesion = $this->datosDeSesion($usuario);
 
         // TG-93 (E1-01): este login lo usa la app móvil, que es solo para
@@ -95,6 +107,19 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => 'Tu cuenta no está activa.',
+            ], 401);
+        }
+
+        // TG-196 (G5): su distribuidora se suspendió o rechazó después del
+        // login. Igual que con la cuenta inactiva: 401, se revoca el token y
+        // la app regresa al login, donde verá el mismo aviso.
+        $sinOperacion = Tenant::distribuidoraSinOperacionDe((int) $usuario->id);
+
+        if ($sinOperacion !== null) {
+            $usuario->currentAccessToken()?->delete();
+
+            return response()->json([
+                'message' => $sinOperacion->mensajeSinOperacionParaApp(),
             ], 401);
         }
 
