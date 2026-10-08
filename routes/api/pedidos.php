@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\PagoMercadoPagoController;
 use App\Http\Controllers\Api\PedidoController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,4 +37,18 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empl
 Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado'])
     ->group(function () {
         Route::post('/pedidos/{id}/pagos', [PedidoController::class, 'registrarPago']);
+    });
+
+/*
+| TG-226 (G7) — El cliente directo paga su anticipo con Mercado Pago
+| (Checkout Pro) desde la app, sobre SUS pedidos. 'verificar' le pregunta a
+| Mercado Pago si ya se pagó cuando el cliente regresa a la app.
+| Con límite de 10 por minuto: cada llamada sale a Mercado Pago.
+*/
+Route::middleware(['auth:sanctum', 'tenant.team', 'role:cliente_directo', 'throttle:10,1'])
+    ->group(function () {
+        Route::post('/pedidos/{id}/anticipo/mercado-pago', [PagoMercadoPagoController::class, 'crearAnticipo'])
+            ->whereNumber('id');
+        Route::post('/pedidos/{id}/anticipo/mercado-pago/verificar', [PagoMercadoPagoController::class, 'verificar'])
+            ->whereNumber('id');
     });

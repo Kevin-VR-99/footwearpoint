@@ -3,6 +3,7 @@
 use App\Models\Pedido;
 use App\Services\Pedido\EntregaPedidoAction;
 use App\Services\Pedido\EnviarPedidoAction;
+use App\Services\Pago\VerificarPagoMercadoPagoAction;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
 use App\Support\MensajeError;
 use App\Support\Tenant;
@@ -94,6 +95,31 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo cambiar el estado.';
         } catch (\Throwable $e) {
             $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo cambiar el estado del pedido. Intenta de nuevo.');
+        }
+    }
+
+    /**
+     * TG-226 (G7): el personal le pregunta a Mercado Pago si ya se pagó un
+     * anticipo pendiente (mientras llega el aviso automático de G9).
+     */
+    public function verificarMercadoPago(VerificarPagoMercadoPagoAction $accion)
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $resultado = $accion->ejecutar($this->pedido);
+            unset($this->pedido);
+            unset($this->resumen);
+
+            $this->mensaje = match ($resultado) {
+                VerificarPagoMercadoPagoAction::APLICADO => 'Mercado Pago confirmó el pago. Ya quedó aplicado.',
+                VerificarPagoMercadoPagoAction::RECHAZADO => 'Mercado Pago rechazó el intento de pago. El cliente puede intentarlo de nuevo.',
+                VerificarPagoMercadoPagoAction::VENCIDO => 'El enlace de pago venció sin pagarse.',
+                default => 'Mercado Pago todavía no confirma el pago.',
+            };
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo verificar el pago con Mercado Pago. Intenta de nuevo.');
         }
     }
 
@@ -289,6 +315,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                         <th class="px-4 py-2 font-medium">Método</th>
                         <th class="px-4 py-2 font-medium text-right">Monto</th>
                         <th class="px-4 py-2 font-medium">Fecha</th>
+                        <th class="px-4 py-2 font-medium">Estado</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -296,9 +323,27 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                         <tr>
                             <td class="px-4 py-2">{{ $p->folio }}</td>
                             <td class="px-4 py-2">{{ $p->tipo }}</td>
-                            <td class="px-4 py-2">{{ $p->metodo }}</td>
+                            <td class="px-4 py-2">{{ $p->metodo === 'mercado_pago' ? 'Mercado Pago' : $p->metodo }}</td>
                             <td class="px-4 py-2 text-right tabular-nums">${{ number_format((float) $p->monto, 2) }}</td>
                             <td class="px-4 py-2">{{ optional($p->fecha_pago)->format('d/m/Y H:i') }}</td>
+                            <td class="px-4 py-2">
+                                {{-- TG-226: un pago pendiente todavía no cuenta como pagado. --}}
+                                @php
+                                    [$varianteEstado, $textoEstado] = match ($p->estado) {
+                                        'pendiente' => ['warning', 'Pendiente'],
+                                        'fallido' => ['neutral', 'Fallido'],
+                                        'revertido' => ['danger', 'Revertido'],
+                                        default => ['success', 'Aplicado'],
+                                    };
+                                @endphp
+                                <x-ui.insignia-estado :variante="$varianteEstado" :texto="$textoEstado" />
+                                @if ($p->esMercadoPagoPendiente() && $p->preferencia_externa)
+                                    <button type="button" wire:click="verificarMercadoPago" wire:loading.attr="disabled"
+                                        class="ml-2 text-xs font-medium text-fp-primary hover:underline">
+                                        Verificar con Mercado Pago
+                                    </button>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>

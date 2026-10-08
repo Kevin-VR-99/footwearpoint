@@ -100,7 +100,13 @@ class AgregarLineaPedidoAction
 
         $subtotalLinea = round($precio * $cantidad, 2);
 
-        $anticipoUnitario = (float) (ConfiguracionDistribuidora::query()->value('anticipo_por_producto') ?? 0);
+        // TG-226 (G7): el anticipo es fijo por par, pero nunca mayor que el
+        // precio del par. Antes un par más barato que el anticipo configurado
+        // pedía de anticipo más de lo que costaba.
+        $anticipoUnitario = min(
+            (float) (ConfiguracionDistribuidora::query()->value('anticipo_por_producto') ?? 0),
+            $precio
+        );
         $anticipoRequerido = round($anticipoUnitario * $cantidad, 2);
 
         $productoNombre = $pc->producto?->nombre
