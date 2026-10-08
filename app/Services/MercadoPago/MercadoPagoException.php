@@ -64,6 +64,21 @@ class MercadoPagoException extends Exception implements MensajeParaUsuario
 
     public const ENVIA_ANTES_DE_PAGAR = 'Envía tu pedido antes de pagarlo.';
 
+    // --- TG-230 (G11): la distribuidora paga su mensualidad a FootwearPoint ---
+
+    public const SUSCRIPCION_NO_DISPONIBLE = 'El pago de la suscripción con Mercado Pago no está disponible por ahora. Avísale al equipo de FootwearPoint.';
+
+    public const SUSCRIPCION_NO_SE_PUDO_COBRAR = 'No se pudo preparar el pago de tu mensualidad. Intenta de nuevo en unos minutos.';
+
+    public const SIN_SUSCRIPCION_POR_PAGAR = 'Tu distribuidora no tiene una suscripción activa o vencida que pagar. Pide al equipo de FootwearPoint que te asigne un plan.';
+
+    public const DISTRIBUIDORA_NO_ACTIVA = 'Tu distribuidora no está activa, así que por ahora no puede pagar su suscripción.';
+
+    /** Lleva la fecha desde la que podrá pagar (sprintf). */
+    public const SUSCRIPCION_ADELANTADA = 'Ya pagaste tu siguiente mes. Podrás pagar el próximo a partir del %s.';
+
+    public const SIN_PAGO_SUSCRIPCION_POR_CONFIRMAR = 'No hay un pago de tu mensualidad por confirmar.';
+
     public function __construct(string $mensaje, private int $estadoHttp = 422)
     {
         parent::__construct($mensaje);
