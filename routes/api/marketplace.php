@@ -14,3 +14,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/marketplace', [MarketplaceController::class, 'index'])
     ->name('marketplace.index');
+
+// TG-197 (G16): categorías del directorio para filtrar (solo activas y con
+// al menos una distribuidora visible).
+Route::get('/marketplace/categorias', [MarketplaceController::class, 'categorias'])
+    ->name('marketplace.categorias');

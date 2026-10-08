@@ -8,6 +8,7 @@ use App\Models\PlanSuscripcion;
 use App\Models\Suscripcion;
 use App\Services\Distribuidora\AprobacionDistribuidoraException;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
+use App\Services\Distribuidora\CambiarVisibilidadMarketplaceAction;
 use App\Services\Distribuidora\CambioEstadoDistribuidora;
 use App\Services\Distribuidora\DatosSolicitudDistribuidoraAction;
 use App\Services\Distribuidora\ReactivarDistribuidoraAction;
@@ -187,19 +188,17 @@ class DistribuidoraController extends Controller
         ], 201);
     }
 
-    public function marketplaceConfig(MarketplaceConfigRequest $request)
+    /**
+     * Mostrar u ocultar una distribuidora en el marketplace (E2-05). Si se
+     * quiere mostrar una que no está activa, la acción lanza
+     * OperacionInvalidaException (422 con su mensaje). TG-197.
+     */
+    public function marketplaceConfig(MarketplaceConfigRequest $request, CambiarVisibilidadMarketplaceAction $visibilidad)
     {
-        $distribuidora = Distribuidora::findOrFail($request->distribuidora_id);
-
-        if ($distribuidora->estado !== 'activa' && $request->boolean('marketplace_visible')) {
-            return response()->json([
-                'message' => 'Solo distribuidoras activas pueden ser visibles en el marketplace.',
-            ], 422);
-        }
-
-        $distribuidora->update([
-            'marketplace_visible' => $request->boolean('marketplace_visible'),
-        ]);
+        $distribuidora = $visibilidad->ejecutar(
+            Distribuidora::findOrFail($request->distribuidora_id),
+            $request->boolean('marketplace_visible'),
+        );
 
         return response()->json([
             'data' => [
