@@ -92,6 +92,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'Datos inválidos.';
         } catch (\Throwable $e) {
+            report($e); // TG-224 (G3): el detalle va al log.
             $this->errorMsg = 'No se pudo emitir el vale. Revisa los datos e intenta de nuevo.';
         }
     }

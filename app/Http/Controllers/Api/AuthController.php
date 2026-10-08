@@ -241,11 +241,12 @@ class AuthController extends Controller
                 'message' => 'Empleado registrado correctamente.',
             ], 201);
         } catch (\Throwable $e) {
+            // TG-224 (G3): el detalle técnico solo va al log; nunca se
+            // devuelven mensaje, archivo ni línea de la excepción.
+            report($e);
+
             return response()->json([
-                'message' => 'Error al registrar empleado.',
-                'error'   => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
+                'message' => 'No se pudo registrar al empleado. Intenta de nuevo.',
             ], 500);
         }
     }
