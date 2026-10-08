@@ -59,3 +59,16 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:cliente_directo', 'throt
         Route::post('/pedidos/{id}/saldo/mercado-pago/verificar', [PagoMercadoPagoController::class, 'verificarSaldo'])
             ->whereNumber('id');
     });
+
+/*
+| TG-229 (G10) — El cliente mayorista (revendedor en el código) paga con
+| Mercado Pago todo lo que falta de SU pedido, desde que lo envía hasta que
+| está listo para entrega. Mismo límite que el cliente directo.
+*/
+Route::middleware(['auth:sanctum', 'tenant.team', 'role:revendedor', 'throttle:10,1'])
+    ->group(function () {
+        Route::post('/pedidos/{id}/total/mercado-pago', [PagoMercadoPagoController::class, 'crearMayorista'])
+            ->whereNumber('id');
+        Route::post('/pedidos/{id}/total/mercado-pago/verificar', [PagoMercadoPagoController::class, 'verificarMayorista'])
+            ->whereNumber('id');
+    });

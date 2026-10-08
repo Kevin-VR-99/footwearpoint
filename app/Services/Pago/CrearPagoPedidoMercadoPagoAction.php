@@ -16,6 +16,8 @@ use InvalidArgumentException;
 /**
  * TG-226 (G7) / TG-227 (G8) — El cliente directo paga su anticipo o el saldo
  * de su pedido con Checkout Pro.
+ * TG-229 (G10) — El cliente mayorista (revendedor en el código) paga lo que
+ * falta de su pedido, que ya va a su precio.
  *
  * Crea un pago 'pendiente' (no cuenta como pagado: el resumen del pedido solo
  * suma los 'aplicado') y una preferencia de Checkout Pro con el token de la
@@ -28,6 +30,9 @@ use InvalidArgumentException;
  *   - saldo: TODO el saldo, sin pagos parciales, solo cuando el anticipo ya
  *     está cubierto y el pedido ya llegó a la distribuidora (el total ya no
  *     cambia y así no hay que devolver dinero si algo no se surte).
+ *   - cliente mayorista (total_revendedor): TODO lo que falta del pedido, sin
+ *     pagos parciales, desde que se envía hasta que está listo para entrega
+ *     (no lleva anticipo, así que puede pagar por adelantado).
  *
  * Reintentos (un solo enlace vivo por pedido):
  *   - si ya hay un enlace pendiente, vigente, del mismo tipo y por el mismo
@@ -48,6 +53,22 @@ class CrearPagoPedidoMercadoPagoAction
     public const ANTICIPO = 'anticipo';
 
     public const SALDO = 'saldo_pedido';
+
+    /** TG-229 (G10): el cliente mayorista paga lo que falta de su pedido. */
+    public const MAYORISTA = 'total_revendedor';
+
+    /** TG-229: desde que se envía hasta que está listo para entregarse. */
+    public const ESTADOS_PARA_MAYORISTA = [
+        'colocado',
+        'en_revision',
+        'confirmado',
+        'parcialmente_disponible',
+        'incluido_en_ciclo',
+        'solicitado_fabrica',
+        'en_transito',
+        'recibido_distribuidora',
+        'listo_entrega',
+    ];
 
     /** TG-227: el saldo se paga cuando la mercancía ya está en la distribuidora. */
     public const ESTADOS_PARA_SALDO = ['recibido_distribuidora', 'listo_entrega'];
@@ -79,13 +100,22 @@ class CrearPagoPedidoMercadoPagoAction
     }
 
     /**
+     * TG-229: ¿el cliente mayorista puede pagar ya su pedido con Mercado Pago?
+     * Igual que puedePagarSaldo(), para el botón de la app.
+     */
+    public static function puedePagarMayorista(Pedido $pedido, array $resumen): bool
+    {
+        return self::motivoParaNoCobrarMayorista($pedido, $resumen) === null;
+    }
+
+    /**
      * @return array{pago: Pago, init_point: string, reutilizado: bool, moneda: string}
      *
      * @throws MercadoPagoException con un mensaje listo para el cliente.
      */
     public function ejecutar(Pedido $pedido, string $tipo): array
     {
-        if (! in_array($tipo, [self::ANTICIPO, self::SALDO], true)) {
+        if (! in_array($tipo, [self::ANTICIPO, self::SALDO, self::MAYORISTA], true)) {
             throw new InvalidArgumentException("Tipo de pago con Mercado Pago no soportado: {$tipo}");
         }
 
@@ -146,14 +176,16 @@ class CrearPagoPedidoMercadoPagoAction
 
     private function validarPedido(Pedido $pedido, string $tipo): void
     {
-        $mensaje = $tipo === self::ANTICIPO
-            ? match (true) {
+        $mensaje = match ($tipo) {
+            self::ANTICIPO => match (true) {
                 $pedido->tipo !== 'cliente_directo' => MercadoPagoException::SOLO_CLIENTE_DIRECTO,
                 $pedido->estado === 'borrador' => MercadoPagoException::PEDIDO_BORRADOR,
                 in_array($pedido->estado, RegistrarPagoPedidoAction::ESTADOS_CERRADOS, true) => MercadoPagoException::PEDIDO_CERRADO,
                 default => null,
-            }
-            : self::motivoParaNoCobrarSaldo($pedido, $this->pagos->resumen($pedido));
+            },
+            self::SALDO => self::motivoParaNoCobrarSaldo($pedido, $this->pagos->resumen($pedido)),
+            self::MAYORISTA => self::motivoParaNoCobrarMayorista($pedido, $this->pagos->resumen($pedido)),
+        };
 
         if ($mensaje !== null) {
             throw MercadoPagoException::con($mensaje);
@@ -170,6 +202,21 @@ class CrearPagoPedidoMercadoPagoAction
             $resumen['anticipo_pendiente'] > 0 => MercadoPagoException::SALDO_ANTES_DE_ANTICIPO,
             $resumen['saldo'] <= 0 => MercadoPagoException::SIN_SALDO_PENDIENTE,
             ! in_array($pedido->estado, self::ESTADOS_PARA_SALDO, true) => MercadoPagoException::SALDO_TODAVIA_NO,
+            default => null,
+        };
+    }
+
+    /**
+     * TG-229: por qué el cliente mayorista todavía no puede pagar su pedido
+     * con Mercado Pago, o null si sí.
+     */
+    private static function motivoParaNoCobrarMayorista(Pedido $pedido, array $resumen): ?string
+    {
+        return match (true) {
+            $pedido->tipo !== 'revendedor' => MercadoPagoException::SOLO_CLIENTE_MAYORISTA,
+            $pedido->estado === 'borrador' => MercadoPagoException::ENVIA_ANTES_DE_PAGAR,
+            ! in_array($pedido->estado, self::ESTADOS_PARA_MAYORISTA, true) => MercadoPagoException::PEDIDO_CERRADO,
+            $resumen['saldo'] <= 0 => MercadoPagoException::SIN_SALDO_PENDIENTE,
             default => null,
         };
     }
@@ -196,7 +243,9 @@ class CrearPagoPedidoMercadoPagoAction
         } else {
             // Se vuelve a revisar con el pedido bloqueado: mientras tanto
             // pudo cambiar (un pago en mostrador, un vale, otro estado).
-            $motivo = self::motivoParaNoCobrarSaldo($pedido, $resumen);
+            $motivo = $tipo === self::SALDO
+                ? self::motivoParaNoCobrarSaldo($pedido, $resumen)
+                : self::motivoParaNoCobrarMayorista($pedido, $resumen);
 
             if ($motivo !== null) {
                 throw MercadoPagoException::con($motivo);
@@ -268,7 +317,11 @@ class CrearPagoPedidoMercadoPagoAction
     /** Cuerpo de POST /checkout/preferences. */
     private function preferencia(Pedido $pedido, Pago $pago, string $moneda, string $tipo): array
     {
-        $concepto = $tipo === self::ANTICIPO ? 'Anticipo' : 'Saldo';
+        $concepto = match ($tipo) {
+            self::ANTICIPO => 'Anticipo',
+            self::SALDO => 'Saldo',
+            default => 'Pago',
+        };
 
         $preferencia = [
             'items' => [[

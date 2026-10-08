@@ -58,6 +58,12 @@ class MercadoPagoException extends Exception implements MensajeParaUsuario
 
     public const SIN_SALDO_PENDIENTE = 'Este pedido ya no tiene saldo pendiente.';
 
+    // --- TG-229 (G10): el cliente mayorista paga su pedido con Checkout Pro ---
+
+    public const SOLO_CLIENTE_MAYORISTA = 'Este pago con Mercado Pago es para pedidos de cliente mayorista.';
+
+    public const ENVIA_ANTES_DE_PAGAR = 'Envía tu pedido antes de pagarlo.';
+
     public function __construct(string $mensaje, private int $estadoHttp = 422)
     {
         parent::__construct($mensaje);
