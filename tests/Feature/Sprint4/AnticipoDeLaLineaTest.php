@@ -174,7 +174,11 @@ class AnticipoDeLaLineaTest extends TestCase
         $this->como('empleado@calzadosramirez.test');
         $pedidoId = (int) $this->postJson('/api/pedidos', [
             'tipo' => 'cliente_directo',
-            'propietario_id' => ClienteDirecto::where('email', 'jose.hernandez@cliente.test')->value('id'),
+            // Se busca por su cuenta: desde TG-216 el correo del contacto se
+            // vacía al activarla, porque su correo pasa a ser el de acceso.
+            'propietario_id' => ClienteDirecto::withoutGlobalScopes()
+                ->where('usuario_id', Usuario::where('email', self::JOSE)->value('id'))
+                ->value('id'),
             'sucursal_id' => Sucursal::where('es_principal', true)->value('id'),
         ])->assertCreated()->json('data.id');
 
