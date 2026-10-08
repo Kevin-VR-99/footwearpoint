@@ -6,9 +6,12 @@ use App\Models\PlanSuscripcion;
 use App\Models\Suscripcion;
 use App\Services\Distribuidora\AprobacionDistribuidoraException;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
+use App\Services\Distribuidora\CambioEstadoDistribuidora;
 use App\Services\Distribuidora\CrearDistribuidoraAction;
 use App\Services\Distribuidora\DatosSolicitudDistribuidoraAction;
+use App\Services\Distribuidora\ReactivarDistribuidoraAction;
 use App\Services\Distribuidora\RechazarDistribuidoraAction;
+use App\Services\Distribuidora\SuspenderDistribuidoraAction;
 use App\Support\MensajeError;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -233,7 +236,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         $distribuidora = Distribuidora::findOrFail($id);
 
         try {
-            app(AprobarDistribuidoraAction::class)->ejecutar($distribuidora);
+            $cambio = app(AprobarDistribuidoraAction::class)->ejecutar($distribuidora);
         } catch (AprobacionDistribuidoraException $e) {
             $this->mensaje = $e->esNoPendiente()
                 ? 'Solo se pueden aprobar distribuidoras pendientes.'
@@ -241,7 +244,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             return;
         }
 
-        $this->mensaje = "Distribuidora «{$distribuidora->nombre_comercial}» aprobada.";
+        $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$distribuidora->nombre_comercial}» aprobada.");
     }
 
     /** TG-195: muestra los datos de la distribuidora para revisarla. */
@@ -307,7 +310,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         ]);
 
         try {
-            $distribuidora = app(RechazarDistribuidoraAction::class)->ejecutar(
+            $cambio = app(RechazarDistribuidoraAction::class)->ejecutar(
                 Distribuidora::findOrFail($this->distribuidoraRechazoId),
                 $this->motivo_rechazo,
             );
@@ -326,33 +329,51 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         }
 
         $this->cancelarRechazo();
-        $this->mensaje = "Distribuidora «{$distribuidora->nombre_comercial}» rechazada.";
+        $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$cambio->distribuidora->nombre_comercial}» rechazada.");
     }
 
+    /**
+     * TG-196 (G5) — Suspende una distribuidora activa: conserva sus datos,
+     * pero ni su personal ni sus revendedores y clientes pueden operar hasta
+     * reactivarla. Se le avisa por correo.
+     */
     public function suspender(int $id)
     {
-        $d = Distribuidora::findOrFail($id);
-
-        if ($d->estado !== 'activa') {
-            $this->mensaje = 'Solo se pueden suspender distribuidoras activas.';
+        try {
+            $cambio = app(SuspenderDistribuidoraAction::class)->ejecutar(Distribuidora::findOrFail($id));
+        } catch (OperacionInvalidaException $e) {
+            $this->mensaje = $e->getMessage();
+            return;
+        } catch (\Throwable $e) {
+            $this->mensaje = MensajeError::paraUsuario($e, 'No se pudo suspender la distribuidora. Intenta de nuevo.');
             return;
         }
 
-        $d->update(['estado' => 'suspendida']);
-        $this->mensaje = "Distribuidora «{$d->nombre_comercial}» suspendida.";
+        $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$cambio->distribuidora->nombre_comercial}» suspendida.");
     }
 
+    /** TG-196 (G5) — Reactiva una distribuidora suspendida y le avisa por correo. */
     public function reactivar(int $id)
     {
-        $d = Distribuidora::findOrFail($id);
-
-        if ($d->estado !== 'suspendida') {
-            $this->mensaje = 'Solo se pueden reactivar distribuidoras suspendidas.';
+        try {
+            $cambio = app(ReactivarDistribuidoraAction::class)->ejecutar(Distribuidora::findOrFail($id));
+        } catch (OperacionInvalidaException $e) {
+            $this->mensaje = $e->getMessage();
+            return;
+        } catch (\Throwable $e) {
+            $this->mensaje = MensajeError::paraUsuario($e, 'No se pudo reactivar la distribuidora. Intenta de nuevo.');
             return;
         }
 
-        $d->update(['estado' => 'activa']);
-        $this->mensaje = "Distribuidora «{$d->nombre_comercial}» reactivada.";
+        $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$cambio->distribuidora->nombre_comercial}» reactivada.");
+    }
+
+    /** TG-196 (G5): si el correo no salió, el cambio quedó, pero se avisa al admin. */
+    private function conAviso(CambioEstadoDistribuidora $cambio, string $mensaje): string
+    {
+        return $cambio->avisoEnviado
+            ? $mensaje
+            : $mensaje . ' No se pudo enviar el aviso por correo a la distribuidora.';
     }
 
     public function toggleMarketplace(int $id)
@@ -830,6 +851,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                             @endif
                             @if ($d->estado === 'activa')
                                 <button wire:click="suspender({{ $d->id }})"
+                                    wire:confirm="Su personal, revendedores y clientes no podrán usar FootwearPoint hasta reactivarla. Su información se conserva. ¿Continuar?"
                                     class="text-xs text-red-600 hover:underline">Suspender</button>
                             @endif
                             @if ($d->estado === 'suspendida')
