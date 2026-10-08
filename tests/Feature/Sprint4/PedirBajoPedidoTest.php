@@ -148,7 +148,11 @@ class PedirBajoPedidoTest extends TestCase
         $this->actingAs(Usuario::where('email', 'admin@calzadosramirez.test')->firstOrFail());
         Tenant::olvidarCache();
 
-        $maria = Revendedor::where('email', self::MARIA)->firstOrFail();
+        // Por su cuenta, no por el correo del contacto: desde TG-216 ese
+        // correo se vacía al activar la cuenta.
+        $maria = Revendedor::withoutGlobalScopes()
+            ->where('usuario_id', Usuario::where('email', self::MARIA)->value('id'))
+            ->firstOrFail();
         $afiliacion = $maria->afiliaciones()->firstOrFail();
 
         $pantalla = Livewire::test('pedidos.create')
