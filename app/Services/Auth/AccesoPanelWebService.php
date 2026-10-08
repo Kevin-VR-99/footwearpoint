@@ -2,6 +2,7 @@
 
 namespace App\Services\Auth;
 
+use App\Models\Distribuidora;
 use App\Models\DistribuidoraStaff;
 use App\Models\Usuario;
 use Spatie\Permission\PermissionRegistrar;
@@ -26,6 +27,45 @@ class AccesoPanelWebService
     /** Lo que se le dice a quien no es personal, en el login y al sacarlo. */
     public const MENSAJE_SOLO_PERSONAL = 'Este panel es solo para el personal de la distribuidora. '
         .'Si eres cliente o cliente mayorista, entra desde la app FootwearPoint.';
+
+    /** TG-195 (G4): lo que ve el personal de una distribuidora rechazada. */
+    public const MENSAJE_DISTRIBUIDORA_RECHAZADA = 'La solicitud de tu distribuidora fue rechazada, '
+        .'así que no puede usar FootwearPoint.';
+
+    /**
+     * TG-195 (G4) — Por qué esta persona no puede entrar al panel, o null si
+     * sí puede. Lo usan el login web y el middleware SoloPersonalPanel.
+     *
+     *  - No es personal (revendedor, cliente)  -> MENSAJE_SOLO_PERSONAL.
+     *  - Su distribuidora fue rechazada        -> mensaje con el motivo, para
+     *    que sepa qué le faltó (E2-01: una rechazada no puede operar).
+     *
+     * Pendientes y suspendidas siguen entrando como hasta ahora.
+     */
+    public function motivoSinAcceso(Usuario $usuario): ?string
+    {
+        $staff = $this->staffActivo($usuario);
+
+        if ($staff === null) {
+            return $this->esAdminGeneral($usuario) ? null : self::MENSAJE_SOLO_PERSONAL;
+        }
+
+        $distribuidora = $staff->distribuidora;
+
+        if ($distribuidora !== null && in_array($distribuidora->estado, Distribuidora::ESTADOS_SIN_OPERACION, true)) {
+            return self::mensajeDistribuidoraRechazada($distribuidora->motivo_rechazo);
+        }
+
+        return null;
+    }
+
+    /** El motivo va como texto: las vistas lo escapan al mostrarlo. */
+    public static function mensajeDistribuidoraRechazada(?string $motivo): string
+    {
+        $motivo = trim((string) $motivo);
+
+        return self::MENSAJE_DISTRIBUIDORA_RECHAZADA.($motivo !== '' ? ' Motivo: '.$motivo : '');
+    }
 
     /** True si la persona es personal: admin general o staff activo. */
     public function esPersonal(Usuario $usuario): bool

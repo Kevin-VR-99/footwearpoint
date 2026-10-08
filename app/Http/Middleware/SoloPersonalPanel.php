@@ -17,6 +17,9 @@ use Symfony\Component\HttpFoundation\Response;
  * dice que use la app. No se responde 403 a secas: la idea es decirle a donde
  * ir, no solo negarle el paso.
  *
+ * TG-195 (G4): tambien saca al personal de una distribuidora rechazada, con
+ * un aviso que incluye el motivo del rechazo.
+ *
  * Este middleware NO cubre /logout a proposito: si lo cubriera, alguien sin
  * acceso quedaria atrapado sin poder salir, que es justo lo que pasa hoy
  * cuando se desactiva a un empleado con la sesion abierta.
@@ -30,15 +33,16 @@ class SoloPersonalPanel
     public function handle(Request $request, Closure $next): Response
     {
         $usuario = Auth::user();
+        $motivo = $usuario ? $this->acceso->motivoSinAcceso($usuario) : null;
 
-        if ($usuario && ! $this->acceso->esPersonal($usuario)) {
+        if ($motivo !== null) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
             return redirect()
                 ->route('login')
-                ->with('aviso_acceso', AccesoPanelWebService::MENSAJE_SOLO_PERSONAL);
+                ->with('aviso_acceso', $motivo);
         }
 
         return $next($request);
