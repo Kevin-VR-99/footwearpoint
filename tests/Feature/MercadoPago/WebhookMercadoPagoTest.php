@@ -588,6 +588,36 @@ class WebhookMercadoPagoTest extends TestCase
         $this->assertNull($aviso->fresh()->error);
     }
 
+    // ---------------------------------------------------------------
+    // 7. Log: los avisos al usuario no son errores del sistema
+    // ---------------------------------------------------------------
+
+    public function test_los_422_de_mercado_pago_se_registran_como_info_sin_traza(): void
+    {
+        $pedidoId = $this->pedido();
+        Log::spy();
+        $this->como(self::JOSE);
+
+        $this->postJson("/api/pedidos/{$pedidoId}/saldo/mercado-pago")
+            ->assertStatus(422)
+            ->assertExactJson(['message' => MercadoPagoException::SALDO_ANTES_DE_ANTICIPO]);
+
+        Log::shouldHaveReceived('info')->withArgs(fn ($mensaje, $contexto = []) => $mensaje === 'Mercado Pago (aviso al usuario): '.MercadoPagoException::SALDO_ANTES_DE_ANTICIPO
+            && $contexto === ['http' => 422]);
+        Log::shouldNotHaveReceived('error');
+    }
+
+    public function test_si_mercado_pago_no_responde_al_cobrar_queda_como_warning(): void
+    {
+        Log::spy();
+
+        report(MercadoPagoException::con(MercadoPagoException::SIN_RESPUESTA));
+
+        Log::shouldHaveReceived('warning')->withArgs(fn ($mensaje, $contexto = []) => $mensaje === 'Mercado Pago (aviso al usuario): '.MercadoPagoException::SIN_RESPUESTA
+            && $contexto === ['http' => 503]);
+        Log::shouldNotHaveReceived('error');
+    }
+
     public function test_un_aviso_sin_id_responde_200_y_no_guarda_nada(): void
     {
         $this->sinSesion();
