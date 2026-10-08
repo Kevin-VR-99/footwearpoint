@@ -6,6 +6,7 @@ use App\Models\DistribuidoraStaff;
 use App\Models\Pago;
 use App\Models\Pedido;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
+use App\Support\FolioPago;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -146,22 +147,10 @@ class RegistrarPagoPedidoAction
         ];
     }
 
+    /** TG-226: la numeración vive en App\Support\FolioPago (la comparte el anticipo con Mercado Pago). */
     protected function generarFolio(int $distribuidoraId): string
     {
-        $prefijo = 'PAG-'.now()->format('Ymd').'-';
-
-        $ultimo = Pago::withoutGlobalScopes()
-            ->where('distribuidora_id', $distribuidoraId)
-            ->where('folio', 'like', $prefijo.'%')
-            ->orderByDesc('id')
-            ->value('folio');
-
-        $secuencia = 1;
-        if ($ultimo && preg_match('/-(\d+)$/', $ultimo, $m)) {
-            $secuencia = (int) $m[1] + 1;
-        }
-
-        return $prefijo.str_pad((string) $secuencia, 4, '0', STR_PAD_LEFT);
+        return FolioPago::siguiente($distribuidoraId);
     }
 
     protected function staffIdActual(): ?int

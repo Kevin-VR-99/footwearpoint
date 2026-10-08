@@ -2,7 +2,6 @@
 
 namespace App\Services\Pedido;
 
-use App\Models\ConfiguracionDistribuidora;
 use App\Models\Pedido;
 use App\Models\PedidoDetalle;
 use App\Models\ProductoCampana;
