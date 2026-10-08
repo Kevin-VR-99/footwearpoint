@@ -12,6 +12,8 @@ new #[Layout('layouts.panel')] class extends Component {
         'usuarios' => 'Usuarios',
         'clientes' => 'Clientes directos',
         'mercado-pago' => 'Mercado Pago',
+        // TG-230 (G11): pago de la mensualidad con Mercado Pago.
+        'suscripcion' => 'Suscripción',
     ];
 
     // TG-225 (G6): ?pestana=mercado-pago abre esa pestaña directo (el
@@ -82,6 +84,8 @@ new #[Layout('layouts.panel')] class extends Component {
             <livewire:distribuidora.clientes :key="'config-clientes'" />
         @elseif ($pestanaActiva === 'mercado-pago')
             <livewire:distribuidora.mercado-pago :key="'config-mercado-pago'" />
+        @elseif ($pestanaActiva === 'suscripcion')
+            <livewire:distribuidora.suscripcion :key="'config-suscripcion'" />
         @endif
     </div>
 </div>

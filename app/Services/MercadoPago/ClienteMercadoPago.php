@@ -228,6 +228,29 @@ class ClienteMercadoPago
             ->get($this->config('url_api').'/v1/payments/'.rawurlencode($pagoId)));
     }
 
+    /**
+     * TG-230 (G11) — El id de la cuenta dueña de un access token
+     * (GET /users/me). Con él se sabe que un aviso o un pago es de la cuenta
+     * de FootwearPoint.
+     *
+     * @throws MercadoPagoException
+     */
+    public function cuentaDelToken(string $token): string
+    {
+        $datos = $this->llamar('consultar la cuenta', fn () => $this->conToken($token)
+            ->get($this->config('url_api').'/users/me'));
+
+        $id = $datos['id'] ?? null;
+
+        if (! is_scalar($id) || preg_match('/^[0-9]{1,20}$/', (string) $id) !== 1) {
+            report(new RuntimeException('Mercado Pago respondió sin id al consultar la cuenta.'));
+
+            throw MercadoPagoException::con(MercadoPagoException::NO_SE_PUDO_COBRAR);
+        }
+
+        return (string) $id;
+    }
+
     private function conToken(string $token): \Illuminate\Http\Client\PendingRequest
     {
         return Http::withToken($token)
