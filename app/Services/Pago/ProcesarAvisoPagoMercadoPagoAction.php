@@ -5,6 +5,8 @@ namespace App\Services\Pago;
 use App\Models\Pago;
 use App\Services\MercadoPago\ClienteMercadoPago;
 use App\Services\MercadoPago\MercadoPagoException;
+use App\Services\MercadoPago\TokenMercadoPagoPlataforma;
+use App\Services\Suscripcion\ProcesarAvisoSuscripcionMercadoPagoAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -31,6 +33,9 @@ use Illuminate\Support\Facades\Log;
  * Pensado para G10/G11: un pago que no es de un pedido (suscripción) o una
  * referencia que no es FWP-{distribuidora}-{pago} no truenan; se marcan como
  * "sin manejador".
+ *
+ * TG-230 (G11): si el aviso es de la cuenta de FootwearPoint (la mensualidad
+ * de una distribuidora), lo procesa ProcesarAvisoSuscripcionMercadoPagoAction.
  */
 class ProcesarAvisoPagoMercadoPagoAction
 {
@@ -61,6 +66,8 @@ class ProcesarAvisoPagoMercadoPagoAction
         private readonly ClienteMercadoPago $cliente,
         private readonly TokenMercadoPagoDistribuidora $tokens,
         private readonly AplicarPagoMercadoPagoAction $aplicar,
+        private readonly TokenMercadoPagoPlataforma $plataforma,
+        private readonly ProcesarAvisoSuscripcionMercadoPagoAction $suscripcion,
     ) {
     }
 
@@ -74,6 +81,11 @@ class ProcesarAvisoPagoMercadoPagoAction
      */
     public function ejecutar(string $pagoMpId, ?string $cuentaMp, ?int $pista): array
     {
+        // TG-230 (G11): la mensualidad se cobra con la cuenta de FootwearPoint.
+        if ($cuentaMp !== null && $cuentaMp !== '' && $this->plataforma->esLaCuenta($cuentaMp)) {
+            return $this->suscripcion->ejecutar($pagoMpId);
+        }
+
         $distribuidoraId = $this->distribuidora($cuentaMp, $pista);
 
         if ($distribuidoraId === null) {
