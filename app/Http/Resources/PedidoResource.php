@@ -62,9 +62,18 @@ class PedidoResource extends JsonResource
                     'monto'      => (float) $p->monto,
                     'estado'     => $p->estado,
                     'referencia' => $p->referencia,
+                    // TG-226: 'mercado_pago' y el id del pago en Mercado Pago
+                    // cuando ya se confirmó. Un pago 'pendiente' NO cuenta
+                    // en pagado/saldo/anticipo hasta que queda 'aplicado'.
+                    'proveedor_pago'     => $p->proveedor_pago,
+                    'referencia_externa' => $p->referencia_externa,
                     'fecha_pago' => optional($p->fecha_pago)->toIso8601String(),
                 ]);
             }),
+            // TG-226: hay un pago con Mercado Pago esperando confirmación
+            // (la app muestra "Verificar pago").
+            'pago_mercado_pago_pendiente' => $this->whenLoaded('pagos', fn () => $this->pagos
+                ->contains(fn ($p) => $p->metodo === 'mercado_pago' && $p->estado === 'pendiente')),
             'created_at' => optional($this->created_at)->toIso8601String(),
         ];
     }
