@@ -30,7 +30,7 @@ new #[Layout('layouts.guest')] #[Title('Pago con Mercado Pago — FootwearPoint'
 
     public string $resultado = 'otro';
 
-    /** TG-227 (G8): tipo del pago que regresó ('anticipo', 'saldo_pedido' o '' si no se sabe). */
+    /** TG-227 (G8): tipo del pago que regresó ('anticipo', 'saldo_pedido', 'total_revendedor' desde TG-229, o '' si no se sabe). */
     public string $tipo = '';
 
     public function mount(): void
@@ -126,7 +126,11 @@ new #[Layout('layouts.guest')] #[Title('Pago con Mercado Pago — FootwearPoint'
     <p class="text-xs font-semibold uppercase tracking-wider text-fp-primary">FootwearPoint</p>
 
     @if ($resultado === 'recibido')
-        <h1 class="mt-2 text-xl font-semibold text-slate-900">{{ $tipo === 'saldo_pedido' ? '¡Recibimos el pago de tu saldo!' : '¡Recibimos tu anticipo!' }}</h1>
+        <h1 class="mt-2 text-xl font-semibold text-slate-900">{{ match ($tipo) {
+            'saldo_pedido'     => '¡Recibimos el pago de tu saldo!',
+            'total_revendedor' => '¡Recibimos el pago de tu pedido!',
+            default            => '¡Recibimos tu anticipo!',
+        } }}</h1>
         <p class="mt-2 text-sm text-slate-600">Mercado Pago confirmó tu pago y ya quedó registrado en tu pedido.</p>
     @elseif ($resultado === 'aprobado')
         <h1 class="mt-2 text-xl font-semibold text-slate-900">¡Gracias por tu pago!</h1>
