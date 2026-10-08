@@ -148,4 +148,18 @@ class Distribuidora extends Model
     {
         return $this->hasMany(ProductoDestacado::class, 'distribuidora_id');
     }
+
+    /**
+     * TG-197 (G16) — Categorías del directorio público en las que aparece.
+     * Las asigna el admin general; la tabla puente no lleva timestamps.
+     */
+    public function categoriasDirectorio()
+    {
+        return $this->belongsToMany(
+            CategoriaDirectorio::class,
+            'distribuidora_categoria_directorio',
+            'distribuidora_id',
+            'categoria_directorio_id'
+        );
+    }
 }

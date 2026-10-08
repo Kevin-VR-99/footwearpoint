@@ -18,6 +18,9 @@ new class extends Component {
     public $logotipo = null;
     public ?string $logotipo_url_actual = null;
 
+    /** TG-197 (G16): sus categorías del directorio, solo para ver (las asigna FootwearPoint). */
+    public array $categoriasDirectorio = [];
+
     public function mount(): void
     {
         $distribuidora = Distribuidora::findOrFail(Tenant::id());
@@ -28,6 +31,11 @@ new class extends Component {
         $this->email_publico = $distribuidora->email_publico;
         $this->horario_publico = $distribuidora->horario_publico;
         $this->logotipo_url_actual = $distribuidora->logotipo_url;
+        $this->categoriasDirectorio = $distribuidora->categoriasDirectorio()
+            ->activas()
+            ->orderBy('nombre')
+            ->pluck('nombre')
+            ->all();
     }
 
     public function guardarPerfil(): void
@@ -95,6 +103,19 @@ new class extends Component {
             @endif
             <input type="file" wire:model="logotipo" accept="image/png,image/jpeg">
             <p class="text-xs text-fp-text-muted mt-1">PNG o JPG, hasta 2MB.</p>
+        </div>
+        <div>
+            <span class="block text-sm font-medium text-slate-700 mb-1">Categorías del directorio</span>
+            @if ($categoriasDirectorio === [])
+                <p class="text-sm text-fp-text-muted">Todavía no tienes categorías en el directorio.</p>
+            @else
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach ($categoriasDirectorio as $nombreCategoria)
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">{{ $nombreCategoria }}</span>
+                    @endforeach
+                </div>
+            @endif
+            <p class="text-xs text-fp-text-muted mt-1">Las asigna FootwearPoint. Si te falta alguna, comunícate con nosotros.</p>
         </div>
         <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar Cambios</button>
     </form>

@@ -48,6 +48,15 @@ class DatosSolicitudDistribuidoraAction
                 'email'  => $staff->usuario?->email,
                 'estado' => $staff->estado,
             ])->values()->all(),
+            // TG-197 (G16): categorías del directorio, activas e inactivas.
+            'categorias_directorio' => $distribuidora->categoriasDirectorio()
+                ->orderBy('nombre')
+                ->get()
+                ->map(fn ($categoria) => [
+                    'id'     => $categoria->id,
+                    'nombre' => $categoria->nombre,
+                    'activa' => (bool) $categoria->activa,
+                ])->values()->all(),
         ];
     }
 }
