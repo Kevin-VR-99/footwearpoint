@@ -1,11 +1,14 @@
 <?php
 
+use App\Exceptions\OperacionInvalidaException;
 use App\Models\Distribuidora;
 use App\Models\PlanSuscripcion;
 use App\Models\Suscripcion;
 use App\Services\Distribuidora\AprobacionDistribuidoraException;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
 use App\Services\Distribuidora\CrearDistribuidoraAction;
+use App\Services\Distribuidora\DatosSolicitudDistribuidoraAction;
+use App\Services\Distribuidora\RechazarDistribuidoraAction;
 use App\Support\MensajeError;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -47,6 +50,14 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public string $admin_nombre = '';
     public string $admin_email = '';
     public string $admin_password = '';
+
+    // Revisar los datos antes de aprobar o rechazar (TG-195)
+    public ?int $distribuidoraDetalleId = null;
+
+    // Rechazar con motivo (TG-195)
+    public ?int $distribuidoraRechazoId = null;
+    public string $distribuidoraRechazoNombre = '';
+    public string $motivo_rechazo = '';
 
     public function mount()
     {
@@ -231,6 +242,91 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         }
 
         $this->mensaje = "Distribuidora «{$distribuidora->nombre_comercial}» aprobada.";
+    }
+
+    /** TG-195: muestra los datos de la distribuidora para revisarla. */
+    public function verDatos(int $id): void
+    {
+        $this->distribuidoraDetalleId = Distribuidora::findOrFail($id)->id;
+        $this->mensaje = '';
+    }
+
+    public function cerrarDatos(): void
+    {
+        $this->distribuidoraDetalleId = null;
+    }
+
+    /** Datos del panel "Ver datos" (los mismos que da la API). */
+    public function getDetalleProperty(): ?array
+    {
+        if ($this->distribuidoraDetalleId === null) {
+            return null;
+        }
+
+        $distribuidora = Distribuidora::find($this->distribuidoraDetalleId);
+
+        return $distribuidora ? app(DatosSolicitudDistribuidoraAction::class)->ejecutar($distribuidora) : null;
+    }
+
+    /** TG-195: abre la ventana para escribir el motivo del rechazo. */
+    public function abrirRechazo(int $id): void
+    {
+        $distribuidora = Distribuidora::findOrFail($id);
+
+        if ($distribuidora->estado !== 'pendiente') {
+            $this->mensaje = RechazarDistribuidoraAction::MENSAJE_NO_PENDIENTE;
+            return;
+        }
+
+        $this->resetValidation();
+        $this->mensaje = '';
+        $this->mostrarSuscripcion = false;
+        $this->mostrandoFormularioCrear = false;
+        $this->distribuidoraRechazoId = $distribuidora->id;
+        $this->distribuidoraRechazoNombre = $distribuidora->nombre_comercial;
+        $this->motivo_rechazo = '';
+    }
+
+    public function cancelarRechazo(): void
+    {
+        $this->resetValidation('motivo_rechazo');
+        $this->distribuidoraRechazoId = null;
+        $this->distribuidoraRechazoNombre = '';
+        $this->motivo_rechazo = '';
+    }
+
+    public function rechazar(): void
+    {
+        $this->mensaje = '';
+
+        $this->validate([
+            'motivo_rechazo' => ['required', 'string', 'max:' . RechazarDistribuidoraAction::LARGO_MAXIMO_MOTIVO],
+        ], [
+            'motivo_rechazo.required' => RechazarDistribuidoraAction::MENSAJE_MOTIVO_OBLIGATORIO,
+            'motivo_rechazo.max' => RechazarDistribuidoraAction::MENSAJE_MOTIVO_LARGO,
+        ]);
+
+        try {
+            $distribuidora = app(RechazarDistribuidoraAction::class)->ejecutar(
+                Distribuidora::findOrFail($this->distribuidoraRechazoId),
+                $this->motivo_rechazo,
+            );
+        } catch (ValidationException $e) {
+            $this->addError('motivo_rechazo', collect($e->errors())->flatten()->first() ?? RechazarDistribuidoraAction::MENSAJE_MOTIVO_OBLIGATORIO);
+            return;
+        } catch (OperacionInvalidaException $e) {
+            // Ya no está pendiente (otro admin la aprobó o rechazó antes).
+            $this->cancelarRechazo();
+            $this->mensaje = $e->getMessage();
+            return;
+        } catch (\Throwable $e) {
+            // TG-224 (G3): el detalle técnico va al log, nunca a la pantalla.
+            $this->addError('motivo_rechazo', MensajeError::paraUsuario($e, 'No se pudo rechazar la distribuidora. Intenta de nuevo.'));
+            return;
+        }
+
+        $this->cancelarRechazo();
+        $this->mensaje = "Distribuidora «{$distribuidora->nombre_comercial}» rechazada.";
     }
 
     public function suspender(int $id)
@@ -555,6 +651,122 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         </div>
     @endif
 
+    {{-- TG-195: revisar los datos antes de aprobar o rechazar --}}
+    @php
+        $detalle = $this->detalle;
+        $fecha = fn (?string $iso) => $iso ? \Illuminate\Support\Carbon::parse($iso)->format('d/m/Y H:i') : null;
+    @endphp
+    @if ($detalle)
+        @php
+            $camposDetalle = [
+                'Razón social' => $detalle['razon_social'],
+                'RFC' => $detalle['rfc'],
+                'Slug' => $detalle['slug'],
+                'Subdominio' => $detalle['subdominio'],
+                'Email público' => $detalle['email_publico'],
+                'Teléfono público' => $detalle['telefono_publico'],
+                'Dirección pública' => $detalle['direccion_publica'],
+                'Horario público' => $detalle['horario_publico'],
+                'Fecha de solicitud' => $fecha($detalle['fecha_solicitud']),
+                'Fecha de aprobación' => $fecha($detalle['fecha_aprobacion']),
+            ];
+        @endphp
+        <div class="mb-6 bg-white rounded-xl border border-slate-200 p-5">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div>
+                    <h3 class="font-semibold text-slate-800">{{ $detalle['nombre_comercial'] }}</h3>
+                    <p class="text-sm text-slate-500">Estado: {{ ucfirst($detalle['estado']) }}</p>
+                </div>
+                <button type="button" wire:click="cerrarDatos" class="text-sm text-slate-600 hover:underline">
+                    Cerrar
+                </button>
+            </div>
+
+            <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                @foreach ($camposDetalle as $etiqueta => $valor)
+                    <div>
+                        <dt class="text-slate-500">{{ $etiqueta }}</dt>
+                        <dd class="text-slate-900">{{ $valor ?: '—' }}</dd>
+                    </div>
+                @endforeach
+                <div class="md:col-span-2">
+                    <dt class="text-slate-500">Descripción pública</dt>
+                    <dd class="text-slate-900 whitespace-pre-line">{{ $detalle['descripcion_publica'] ?: '—' }}</dd>
+                </div>
+                <div class="md:col-span-2">
+                    <dt class="text-slate-500">Administrador</dt>
+                    <dd class="text-slate-900">
+                        @forelse ($detalle['administradores'] as $admin)
+                            <div>{{ $admin['nombre'] }} · {{ $admin['email'] }}</div>
+                        @empty
+                            Sin administrador registrado
+                        @endforelse
+                    </dd>
+                </div>
+                @if ($detalle['estado'] === 'rechazada')
+                    <div class="md:col-span-2">
+                        <dt class="text-slate-500">Motivo del rechazo</dt>
+                        <dd class="text-slate-900">{{ $detalle['motivo_rechazo'] ?: '—' }}</dd>
+                    </div>
+                @endif
+            </dl>
+
+            @if ($detalle['estado'] === 'pendiente')
+                <div class="mt-5 flex gap-2">
+                    <button type="button" wire:click="aprobar({{ $detalle['id'] }})"
+                        class="rounded-lg bg-green-600 text-white text-sm px-4 py-2 hover:bg-green-700">
+                        Aprobar
+                    </button>
+                    <button type="button" wire:click="abrirRechazo({{ $detalle['id'] }})"
+                        class="rounded-lg border border-red-200 text-red-700 text-sm px-4 py-2 hover:bg-red-50">
+                        Rechazar
+                    </button>
+                </div>
+            @endif
+        </div>
+    @endif
+
+    {{-- TG-195: rechazar con motivo --}}
+    @if ($distribuidoraRechazoId)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <form wire:submit="rechazar" class="w-full max-w-lg bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+                <h3 class="font-semibold text-slate-900">Rechazar distribuidora</h3>
+                <p class="text-sm text-slate-500 mt-1">
+                    «{{ $distribuidoraRechazoNombre }}» no podrá usar FootwearPoint. El rechazo es definitivo.
+                </p>
+
+                <div class="mt-4" x-data="{ largo: {{ mb_strlen($motivo_rechazo) }} }">
+                    <label for="motivo_rechazo" class="block text-sm font-medium mb-1">Motivo del rechazo *</label>
+                    <textarea id="motivo_rechazo" wire:model="motivo_rechazo" rows="4"
+                        maxlength="{{ \App\Services\Distribuidora\RechazarDistribuidoraAction::LARGO_MAXIMO_MOTIVO }}"
+                        x-on:input="largo = $el.value.length"
+                        class="w-full rounded-lg border-slate-300 text-sm"
+                        placeholder="Por ejemplo: el RFC no coincide con la razón social."></textarea>
+                    <div class="flex justify-between mt-1">
+                        <div>
+                            @error('motivo_rechazo')
+                                <p class="text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <p class="text-xs text-slate-500">
+                            <span x-text="largo">{{ mb_strlen($motivo_rechazo) }}</span>/{{ \App\Services\Distribuidora\RechazarDistribuidoraAction::LARGO_MAXIMO_MOTIVO }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-5 flex justify-end gap-2">
+                    <button type="button" wire:click="cancelarRechazo"
+                        class="rounded-lg border border-slate-200 text-sm px-4 py-2">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="rounded-lg bg-red-600 text-white text-sm font-medium px-4 py-2 hover:bg-red-700">
+                        Rechazar
+                    </button>
+                </div>
+            </form>
+        </div>
+    @endif
+
     <div class="mb-4 flex gap-2 flex-wrap">
         <button wire:click="$set('filtroEstado', '')"
             class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === '' ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200' }}">
@@ -595,8 +807,11 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                                 {{ $d->estado === 'suspendida' ? 'bg-red-100 text-red-700' : '' }}
                                 {{ $d->estado === 'rechazada' ? 'bg-slate-100 text-slate-600' : '' }}
                             ">
-                                {{ $d->estado }}
+                                {{ ucfirst($d->estado) }}
                             </span>
+                            @if ($d->estado === 'rechazada' && $d->motivo_rechazo)
+                                <div class="text-xs text-slate-500 mt-1 max-w-xs">Motivo: {{ $d->motivo_rechazo }}</div>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
                             <button wire:click="toggleMarketplace({{ $d->id }})"
@@ -605,9 +820,13 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                             </button>
                         </td>
                         <td class="px-4 py-3 space-x-2">
+                            <button wire:click="verDatos({{ $d->id }})"
+                                class="text-xs text-slate-700 hover:underline">Ver datos</button>
                             @if ($d->estado === 'pendiente')
                                 <button wire:click="aprobar({{ $d->id }})"
                                     class="text-xs text-green-700 hover:underline">Aprobar</button>
+                                <button wire:click="abrirRechazo({{ $d->id }})"
+                                    class="text-xs text-red-700 hover:underline">Rechazar</button>
                             @endif
                             @if ($d->estado === 'activa')
                                 <button wire:click="suspender({{ $d->id }})"
