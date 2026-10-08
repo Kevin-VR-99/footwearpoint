@@ -22,6 +22,11 @@ class RevendedorAfiliacionResource extends JsonResource
             'estado'          => $this->estado,
             'fecha_alta'      => $this->fecha_alta,
             'notas'           => $this->notas,
+
+            // E3-07 (TG-133): si ya puede entrar a la app, y con qué correo.
+            // El correo de la cuenta puede ser distinto al de contacto.
+            'tiene_cuenta'    => $this->revendedor->usuario_id !== null,
+            'cuenta_email'    => $this->revendedor->usuario?->email,
         ];
     }
 }

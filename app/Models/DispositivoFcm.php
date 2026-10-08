@@ -12,6 +12,9 @@ class DispositivoFcm extends Model
 
     protected $fillable = [
         'usuario_id',
+        // Sesión de Sanctum con la que se registró (TG-144). Al borrarse esa
+        // sesión, la base borra este registro sola (ON DELETE CASCADE).
+        'personal_access_token_id',
         'token',
         'plataforma',
         'ultimo_uso_at',

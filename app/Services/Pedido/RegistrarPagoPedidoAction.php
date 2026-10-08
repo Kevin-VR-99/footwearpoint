@@ -6,12 +6,16 @@ use App\Models\DistribuidoraStaff;
 use App\Models\Pago;
 use App\Models\Pedido;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
+use App\Support\FolioPago;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class RegistrarPagoPedidoAction
 {
+    /** Estados en los que un pedido ya no recibe pagos ni vales. */
+    public const ESTADOS_CERRADOS = ['rechazado', 'descartado', 'no_surtido', 'vencido_recoleccion'];
+
     public function __construct(
         protected RegistrarAuditoriaAction $auditoria
     ) {}
@@ -34,8 +38,7 @@ class RegistrarPagoPedidoAction
             ]);
         }
 
-        $cerrados = ['rechazado', 'descartado', 'no_surtido', 'vencido_recoleccion'];
-        if (in_array($pedido->estado, $cerrados, true)) {
+        if (in_array($pedido->estado, self::ESTADOS_CERRADOS, true)) {
             throw ValidationException::withMessages([
                 'pedido' => ['Este pedido ya no admite pagos (estado: '.$pedido->estado.').'],
             ]);
@@ -111,22 +114,34 @@ class RegistrarPagoPedidoAction
 
     public function resumen(Pedido $pedido): array
     {
-        $pedido->loadMissing('detalle', 'pagos');
+        $pedido->loadMissing('detalle', 'pagos', 'aplicacionesVale');
 
         $entradas = $pedido->pagos
             ->where('estado', 'aplicado')
             ->where('direccion', 'entrada');
 
-        $pagado = round((float) $entradas->sum('monto'), 2);
+        // Lo aplicado con vales cuenta como pago (TG-167). Antes el vale
+        // perdía su saldo y el pedido seguía debiendo lo mismo.
+        $conVales = round((float) $pedido->aplicacionesVale->sum('monto'), 2);
+
+        $pagado = round((float) $entradas->sum('monto') + $conVales, 2);
         $total = round((float) $pedido->total, 2);
         $saldo = round(max(0, $total - $pagado), 2);
 
+        // El dinero que entra cubre PRIMERO el anticipo, sin importar cómo se
+        // marcó el pago (TG-275). Antes solo contaban los pagos de tipo
+        // "anticipo" y los vales, así que un cobro marcado como saldo en
+        // mostrador dejaba el pedido pagado pero sin poder ir a fábrica (K8).
+        //
+        // Los vales siguen contando, igual que antes (TG-167): son dinero que
+        // la distribuidora ya tiene del cliente y van dentro de lo pagado.
         $anticipoRequerido = round((float) $pedido->detalle->sum('anticipo_requerido'), 2);
-        $anticipoPagado = round((float) $entradas->where('tipo', 'anticipo')->sum('monto'), 2);
+        $anticipoPagado = round(min($anticipoRequerido, $pagado), 2);
         $anticipoPendiente = round(max(0, $anticipoRequerido - $anticipoPagado), 2);
 
         return [
             'pagado'             => $pagado,
+            'pagado_con_vales'   => $conVales,
             'saldo'              => $saldo,
             'anticipo_requerido' => $anticipoRequerido,
             'anticipo_pagado'    => $anticipoPagado,
@@ -134,22 +149,10 @@ class RegistrarPagoPedidoAction
         ];
     }
 
+    /** TG-226: la numeración vive en App\Support\FolioPago (la comparte el anticipo con Mercado Pago). */
     protected function generarFolio(int $distribuidoraId): string
     {
-        $prefijo = 'PAG-'.now()->format('Ymd').'-';
-
-        $ultimo = Pago::withoutGlobalScopes()
-            ->where('distribuidora_id', $distribuidoraId)
-            ->where('folio', 'like', $prefijo.'%')
-            ->orderByDesc('id')
-            ->value('folio');
-
-        $secuencia = 1;
-        if ($ultimo && preg_match('/-(\d+)$/', $ultimo, $m)) {
-            $secuencia = (int) $m[1] + 1;
-        }
-
-        return $prefijo.str_pad((string) $secuencia, 4, '0', STR_PAD_LEFT);
+        return FolioPago::siguiente($distribuidoraId);
     }
 
     protected function staffIdActual(): ?int

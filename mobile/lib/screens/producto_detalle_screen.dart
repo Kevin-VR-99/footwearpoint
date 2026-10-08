@@ -1,0 +1,519 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../models/producto_catalogo.dart';
+import '../providers/carrito_revendedor_provider.dart';
+import '../tema/fp_colores.dart';
+import '../widgets/fp_componentes.dart';
+import 'crear_pedido_screen.dart';
+import 'pedido_revendedor_screen.dart';
+
+/// Detalle de un producto del catálogo (E4-05 / E8 / E9): fotos, precios y la
+/// disponibilidad de cada variante (talla/color).
+class ProductoDetalleScreen extends StatefulWidget {
+  const ProductoDetalleScreen({super.key, required this.producto});
+
+  final ProductoCatalogo producto;
+
+  @override
+  State<ProductoDetalleScreen> createState() => _ProductoDetalleScreenState();
+}
+
+class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
+  int _fotoActual = 0;
+  VarianteCatalogo? _varianteSeleccionada;
+
+  void _seleccionarVariante(VarianteCatalogo variante) {
+    if (variante.disponibilidad == Disponibilidad.noDisponible) return;
+
+    setState(() {
+      _varianteSeleccionada = variante;
+    });
+  }
+
+  void _agregarAlPedidoRevendedor() {
+    if (_varianteSeleccionada == null) return;
+
+    // El carrito vive ligado a la sesión (TG-165), no en esta pantalla: así
+    // persiste al navegar entre productos pero no pasa a otra cuenta.
+    context.read<CarritoRevendedorProvider>().agregar(widget.producto, _varianteSeleccionada!);
+
+    // Sin SnackBars molestos: la confirmación ocurre visualmente actualizando el contador del carrito en la AppBar.
+    ScaffoldMessenger.of(context).clearSnackBars();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final producto = widget.producto;
+    final tema = Theme.of(context);
+    final imagenes = producto.imagenesOrdenadas;
+
+    final subtitulo = [
+      if (producto.marca != null) producto.marca!.nombre,
+      'Modelo ${producto.modelo}',
+    ].join(' · ');
+
+    final esRevendedor = producto.precioMayorista != null;
+    final totalItemsCarrito = context.watch<CarritoRevendedorProvider>().totalPiezas;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(producto.nombre),
+        bottom: const FpBordeMarca(),
+        actions: [
+          // El icono del carrito ahora siempre se muestra para revendedores si hay ítems acumulados
+          if (esRevendedor)
+            IconButton(
+              icon: Badge(
+                isLabelVisible: totalItemsCarrito > 0,
+                label: Text('$totalItemsCarrito'),
+                child: const Icon(Icons.shopping_cart),
+              ),
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PedidoRevendedorScreen()));
+              },
+            ),
+        ],
+      ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: FpColores.borde)),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: esRevendedor
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _varianteSeleccionada == null ? null : _agregarAlPedidoRevendedor,
+                          icon: const Icon(Icons.add_shopping_cart),
+                          label: const Text('Agregar a pedido'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: _varianteSeleccionada == null
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => CrearPedidoScreen(
+                                        producto: producto,
+                                        variante: _varianteSeleccionada!,
+                                      ),
+                                    ),
+                                  );
+                                },
+                          child: const Text('Pedido directo'),
+                        ),
+                      ),
+                    ],
+                  )
+                : FilledButton(
+                    onPressed: _varianteSeleccionada == null
+                        ? null
+                        : () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    CrearPedidoScreen(producto: producto, variante: _varianteSeleccionada!),
+                              ),
+                            );
+                          },
+                    child: const Text('Hacer pedido'),
+                  ),
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: ListView(
+          children: [
+            SizedBox(
+              height: 280,
+              child: imagenes.isEmpty
+                  ? const ImagenProducto(url: null)
+                  : Stack(
+                      children: [
+                        PageView.builder(
+                          itemCount: imagenes.length,
+                          onPageChanged: (i) => setState(() => _fotoActual = i),
+                          itemBuilder: (_, i) => ImagenProducto(url: imagenes[i].url),
+                        ),
+                        if (imagenes.length > 1)
+                          Positioned(
+                            bottom: 8,
+                            left: 0,
+                            right: 0,
+                            child: _Puntos(total: imagenes.length, actual: _fotoActual),
+                          ),
+                      ],
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    producto.nombre,
+                    style: tema.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: FpColores.sidebar,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(subtitulo, style: tema.textTheme.bodyMedium),
+                  const SizedBox(height: 4),
+                  Text(
+                    [
+                      if (producto.linea != null) 'Línea ${producto.linea!.nombre}',
+                      if (producto.categoria != null) producto.categoria!.nombre,
+                      'Código ${producto.codigoCatalogo}',
+                    ].join(' · '),
+                    style: tema.textTheme.bodySmall?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 16),
+                  _Precios(producto: producto),
+                  const SizedBox(height: 20),
+                  FpTarjeta(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Tallas y colores',
+                          style: TextStyle(
+                            color: FpColores.sidebar,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const _Leyenda(),
+                        const Divider(height: 28),
+                        if (producto.variantes.isEmpty)
+                          Text(
+                            'Este producto todavía no tiene tallas ni colores registrados.',
+                            style: tema.textTheme.bodyMedium,
+                          )
+                        else
+                          for (final grupo in producto.variantesPorColor.entries)
+                            _GrupoColor(
+                              color: grupo.key,
+                              variantes: grupo.value,
+                              varianteSeleccionada: _varianteSeleccionada,
+                              onSeleccionar: _seleccionarVariante,
+                            ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Precios extends StatelessWidget {
+  const _Precios({required this.producto});
+
+  final ProductoCatalogo producto;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final mayorista = producto.precioMayorista;
+    final ganancia = mayorista != null ? producto.precioMinoristaSugerido - mayorista : null;
+
+    return FpTarjeta(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _FilaPrecio(
+            etiqueta: 'Precio sugerido de venta',
+            precio: producto.precioMinoristaSugerido,
+            estilo: tema.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: FpColores.sidebar,
+            ),
+          ),
+          if (mayorista != null) ...[
+            const Divider(height: 24),
+            _FilaPrecio(
+              etiqueta: 'Precio mayorista',
+              precio: mayorista,
+              estilo: tema.textTheme.titleMedium?.copyWith(
+                color: tema.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: FpColores.insigniaExitoFondo.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Ganancia estimada:',
+                    style: TextStyle(fontWeight: FontWeight.w500, color: FpColores.insigniaExitoTexto),
+                  ),
+                  Text(
+                    formatoPrecio(ganancia!),
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: FpColores.insigniaExitoTexto),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FilaPrecio extends StatelessWidget {
+  const _FilaPrecio({required this.etiqueta, required this.precio, this.estilo});
+
+  final String etiqueta;
+  final double precio;
+  final TextStyle? estilo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(etiqueta, style: const TextStyle(color: FpColores.textoTenue)),
+        ),
+        Text(formatoPrecio(precio), style: estilo),
+      ],
+    );
+  }
+}
+
+class _Leyenda extends StatelessWidget {
+  const _Leyenda();
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final disponibilidad in Disponibilidad.values)
+          EtiquetaDisponibilidad(disponibilidad: disponibilidad),
+      ],
+    );
+  }
+}
+
+class _GrupoColor extends StatelessWidget {
+  const _GrupoColor({
+    required this.color,
+    required this.variantes,
+    required this.varianteSeleccionada,
+    required this.onSeleccionar,
+  });
+
+  final String color;
+  final List<VarianteCatalogo> variantes;
+  final VarianteCatalogo? varianteSeleccionada;
+  final ValueChanged<VarianteCatalogo> onSeleccionar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            color,
+            style: const TextStyle(color: FpColores.sidebar, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final variante in variantes)
+                _Talla(
+                  variante: variante,
+                  seleccionada: variante == varianteSeleccionada,
+                  onTap: () => onSeleccionar(variante),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Talla extends StatelessWidget {
+  const _Talla({required this.variante, required this.seleccionada, required this.onTap});
+
+  final VarianteCatalogo variante;
+  final bool seleccionada;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final estilo = EstiloDisponibilidad.de(variante.disponibilidad);
+    final noDisponible = variante.disponibilidad == Disponibilidad.noDisponible;
+    final tema = Theme.of(context);
+
+    return Tooltip(
+      message: 'Talla ${variante.talla}: ${variante.disponibilidad.etiqueta}',
+      child: InkWell(
+        onTap: noDisponible ? null : onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 52),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: seleccionada ? tema.colorScheme.primaryContainer : estilo.fondo,
+            border: Border.all(
+              color: seleccionada ? tema.colorScheme.primary : estilo.borde,
+              width: seleccionada ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            variante.talla,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: seleccionada ? tema.colorScheme.onPrimaryContainer : estilo.texto,
+              fontWeight: FontWeight.w600,
+              decoration: noDisponible ? TextDecoration.lineThrough : null,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Puntos extends StatelessWidget {
+  const _Puntos({required this.total, required this.actual});
+
+  final int total;
+  final int actual;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < total; i++)
+          Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i == actual ? Colors.white : Colors.white54,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class EstiloDisponibilidad {
+  const EstiloDisponibilidad({required this.fondo, required this.borde, required this.texto});
+
+  final Color fondo;
+  final Color borde;
+  final Color texto;
+
+  static EstiloDisponibilidad de(Disponibilidad disponibilidad) {
+    return switch (disponibilidad) {
+      // Los mismos colores de insignia de la web (success / warning / neutral).
+      Disponibilidad.disponible => const EstiloDisponibilidad(
+        fondo: FpColores.insigniaExitoFondo,
+        borde: Color(0xFF6EE7B7), // emerald-300
+        texto: FpColores.insigniaExitoTexto,
+      ),
+      Disponibilidad.bajoPedido => const EstiloDisponibilidad(
+        fondo: FpColores.insigniaAvisoFondo,
+        borde: Color(0xFFFDBA74), // orange-300
+        texto: FpColores.insigniaAvisoTexto,
+      ),
+      Disponibilidad.noDisponible => const EstiloDisponibilidad(
+        fondo: FpColores.fondoSuave,
+        borde: FpColores.bordeFuerte,
+        texto: FpColores.textoTenue,
+      ),
+    };
+  }
+}
+
+class EtiquetaDisponibilidad extends StatelessWidget {
+  const EtiquetaDisponibilidad({super.key, required this.disponibilidad});
+
+  final Disponibilidad disponibilidad;
+
+  @override
+  Widget build(BuildContext context) {
+    final estilo = EstiloDisponibilidad.de(disponibilidad);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: estilo.fondo, borderRadius: BorderRadius.circular(999)),
+      child: Text(
+        disponibilidad.etiqueta,
+        style: TextStyle(color: estilo.texto, fontSize: 12, fontWeight: FontWeight.w500),
+      ),
+    );
+  }
+}
+
+class ImagenProducto extends StatelessWidget {
+  const ImagenProducto({super.key, required this.url});
+
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
+
+    final sinFoto = ColoredBox(
+      color: colores.surfaceContainerHighest,
+      child: Center(
+        child: Icon(Icons.image_not_supported_outlined, size: 40, color: colores.onSurfaceVariant),
+      ),
+    );
+
+    if (url == null) return sinFoto;
+
+    return Image.network(
+      url!,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      errorBuilder: (_, _, _) => sinFoto,
+      loadingBuilder: (_, hijo, progreso) =>
+          progreso == null ? hijo : const Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+String formatoPrecio(double precio) {
+  final partes = precio.toStringAsFixed(2).split('.');
+  final entero = partes[0].replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
+
+  return '\$$entero.${partes[1]}';
+}

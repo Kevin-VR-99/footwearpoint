@@ -8,7 +8,7 @@ class GuardarCategoriaProductoRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin_distribuidora') ?? false;
+        return $this->user()?->hasRole('admin_general') ?? false;
     }
 
     public function rules(): array

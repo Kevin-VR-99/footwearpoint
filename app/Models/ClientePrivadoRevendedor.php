@@ -12,6 +12,9 @@ class ClientePrivadoRevendedor extends Model
         'revendedor_id',
         'nombre',
         'telefono',
+        'producto',
+        'monto',
+        'saldo',
         'referencia',
         'notas',
     ];

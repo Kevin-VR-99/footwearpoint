@@ -7,6 +7,7 @@ use App\Models\Pedido;
 use App\Models\Vale;
 use App\Models\ValeMovimiento;
 use App\Models\VentaDirecta;
+use App\Services\Pedido\RegistrarPagoPedidoAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -56,8 +57,6 @@ class AplicarValeAction
             ]);
         }
 
-        $monto = min($montoSolicitado, (float) $vale->saldo_actual);
-
         if ($pedidoId) {
             $pedido = Pedido::query()->find($pedidoId);
             if (! $pedido) {
@@ -66,6 +65,7 @@ class AplicarValeAction
                 ]);
             }
             $this->assertMismoPropietario($vale, $pedido->cliente_directo_id, $pedido->revendedor_distribuidora_id);
+            $this->assertPedidoAdmitePago($pedido);
         } else {
             $venta = VentaDirecta::query()->find($ventaId);
             if (! $venta) {
@@ -87,7 +87,34 @@ class AplicarValeAction
         // EmitirValeAction, que conserva su abort.
         $staffId = $this->staffIdActual();
 
-        return DB::transaction(function () use ($vale, $monto, $pedidoId, $ventaId, $staffId) {
+        return DB::transaction(function () use ($vale, $montoSolicitado, $pedidoId, $ventaId, $staffId) {
+            // Se vuelven a leer bloqueados: si dos personas aplican al mismo
+            // tiempo, la segunda ve los saldos ya descontados.
+            $vale = Vale::query()->lockForUpdate()->findOrFail($vale->id);
+            $monto = min($montoSolicitado, (float) $vale->saldo_actual);
+
+            // En un pedido, el vale cuenta como pago (TG-167): solo se aplica
+            // hasta lo que falta por pagar y el resto se queda en el vale.
+            if ($pedidoId) {
+                $pedido = Pedido::query()->lockForUpdate()->findOrFail($pedidoId);
+                $saldoPedido = app(RegistrarPagoPedidoAction::class)->resumen($pedido)['saldo'];
+
+                if ($saldoPedido <= 0) {
+                    throw ValidationException::withMessages([
+                        'pedido_id' => ['Este pedido ya está pagado.'],
+                    ]);
+                }
+
+                $monto = min($monto, $saldoPedido);
+            }
+
+            $monto = round($monto, 2);
+            if ($monto <= 0) {
+                throw ValidationException::withMessages([
+                    'vale' => ['El vale no tiene saldo disponible.'],
+                ]);
+            }
+
             $saldoAnterior = (float) $vale->saldo_actual;
             $saldoPosterior = round($saldoAnterior - $monto, 2);
 
@@ -132,6 +159,22 @@ class AplicarValeAction
         if (! $ok) {
             throw ValidationException::withMessages([
                 'vale' => ['El vale no pertenece al mismo propietario que el destino.'],
+            ]);
+        }
+    }
+
+    /** Mismas reglas que un pago en mostrador (RegistrarPagoPedidoAction). */
+    protected function assertPedidoAdmitePago(Pedido $pedido): void
+    {
+        if ($pedido->estado === 'borrador') {
+            throw ValidationException::withMessages([
+                'pedido_id' => ['Envía el pedido antes de aplicarle un vale.'],
+            ]);
+        }
+
+        if (in_array($pedido->estado, RegistrarPagoPedidoAction::ESTADOS_CERRADOS, true)) {
+            throw ValidationException::withMessages([
+                'pedido_id' => ['Este pedido ya no admite pagos (estado: '.$pedido->estado.').'],
             ]);
         }
     }

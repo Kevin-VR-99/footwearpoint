@@ -94,6 +94,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         } catch (OperacionInvalidaException $e) {
             $this->errorMsg = $e->getMessage();
         } catch (\Throwable $e) {
+            report($e); // TG-224 (G3): el detalle va al log.
             $this->errorMsg = 'No se pudo registrar la entrada. Revisa los datos e intenta de nuevo.';
         }
     }
@@ -130,6 +131,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         } catch (OperacionInvalidaException $e) {
             $this->errorMsg = $e->getMessage();
         } catch (\Throwable $e) {
+            report($e); // TG-224 (G3): el detalle va al log.
             $this->errorMsg = 'No se pudo registrar el ajuste. Revisa los datos e intenta de nuevo.';
         }
     }

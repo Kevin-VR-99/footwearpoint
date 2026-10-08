@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <title>{{ $title ?? 'Admin — FootwearPoint' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
@@ -27,6 +28,10 @@
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('admin.planes') ? 'bg-white/15' : '' }}">
                     Planes
                 </a>
+                <a href="{{ route('admin.categorias-directorio') }}"
+                    class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('admin.categorias-directorio') ? 'bg-white/15' : '' }}">
+                    Categorías del directorio
+                </a>
                 <a href="{{ route('marketplace') }}"
                     class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" target="_blank">
                     Marketplace público
@@ -34,7 +39,7 @@
             </nav>
 
             <div class="p-4 border-t border-white/10 text-sm">
-                <p class="text-white/70 truncate">{{ auth()->user()->nombre ?? '' }}</p>
+                <p class="text-white/70 truncate">{{ auth()->user()->nombreVisible() ?? '' }}</p>
                 <form method="POST" action="{{ route('logout') }}" class="mt-2">
                     @csrf
                     <button class="text-xs text-white/50 hover:text-white">Cerrar sesión</button>

@@ -61,6 +61,20 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         }
     }
 
+    /**
+     * Los pedidos que NO se van a mandar a fábrica por anticipo pendiente
+     * (TG-215). Es la misma regla que aplica el servidor al solicitar, para
+     * que el aviso y lo que de verdad pasa nunca digan cosas distintas.
+     */
+    public function getSinAnticipoProperty()
+    {
+        if ($this->cicloId === null || $this->detalle?->ciclo->estado !== 'cerrado') {
+            return collect();
+        }
+
+        return app(TransicionCicloService::class)->pedidosSinAnticipo((int) $this->cicloId);
+    }
+
     /** La transición permitida depende del estado actual del ciclo. */
     public function getAccionProperty(): ?array
     {
@@ -132,6 +146,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         } catch (OperacionInvalidaException $e) {
             $this->errorMsg = $e->getMessage();
         } catch (\Throwable $e) {
+            report($e); // TG-224 (G3): el detalle va al log.
             $this->errorMsg = 'No se pudo completar la acción. Intenta de nuevo.';
         }
     }
@@ -223,6 +238,27 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
                 </div>
             </div>
 
+            @if ($this->sinAnticipo->isNotEmpty())
+                <div class="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <p class="font-semibold">
+                        {{ $this->sinAnticipo->count() }}
+                        {{ $this->sinAnticipo->count() === 1 ? 'pedido no se enviará' : 'pedidos no se enviarán' }}
+                        a fábrica por anticipo pendiente.
+                    </p>
+                    <ul class="mt-1 list-disc pl-5">
+                        @foreach ($this->sinAnticipo as $fila)
+                            <li>
+                                {{ $fila['pedido']->folio }} — faltan
+                                <span class="tabular-nums">${{ number_format($fila['falta'], 2) }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                    <p class="mt-1 text-xs">
+                        Pasan solos al siguiente ciclo y entrarán cuando el cliente pague su anticipo.
+                    </p>
+                </div>
+            @endif
+
             @if ($this->accion)
                 <div class="mt-5 pt-5 border-t border-slate-100 flex flex-wrap items-center gap-4">
                     <button type="button" wire:click="{{ $this->accion[0] }}" wire:loading.attr="disabled"
@@ -286,7 +322,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
                 <div class="px-5 py-3 border-b border-slate-100">
                     <h3 class="text-sm font-semibold text-slate-800">Consolidado por variante</h3>
                     <p class="text-xs text-slate-500 mt-0.5">
-                        Lo que se le pide a fábrica, sumando todos los pedidos del ciclo.
+                        Lo que se le pide a fábrica, sumando los pedidos del ciclo (sin rechazados ni descartados).
                     </p>
                 </div>
 

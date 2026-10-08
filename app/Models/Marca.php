@@ -2,17 +2,17 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Una marca del catálogo compartido (TG-209): existe una sola vez, con nombre
+ * único en todo el sistema.
+ */
 class Marca extends Model
 {
-    use BelongsToTenant;
-
     protected $table = 'marcas';
 
     protected $fillable = [
-        'distribuidora_id',
         'nombre',
         'logotipo_url',
         'descripcion',
@@ -23,20 +23,9 @@ class Marca extends Model
         'activa' => 'boolean',
     ];
 
-    public function distribuidora()
-    {
-        return $this->belongsTo(Distribuidora::class, 'distribuidora_id');
-    }
-
-    public function campanas()
-    {
-        return $this->hasMany(Campana::class, 'marca_id');
-    }
-
     public function lineas()
     {
         return $this->belongsToMany(Linea::class, 'linea_marca', 'marca_id', 'linea_id')
-            ->withPivot('distribuidora_id')
             ->withTimestamps();
     }
 

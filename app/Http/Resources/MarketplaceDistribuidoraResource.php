@@ -18,6 +18,20 @@ class MarketplaceDistribuidoraResource extends JsonResource
             'email_publico'       => $this->email_publico,
             'direccion_publica'   => $this->direccion_publica,
             'horario_publico'     => $this->horario_publico,
+            // TG-197 (G16): solo sus categorías activas, por nombre.
+            'categorias'          => $this->categoriasActivas()
+                ->map(fn ($categoria) => ['id' => $categoria->id, 'nombre' => $categoria->nombre])
+                ->values(),
         ];
+    }
+
+    /** Usa las ya cargadas (DirectorioPublico las trae) o las consulta. */
+    private function categoriasActivas()
+    {
+        $categorias = $this->relationLoaded('categoriasDirectorio')
+            ? $this->categoriasDirectorio
+            : $this->categoriasDirectorio()->orderBy('nombre')->get();
+
+        return $categorias->filter(fn ($categoria) => $categoria->activa);
     }
 }

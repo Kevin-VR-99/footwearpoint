@@ -1,10 +1,11 @@
 <?php
 
 use App\Models\Pedido;
+use App\Services\Pedido\EntregaPedidoAction;
 use App\Services\Pedido\EnviarPedidoAction;
-use App\Services\Pedido\MarcarListoEntregaAction;
+use App\Services\Pago\VerificarPagoMercadoPagoAction;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
-use App\Services\Pedido\RegistrarRecoleccionAction;
+use App\Support\MensajeError;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -17,10 +18,13 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     public string $mensaje = '';
     public string $errorMsg = '';
 
-    public string $pagoTipo = 'anticipo';
+    public string $pagoTipo = 'saldo_pedido';
     public string $pagoMetodo = 'efectivo';
     public string $pagoMonto = '';
     public string $pagoReferencia = '';
+
+    // TG-226 (bugfix): número de pago de Mercado Pago (opcional) para verificar.
+    public string $pagoMpId = '';
 
     public function mount(int $id)
     {
@@ -33,6 +37,12 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         }
 
         $this->pedidoId = $id;
+
+        if ($this->pedido->tipo === 'cliente_directo' && $this->resumen['anticipo_pendiente'] > 0) {
+            $this->pagoTipo = 'anticipo';
+        } else {
+            $this->pagoTipo = 'saldo_pedido';
+        }
     }
 
     public function getPedidoProperty()
@@ -60,7 +70,85 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         } catch (ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo enviar.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo enviar el pedido. Intenta de nuevo.');
+        }
+    }
+
+    public function marcarListo(EntregaPedidoAction $accion)
+    {
+        $this->pasoDeEntrega(fn () => $accion->marcarListo($this->pedido), 'Pedido listo para entrega. Se le avisó al cliente.');
+    }
+
+    public function marcarEntregado(EntregaPedidoAction $accion)
+    {
+        $this->pasoDeEntrega(fn () => $accion->marcarEntregado($this->pedido), 'Pedido entregado.');
+    }
+
+    protected function pasoDeEntrega(callable $paso, string $exito): void
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $paso();
+            unset($this->pedido);
+            unset($this->resumen);
+            $this->mensaje = $exito;
+        } catch (ValidationException $e) {
+            $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo cambiar el estado.';
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo cambiar el estado del pedido. Intenta de nuevo.');
+        }
+    }
+
+    /**
+     * TG-226 (G7): el personal le pregunta a Mercado Pago si ya se pagó un
+     * anticipo (o, desde TG-227, un saldo) pendiente, mientras llega el aviso
+     * automático de G9.
+     */
+    public function verificarMercadoPago(VerificarPagoMercadoPagoAction $accion)
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        $pagoMpId = trim($this->pagoMpId);
+
+        if ($pagoMpId !== '' && preg_match('/^[0-9]{1,20}$/', $pagoMpId) !== 1) {
+            $this->errorMsg = 'El número de pago de Mercado Pago solo lleva dígitos.';
+
+            return;
+        }
+
+        // TG-227 (G8): el pendiente puede ser del anticipo o del saldo;
+        // TG-229 (G10): o el pago del cliente mayorista.
+        $tipoPendiente = $this->pedido->pagos
+            ->filter(fn ($p) => $p->esMercadoPagoPendiente() && $p->preferencia_externa !== null)
+            ->sortByDesc('id')
+            ->first()?->tipo;
+        $deQue = match ($tipoPendiente) {
+            'saldo_pedido'     => 'este saldo',
+            'total_revendedor' => 'este pago',
+            default            => 'este anticipo',
+        };
+
+        try {
+            $resultado = $accion->ejecutar($this->pedido, $pagoMpId === '' ? null : $pagoMpId, 'panel');
+            unset($this->pedido);
+            unset($this->resumen);
+
+            $this->mensaje = match ($resultado) {
+                VerificarPagoMercadoPagoAction::APLICADO => 'Mercado Pago confirmó el pago. Ya quedó aplicado.',
+                VerificarPagoMercadoPagoAction::RECHAZADO => 'Mercado Pago rechazó el intento de pago. El cliente puede intentarlo de nuevo.',
+                VerificarPagoMercadoPagoAction::VENCIDO => 'El enlace de pago venció sin pagarse.',
+                VerificarPagoMercadoPagoAction::NO_CUADRA => 'Mercado Pago tiene un pago que no coincide con '.$deQue.' (referencia, monto, moneda o cuenta) y no se aplicó. Revísalo en tu cuenta de Mercado Pago antes de registrar algo a mano.',
+                default => 'Mercado Pago todavía no confirma el pago.',
+            };
+
+            if ($resultado === VerificarPagoMercadoPagoAction::APLICADO) {
+                $this->pagoMpId = '';
+            }
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo verificar el pago con Mercado Pago. Intenta de nuevo.');
         }
     }
 
@@ -69,7 +157,9 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         $this->mensaje = '';
         $this->errorMsg = '';
 
-        if ($this->resumen['anticipo_pendiente'] <= 0) {
+        if ($this->pedido->tipo === 'cliente_directo' && $this->resumen['anticipo_pendiente'] <= 0) {
+            $this->pagoTipo = 'saldo_pedido';
+        } elseif ($this->pedido->tipo !== 'cliente_directo') {
             $this->pagoTipo = 'saldo_pedido';
         }
 
@@ -94,41 +184,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         } catch (ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo registrar el pago.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
-        }
-    }
-
-    public function marcarListo(MarcarListoEntregaAction $accion)
-    {
-        $this->mensaje = '';
-        $this->errorMsg = '';
-
-        try {
-            $accion->ejecutar($this->pedido);
-            unset($this->pedido);
-            unset($this->resumen);
-            $this->mensaje = 'Pedido marcado como listo para entrega.';
-        } catch (ValidationException $e) {
-            $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo marcar.';
-        } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
-        }
-    }
-
-    public function registrarRecoleccion(RegistrarRecoleccionAction $accion)
-    {
-        $this->mensaje = '';
-        $this->errorMsg = '';
-
-        try {
-            $accion->ejecutar($this->pedido);
-            unset($this->pedido);
-            unset($this->resumen);
-            $this->mensaje = 'Recolección registrada.';
-        } catch (ValidationException $e) {
-            $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo registrar.';
-        } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar el pago. Intenta de nuevo.');
         }
     }
 };
@@ -148,28 +204,31 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             </div>
         </div>
 
-        <div class="flex flex-wrap gap-2">
-            @if ($this->pedido->estado === 'borrador')
-                <button type="button" wire:click="enviar"
-                    class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB]">
-                    Enviar pedido
-                </button>
-            @endif
+        @if ($this->pedido->estado === 'borrador')
+            <button type="button" wire:click="enviar"
+                class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB]">
+                Enviar pedido
+            </button>
+        @endif
 
-            @if ($this->pedido->estado === 'recibido_distribuidora')
-                <button type="button" wire:click="marcarListo"
-                    class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB]">
-                    Listo para entrega
+        @if (in_array($this->pedido->estado, ['recibido_distribuidora', 'listo_entrega'], true))
+            <div class="flex flex-wrap gap-2">
+                @if ($this->pedido->estado === 'recibido_distribuidora')
+                    <button type="button" wire:click="marcarListo"
+                        wire:confirm="¿Marcar listo para entrega? Se le avisará al cliente para que pase a recoger."
+                        class="rounded-lg border border-[#1E2F52] px-4 py-2 text-sm font-medium text-[#1E2F52] hover:bg-slate-50">
+                        Marcar listo para entrega
+                    </button>
+                @endif
+                <button type="button" wire:click="marcarEntregado"
+                    wire:confirm="¿Confirmar que el cliente se llevó su pedido?"
+                    @disabled($this->resumen['saldo'] > 0)
+                    @if ($this->resumen['saldo'] > 0) title="Cobra el saldo antes de entregar" @endif
+                    class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB] disabled:cursor-not-allowed disabled:opacity-50">
+                    Marcar entregado
                 </button>
-            @endif
-
-            @if ($this->pedido->estado === 'listo_entrega')
-                <button type="button" wire:click="registrarRecoleccion"
-                    class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB]">
-                    Registrar recolección
-                </button>
-            @endif
-        </div>
+            </div>
+        @endif
     </div>
 
     @if ($this->pedido->estado === 'borrador')
@@ -190,32 +249,10 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             @else
                 No hay saldo pendiente.
             @endif
+            @if ($this->pedido->estado === 'listo_entrega' && $this->pedido->fecha_limite_recoleccion)
+                Tiene hasta el {{ $this->pedido->fecha_limite_recoleccion->format('d/m/Y') }} para recogerlo.
+            @endif
         </div>
-    @endif
-
-    @if ($this->pedido->estado === 'listo_entrega' && $this->pedido->fecha_limite_recoleccion)
-        @php
-            $limite = $this->pedido->fecha_limite_recoleccion;
-            $vencido = now()->greaterThan($limite);
-            $porVencer = (! $vencido) && now()->diffInHours($limite, false) <= 48;
-        @endphp
-
-        @if ($vencido)
-            <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-                El plazo de recolección venció el
-                {{ $limite->timezone('America/Mexico_City')->format('d/m/Y H:i') }}.
-            </div>
-        @elseif ($porVencer)
-            <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                El pedido está por vencer. Límite:
-                {{ $limite->timezone('America/Mexico_City')->format('d/m/Y H:i') }}.
-            </div>
-        @else
-            <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                Recoger antes del
-                {{ $limite->timezone('America/Mexico_City')->format('d/m/Y H:i') }}.
-            </div>
-        @endif
     @endif
 
     @if ($mensaje)
@@ -230,7 +267,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         </div>
     @endif
 
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+    <div class="grid gap-4 sm:grid-cols-2 {{ $this->pedido->tipo === 'cliente_directo' ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} mb-6">
         <div class="bg-white rounded-xl border border-slate-200 p-4">
             <p class="text-xs text-slate-500">Total</p>
             <p class="text-lg font-semibold tabular-nums">${{ number_format((float) $this->pedido->total, 2) }}</p>
@@ -238,15 +275,20 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         <div class="bg-white rounded-xl border border-slate-200 p-4">
             <p class="text-xs text-slate-500">Pagado</p>
             <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['pagado'], 2) }}</p>
+            @if ($this->resumen['pagado_con_vales'] > 0)
+                <p class="text-xs text-slate-500 tabular-nums">Incluye ${{ number_format($this->resumen['pagado_con_vales'], 2) }} en vales</p>
+            @endif
         </div>
         <div class="bg-white rounded-xl border border-slate-200 p-4">
             <p class="text-xs text-slate-500">Saldo</p>
             <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['saldo'], 2) }}</p>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
-            <p class="text-xs text-slate-500">Anticipo pendiente</p>
-            <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['anticipo_pendiente'], 2) }}</p>
-        </div>
+        @if ($this->pedido->tipo === 'cliente_directo')
+            <div class="bg-white rounded-xl border border-slate-200 p-4">
+                <p class="text-xs text-slate-500">Anticipo pendiente</p>
+                <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['anticipo_pendiente'], 2) }}</p>
+            </div>
+        @endif
     </div>
 
     @if ($this->pedido->estado !== 'borrador')
@@ -256,10 +298,10 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 <label class="text-sm">
                     <span class="block text-slate-500 mb-1">Tipo</span>
                     <select wire:model="pagoTipo" class="w-full rounded-lg border-slate-300 text-sm">
-                        @if ($this->resumen['anticipo_pendiente'] > 0)
+                        @if ($this->pedido->tipo === 'cliente_directo' && $this->resumen['anticipo_pendiente'] > 0)
                             <option value="anticipo">Anticipo</option>
                         @endif
-                        <option value="saldo_pedido">Saldo</option>
+                        <option value="saldo_pedido">Saldo / Total</option>
                     </select>
                 </label>
                 <label class="text-sm">
@@ -302,6 +344,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                         <th class="px-4 py-2 font-medium">Método</th>
                         <th class="px-4 py-2 font-medium text-right">Monto</th>
                         <th class="px-4 py-2 font-medium">Fecha</th>
+                        <th class="px-4 py-2 font-medium">Estado</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -309,9 +352,33 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                         <tr>
                             <td class="px-4 py-2">{{ $p->folio }}</td>
                             <td class="px-4 py-2">{{ $p->tipo }}</td>
-                            <td class="px-4 py-2">{{ $p->metodo }}</td>
+                            <td class="px-4 py-2">{{ $p->metodo === 'mercado_pago' ? 'Mercado Pago' : $p->metodo }}</td>
                             <td class="px-4 py-2 text-right tabular-nums">${{ number_format((float) $p->monto, 2) }}</td>
                             <td class="px-4 py-2">{{ optional($p->fecha_pago)->format('d/m/Y H:i') }}</td>
+                            <td class="px-4 py-2">
+                                {{-- TG-226: un pago pendiente todavía no cuenta como pagado. --}}
+                                @php
+                                    [$varianteEstado, $textoEstado] = match ($p->estado) {
+                                        'pendiente' => ['warning', 'Pendiente'],
+                                        'fallido' => ['neutral', 'Fallido'],
+                                        'revertido' => ['danger', 'Revertido'],
+                                        default => ['success', 'Aplicado'],
+                                    };
+                                @endphp
+                                <x-ui.insignia-estado :variante="$varianteEstado" :texto="$textoEstado" />
+                                @if ($p->esMercadoPagoPendiente() && $p->preferencia_externa)
+                                    <div class="mt-1 flex items-center gap-2">
+                                        {{-- Opcional: el número de pago que el cliente ve en su comprobante de Mercado Pago. --}}
+                                        <input type="text" inputmode="numeric" wire:model="pagoMpId" maxlength="20"
+                                            placeholder="N.º de pago (opcional)" aria-label="Número de pago de Mercado Pago (opcional)"
+                                            class="w-40 rounded-lg border-slate-300 px-2 py-1 text-xs" />
+                                        <button type="button" wire:click="verificarMercadoPago" wire:loading.attr="disabled"
+                                            class="text-xs font-medium text-fp-primary hover:underline">
+                                            Verificar con Mercado Pago
+                                        </button>
+                                    </div>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>

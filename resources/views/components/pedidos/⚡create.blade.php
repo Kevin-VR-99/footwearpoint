@@ -6,9 +6,13 @@ use App\Models\Pedido;
 use App\Models\ProductoCampana;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Sucursal;
+use App\Services\Catalogo\CatalogoVisible;
+use App\Services\Catalogo\PrecioEfectivo;
 use App\Services\Pedido\AgregarLineaPedidoAction;
+use App\Services\Pedido\QuitarLineaPedidoAction;
 use App\Services\Pedido\CrearPedidoBorradorAction;
 use App\Services\Pedido\EnviarPedidoAction;
+use App\Support\MensajeError;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -93,45 +97,48 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
     }
 
     /**
-     * Líneas activas con productos publicados en la temporada (campaña) activa.
+     * Las líneas que esta distribuidora vende y que hoy tienen productos a la
+     * venta (TG-213): el catálogo es compartido, pero cada quien ofrece lo
+     * suyo.
      */
     public function getLineasProperty()
     {
-        return Linea::query()
-            ->where('activa', true)
-            ->whereHas('campana', fn ($q) => $q->where('estado', 'activa'))
-            ->whereHas('productos.publicacionesCampana', function ($q) {
-                $q->where('publicado', true)
-                    ->whereHas('campana', fn ($c) => $c->where('estado', 'activa'));
-            })
-            ->orderBy('nombre')
-            ->get();
+        $lineaIds = app(CatalogoVisible::class)->consulta()
+            ->with('campana:id,linea_id')
+            ->get()
+            ->pluck('campana.linea_id')
+            ->unique()
+            ->all();
+
+        return Linea::query()->whereIn('id', $lineaIds)->orderBy('nombre')->get();
     }
 
-    /**
-     * Productos de la línea elegida, solo temporada activa y publicados.
-     */
+    /** Lo que esta distribuidora vende de la línea elegida. */
     public function getCatalogoProperty()
     {
         if ($this->linea_id === '') {
             return collect();
         }
 
-        return ProductoCampana::query()
-            ->where('publicado', true)
-            ->whereHas('campana', fn ($q) => $q->where('estado', 'activa'))
-            ->whereHas('producto', function ($q) {
-                $q->where('linea_id', (int) $this->linea_id)
-                    ->where('activo', true);
-            })
+        return app(CatalogoVisible::class)->consulta()
+            ->whereHas('campana', fn ($q) => $q->where('linea_id', (int) $this->linea_id))
+            ->whereHas('producto', fn ($q) => $q->where('activo', true))
             ->with([
                 'producto',
-                'disponibilidadPorVariante' => fn ($q) => $q->where('estado', 'disponible'),
+                // También las "bajo pedido": se pueden pedir, solo tardan más
+                // en llegar de fábrica (TG-214).
+                'disponibilidadPorVariante' => fn ($q) => $q->sePuedenPedir(),
                 'disponibilidadPorVariante.variante.talla',
                 'disponibilidadPorVariante.variante.color',
             ])
             ->orderBy('id')
             ->get();
+    }
+
+    /** Los precios los calcula siempre el mismo servicio (TG-212). */
+    public function getPreciosProperty(): PrecioEfectivo
+    {
+        return app(PrecioEfectivo::class);
     }
 
     public function getVariantesDisponiblesProperty()
@@ -181,7 +188,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo crear.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo crear el borrador. Intenta de nuevo.');
         }
     }
 
@@ -219,7 +226,30 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo agregar.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo agregar la línea. Intenta de nuevo.');
+        }
+    }
+
+
+    public function quitarLinea(int $lineaId, QuitarLineaPedidoAction $accion)
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        if (! $this->pedidoId) {
+            $this->errorMsg = 'Primero crea el borrador.';
+
+            return;
+        }
+
+        try {
+            $pedido = Pedido::query()->findOrFail($this->pedidoId);
+            $accion->ejecutar($pedido, $lineaId);
+            $this->mensaje = 'Línea quitada del pedido.';
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo quitar la línea.';
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo quitar la línea. Intenta de nuevo.');
         }
     }
 
@@ -241,7 +271,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo enviar.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo enviar el pedido. Intenta de nuevo.');
         }
     }
 };
@@ -370,7 +400,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                                 · {{ $pc->producto->modelo }}
                             @endif
                             — {{ $pc->codigo_catalogo }}
-                            (${{ number_format((float) $pc->precio_mayorista, 2) }})
+                            (${{ number_format($tipo === 'cliente_directo' ? $this->precios->menudeo($pc) : $this->precios->mayoreo($pc), 2) }})
                         </option>
                     @endforeach
                 </select>
@@ -392,6 +422,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                             Talla {{ $d->variante?->talla?->valor ?? '?' }}
                             / {{ $d->variante?->color?->nombre ?? '?' }}
                             ({{ $d->variante?->sku }})
+                            @if ($d->estado === 'bajo_pedido') · Bajo pedido @endif
                         </option>
                     @endforeach
                 </select>
@@ -419,20 +450,30 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                         <th class="px-4 py-2">Color</th>
                         <th class="px-4 py-2 text-right">Cant.</th>
                         <th class="px-4 py-2 text-right">Subtotal</th>
+                        <th class="px-4 py-2 text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($this->pedido?->detalle ?? [] as $l)
-                        <tr>
+                        <tr wire:key="pedido-linea-{{ $l->id }}">
                             <td class="px-4 py-3">{{ $l->producto_nombre }}</td>
                             <td class="px-4 py-3">{{ $l->talla }}</td>
                             <td class="px-4 py-3">{{ $l->color }}</td>
                             <td class="px-4 py-3 text-right">{{ $l->cantidad }}</td>
                             <td class="px-4 py-3 text-right">${{ number_format((float) $l->subtotal, 2) }}</td>
+                            <td class="px-4 py-3 text-right">
+                                <button type="button"
+                                    wire:click="quitarLinea({{ $l->id }})"
+                                    wire:confirm="¿Quitar esta línea del pedido?"
+                                    wire:loading.attr="disabled"
+                                    class="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50">
+                                    Quitar
+                                </button>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-4 py-8 text-center text-slate-500">Sin líneas aún</td>
+                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">Sin líneas aún</td>
                         </tr>
                     @endforelse
                 </tbody>

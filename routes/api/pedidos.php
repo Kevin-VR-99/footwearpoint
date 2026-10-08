@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\PagoMercadoPagoController;
 use App\Http\Controllers\Api\PedidoController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,4 +37,38 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empl
 Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado'])
     ->group(function () {
         Route::post('/pedidos/{id}/pagos', [PedidoController::class, 'registrarPago']);
+    });
+
+/*
+| TG-226 (G7) / TG-227 (G8) — El cliente directo paga su anticipo o su saldo
+| con Mercado Pago (Checkout Pro) desde la app, sobre SUS pedidos.
+| 'verificar' le pregunta a Mercado Pago si ya se pagó cuando el cliente
+| regresa a la app.
+| Con límite de 10 por minuto: cada llamada sale a Mercado Pago.
+*/
+Route::middleware(['auth:sanctum', 'tenant.team', 'role:cliente_directo', 'throttle:10,1'])
+    ->group(function () {
+        Route::post('/pedidos/{id}/anticipo/mercado-pago', [PagoMercadoPagoController::class, 'crearAnticipo'])
+            ->whereNumber('id');
+        Route::post('/pedidos/{id}/anticipo/mercado-pago/verificar', [PagoMercadoPagoController::class, 'verificar'])
+            ->whereNumber('id');
+
+        // TG-227 (G8): el saldo completo, cuando el pedido ya llegó a la distribuidora.
+        Route::post('/pedidos/{id}/saldo/mercado-pago', [PagoMercadoPagoController::class, 'crearSaldo'])
+            ->whereNumber('id');
+        Route::post('/pedidos/{id}/saldo/mercado-pago/verificar', [PagoMercadoPagoController::class, 'verificarSaldo'])
+            ->whereNumber('id');
+    });
+
+/*
+| TG-229 (G10) — El cliente mayorista (revendedor en el código) paga con
+| Mercado Pago todo lo que falta de SU pedido, desde que lo envía hasta que
+| está listo para entrega. Mismo límite que el cliente directo.
+*/
+Route::middleware(['auth:sanctum', 'tenant.team', 'role:revendedor', 'throttle:10,1'])
+    ->group(function () {
+        Route::post('/pedidos/{id}/total/mercado-pago', [PagoMercadoPagoController::class, 'crearMayorista'])
+            ->whereNumber('id');
+        Route::post('/pedidos/{id}/total/mercado-pago/verificar', [PagoMercadoPagoController::class, 'verificarMayorista'])
+            ->whereNumber('id');
     });

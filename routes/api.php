@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Admin\CategoriaDirectorioController;
 use App\Http\Controllers\Api\Admin\DistribuidoraController;
 use App\Http\Controllers\Api\Admin\PlanSuscripcionController;
+use App\Http\Controllers\Api\ClientePrivadoRevendedorController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -11,6 +13,9 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
+// GET a propósito: es para comprobar que el servidor responde (desde el
+// navegador, curl o un monitor), y ninguno de esos manda POST. Se había
+// cambiado a POST sin motivo en E9-04; se regresó en TG-162.
 Route::get('/ping', function () {
     return response()->json(['status' => 'ok']);
 });
@@ -24,6 +29,12 @@ Route::get('/ping', function () {
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/logout', [AuthController::class, 'logout'])
+        ->middleware('auth:sanctum');
+
+    // Recuperar la sesión al abrir la app (TG-140). Solo auth:sanctum, sin
+    // role:..., porque tiene que responder a cualquier rol, incluido un
+    // revendedor suspendido (que recibe distribuidora_id null).
+    Route::get('/me', [AuthController::class, 'me'])
         ->middleware('auth:sanctum');
 
     Route::post('/register-empleado', [AuthController::class, 'registerEmpleado'])
@@ -46,7 +57,10 @@ Route::prefix('admin')
     ->middleware(['auth:sanctum', 'tenant.team', 'role:admin_general'])
     ->group(function () {
         Route::get('/distribuidoras', [DistribuidoraController::class, 'index']);
+        Route::get('/distribuidoras/{id}', [DistribuidoraController::class, 'show'])->whereNumber('id');
         Route::post('/distribuidoras/{id}/aprobar', [DistribuidoraController::class, 'aprobar']);
+        // TG-195 (G4): rechazar una pendiente con su motivo.
+        Route::post('/distribuidoras/{id}/rechazar', [DistribuidoraController::class, 'rechazar'])->whereNumber('id');
         Route::post('/distribuidoras/{id}/suspender', [DistribuidoraController::class, 'suspender']);
         Route::post('/distribuidoras/{id}/reactivar', [DistribuidoraController::class, 'reactivar']);
         Route::post('/distribuidoras/{id}/suscripcion', [DistribuidoraController::class, 'asignarSuscripcion']);
@@ -58,6 +72,15 @@ Route::prefix('admin')
         Route::delete('/planes-suscripcion/{id}', [PlanSuscripcionController::class, 'destroy']);
 
         Route::patch('/marketplace/config', [DistribuidoraController::class, 'marketplaceConfig']);
+
+        // TG-197 (G16): categorías generales del directorio (no se borran,
+        // se activan o desactivan) y su asignación a cada distribuidora.
+        Route::get('/categorias-directorio', [CategoriaDirectorioController::class, 'index']);
+        Route::post('/categorias-directorio', [CategoriaDirectorioController::class, 'store']);
+        Route::put('/categorias-directorio/{id}', [CategoriaDirectorioController::class, 'update'])->whereNumber('id');
+        Route::patch('/categorias-directorio/{id}/activar', [CategoriaDirectorioController::class, 'activar'])->whereNumber('id');
+        Route::patch('/categorias-directorio/{id}/desactivar', [CategoriaDirectorioController::class, 'desactivar'])->whereNumber('id');
+        Route::put('/distribuidoras/{id}/categorias-directorio', [CategoriaDirectorioController::class, 'asignar'])->whereNumber('id');
     });
 
 /*
@@ -84,5 +107,24 @@ require __DIR__.'/api/pedidos.php';
 require __DIR__.'/api/marketplace.php';
 require __DIR__.'/api/vales.php';
 require __DIR__.'/api/notificaciones.php';
+require __DIR__.'/api/dispositivos-fcm.php';
+
+// E1-05 — perfil del usuario (no el de la distribuidora)
+require __DIR__.'/api/perfil.php';
 
 require __DIR__.'/api/reportes.php';
+
+// TG-228 (G9) — avisos de Mercado Pago (pública, sin sesión)
+require __DIR__.'/api/webhooks.php';
+
+/*
+|--------------------------------------------------------------------------
+| Clientes particulares privados del revendedor (E9-06)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth:sanctum'])->prefix('revendedor/clientes-privados')->group(function () {
+    Route::get('/', [ClientePrivadoRevendedorController::class, 'index']);
+    Route::post('/', [ClientePrivadoRevendedorController::class, 'store']);
+    Route::put('/{id}', [ClientePrivadoRevendedorController::class, 'update']);
+    Route::delete('/{id}', [ClientePrivadoRevendedorController::class, 'destroy']);
+});

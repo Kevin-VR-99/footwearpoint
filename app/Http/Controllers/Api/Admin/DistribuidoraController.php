@@ -3,16 +3,21 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ConfiguracionCiclo;
-use App\Models\ConfiguracionDistribuidora;
 use App\Models\Distribuidora;
 use App\Models\PlanSuscripcion;
-use App\Models\Sucursal;
 use App\Models\Suscripcion;
+use App\Services\Distribuidora\AprobacionDistribuidoraException;
+use App\Services\Distribuidora\AprobarDistribuidoraAction;
+use App\Services\Distribuidora\CambiarVisibilidadMarketplaceAction;
+use App\Services\Distribuidora\CambioEstadoDistribuidora;
+use App\Services\Distribuidora\DatosSolicitudDistribuidoraAction;
+use App\Services\Distribuidora\ReactivarDistribuidoraAction;
+use App\Services\Distribuidora\RechazarDistribuidoraAction;
+use App\Services\Distribuidora\SuspenderDistribuidoraAction;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Admin\AsignarSuscripcionRequest;
 use App\Http\Requests\Admin\MarketplaceConfigRequest;
+use App\Http\Requests\Admin\RechazarDistribuidoraRequest;
 
 class DistribuidoraController extends Controller
 {
@@ -34,6 +39,7 @@ class DistribuidoraController extends Controller
             'fecha_solicitud',
             'fecha_aprobacion',
             'marketplace_visible',
+            'motivo_rechazo',
         ]);
 
         return response()->json([
@@ -41,124 +47,95 @@ class DistribuidoraController extends Controller
         ]);
     }
 
-    public function aprobar(int $id)
+    /**
+     * TG-195 (G4) — Los datos de la distribuidora y su administrador, para
+     * revisarla antes de aprobarla o rechazarla.
+     */
+    public function show(DatosSolicitudDistribuidoraAction $datos, int $id)
+    {
+        return response()->json([
+            'data' => $datos->ejecutar(Distribuidora::findOrFail($id)),
+        ]);
+    }
+
+    /**
+     * TG-195 (G4) — Rechaza una distribuidora pendiente con su motivo.
+     *
+     * Si no está pendiente, la acción lanza OperacionInvalidaException, que
+     * responde sola un 422 con su mensaje.
+     */
+    public function rechazar(RechazarDistribuidoraRequest $request, RechazarDistribuidoraAction $rechazar, int $id)
+    {
+        $cambio = $rechazar->ejecutar(
+            Distribuidora::findOrFail($id),
+            $request->validated('motivo_rechazo'),
+        );
+
+        $distribuidora = $cambio->distribuidora;
+
+        return $this->respuestaCambio($cambio, [
+            'id'               => $distribuidora->id,
+            'nombre_comercial' => $distribuidora->nombre_comercial,
+            'estado'           => $distribuidora->estado,
+            'motivo_rechazo'   => $distribuidora->motivo_rechazo,
+        ], 'Distribuidora rechazada correctamente.');
+    }
+
+    public function aprobar(AprobarDistribuidoraAction $aprobar, int $id)
     {
         $distribuidora = Distribuidora::findOrFail($id);
 
-        if ($distribuidora->estado !== 'pendiente') {
-            return response()->json([
-                'message' => 'Solo se pueden aprobar distribuidoras en estado pendiente.',
-            ], 422);
-        }
+        try {
+            $cambio = $aprobar->ejecutar($distribuidora);
+        } catch (AprobacionDistribuidoraException $e) {
+            if ($e->esNoPendiente()) {
+                return response()->json([
+                    'message' => 'Solo se pueden aprobar distribuidoras en estado pendiente.',
+                ], 422);
+            }
 
-        $plan = PlanSuscripcion::query()
-            ->where('nombre', 'Básico')
-            ->orWhere('nombre', 'like', '%ásico%')
-            ->first()
-            ?? PlanSuscripcion::first();
-
-        if (!$plan) {
             return response()->json([
                 'message' => 'No hay planes de suscripción configurados.',
             ], 500);
         }
 
-        DB::transaction(function () use ($distribuidora, $plan) {
-            $distribuidora->update([
-                'estado'           => 'activa',
-                'fecha_aprobacion' => now(),
-            ]);
-
-            Sucursal::withoutGlobalScopes()->firstOrCreate(
-                [
-                    'distribuidora_id' => $distribuidora->id,
-                    'es_principal'     => true,
-                ],
-                [
-                    'nombre'    => 'Sucursal Principal',
-                    'direccion' => $distribuidora->direccion_publica ?? 'Sin dirección',
-                    'telefono'  => $distribuidora->telefono_publico,
-                    'activa'    => true,
-                ]
-            );
-
-            ConfiguracionDistribuidora::withoutGlobalScopes()->firstOrCreate(
-                ['distribuidora_id' => $distribuidora->id],
-                [
-                    'anticipo_por_producto'    => 100.00,
-                    'dias_solicitud_cambio'    => 12,
-                    'dias_gestion_devolucion'  => 20,
-                    'dias_vigencia_vale'       => 90,
-                    'dias_maximos_recoleccion' => 5,
-                    'moneda'                   => 'MXN',
-                    'zona_horaria'             => 'America/Mexico_City',
-                ]
-            );
-
-            ConfiguracionCiclo::withoutGlobalScopes()->firstOrCreate(
-                ['distribuidora_id' => $distribuidora->id],
-                [
-                    'dia_cierre'             => 5,
-                    'hora_cierre'            => '18:00:00',
-                    'dia_solicitud_fabrica'  => 5,
-                    'dias_estimados_llegada' => 5,
-                    'activa'                 => true,
-                ]
-            );
-
-            Suscripcion::withoutGlobalScopes()->create([
-                'distribuidora_id'              => $distribuidora->id,
-                'plan_id'                       => $plan->id,
-                'fecha_inicio'                  => now()->toDateString(),
-                'fecha_fin'                     => now()->addMonth()->toDateString(),
-                'estado'                        => 'activa',
-                'precio_base_contratado'        => $plan->precio_base_mensual,
-                'lineas_incluidas_contratadas'  => $plan->lineas_incluidas,
-                'precio_linea_extra_contratado' => $plan->precio_linea_extra,
-                'lineas_extra_contratadas'      => 0,
-                'renovacion_automatica'         => true,
-            ]);
-        });
-
-        return response()->json([
-            'data'    => $distribuidora->fresh(),
-            'message' => 'Distribuidora aprobada correctamente.',
-        ]);
+        return $this->respuestaCambio($cambio, $cambio->distribuidora, 'Distribuidora aprobada correctamente.');
     }
 
-    public function suspender(int $id)
+    /**
+     * TG-196 (G5) — Suspende una distribuidora activa. Conserva todos sus
+     * datos; mientras siga suspendida no puede operar. Si no está activa, la
+     * acción lanza OperacionInvalidaException (422 con su mensaje).
+     */
+    public function suspender(SuspenderDistribuidoraAction $suspender, int $id)
     {
-        $distribuidora = Distribuidora::findOrFail($id);
+        $cambio = $suspender->ejecutar(Distribuidora::findOrFail($id));
 
-        if ($distribuidora->estado !== 'activa') {
-            return response()->json([
-                'message' => 'Solo se pueden suspender distribuidoras activas.',
-            ], 422);
-        }
-
-        $distribuidora->update(['estado' => 'suspendida']);
-
-        return response()->json([
-            'data'    => $distribuidora,
-            'message' => 'Distribuidora suspendida correctamente.',
-        ]);
+        return $this->respuestaCambio($cambio, $cambio->distribuidora, 'Distribuidora suspendida correctamente.');
     }
 
-    public function reactivar(int $id)
+    /** TG-196 (G5) — Reactiva una distribuidora suspendida. */
+    public function reactivar(ReactivarDistribuidoraAction $reactivar, int $id)
     {
-        $distribuidora = Distribuidora::findOrFail($id);
+        $cambio = $reactivar->ejecutar(Distribuidora::findOrFail($id));
 
-        if ($distribuidora->estado !== 'suspendida') {
-            return response()->json([
-                'message' => 'Solo se pueden reactivar distribuidoras suspendidas.',
-            ], 422);
+        return $this->respuestaCambio($cambio, $cambio->distribuidora, 'Distribuidora reactivada correctamente.');
+    }
+
+    /**
+     * TG-196 (G5) — Respuesta de un cambio de estado. Dice si se avisó a la
+     * distribuidora por correo; si no, el cambio igual quedó hecho.
+     */
+    private function respuestaCambio(CambioEstadoDistribuidora $cambio, mixed $data, string $mensaje)
+    {
+        if (! $cambio->avisoEnviado) {
+            $mensaje = rtrim($mensaje, '.') . ', pero no se pudo enviar el aviso por correo a la distribuidora.';
         }
 
-        $distribuidora->update(['estado' => 'activa']);
-
         return response()->json([
-            'data'    => $distribuidora,
-            'message' => 'Distribuidora reactivada correctamente.',
+            'data'          => $data,
+            'message'       => $mensaje,
+            'aviso_enviado' => $cambio->avisoEnviado,
         ]);
     }
 
@@ -211,19 +188,17 @@ class DistribuidoraController extends Controller
         ], 201);
     }
 
-    public function marketplaceConfig(MarketplaceConfigRequest $request)
+    /**
+     * Mostrar u ocultar una distribuidora en el marketplace (E2-05). Si se
+     * quiere mostrar una que no está activa, la acción lanza
+     * OperacionInvalidaException (422 con su mensaje). TG-197.
+     */
+    public function marketplaceConfig(MarketplaceConfigRequest $request, CambiarVisibilidadMarketplaceAction $visibilidad)
     {
-        $distribuidora = Distribuidora::findOrFail($request->distribuidora_id);
-
-        if ($distribuidora->estado !== 'activa' && $request->boolean('marketplace_visible')) {
-            return response()->json([
-                'message' => 'Solo distribuidoras activas pueden ser visibles en el marketplace.',
-            ], 422);
-        }
-
-        $distribuidora->update([
-            'marketplace_visible' => $request->boolean('marketplace_visible'),
-        ]);
+        $distribuidora = $visibilidad->ejecutar(
+            Distribuidora::findOrFail($request->distribuidora_id),
+            $request->boolean('marketplace_visible'),
+        );
 
         return response()->json([
             'data' => [

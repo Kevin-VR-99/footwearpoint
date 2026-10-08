@@ -90,4 +90,10 @@ class Pedido extends Model
     {
         return $this->hasMany(Vale::class, 'pedido_origen_id');
     }
+
+    /** Vales aplicados a este pedido. Cuentan como pago (TG-167). */
+    public function aplicacionesVale()
+    {
+        return $this->hasMany(ValeMovimiento::class, 'pedido_id')->where('tipo', 'aplicacion');
+    }
 }

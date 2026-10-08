@@ -181,6 +181,9 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                         <tr class="align-top">
                             <td class="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
                                 {{ $venta['folio'] ?? '#' . $venta['id'] }}
+                                {{-- E7-02: reimprimir o reenviar el comprobante de una venta pasada. --}}
+                                <a href="{{ route('ventas-directas.comprobante', $venta['id']) }}" target="_blank"
+                                    class="block text-xs font-normal text-fp-primary hover:underline">Ver comprobante</a>
                             </td>
                             <td class="px-4 py-3">
                                 <div class="text-slate-800">{{ $venta['quien'] }}</div>

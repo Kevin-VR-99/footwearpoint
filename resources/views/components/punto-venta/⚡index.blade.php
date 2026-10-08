@@ -4,6 +4,8 @@ use App\Exceptions\OperacionInvalidaException;
 use App\Models\ClienteDirecto;
 use App\Models\Color;
 use App\Models\ProductoCampana;
+use App\Services\Catalogo\CatalogoVisible;
+use App\Services\Catalogo\PrecioEfectivo;
 use App\Models\StockLocal;
 use App\Models\Talla;
 use App\Services\VentaDirecta\RegistrarVentaDirectaService;
@@ -31,6 +33,9 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
     public string $mensaje = '';
     public string $aviso = '';
     public string $errorMsg = '';
+
+    /** La venta recién cobrada, para el enlace a su comprobante (E7-02). */
+    public ?int $ultimaVentaId = null;
 
     public function mount()
     {
@@ -71,11 +76,14 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
 
         $variantes = $existencias->pluck('variante');
 
-        $publicaciones = ProductoCampana::query()
-            ->where('publicado', true)
+        // Solo lo que esta distribuidora vende del catálogo compartido
+        // (TG-213). El precio es el de menudeo del catálogo (D8).
+        $publicaciones = app(CatalogoVisible::class)->consulta()
             ->whereIn('producto_id', $variantes->pluck('producto_id')->unique()->all())
             ->get()
             ->groupBy('producto_id');
+
+        $precios = app(PrecioEfectivo::class)->precargar($publicaciones->flatten());
 
         // tallas y colores son catálogos GLOBALES: no llevan distribuidora_id.
         $tallas = Talla::query()
@@ -91,7 +99,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
         $termino = mb_strtolower(trim($this->busqueda));
 
         return $existencias
-            ->flatMap(function ($existencia) use ($publicaciones, $tallas, $colores) {
+            ->flatMap(function ($existencia) use ($publicaciones, $tallas, $colores, $precios) {
                 $variante = $existencia->variante;
                 $delProducto = $publicaciones->get($variante->producto_id, collect());
 
@@ -110,7 +118,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     'nombre' => (string) ($variante->producto?->nombre ?? ''),
                     'talla' => $textoTalla,
                     'color' => $textoColor,
-                    'precio' => round((float) $publicacion->precio_minorista_sugerido, 2),
+                    'precio' => $precios->menudeo($publicacion),
                     'disponible' => (int) $existencia->cantidad_disponible,
                 ]);
             })
@@ -308,9 +316,11 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
 
             $this->limpiar();
             $this->mensaje = $confirmacion;
+            $this->ultimaVentaId = (int) $resultado->venta->id;
         } catch (OperacionInvalidaException $e) {
             $this->errorMsg = $e->getMessage();
         } catch (\Throwable $e) {
+            report($e); // TG-224 (G3): el detalle va al log.
             $this->errorMsg = 'No se pudo registrar la venta. Revisa las existencias e intenta de nuevo.';
         }
     }
@@ -328,6 +338,11 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
     @if ($mensaje)
         <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
             {{ $mensaje }}
+            @if ($ultimaVentaId)
+                {{-- Pestaña nueva: el punto de venta queda listo para la siguiente venta. --}}
+                <a href="{{ route('ventas-directas.comprobante', $ultimaVentaId) }}" target="_blank"
+                    class="ml-2 font-semibold underline">Ver comprobante</a>
+            @endif
         </div>
     @endif
 

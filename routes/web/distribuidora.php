@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Distribuidora\MercadoPagoOAuthController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,6 +20,23 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware(['auth', 'tenant.team', 'role:admin_distribuidora'])->group(function () {
-    Route::livewire('/configuracion', 'distribuidora.configuracion')
+    Route::livewire('/distribuidora/configuracion', 'distribuidora.configuracion')
         ->name('distribuidora.configuracion');
+});
+
+/*
+| TG-225 (G6) — Conectar la cuenta de Mercado Pago de la distribuidora (OAuth).
+|
+| 'conectar' manda a la pantalla oficial de Mercado Pago y Mercado Pago
+| regresa a '/mercado-pago/callback' (debe ser idéntica a MP_REDIRECT_URI y a
+| la URL registrada en la aplicación de Mercado Pago Developers).
+|
+| Llevan 'solo.personal' para que una distribuidora suspendida vea el aviso
+| claro en vez de un 403 genérico (el resto de este grupo queda igual).
+*/
+Route::middleware(['auth', 'tenant.team', 'solo.personal', 'role:admin_distribuidora'])->group(function () {
+    Route::get('/distribuidora/mercado-pago/conectar', [MercadoPagoOAuthController::class, 'conectar'])
+        ->name('mercado-pago.conectar');
+    Route::get('/mercado-pago/callback', [MercadoPagoOAuthController::class, 'callback'])
+        ->name('mercado-pago.callback');
 });

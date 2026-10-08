@@ -10,7 +10,7 @@ class GuardarProductoCampanaRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin_distribuidora') ?? false;
+        return $this->user()?->hasRole('admin_general') ?? false;
     }
 
     public function rules(): array
@@ -19,12 +19,12 @@ class GuardarProductoCampanaRequest extends FormRequest
         $requerido = $esCreacion ? 'required' : 'sometimes';
 
         $reglas = [
-            'codigo_catalogo'           => [$requerido, 'string', 'max:120'],
-            // CHECK chk_precios_producto_campana: ambos >= 0.
-            'precio_mayorista'          => [$requerido, 'numeric', 'min:0'],
-            'precio_minorista_sugerido' => [$requerido, 'numeric', 'min:0'],
-            'estado_disponibilidad'     => ['sometimes', Rule::in(['disponible', 'bajo_pedido', 'no_disponible'])],
-            'publicado'                 => ['sometimes', 'boolean'],
+            'codigo_catalogo' => [$requerido, 'string', 'max:120'],
+            // Un solo precio, el de menudeo del catálogo (D8). El mayoreo lo
+            // pone cada distribuidora en su propia capa.
+            'precio_publico'  => [$requerido, 'numeric', 'min:0'],
+            // El admin general puede retirar un producto de la temporada.
+            'activo'          => ['sometimes', 'boolean'],
         ];
 
         if ($esCreacion) {
@@ -34,12 +34,12 @@ class GuardarProductoCampanaRequest extends FormRequest
             $reglas['producto_id'] = [
                 'required',
                 'integer',
-                Rule::exists('productos', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
+                Rule::exists('productos', 'id'),
             ];
             $reglas['campana_id'] = [
                 'required',
                 'integer',
-                Rule::exists('campanas', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
+                Rule::exists('campanas', 'id'),
             ];
         }
 

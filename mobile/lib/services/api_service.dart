@@ -44,6 +44,12 @@ class ApiService {
   /// Copia en memoria para no ir al almacenamiento seguro en cada petición.
   String? _token;
 
+  /// Se llama cuando el servidor responde 401: el token ya no sirve (se
+  /// cerró la sesión en otro lado o lo borraron en el servidor). Lo registra
+  /// AuthProvider para sacar al usuario al login desde cualquier pantalla,
+  /// sin que cada pantalla tenga que revisar el 401 por su cuenta.
+  void Function()? alNoAutorizado;
+
   Future<String?> token() async {
     _token ??= await _almacen.read(key: _llaveToken);
     return _token;
@@ -71,6 +77,30 @@ class ApiService {
         body: jsonEncode(cuerpo ?? const <String, dynamic>{}),
       ),
     );
+  }
+
+  Future<Map<String, dynamic>> patch(String ruta, {Map<String, dynamic>? cuerpo}) async {
+    return _enviar(
+      () async => _cliente.patch(
+        _url(ruta),
+        headers: await _encabezados(),
+        body: jsonEncode(cuerpo ?? const <String, dynamic>{}),
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>> put(String ruta, {Map<String, dynamic>? cuerpo}) async {
+    return _enviar(
+      () async => _cliente.put(
+        _url(ruta),
+        headers: await _encabezados(),
+        body: jsonEncode(cuerpo ?? const <String, dynamic>{}),
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>> delete(String ruta) async {
+    return _enviar(() async => _cliente.delete(_url(ruta), headers: await _encabezados()));
   }
 
   /// Acepta la ruta con o sin diagonal al inicio: 'auth/login' y
@@ -138,6 +168,10 @@ class ApiService {
 
     if (respuesta.statusCode >= 200 && respuesta.statusCode < 300) {
       return cuerpo;
+    }
+
+    if (respuesta.statusCode == 401) {
+      alNoAutorizado?.call();
     }
 
     throw ApiException(

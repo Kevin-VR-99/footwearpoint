@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ComprobanteVentaController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +16,25 @@ Route::get('/', function () {
 
 Route::livewire('/marketplace', 'marketplace.index')
     ->name('marketplace');
+
+// TG-233 (G14): tienda pública de cada distribuidora (solo las activas). Con
+// sesión o sin ella se ve igual: el catálogo y el precio de menudeo de ESA
+// distribuidora (ver App\Services\Tienda\TiendaPublica).
+Route::livewire('/tienda/{slug}', 'tienda.index')
+    ->where('slug', '[a-z0-9-]+')
+    ->name('tienda');
+
+Route::livewire('/tienda/{slug}/productos/{productoCampana}', 'tienda.producto')
+    ->where('slug', '[a-z0-9-]+')
+    ->whereNumber('productoCampana')
+    ->name('tienda.producto');
+
+// TG-226 (G7): a donde regresa Mercado Pago después de pagar (back_urls).
+// Pública. Si trae payment_id y external_reference confirma el pago con la
+// API de Mercado Pago (nunca le cree a la URL); la app también puede
+// confirmar con POST /api/pedidos/{id}/anticipo/mercado-pago/verificar.
+Route::livewire('/mercado-pago/retorno', 'mercado-pago.retorno')
+    ->name('mercado-pago.retorno');
 
 /*
 |--------------------------------------------------------------------------
@@ -50,7 +70,7 @@ require __DIR__.'/web/catalogo.php';
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'tenant.team'])->group(function () {
     Route::post('/logout', function () {
         Auth::logout();
         request()->session()->invalidate();
@@ -58,7 +78,20 @@ Route::middleware('auth')->group(function () {
 
         return redirect()->route('login');
     })->name('logout');
+});
 
+/*
+|--------------------------------------------------------------------------
+| Panel de la distribuidora — solo personal (TG-184)
+|--------------------------------------------------------------------------
+| Antes estas rutas solo pedían sesión, así que un revendedor o un cliente
+| con cuenta entraba al panel. Ahora pasan por 'solo.personal', que cierra la
+| sesión y regresa al login con un aviso en español.
+|
+| /logout queda FUERA de este grupo a propósito: si no, quien pierde el
+| acceso quedaría atrapado sin poder cerrar sesión.
+*/
+Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
     Route::livewire('/dashboard', 'dashboard.index')
         ->name('dashboard');
 
@@ -76,6 +109,20 @@ Route::middleware('auth')->group(function () {
 
     Route::livewire('/punto-venta', 'punto-venta.index')
         ->name('punto-venta.index');
+
+    // E7-02 — comprobante de venta directa: ver/imprimir, PDF y correo.
+    // Solo personal de la distribuidora; la venta de otra distribuidora da 404.
+    Route::middleware(['tenant.team', 'role:admin_distribuidora|empleado'])
+        ->prefix('ventas-directas/{id}/comprobante')
+        ->whereNumber('id')
+        ->group(function () {
+            Route::get('/', [ComprobanteVentaController::class, 'show'])
+                ->name('ventas-directas.comprobante');
+            Route::get('/pdf', [ComprobanteVentaController::class, 'pdf'])
+                ->name('ventas-directas.comprobante.pdf');
+            Route::post('/enviar', [ComprobanteVentaController::class, 'enviar'])
+                ->name('ventas-directas.comprobante.enviar');
+        });
 
     Route::livewire('/ciclo', 'ciclo.index')
         ->name('ciclo.index');
@@ -99,6 +146,11 @@ Route::middleware('auth')->group(function () {
 
     Route::livewire('/reportes', 'reportes.index')
         ->name('reportes.index');
+
+    // TG-160 — bitácora de auditoría (solo admin_distribuidora)
+    Route::livewire('/auditoria', 'auditoria.index')
+        ->name('auditoria.index')
+        ->middleware('role:admin_distribuidora');
 
     /*
     |--------------------------------------------------------------------------
@@ -134,11 +186,7 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('reportes.index');
     })->name('distribuidora.reportes');
 
-    // URLs amigables (sin name) → pantallas reales de B
-    Route::get('/distribuidora/configuracion', function () {
-        return redirect()->route('distribuidora.configuracion');
-    });
-
+    // URL amigable de catálogo (sin name) → pantalla real de B
     Route::get('/distribuidora/catalogo', function () {
         return redirect()->route('distribuidora.catalogo');
     });
@@ -156,4 +204,8 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_general'])->group(function
 
     Route::livewire('/admin/planes', 'admin.planes-index')
         ->name('admin.planes');
+
+    // TG-197 (G16): categorías generales del directorio público.
+    Route::livewire('/admin/categorias-directorio', 'admin.categorias-directorio-index')
+        ->name('admin.categorias-directorio');
 });

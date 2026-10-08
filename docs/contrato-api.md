@@ -52,6 +52,7 @@ Algunos endpoints de listado regresan solo `data`, sin `message`.
 | 403 | El rol no tiene permitido ese endpoint |
 | 404 | No existe **o no es tuyo**. Ver la nota de abajo |
 | 422 | Validación: revisar `errors` |
+| 500 | Error del servidor. Solo trae `{ "message": "Ocurrió un error en el servidor. Intenta de nuevo más tarde." }`, nunca el detalle técnico (TG-224) |
 
 **Dos reglas invisibles pero importantes:**
 
@@ -93,17 +94,60 @@ Sin token. Es el único endpoint público que usa la app.
 }
 ```
 
-`rol` puede ser: `admin_general`, `admin_distribuidora`, `empleado`, `revendedor`, `cliente_directo`.
+`rol` en una respuesta exitosa es `revendedor` o `cliente_directo` (o `null`, ver la nota de abajo). El personal interno no puede entrar por aquí: ver errores.
 
 **Errores**
 
 - **422** con `errors.email` si las credenciales son incorrectas o la cuenta no está activa. El mensaje que hay que mostrarle al usuario viene ahí, no en `message`.
+- **422** con `errors.email` = `"Esta aplicación es solo para revendedores y clientes directos."` si el rol es `admin_general`, `admin_distribuidora` o `empleado` (TG-93). El personal interno entra por el panel web, que tiene su propio login. En este caso **no se crea token**.
+- **422** con `errors.email` si su distribuidora está **suspendida** o **rechazada** (TG-196). El mensaje dice cuál es y que su información se conserva; por ejemplo: `"Calzados Ramírez está suspendida por ahora, así que no puedes usar la app con ella. Tu cuenta y tu información se conservan; intenta más tarde."`. **No se crea token.** Si un revendedor está afiliado a otra distribuidora que sí opera, entra con esa.
 
 > Si `rol` o `distribuidora_id` salen en `null` para un revendedor o cliente directo, es que su cuenta no está bien ligada. Se arregla del lado del panel web (E3-07).
 
+### GET `/api/auth/me`
+
+Requiere token. Sin cuerpo. (TG-140)
+
+Para **recuperar la sesión al abrir la app**: la app solo guarda el token, y con él le pregunta al servidor quién es el usuario. No se guardan rol ni distribuidora en el teléfono, porque podrían quedar viejos (por ejemplo, si un admin suspende a alguien).
+
+**Salida (200)** — lo mismo que el login, pero **sin** `token` ni `token_type`:
+
+```json
+{
+  "data": {
+    "usuario": { "id": 7, "nombre": "María López", "email": "maria@ejemplo.com", "telefono": "9631234567", "estado": "activo" },
+    "rol": "revendedor",
+    "distribuidora_id": 1
+  }
+}
+```
+
+**Errores**
+
+- **401** si no hay token, si ya se cerró sesión con él, o si la cuenta se desactivó después del login.
+- **401** si el token es de personal interno (`admin_general`, `admin_distribuidora`, `empleado`), igual que el rechazo del login (TG-93).
+- **401** con `message` = el mismo aviso del login si su distribuidora se **suspendió** o **rechazó** después del login (TG-196).
+
+En los tres casos de rechazo (cuenta desactivada, personal interno o distribuidora sin operar) el servidor además revoca el token. En todos los 401 la app debe regresar a la pantalla de login.
+
+> **Suspendido puede ser en dos niveles, y responden distinto:**
+> - La **cuenta** inactiva (`usuarios.estado`) → **401**.
+> - Solo la **afiliación** suspendida (`revendedor_distribuidora.estado`) → **200**, pero con `rol` y `distribuidora_id` en `null`, igual que el login. El backend ya no le deja ver nada; la app debe tratar `distribuidora_id` en `null` como "sin acceso".
+> - La **distribuidora** suspendida o rechazada (`distribuidoras.estado`, TG-196) → **401** con el aviso, y el token se revoca. Mientras tanto, cualquier otro endpoint con un token viejo ya no devuelve datos de esa distribuidora. Al reactivarla, el usuario vuelve a entrar con su misma cuenta y todo está como lo dejó.
+
 ### POST `/api/auth/logout`
 
-Requiere token. Sin cuerpo.
+Requiere token.
+
+**Entrada (opcional)**
+
+```json
+{ "fcm_token": "token-que-da-firebase" }
+```
+
+Al cerrar la sesión, **el celular que se registró con esa sesión deja de recibir push automáticamente**, aunque la app no mande nada (TG-144): el servidor borra el registro del celular junto con el token.
+
+`fcm_token` sigue siendo opcional (TG-136). Ya no hace falta para que el celular deje de recibir avisos; solo cubre celulares registrados antes de TG-144. Mandarlo no hace daño. Solo borra el dispositivo si es de ese usuario.
 
 **Salida (200):** `{ "message": "Sesión cerrada correctamente." }`
 
@@ -114,8 +158,18 @@ Invalida el token en el servidor. La app borra su copia local de todos modos, au
 Sin token. Manda el correo de recuperación.
 
 **Entrada:** `{ "email": "maria@ejemplo.com" }`
-**Salida (200):** `{ "message": "Se ha enviado el enlace de recuperación al correo." }`
-**Error (422):** no se pudo enviar.
+
+**Salida (200) — siempre la misma, exista o no el correo** (TG-141):
+
+```json
+{ "message": "Si el correo pertenece a una cuenta, te llegará un enlace para restablecer tu contraseña." }
+```
+
+Es a propósito, por seguridad: si la respuesta cambiara según el correo, cualquiera podría averiguar quién tiene cuenta. También responde igual si se pide el enlace varias veces seguidas. **La app debe mostrar este mensaje tal cual y no intentar deducir si la cuenta existe.**
+
+**Error (422):** solo si el correo viene vacío o mal escrito (`errors.email`). Ese error no revela nada sobre las cuentas.
+
+> En local no se manda correo real: con `MAIL_MAILER=log`, el enlace se escribe en `storage/logs/laravel.log`.
 
 ### POST `/api/auth/reset-password`
 
@@ -133,6 +187,16 @@ Sin token.
 ```
 
 La contraseña debe tener mínimo 8 caracteres y coincidir con su confirmación.
+
+**Error (422):** si el enlace no sirve, por cualquier motivo, siempre el mismo:
+
+```json
+{ "message": "El enlace no es válido o ya venció. Solicita uno nuevo.", "errors": { "token": ["El enlace no es válido o ya venció. Solicita uno nuevo."] } }
+```
+
+No distingue si el correo existe o si el enlace es inventado o vencido, a propósito, para no revelar quién tiene cuenta (mismo criterio que `forgot-password`).
+
+**Al restablecerla se cierran todas las sesiones de esa cuenta** (TG-142): cualquier celular que tuviera la app abierta con esa cuenta va a recibir **401** en su siguiente petición y tiene que volver a iniciar sesión. Es a propósito: quien restablece puede sospechar que alguien más conoce su contraseña.
 
 ---
 
@@ -375,37 +439,109 @@ Sin cuerpo.
 **Salida (200):** `{ "data": { ...notificación... }, "message": "Notificación marcada como leída." }`
 **Error (404):** la notificación es de otro usuario.
 
----
+### POST `/api/dispositivos-fcm`
 
-## 7. Endpoints que TODAVÍA NO EXISTEN
+Requiere token. (E16-03 / TG-136)
 
-Se documentan aquí para que Flutter pueda avanzar sin esperar al backend, que es justo el propósito de esta historia. **La forma exacta puede cambiar al construirlos** — hay que confirmar contra este documento antes de dar una pantalla por terminada.
+Guarda el token que Firebase le da a este celular, ligado al usuario que inició sesión, para poder mandarle notificaciones push.
 
-### Perfil — historia E1-05
+**Cuándo llamarlo:** después de iniciar sesión (o de recuperar la sesión con `auth/me`), y otra vez cada que Firebase renueve el token del celular. Llamarlo varias veces con el mismo token no duplica nada.
 
-Ver y editar los datos propios, y cambiar la contraseña. Aún no está definido ni construido.
-
-Propuesta a confirmar:
-
-| | |
-|---|---|
-| `GET /api/perfil` | Regresa el mismo objeto `usuario` del login |
-| `PATCH /api/perfil` | Entrada: `nombre`, `telefono` |
-| `POST /api/perfil/password` | Entrada: `password_actual`, `password`, `password_confirmation` |
-
-### Registro de dispositivo para push — historia E16-03 (TG-136)
-
-`POST /api/dispositivos-fcm` — guarda el token del celular para poder mandarle notificaciones.
-
-La tabla `dispositivos_fcm` ya existe en la base con estas columnas: `usuario_id`, `token`, `plataforma` (`android` / `ios` / `web`), `ultimo_uso_at`. El `token` es único.
-
-Propuesta a confirmar:
+**Entrada**
 
 ```json
 { "token": "token-que-da-firebase", "plataforma": "android" }
 ```
 
-Y una forma de invalidarlo al cerrar sesión, que es un criterio de aceptación de esa historia.
+`plataforma`: `android`, `ios` o `web`. Este sprint siempre es `android`.
+
+**Salida**
+
+- **201** la primera vez que se registra ese celular
+- **200** si ya estaba registrado (solo se actualiza `ultimo_uso_at`)
+
+```json
+{
+  "data": { "id": 3, "plataforma": "android", "ultimo_uso_at": "2026-09-13T18:20:00-06:00" },
+  "message": "Dispositivo registrado para notificaciones."
+}
+```
+
+**Errores:** **422** si falta `token` o `plataforma`, o la plataforma no es válida.
+
+> **Mismo celular, otra cuenta:** el token identifica al celular, no a la persona. Si otra cuenta inicia sesión en ese celular y lo registra, el token pasa a esa cuenta: la anterior deja de recibir ahí sus avisos.
+
+**El celular queda ligado a la sesión con la que se registró** (TG-144). Cuando esa sesión termina, por la razón que sea, el servidor borra el celular solo y deja de mandarle push:
+
+- cerrar sesión,
+- restablecer la contraseña con el enlace del correo (se cierran todas las sesiones),
+- que la cuenta se desactive,
+- cambiar la contraseña desde otro celular (se cierran las demás sesiones).
+
+Por eso **hay que registrar el celular después de cada inicio de sesión**, no solo la primera vez: la sesión nueva es la que queda ligada. No hay endpoint para quitarlo a mano.
+
+---
+
+## 7. Perfil del usuario (E1-05 / TG-110)
+
+Roles: cualquier usuario con token (solo `auth:sanctum`, igual que `auth/me`), incluido un revendedor con la afiliación suspendida.
+
+> **No confundir** con `/api/distribuidora/perfil`, que es el perfil de la distribuidora y solo lo usa su admin. Aquí no hay `{id}`: cada quien solo ve y edita su propia cuenta, la del token.
+
+### GET `/api/perfil`
+
+**Salida (200):** el mismo objeto `usuario` del login.
+
+```json
+{
+  "data": {
+    "id": 7,
+    "nombre": "María López",
+    "email": "maria@ejemplo.com",
+    "telefono": "9631234567",
+    "estado": "activo"
+  }
+}
+```
+
+### PATCH `/api/perfil`
+
+**Entrada**
+
+```json
+{ "nombre": "María López Ruiz", "telefono": "9630001111" }
+```
+
+- `nombre`: obligatorio, máximo 150.
+- `telefono`: opcional, máximo 30. Vacío o solo espacios se guarda como `null`.
+- El **correo no se cambia** aquí: si se manda `email`, se ignora.
+
+Además de `usuarios`, se actualiza en la misma operación el registro ligado en `revendedores` o `clientes_directos` (lo que ve el empleado en el panel web), para que no se desincronicen.
+
+**Salida (200):** `{ "data": { ...usuario... }, "message": "Datos actualizados correctamente." }`
+**Error (422):** `errors.nombre` / `errors.telefono`.
+
+### POST `/api/perfil/password`
+
+**Entrada**
+
+```json
+{
+  "password_actual": "secreto123",
+  "password": "nuevaClave123",
+  "password_confirmation": "nuevaClave123"
+}
+```
+
+La nueva sigue las mismas reglas que el cambio por enlace: mínimo 8 caracteres y que coincida con su confirmación.
+
+**Salida (200):** `{ "message": "Contraseña actualizada. Se cerró la sesión en tus otros dispositivos." }`
+
+**Se cierran las demás sesiones:** se borran todos los tokens de la cuenta **menos el que hizo la petición**. Ese teléfono sigue dentro; los demás reciben 401 en su siguiente petición.
+
+**Errores (422):**
+- `errors.password_actual` = `"La contraseña actual no es correcta."`
+- `errors.password` si es corta o no coincide la confirmación.
 
 ---
 
@@ -420,6 +556,8 @@ Para verificar o actualizar este documento:
 | Pedidos | `app/Http/Controllers/Api/PedidoController.php`, `app/Http/Requests/Pedido/`, `app/Http/Resources/PedidoResource.php` |
 | Vales | `app/Http/Controllers/Api/ValeController.php`, `app/Http/Requests/Vale/`, `app/Http/Resources/ValeResource.php` |
 | Notificaciones | `app/Http/Controllers/Api/NotificacionController.php`, `app/Http/Resources/NotificacionResource.php` |
+| Dispositivos FCM | `app/Http/Controllers/Api/DispositivoFcmController.php`, `app/Services/Notificacion/GestionarDispositivoFcmAction.php` |
+| Perfil | `app/Http/Controllers/Api/PerfilUsuarioController.php`, `app/Http/Requests/Perfil/`, `app/Services/Perfil/` |
 | Quién entra a qué | `routes/api.php` y `routes/api/*.php` |
 | Filtro por dueño | `app/Support/PropietarioActual.php` |
 | Filtro por distribuidora | `app/Support/Tenant.php`, `app/Models/Scopes/TenantScope.php` |

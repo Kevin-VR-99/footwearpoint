@@ -59,11 +59,21 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
                 class="rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]">
             <option value="">Todos los estados</option>
             <option value="borrador">Borrador</option>
+            <option value="descartado">Descartado</option>
             <option value="colocado">Colocado</option>
+            <option value="en_revision">En revisión</option>
             <option value="confirmado">Confirmado</option>
+            <option value="incluido_en_ciclo">En ciclo</option>
+            <option value="solicitado_fabrica">Solicitado fábrica</option>
             <option value="en_transito">En tránsito</option>
+            <option value="recibido_distribuidora">Recibido</option>
+            <option value="parcialmente_disponible">Parc. disponible</option>
+            <option value="listo_entrega">Listo entrega</option>
+            <option value="vencido_recoleccion">Vencido recolección</option>
+            <option value="no_surtido">No surtido</option>
             <option value="entregado">Entregado</option>
             <option value="rechazado">Rechazado</option>
+            <option value="cancelado">Cancelado</option>
         </select>
 
         <select wire:model.live="filtro_tipo"

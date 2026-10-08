@@ -17,6 +17,7 @@ class Pago extends Model
         'distribuidora_id',
         'pedido_id',
         'venta_directa_id',
+        'suscripcion_id',
         'folio',
         'tipo',
         'direccion',
@@ -26,6 +27,9 @@ class Pago extends Model
         'referencia',
         'proveedor_pago',
         'referencia_externa',
+        // Id de la preferencia de Checkout Pro, con el que se liga el aviso
+        // que manda Mercado Pago después (TG-208).
+        'preferencia_externa',
         'estado',
         'registrado_por_staff_id',
     ];
@@ -35,9 +39,42 @@ class Pago extends Model
         'fecha_pago' => 'datetime',
     ];
 
+    /**
+     * TG-226 (G7): el enlace de Checkout Pro de un anticipo vale 24 horas
+     * desde que se crea el pago pendiente.
+     */
+    public const HORAS_VIGENCIA_MERCADO_PAGO = 24;
+
+    /**
+     * TG-226 (G7): referencia con la que Mercado Pago identifica este pago
+     * (external_reference). Máximo 64 caracteres, solo letras, números y
+     * guiones. Lleva la distribuidora para que el aviso de G9 sepa de quién es.
+     */
+    public function referenciaMercadoPago(): string
+    {
+        return 'FWP-'.$this->distribuidora_id.'-'.$this->id;
+    }
+
+    /** TG-226 (G7): cuándo deja de servir el enlace de pago de Mercado Pago. */
+    public function venceMercadoPagoAt(): \Illuminate\Support\Carbon
+    {
+        return $this->created_at->copy()->addHours(self::HORAS_VIGENCIA_MERCADO_PAGO);
+    }
+
+    public function esMercadoPagoPendiente(): bool
+    {
+        return $this->metodo === 'mercado_pago' && $this->estado === 'pendiente';
+    }
+
     public function pedido()
     {
         return $this->belongsTo(Pedido::class, 'pedido_id');
+    }
+
+    /** Solo en los pagos de tipo 'suscripcion': qué mensualidad se pagó. */
+    public function suscripcion()
+    {
+        return $this->belongsTo(Suscripcion::class, 'suscripcion_id');
     }
 
     public function ventaDirecta()

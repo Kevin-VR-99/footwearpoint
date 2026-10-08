@@ -10,8 +10,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class VentaDirectaResource extends JsonResource
 {
-    /** Tasa documentada en el Plan de Tareas. El modelo no tiene columna de tasa. */
-    private const TASA_IVA = 0.16;
+    /**
+     * Tasa documentada en el Plan de Tareas. El modelo no tiene columna de tasa.
+     * Pública para que el comprobante (E7-02) desglose con la misma tasa.
+     */
+    public const TASA_IVA = 0.16;
 
     public function toArray(Request $request): array
     {

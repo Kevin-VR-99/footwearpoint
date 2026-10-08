@@ -119,17 +119,53 @@ class LoginMultiRolTest extends TestCase
     }
 
     /**
-     * Regresión: el login del personal interno no cambia.
+     * TG-93 (E1-01): la API de login es de la app móvil, que es solo para
+     * revendedor y cliente directo. El personal interno entra por el panel
+     * web (login con sesión, no pasa por este endpoint).
+     *
+     * Antes de TG-93 esta prueba decía lo contrario: que el empleado seguía
+     * entrando igual por la API.
      */
-    public function test_un_empleado_sigue_iniciando_sesion_igual(): void
+    private function assertLoginRechazadoParaPersonal(string $email, string $password): void
     {
-        $respuesta = $this->postJson('/api/auth/login', [
-            'email'    => 'empleado@calzadosramirez.test',
-            'password' => 'password',
-        ])->assertOk();
+        $this->postJson('/api/auth/login', [
+            'email'    => $email,
+            'password' => $password,
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'Esta aplicación es solo para revendedores y clientes directos.')
+            ->assertJsonMissingPath('data.token');
 
-        $this->assertSame($this->distribuidoraA()->id, $respuesta->json('data.distribuidora_id'));
-        $this->assertSame('empleado', $respuesta->json('data.rol'));
+        // Se rechaza antes de crear el token: no le queda ninguno válido.
+        $usuario = Usuario::where('email', $email)->firstOrFail();
+        $this->assertSame(0, $usuario->tokens()->count());
+    }
+
+    public function test_un_empleado_no_puede_iniciar_sesion_en_la_app(): void
+    {
+        $this->assertLoginRechazadoParaPersonal('empleado@calzadosramirez.test', 'password');
+    }
+
+    public function test_un_admin_de_distribuidora_no_puede_iniciar_sesion_en_la_app(): void
+    {
+        $this->assertLoginRechazadoParaPersonal('admin@calzadosramirez.test', 'password');
+    }
+
+    public function test_el_admin_general_no_puede_iniciar_sesion_en_la_app(): void
+    {
+        // DatabaseSeeder no crea al admin general (eso lo hace
+        // UsuariosPruebaSeeder, que no corre en las pruebas): se crea aquí
+        // igual que ahí, con su rol global en team 0.
+        $usuario = Usuario::create([
+            'nombre'   => 'Admin General',
+            'email'    => 'admin.general.login@footwearpoint.test',
+            'password' => Hash::make('password'),
+            'estado'   => 'activo',
+        ]);
+
+        $this->asignarRol($usuario, 'admin_general', 0);
+
+        $this->assertLoginRechazadoParaPersonal('admin.general.login@footwearpoint.test', 'password');
     }
 
     /**

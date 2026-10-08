@@ -2,6 +2,7 @@
 
 namespace App\Services\Distribuidora;
 
+use App\Exceptions\OperacionInvalidaException;
 use App\Models\Revendedor;
 use App\Models\RevendedorDistribuidora;
 use Illuminate\Support\Facades\DB;
@@ -40,11 +41,31 @@ class GestionarRevendedorAction
         });
     }
 
+    /**
+     * Desde TG-216 el registro del revendedor es el UNICO lugar donde viven su
+     * nombre y su telefono: la app edita este mismo renglon desde su pantalla
+     * de perfil, asi que ya no hay nada que copiar a la cuenta.
+     *
+     * El correo es distinto: si ya tiene cuenta de la app, su correo es el de
+     * acceso y vive en la cuenta (D4).
+     */
     public function actualizar(RevendedorDistribuidora $afiliacion, array $datos): RevendedorDistribuidora
     {
         return DB::transaction(function () use ($afiliacion, $datos) {
             $datosContacto = array_intersect_key($datos, array_flip(['nombre', 'telefono', 'email']));
             $datosAfiliacion = array_intersect_key($datos, array_flip(['codigo_interno', 'notas', 'estado']));
+
+            if (array_key_exists('email', $datosContacto) && $afiliacion->revendedor->usuario_id) {
+                throw new OperacionInvalidaException(
+                    'Este revendedor ya tiene cuenta en la app: su correo es el de acceso y no se cambia desde aqui.',
+                    422
+                );
+            }
+
+            if (array_key_exists('telefono', $datosContacto)) {
+                $telefono = trim((string) $datosContacto['telefono']);
+                $datosContacto['telefono'] = $telefono === '' ? null : $telefono;
+            }
 
             if ($datosContacto !== []) {
                 $afiliacion->revendedor->fill($datosContacto)->save();
