@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\CicloCompra;
 use App\Services\Reporte\ResumenOperativoAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
@@ -10,10 +11,12 @@ use Livewire\Component;
 new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class extends Component {
     public string $desde = '';
     public string $hasta = '';
+    public string $estado = '';
+    public string $cicloId = '';
 
     public function mount()
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return $this->redirect(route('login'), navigate: true);
         }
 
@@ -22,9 +25,19 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         }
     }
 
+    public function getCiclosProperty()
+    {
+        return CicloCompra::query()->orderByDesc('fecha_apertura')->get(['id', 'nombre']);
+    }
+
     public function getResumenProperty(): array
     {
-        return app(ResumenOperativoAction::class)->ejecutar($this->desde !== '' ? $this->desde : null, $this->hasta !== '' ? $this->hasta : null);
+        return app(ResumenOperativoAction::class)->ejecutar(
+            $this->desde !== '' ? $this->desde : null,
+            $this->hasta !== '' ? $this->hasta : null,
+            $this->estado !== '' ? $this->estado : null,
+            $this->cicloId !== '' ? (int) $this->cicloId : null,
+        );
     }
 };
 ?>
@@ -43,6 +56,26 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         <div>
             <label class="block text-xs text-slate-500 mb-1">Hasta</label>
             <input type="date" wire:model.live="hasta" class="rounded-lg border-slate-300 text-sm" />
+        </div>
+        <div>
+            <label class="block text-xs text-slate-500 mb-1">Ciclo</label>
+            <select wire:model.live="cicloId" class="rounded-lg border-slate-300 text-sm">
+                <option value="">Todos</option>
+                @foreach ($this->ciclos as $ciclo)
+                    <option value="{{ $ciclo->id }}">{{ $ciclo->nombre }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs text-slate-500 mb-1">Estado del pedido</label>
+            <select wire:model.live="estado" class="rounded-lg border-slate-300 text-sm">
+                <option value="">Todos</option>
+                <option value="borrador">Borrador</option>
+                <option value="colocado">Colocado</option>
+                <option value="recibido_distribuidora">Recibido</option>
+                <option value="listo_entrega">Listo para entrega</option>
+                <option value="entregado">Entregado</option>
+            </select>
         </div>
     </div>
 
@@ -97,6 +130,32 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     </div>
 
     <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b font-medium text-slate-800">Pedidos por ciclo</div>
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-50 text-left text-slate-500">
+                <tr>
+                    <th class="px-4 py-2">Ciclo</th>
+                    <th class="px-4 py-2 text-right">Cantidad</th>
+                    <th class="px-4 py-2 text-right">Monto</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @forelse ($this->resumen['pedidos']['por_ciclo'] ?? [] as $fila)
+                    <tr>
+                        <td class="px-4 py-3">{{ $fila['ciclo'] }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums">{{ $fila['cantidad'] }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="3" class="px-4 py-8 text-center text-slate-500">Sin datos</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Detalle de pedidos
             <span class="text-xs font-normal text-slate-500">(máx. 100 del periodo)</span>
@@ -122,7 +181,9 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                             </td>
                             <td class="px-4 py-3">
                                 <div class="text-slate-800">{{ $pedido['quien'] }}</div>
-                                <div class="text-xs text-slate-400">{{ $pedido['tipo'] }}</div>
+                                <div class="text-xs text-slate-400">
+                                    {{ $pedido['tipo'] === 'Revendedor' ? 'Cliente mayorista' : $pedido['tipo'] }}
+                                </div>
                                 @if (!empty($pedido['capturado_por']))
                                     <div class="text-xs text-slate-400">Capturó: {{ $pedido['capturado_por'] }}</div>
                                 @endif
@@ -159,6 +220,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             </table>
         </div>
     </div>
+
     <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Detalle de ventas (punto de venta)
@@ -181,7 +243,6 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                         <tr class="align-top">
                             <td class="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
                                 {{ $venta['folio'] ?? '#' . $venta['id'] }}
-                                {{-- E7-02: reimprimir o reenviar el comprobante de una venta pasada. --}}
                                 <a href="{{ route('ventas-directas.comprobante', $venta['id']) }}" target="_blank"
                                     class="block text-xs font-normal text-fp-primary hover:underline">Ver comprobante</a>
                             </td>
