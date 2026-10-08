@@ -18,8 +18,9 @@ Route::livewire('/marketplace', 'marketplace.index')
     ->name('marketplace');
 
 // TG-226 (G7): a donde regresa Mercado Pago después de pagar (back_urls).
-// Pública y solo informativa: no lee ni cambia datos; la app confirma el
-// pago con POST /api/pedidos/{id}/anticipo/mercado-pago/verificar.
+// Pública. Si trae payment_id y external_reference confirma el pago con la
+// API de Mercado Pago (nunca le cree a la URL); la app también puede
+// confirmar con POST /api/pedidos/{id}/anticipo/mercado-pago/verificar.
 Route::livewire('/mercado-pago/retorno', 'mercado-pago.retorno')
     ->name('mercado-pago.retorno');
 

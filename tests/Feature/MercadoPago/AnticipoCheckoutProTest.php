@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Laravel\Sanctum\Sanctum;
@@ -70,6 +71,15 @@ class AnticipoCheckoutProTest extends TestCase
 
     /** Lo que regresa la búsqueda de pagos de Mercado Pago (se arma en cada prueba). */
     private array $pagosEnMercadoPago = [];
+
+    /** Pagos que contesta GET /v1/payments/{id}, por id (si no está: 404). */
+    private array $pagosPorId = [];
+
+    /** Órdenes (merchant orders) de la preferencia. */
+    private array $ordenesEnMercadoPago = [];
+
+    /** true: las consultas de pagos fallan como si Mercado Pago no respondiera. */
+    private bool $mercadoPagoCaido = false;
 
     protected function setUp(): void
     {
@@ -198,7 +208,43 @@ class AnticipoCheckoutProTest extends TestCase
                 'results' => $this->pagosEnMercadoPago,
                 'paging'  => ['total' => count($this->pagosEnMercadoPago)],
             ], 200),
+            'https://api.mercadopago.com/v1/payments/*' => function (PeticionHttp $peticion) {
+                if ($this->mercadoPagoCaido) {
+                    throw new ConnectionException('cURL error 28: Operation timed out');
+                }
+
+                $id = basename(parse_url($peticion->url(), PHP_URL_PATH));
+
+                return isset($this->pagosPorId[$id])
+                    ? Http::response($this->pagosPorId[$id], 200)
+                    : Http::response(['message' => 'Payment not found', 'error' => 'not_found', 'status' => 404], 404);
+            },
+            'https://api.mercadopago.com/merchant_orders/search*' => fn () => Http::response([
+                'elements' => $this->ordenesEnMercadoPago,
+                'total'    => count($this->ordenesEnMercadoPago),
+            ], 200),
         ]);
+    }
+
+    /** Una orden de Mercado Pago de la preferencia con esos pagos. */
+    private function orden(array $pagos, string $preferencia = self::PREF_1): array
+    {
+        return [
+            'id'            => 30001,
+            'preference_id' => $preferencia,
+            'status'        => 'closed',
+            'payments'      => array_map(fn (array $p) => [
+                'id'                 => $p['id'],
+                'status'             => $p['status'],
+                'transaction_amount' => $p['transaction_amount'],
+            ], $pagos),
+        ];
+    }
+
+    /** ¿Se consultó a Mercado Pago esta URL? */
+    private function seConsulto(string $prefijo): bool
+    {
+        return collect(Http::recorded())->contains(fn ($par) => str_starts_with($par[0]->url(), $prefijo));
     }
 
     private function initPoint(string $preferencia): string
@@ -213,11 +259,11 @@ class AnticipoCheckoutProTest extends TestCase
         return $this->postJson("/api/pedidos/{$pedidoId}/anticipo/mercado-pago");
     }
 
-    private function verificar(int $pedidoId)
+    private function verificar(int $pedidoId, array $datos = [])
     {
         $this->como(self::JOSE);
 
-        return $this->postJson("/api/pedidos/{$pedidoId}/anticipo/mercado-pago/verificar");
+        return $this->postJson("/api/pedidos/{$pedidoId}/anticipo/mercado-pago/verificar", $datos);
     }
 
     private function pagoMp(int $pagoId): Pago
@@ -671,22 +717,191 @@ class AnticipoCheckoutProTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_un_pago_aprobado_que_no_cuadra_no_se_aplica(): void
+    public function test_un_pago_aprobado_que_no_cuadra_no_se_aplica_y_lo_dice(): void
     {
-        Exceptions::fake();
+        Log::spy();
         $pedidoId = $this->pedido();
         $this->fingirMercadoPago();
         $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
 
         $this->pagosEnMercadoPago = [$this->aprobado($pago, ['transaction_amount' => 1.0])];
-        $this->verificar($pedidoId)->assertOk()->assertJsonPath('resultado', 'pendiente');
+        $this->verificar($pedidoId)->assertOk()
+            ->assertJsonPath('resultado', 'no_cuadra')
+            ->assertJsonPath('message', 'Mercado Pago tiene un pago que no coincide con este anticipo, así que no se aplicó. No vuelvas a pagar: la distribuidora lo revisará contigo.');
 
         $this->pagosEnMercadoPago = [$this->aprobado($pago, ['collector_id' => 111])];
-        $this->verificar($pedidoId)->assertOk()->assertJsonPath('resultado', 'pendiente');
+        $this->verificar($pedidoId)->assertOk()->assertJsonPath('resultado', 'no_cuadra');
+
+        $this->pagosEnMercadoPago = [$this->aprobado($pago, ['currency_id' => 'USD'])];
+        $this->verificar($pedidoId)->assertOk()->assertJsonPath('resultado', 'no_cuadra');
 
         $this->assertSame('pendiente', $pago->fresh()->estado);
-        Exceptions::assertReported(fn (RuntimeException $e) => str_contains($e->getMessage(), 'otro monto'));
-        Exceptions::assertReported(fn (RuntimeException $e) => str_contains($e->getMessage(), 'otra cuenta'));
+        $this->assertNull($pago->fresh()->referencia_externa);
+        foreach (['otro monto', 'otra cuenta', 'otra moneda'] as $motivo) {
+            Log::shouldHaveReceived('warning')->withArgs(fn ($mensaje, $contexto = []) => ($contexto['motivo'] ?? null) === $motivo
+                && $contexto['resultado'] === 'no_cuadra'
+                && $contexto['pago_id'] === $pago->id);
+        }
+    }
+
+    public function test_un_pago_que_no_cuadra_no_se_vence_aunque_el_enlace_haya_vencido(): void
+    {
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
+        $this->pagosEnMercadoPago = [$this->aprobado($pago, ['transaction_amount' => 1.0])];
+        $this->travel(25)->hours();
+
+        $this->verificar($pedidoId)->assertOk()->assertJsonPath('resultado', 'no_cuadra');
+        $this->assertSame('pendiente', $pago->fresh()->estado);
+    }
+
+    // ---------------------------------------------------------------
+    // Bugfix: la búsqueda no encuentra un pago que sí se aprobó
+    // ---------------------------------------------------------------
+
+    public function test_regresion_busqueda_vacia_pero_el_pago_aprobado_se_confirma_por_payment_id(): void
+    {
+        Log::spy();
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
+        // Lo que pasó en sandbox: la búsqueda por external_reference viene vacía…
+        $this->pagosEnMercadoPago = [];
+        // …pero el pago existe y está aprobado.
+        $this->pagosPorId = [(string) self::PAGO_MP => $this->aprobado($pago)];
+
+        $this->verificar($pedidoId, ['payment_id' => (string) self::PAGO_MP])->assertOk()
+            ->assertJsonPath('resultado', 'aplicado')
+            ->assertJsonPath('data.anticipo_pendiente', 0);
+
+        $pago->refresh();
+        $this->assertSame('aplicado', $pago->estado);
+        $this->assertSame((string) self::PAGO_MP, $pago->referencia_externa);
+
+        Http::assertSent(fn (PeticionHttp $peticion) => $peticion->url() === 'https://api.mercadopago.com/v1/payments/'.self::PAGO_MP
+            && $peticion->method() === 'GET'
+            && $peticion->hasHeader('Authorization', 'Bearer '.self::TOKEN));
+        // Con el payment_id basta: no hace falta buscar.
+        $this->assertFalse($this->seConsulto('https://api.mercadopago.com/v1/payments/search'));
+        $this->assertFalse($this->seConsulto('https://api.mercadopago.com/merchant_orders/search'));
+        Log::shouldHaveReceived('info')->withArgs(fn ($mensaje, $contexto = []) => ($contexto['metodo'] ?? null) === 'payment_id');
+    }
+
+    public function test_regresion_busqueda_vacia_pero_la_orden_de_la_preferencia_tiene_el_pago_aprobado(): void
+    {
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
+        $rechazado = $this->aprobado($pago, ['id' => 555000100, 'status' => 'rejected']);
+        $aprobado = $this->aprobado($pago);
+        $this->pagosEnMercadoPago = [];
+        $this->ordenesEnMercadoPago = [$this->orden([$rechazado, $aprobado])];
+        $this->pagosPorId = ['555000100' => $rechazado, (string) self::PAGO_MP => $aprobado];
+
+        // Sin payment_id (por ejemplo, la app no lo guardó).
+        $this->verificar($pedidoId)->assertOk()->assertJsonPath('resultado', 'aplicado');
+
+        $this->assertSame('aplicado', $pago->fresh()->estado);
+        $this->assertSame((string) self::PAGO_MP, $pago->fresh()->referencia_externa);
+        Http::assertSent(fn (PeticionHttp $peticion) => str_starts_with($peticion->url(), 'https://api.mercadopago.com/merchant_orders/search')
+            && $peticion->data()['preference_id'] === self::PREF_1
+            && $peticion->hasHeader('Authorization', 'Bearer '.self::TOKEN));
+        // Primero el más nuevo: con ese bastó.
+        Http::assertSent(fn (PeticionHttp $peticion) => $peticion->url() === 'https://api.mercadopago.com/v1/payments/'.self::PAGO_MP);
+        Http::assertNotSent(fn (PeticionHttp $peticion) => $peticion->url() === 'https://api.mercadopago.com/v1/payments/555000100');
+        $this->assertFalse($this->seConsulto('https://api.mercadopago.com/v1/payments/search'));
+    }
+
+    public function test_un_payment_id_de_otro_pago_no_se_aplica(): void
+    {
+        Log::spy();
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
+        $this->pagosPorId = ['777' => $this->aprobado($pago, ['id' => 777, 'external_reference' => 'FWP-1-999999'])];
+
+        $this->verificar($pedidoId, ['payment_id' => '777'])->assertOk()->assertJsonPath('resultado', 'no_cuadra');
+
+        $this->assertSame('pendiente', $pago->fresh()->estado);
+        Log::shouldHaveReceived('warning')->withArgs(fn ($mensaje, $contexto = []) => ($contexto['motivo'] ?? null) === 'otra external_reference'
+            && $contexto['origen'] === 'api'
+            && $contexto['consultas'][0]['metodo'] === 'payment_id');
+    }
+
+    public function test_un_payment_id_que_mercado_pago_no_conoce_busca_por_la_preferencia(): void
+    {
+        Log::spy();
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
+
+        // Nada en ningún lado: no cuadra (y queda en el log por qué).
+        $this->verificar($pedidoId, ['payment_id' => '123'])->assertOk()->assertJsonPath('resultado', 'no_cuadra');
+        $this->assertTrue($this->seConsulto('https://api.mercadopago.com/merchant_orders/search'));
+        $this->assertTrue($this->seConsulto('https://api.mercadopago.com/v1/payments/search'));
+        Log::shouldHaveReceived('warning')->withArgs(fn ($mensaje, $contexto = []) => ($contexto['motivo'] ?? null) === 'payment_id no encontrado con el token de la distribuidora'
+            && $contexto['consultas'][0] === ['metodo' => 'payment_id', 'payment_id' => '123', 'encontrado' => false, 'status' => null]
+            && $contexto['consultas'][2]['metodo'] === 'busqueda'
+            && $contexto['consultas'][2]['total'] === 0);
+
+        // Si la orden de la preferencia sí tiene el pago aprobado, se aplica.
+        $this->ordenesEnMercadoPago = [$this->orden([$this->aprobado($pago)])];
+        $this->pagosPorId = [(string) self::PAGO_MP => $this->aprobado($pago)];
+        $this->verificar($pedidoId, ['payment_id' => '123'])->assertOk()->assertJsonPath('resultado', 'aplicado');
+        $this->assertSame('aplicado', $pago->fresh()->estado);
+    }
+
+    public function test_un_payment_id_pendiente_sigue_pendiente_y_uno_rechazado_deja_reintentar(): void
+    {
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
+
+        $this->pagosPorId = [(string) self::PAGO_MP => $this->aprobado($pago, ['status' => 'in_process'])];
+        $this->verificar($pedidoId, ['payment_id' => (string) self::PAGO_MP])->assertOk()->assertJsonPath('resultado', 'pendiente');
+
+        $this->pagosPorId = [(string) self::PAGO_MP => $this->aprobado($pago, ['status' => 'rejected'])];
+        $this->verificar($pedidoId, ['payment_id' => (string) self::PAGO_MP])->assertOk()->assertJsonPath('resultado', 'rechazado');
+
+        $this->assertSame('pendiente', $pago->fresh()->estado);
+    }
+
+    public function test_el_payment_id_solo_lleva_digitos(): void
+    {
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $this->crearAnticipo($pedidoId)->assertCreated();
+        $enviadas = count(Http::recorded());
+
+        $this->verificar($pedidoId, ['payment_id' => '../preferences/x'])->assertStatus(422)
+            ->assertJsonPath('errors.payment_id.0', 'El número de pago de Mercado Pago solo lleva dígitos.');
+        $this->assertCount($enviadas, Http::recorded());
+    }
+
+    public function test_el_log_de_diagnostico_no_lleva_tokens_ni_datos_de_quien_paga(): void
+    {
+        Log::spy();
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
+        $this->pagosEnMercadoPago = [$this->aprobado($pago, [
+            'status' => 'pending',
+            'payer'  => ['email' => 'comprador@testuser.com', 'identification' => ['number' => '12345678']],
+        ])];
+
+        $this->verificar($pedidoId)->assertOk()->assertJsonPath('resultado', 'pendiente');
+
+        Log::shouldHaveReceived('warning')->withArgs(function ($mensaje, $contexto = []) use ($pago) {
+            $json = json_encode($contexto);
+
+            return $contexto['pago_id'] === $pago->id
+                && $contexto['resultado'] === 'pendiente'
+                && $contexto['consultas'][1]['estados'] === ['pending']
+                && ! str_contains($json, self::TOKEN)
+                && ! str_contains($json, 'testuser.com')
+                && ! str_contains($json, '12345678');
+        });
     }
 
     public function test_si_el_anticipo_ya_se_cubrio_el_pago_aprobado_se_aplica_y_se_marca(): void
@@ -754,7 +969,38 @@ class AnticipoCheckoutProTest extends TestCase
         $this->assertSame('aplicado', $pago->fresh()->estado);
     }
 
-    public function test_la_pagina_de_regreso_es_publica_y_no_toca_nada(): void
+    public function test_el_personal_puede_verificar_con_el_numero_de_pago(): void
+    {
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
+
+        $this->app['auth']->forgetGuards();
+        $this->actingAs(Usuario::where('email', self::EMPLEADO)->firstOrFail());
+        Tenant::olvidarCache();
+        PropietarioActual::olvidarCache();
+
+        $componente = Livewire::test('pedidos.show', ['id' => $pedidoId])
+            ->set('pagoMpId', 'abc')
+            ->call('verificarMercadoPago')
+            ->assertSet('errorMsg', 'El número de pago de Mercado Pago solo lleva dígitos.');
+
+        $this->pagosPorId = ['777' => $this->aprobado($pago, ['id' => 777, 'transaction_amount' => 1.0])];
+        $componente->set('pagoMpId', '777')
+            ->call('verificarMercadoPago')
+            ->assertSet('mensaje', 'Mercado Pago tiene un pago que no coincide con este anticipo (referencia, monto, moneda o cuenta) y no se aplicó. Revísalo en tu cuenta de Mercado Pago antes de registrar algo a mano.');
+        $this->assertSame('pendiente', $pago->fresh()->estado);
+
+        $this->pagosPorId = [(string) self::PAGO_MP => $this->aprobado($pago)];
+        $componente->set('pagoMpId', ' '.self::PAGO_MP.' ')
+            ->call('verificarMercadoPago')
+            ->assertSet('mensaje', 'Mercado Pago confirmó el pago. Ya quedó aplicado.')
+            ->assertSet('pagoMpId', '');
+        $this->assertSame('aplicado', $pago->fresh()->estado);
+        $this->assertFalse($this->seConsulto('https://api.mercadopago.com/v1/payments/search'));
+    }
+
+    public function test_la_pagina_de_regreso_es_publica_y_sin_referencia_valida_no_toca_nada(): void
     {
         $this->app['auth']->forgetGuards();
         $antes = Pago::withoutGlobalScopes()->count();
@@ -763,11 +1009,126 @@ class AnticipoCheckoutProTest extends TestCase
             ->assertOk()
             ->assertSee('¡Gracias por tu pago!')
             ->assertSee('Regresa a la app de FootwearPoint');
+        $this->get('/mercado-pago/retorno?status=approved&payment_id=abc&external_reference=FWP-1-1')->assertOk();
+        $this->get('/mercado-pago/retorno?status=approved&payment_id=1&external_reference=otra-cosa')->assertOk();
         $this->get('/mercado-pago/retorno?status=rejected')->assertOk()->assertSee('El pago no se completó');
         $this->get('/mercado-pago/retorno?collection_status=pending')->assertOk()->assertSee('Tu pago está en proceso');
 
         $this->assertSame($antes, Pago::withoutGlobalScopes()->count());
         Http::assertNothingSent();
+    }
+
+    /** La URL tal como la arma Mercado Pago al regresar. */
+    private function urlRetorno(Pago $pago, string $paymentId, string $status = 'approved'): string
+    {
+        return '/mercado-pago/retorno?'.http_build_query([
+            'collection_id'      => $paymentId,
+            'collection_status'  => $status,
+            'payment_id'         => $paymentId,
+            'status'             => $status,
+            'external_reference' => $pago->referenciaMercadoPago(),
+            'payment_type'       => 'account_money',
+            'merchant_order_id'  => '30001',
+            'preference_id'      => $pago->preferencia_externa,
+            'site_id'            => 'MLM',
+            'processing_mode'    => 'aggregator',
+            'merchant_account_id' => 'null',
+        ]);
+    }
+
+    public function test_la_pagina_de_regreso_confirma_el_pago_con_mercado_pago(): void
+    {
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
+        $this->pagosPorId = [(string) self::PAGO_MP => $this->aprobado($pago)];
+
+        $this->app['auth']->forgetGuards();
+        Tenant::olvidarCache();
+
+        $this->get($this->urlRetorno($pago, (string) self::PAGO_MP))
+            ->assertOk()
+            ->assertSee('¡Recibimos tu anticipo!')
+            ->assertSee('Regresa a la app de FootwearPoint');
+
+        $pago->refresh();
+        $this->assertSame('aplicado', $pago->estado);
+        $this->assertSame((string) self::PAGO_MP, $pago->referencia_externa);
+        Http::assertSent(fn (PeticionHttp $peticion) => $peticion->url() === 'https://api.mercadopago.com/v1/payments/'.self::PAGO_MP
+            && $peticion->hasHeader('Authorization', 'Bearer '.self::TOKEN));
+        $jose = Usuario::where('email', self::JOSE)->value('id');
+        $this->assertTrue(Notificacion::withoutGlobalScopes()->where('usuario_id', $jose)->where('tipo', 'pago_mercado_pago')->exists());
+
+        // Volver a abrir la página no aplica dos veces ni vuelve a preguntar.
+        $enviadas = count(Http::recorded());
+        $this->get($this->urlRetorno($pago, (string) self::PAGO_MP))->assertOk()->assertSee('¡Recibimos tu anticipo!');
+        $this->assertCount($enviadas, Http::recorded());
+        $this->assertSame(1, Auditoria::where('accion', 'pago.mercado_pago.aplicado')->count());
+
+        // Y la app ya lo ve aplicado.
+        $this->verificar($pedidoId)->assertOk()->assertJsonPath('resultado', 'aplicado');
+    }
+
+    public function test_la_pagina_de_regreso_no_le_cree_a_la_url(): void
+    {
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
+        $this->app['auth']->forgetGuards();
+
+        // La URL dice "approved" con la referencia correcta, pero Mercado Pago
+        // dice que ese pago es de otra referencia: no se aplica.
+        $this->pagosPorId = ['777' => $this->aprobado($pago, ['id' => 777, 'external_reference' => 'FWP-1-999999'])];
+        $this->get($this->urlRetorno($pago, '777'))->assertOk()->assertSee('¡Gracias por tu pago!')->assertDontSee('Recibimos tu anticipo');
+
+        // Ni un pago que Mercado Pago no conoce con el token de la distribuidora.
+        $this->get($this->urlRetorno($pago, '888'))->assertOk()->assertSee('¡Gracias por tu pago!');
+
+        // Ni un "approved" de un pago que Mercado Pago tiene pendiente.
+        $this->pagosPorId = [(string) self::PAGO_MP => $this->aprobado($pago, ['status' => 'pending'])];
+        $this->get($this->urlRetorno($pago, (string) self::PAGO_MP))->assertOk()->assertSee('¡Gracias por tu pago!');
+
+        $this->assertSame('pendiente', $pago->fresh()->estado);
+        $this->assertNull($pago->fresh()->referencia_externa);
+    }
+
+    public function test_la_pagina_de_regreso_nunca_muestra_errores(): void
+    {
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
+        $this->app['auth']->forgetGuards();
+        Log::spy();
+
+        // Mercado Pago no responde.
+        $this->mercadoPagoCaido = true;
+        $this->get($this->urlRetorno($pago, (string) self::PAGO_MP))->assertOk()->assertSee('¡Gracias por tu pago!');
+
+        // La distribuidora desconectó su cuenta.
+        $this->conectarMercadoPago(['mp_access_token' => null, 'mp_conectado_at' => null]);
+        $this->get($this->urlRetorno($pago, (string) self::PAGO_MP))->assertOk()->assertSee('¡Gracias por tu pago!');
+
+        $this->assertSame('pendiente', $pago->fresh()->estado);
+        Log::shouldHaveReceived('warning')->withArgs(fn ($mensaje, $contexto = []) => str_contains($mensaje, 'página de regreso')
+            && ($contexto['pago_id'] ?? null) === $pago->id
+            && ! str_contains(json_encode($contexto), self::TOKEN));
+    }
+
+    public function test_la_pagina_de_regreso_tiene_limite(): void
+    {
+        $pedidoId = $this->pedido();
+        $this->fingirMercadoPago();
+        $pago = $this->pagoMp($this->crearAnticipo($pedidoId)->json('data.pago_id'));
+        $this->pagosPorId = [(string) self::PAGO_MP => $this->aprobado($pago, ['status' => 'in_process'])];
+        $this->app['auth']->forgetGuards();
+
+        for ($i = 0; $i < 7; $i++) {
+            $this->get($this->urlRetorno($pago, (string) self::PAGO_MP))->assertOk();
+        }
+
+        // 5 por pago por minuto: las otras 2 visitas no le preguntan a Mercado Pago.
+        $consultas = collect(Http::recorded())->filter(fn ($par) => $par[0]->url() === 'https://api.mercadopago.com/v1/payments/'.self::PAGO_MP);
+        $this->assertCount(5, $consultas);
     }
 
     public function test_el_anticipo_por_par_nunca_supera_el_precio(): void

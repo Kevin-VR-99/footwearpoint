@@ -23,6 +23,9 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     public string $pagoMonto = '';
     public string $pagoReferencia = '';
 
+    // TG-226 (bugfix): número de pago de Mercado Pago (opcional) para verificar.
+    public string $pagoMpId = '';
+
     public function mount(int $id)
     {
         if (! Auth::check()) {
@@ -107,8 +110,16 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         $this->mensaje = '';
         $this->errorMsg = '';
 
+        $pagoMpId = trim($this->pagoMpId);
+
+        if ($pagoMpId !== '' && preg_match('/^[0-9]{1,20}$/', $pagoMpId) !== 1) {
+            $this->errorMsg = 'El número de pago de Mercado Pago solo lleva dígitos.';
+
+            return;
+        }
+
         try {
-            $resultado = $accion->ejecutar($this->pedido);
+            $resultado = $accion->ejecutar($this->pedido, $pagoMpId === '' ? null : $pagoMpId, 'panel');
             unset($this->pedido);
             unset($this->resumen);
 
@@ -116,8 +127,13 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 VerificarPagoMercadoPagoAction::APLICADO => 'Mercado Pago confirmó el pago. Ya quedó aplicado.',
                 VerificarPagoMercadoPagoAction::RECHAZADO => 'Mercado Pago rechazó el intento de pago. El cliente puede intentarlo de nuevo.',
                 VerificarPagoMercadoPagoAction::VENCIDO => 'El enlace de pago venció sin pagarse.',
+                VerificarPagoMercadoPagoAction::NO_CUADRA => 'Mercado Pago tiene un pago que no coincide con este anticipo (referencia, monto, moneda o cuenta) y no se aplicó. Revísalo en tu cuenta de Mercado Pago antes de registrar algo a mano.',
                 default => 'Mercado Pago todavía no confirma el pago.',
             };
+
+            if ($resultado === VerificarPagoMercadoPagoAction::APLICADO) {
+                $this->pagoMpId = '';
+            }
         } catch (\Throwable $e) {
             $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo verificar el pago con Mercado Pago. Intenta de nuevo.');
         }
@@ -338,10 +354,16 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                                 @endphp
                                 <x-ui.insignia-estado :variante="$varianteEstado" :texto="$textoEstado" />
                                 @if ($p->esMercadoPagoPendiente() && $p->preferencia_externa)
-                                    <button type="button" wire:click="verificarMercadoPago" wire:loading.attr="disabled"
-                                        class="ml-2 text-xs font-medium text-fp-primary hover:underline">
-                                        Verificar con Mercado Pago
-                                    </button>
+                                    <div class="mt-1 flex items-center gap-2">
+                                        {{-- Opcional: el número de pago que el cliente ve en su comprobante de Mercado Pago. --}}
+                                        <input type="text" inputmode="numeric" wire:model="pagoMpId" maxlength="20"
+                                            placeholder="N.º de pago (opcional)" aria-label="Número de pago de Mercado Pago (opcional)"
+                                            class="w-40 rounded-lg border-slate-300 px-2 py-1 text-xs" />
+                                        <button type="button" wire:click="verificarMercadoPago" wire:loading.attr="disabled"
+                                            class="text-xs font-medium text-fp-primary hover:underline">
+                                            Verificar con Mercado Pago
+                                        </button>
+                                    </div>
                                 @endif
                             </td>
                         </tr>
