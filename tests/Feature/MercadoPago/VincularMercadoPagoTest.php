@@ -6,6 +6,7 @@ use App\Models\Auditoria;
 use App\Models\ConfiguracionDistribuidora;
 use App\Models\Distribuidora;
 use App\Models\Usuario;
+use Database\Seeders\AdminGeneralSeeder;
 use App\Services\MercadoPago\MercadoPagoException;
 use App\Services\MercadoPago\VincularMercadoPagoService;
 use App\Support\PropietarioActual;
@@ -528,12 +529,15 @@ class VincularMercadoPagoTest extends TestCase
         $this->actingAs($empleado)->get(route('mercado-pago.conectar'))->assertForbidden();
         $this->actingAs($empleado)->get(route('mercado-pago.callback', ['code' => 'x', 'state' => 'y']))->assertForbidden();
 
-        $adminGeneral = Usuario::create([
-            'nombre'   => 'Admin General',
-            'email'    => 'admin.general@footwearpoint.test',
-            'password' => Hash::make('password'),
-            'estado'   => 'activo',
-        ]);
+        // Desde TG-186 el admin general ya viene del seeder: aqui solo se usa.
+        $adminGeneral = Usuario::firstOrCreate(
+            ['email' => AdminGeneralSeeder::EMAIL],
+            [
+                'nombre'   => 'Admin General',
+                'password' => Hash::make('password'),
+                'estado'   => 'activo',
+            ]
+        );
         $registrar = app(PermissionRegistrar::class);
         $registrar->setPermissionsTeamId(0);
         $adminGeneral->assignRole('admin_general');
