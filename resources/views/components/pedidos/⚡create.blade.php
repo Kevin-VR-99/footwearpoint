@@ -12,6 +12,7 @@ use App\Services\Pedido\AgregarLineaPedidoAction;
 use App\Services\Pedido\QuitarLineaPedidoAction;
 use App\Services\Pedido\CrearPedidoBorradorAction;
 use App\Services\Pedido\EnviarPedidoAction;
+use App\Support\MensajeError;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -187,7 +188,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo crear.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo crear el borrador. Intenta de nuevo.');
         }
     }
 
@@ -225,7 +226,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo agregar.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo agregar la línea. Intenta de nuevo.');
         }
     }
 
@@ -248,7 +249,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo quitar la línea.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo quitar la línea. Intenta de nuevo.');
         }
     }
 
@@ -270,7 +271,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo enviar.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo enviar el pedido. Intenta de nuevo.');
         }
     }
 };
