@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Admin\CategoriaDirectorioController;
 use App\Http\Controllers\Api\Admin\DistribuidoraController;
 use App\Http\Controllers\Api\Admin\PlanSuscripcionController;
 use App\Http\Controllers\Api\ClientePrivadoRevendedorController;
@@ -71,6 +72,15 @@ Route::prefix('admin')
         Route::delete('/planes-suscripcion/{id}', [PlanSuscripcionController::class, 'destroy']);
 
         Route::patch('/marketplace/config', [DistribuidoraController::class, 'marketplaceConfig']);
+
+        // TG-197 (G16): categorías generales del directorio (no se borran,
+        // se activan o desactivan) y su asignación a cada distribuidora.
+        Route::get('/categorias-directorio', [CategoriaDirectorioController::class, 'index']);
+        Route::post('/categorias-directorio', [CategoriaDirectorioController::class, 'store']);
+        Route::put('/categorias-directorio/{id}', [CategoriaDirectorioController::class, 'update'])->whereNumber('id');
+        Route::patch('/categorias-directorio/{id}/activar', [CategoriaDirectorioController::class, 'activar'])->whereNumber('id');
+        Route::patch('/categorias-directorio/{id}/desactivar', [CategoriaDirectorioController::class, 'desactivar'])->whereNumber('id');
+        Route::put('/distribuidoras/{id}/categorias-directorio', [CategoriaDirectorioController::class, 'asignar'])->whereNumber('id');
     });
 
 /*

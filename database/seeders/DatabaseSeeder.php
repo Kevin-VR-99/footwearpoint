@@ -8,9 +8,10 @@ use Illuminate\Database\Seeder;
 /**
  * Deja la base lista para trabajar y para la demo (TG-186).
  *
- * Con `php artisan migrate:fresh --seed` queda todo: el admin general, la
- * distribuidora de prueba con su admin y su empleado, su catálogo y sus
- * contactos, dos de ellos con cuenta en la app.
+ * Con `php artisan migrate:fresh --seed` queda todo: el admin general, el
+ * catálogo maestro con datos de catálogos reales, dos distribuidoras de
+ * prueba con su personal y lo que cada una vende, y los contactos de la
+ * primera, dos de ellos con cuenta en la app.
  *
  * Todas las cuentas de prueba usan la misma contraseña, que sale de
  * SEED_PASSWORD (ver Support\PasswordDePrueba).
@@ -22,6 +23,7 @@ class DatabaseSeeder extends Seeder
         AdminGeneralSeeder::EMAIL => 'admin_general',
         DemoDistribuidoraSeeder::ADMIN => 'admin_distribuidora',
         DemoDistribuidoraSeeder::EMPLEADO => 'empleado',
+        DemoDistribuidoraSeeder::SEGUNDA_ADMIN => 'admin_distribuidora',
         DemoContactosSeeder::REVENDEDOR => 'revendedor',
         DemoContactosSeeder::CLIENTE_DIRECTO => 'cliente_directo',
     ];
@@ -35,8 +37,10 @@ class DatabaseSeeder extends Seeder
             RolesPermissionsSeeder::class,
             AdminGeneralSeeder::class,
             DemoDistribuidoraSeeder::class,
-            DemoCatalogoSeeder::class,
+            CatalogoMaestroDemoSeeder::class,
+            DemoCatalogoDistribuidorasSeeder::class,
             DemoContactosSeeder::class,
+            CategoriaDirectorioSeeder::class,
         ]);
 
         $this->resumen();

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Sprint4;
 
 use App\Models\Distribuidora;
+use App\Models\OfertaDistribuidora;
 use App\Models\ProductoCampana;
 use App\Models\Usuario;
 use App\Services\Catalogo\PrecioEfectivo;
@@ -131,7 +132,17 @@ class CatalogoDeLaAppTest extends TestCase
         $this->conDescuentoDe(30);
         $this->como(self::MARIA);
 
-        $primero = $this->catalogo()[0];
+        // El primero que NO tenga precio propio: el descuento general solo se
+        // nota en esos, y el catalogo demo ya trae uno con su propio precio
+        // (TG-217).
+        $primero = collect($this->catalogo())->firstWhere(
+            fn (array $producto) => OfertaDistribuidora::where('producto_campana_id', $producto['id'])
+                ->whereNotNull('precio_mayorista')
+                ->doesntExist()
+        );
+
+        $this->assertNotNull($primero, 'Todo el catalogo tiene precio propio');
+
         $productoCampana = ProductoCampana::findOrFail($primero['id']);
 
         $this->assertEqualsWithDelta(

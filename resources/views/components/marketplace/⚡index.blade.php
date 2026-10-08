@@ -1,22 +1,35 @@
 <?php
 
-use App\Models\Distribuidora;
+use App\Services\Directorio\DirectorioPublico;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class extends Component
 {
+    /**
+     * TG-197 (G16) — Categoría elegida para filtrar (?categoria=ID). Se
+     * guarda como texto para que una dirección mal escrita no truene: lo que
+     * no es un número se trata como "todas".
+     */
+    #[Url(as: 'categoria', except: '')]
+    public string $categoria = '';
+
+    public function filtrar(?int $categoriaId = null): void
+    {
+        $this->categoria = $categoriaId ? (string) $categoriaId : '';
+    }
+
     public function render()
     {
-        $distribuidoras = Distribuidora::query()
-            ->where('estado', 'activa')
-            ->where('marketplace_visible', true)
-            ->orderBy('nombre_comercial')
-            ->get();
+        $directorio = app(DirectorioPublico::class);
+        $categoriaId = ctype_digit($this->categoria) && (int) $this->categoria > 0 ? (int) $this->categoria : null;
 
         return $this->view([
-            'distribuidoras' => $distribuidoras,
+            'distribuidoras' => $directorio->distribuidoras($categoriaId),
+            'categorias'     => $directorio->categorias(),
+            'categoriaId'    => $categoriaId,
         ]);
     }
 };
@@ -30,7 +43,30 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
         </p>
     </div>
 
-    @if ($distribuidoras->isEmpty())
+    {{-- TG-197 (G16): filtro por categorías del directorio --}}
+    @if ($categorias->isNotEmpty())
+        <div class="mb-6 flex flex-wrap gap-2" aria-label="Filtrar por categoría">
+            <button type="button" wire:click="filtrar"
+                class="px-3 py-1.5 rounded-full text-sm {{ $categoriaId === null ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+                Todas
+            </button>
+            @foreach ($categorias as $cat)
+                <button type="button" wire:click="filtrar({{ $cat->id }})"
+                    class="px-3 py-1.5 rounded-full text-sm {{ $categoriaId === $cat->id ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+                    {{ $cat->nombre }}
+                </button>
+            @endforeach
+        </div>
+    @endif
+
+    @if ($distribuidoras->isEmpty() && $categoriaId !== null)
+        <div class="bg-white rounded-xl border border-slate-200 p-10 text-center text-slate-500">
+            No hay distribuidoras en esta categoría por ahora.
+            <button type="button" wire:click="filtrar" class="block mx-auto mt-3 text-sm text-[#2563EB] hover:underline">
+                Ver todas las distribuidoras
+            </button>
+        </div>
+    @elseif ($distribuidoras->isEmpty())
         <div class="bg-white rounded-xl border border-slate-200 p-10 text-center text-slate-500">
             No hay distribuidoras visibles en el marketplace por ahora.
         </div>
@@ -54,6 +90,14 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                         <h3 class="text-lg font-semibold text-slate-900">
                             {{ $d->nombre_comercial }}
                         </h3>
+
+                        @if ($d->categoriasDirectorio->isNotEmpty())
+                            <div class="mt-2 flex flex-wrap gap-1">
+                                @foreach ($d->categoriasDirectorio as $cat)
+                                    <span class="text-xs px-2 py-0.5 rounded-full bg-[#EEF2FF] text-[#1E2F52]">{{ $cat->nombre }}</span>
+                                @endforeach
+                            </div>
+                        @endif
 
                         @if ($d->descripcion_publica)
                             <p class="text-sm text-slate-600 mt-2 line-clamp-3">

@@ -28,6 +28,10 @@
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('admin.planes') ? 'bg-white/15' : '' }}">
                     Planes
                 </a>
+                <a href="{{ route('admin.categorias-directorio') }}"
+                    class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('admin.categorias-directorio') ? 'bg-white/15' : '' }}">
+                    Categorías del directorio
+                </a>
                 <a href="{{ route('marketplace') }}"
                     class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" target="_blank">
                     Marketplace público

@@ -35,4 +35,25 @@ return [
         ],
     ],
 
+    /*
+    | TG-225 (G6) — Aplicación de FootwearPoint en Mercado Pago Developers,
+    | para que cada distribuidora conecte SU cuenta con el flujo oficial
+    | (OAuth). Las credenciales solo viven en variables de entorno (Railway o
+    | el .env local), nunca en el código.
+    |
+    | redirect_uri debe ser EXACTAMENTE la URL registrada en la aplicación de
+    | Mercado Pago (por ejemplo https://<dominio>/mercado-pago/callback).
+    | modo: 'sandbox' (pruebas, pide credenciales de prueba) o 'produccion'.
+    */
+    'mercadopago' => [
+        'client_id'        => env('MP_CLIENT_ID'),
+        'client_secret'    => env('MP_CLIENT_SECRET'),
+        'redirect_uri'     => env('MP_REDIRECT_URI'),
+        'modo'             => env('MP_MODO', 'sandbox'),
+        'pkce'             => (bool) env('MP_PKCE', true),
+        'url_autorizacion' => 'https://auth.mercadopago.com/authorization',
+        'url_api'          => 'https://api.mercadopago.com',
+        'timeout'          => 10,
+    ],
+
 ];

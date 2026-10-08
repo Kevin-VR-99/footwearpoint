@@ -6,6 +6,7 @@ use App\Models\Usuario;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\DemoDistribuidoraSeeder;
 use Database\Seeders\Support\PasswordDePrueba;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -17,8 +18,8 @@ use Tests\TestCase;
  * TG-186 (Ola 2, K10) — Lo que deja listo `migrate:fresh --seed`.
  *
  * Después de sembrar, la demo tiene que poder arrancar sola: el admin general,
- * la distribuidora de prueba con su admin y su empleado, y las dos cuentas de
- * la app. Todas con la misma contraseña de prueba.
+ * las dos distribuidoras de prueba con su personal, y las dos cuentas de la
+ * app. Todas con la misma contraseña de prueba.
  */
 class SeedersDePruebaTest extends TestCase
 {
@@ -34,7 +35,7 @@ class SeedersDePruebaTest extends TestCase
         PropietarioActual::olvidarCache();
     }
 
-    public function test_quedan_las_cinco_cuentas_de_prueba_con_su_rol(): void
+    public function test_quedan_las_cuentas_de_prueba_con_su_rol(): void
     {
         foreach (DatabaseSeeder::CUENTAS as $correo => $rol) {
             $usuario = Usuario::where('email', $correo)->first();
@@ -80,7 +81,14 @@ class SeedersDePruebaTest extends TestCase
     /** Las del personal entran por el panel web. */
     public function test_el_personal_entra_al_panel(): void
     {
-        foreach (['admin.general@footwearpoint.test', 'admin@calzadosramirez.test', 'empleado@calzadosramirez.test'] as $correo) {
+        $delPanel = [
+            'admin.general@footwearpoint.test',
+            DemoDistribuidoraSeeder::ADMIN,
+            DemoDistribuidoraSeeder::EMPLEADO,
+            DemoDistribuidoraSeeder::SEGUNDA_ADMIN,
+        ];
+
+        foreach ($delPanel as $correo) {
             $this->app['auth']->forgetGuards();
             Tenant::olvidarCache();
 
@@ -98,7 +106,7 @@ class SeedersDePruebaTest extends TestCase
     /** El personal conserva su nombre en la cuenta; los contactos, en su registro. */
     public function test_el_personal_tiene_nombre_y_los_contactos_no(): void
     {
-        $this->assertNotNull(Usuario::where('email', 'admin@calzadosramirez.test')->value('nombre'));
+        $this->assertNotNull(Usuario::where('email', DemoDistribuidoraSeeder::ADMIN)->value('nombre'));
         $this->assertNull(Usuario::where('email', 'maria.lopez@revendedor.test')->value('nombre'));
         $this->assertSame(
             'María López',

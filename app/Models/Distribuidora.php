@@ -9,10 +9,12 @@ class Distribuidora extends Model
     protected $table = 'distribuidoras';
 
     /**
-     * TG-195 (G4) — Estados en los que la distribuidora no puede operar: su
-     * personal no entra al panel web (ver AccesoPanelWebService).
+     * Estados en los que la distribuidora no puede operar (TG-195 / TG-196):
+     * su personal no entra al panel web (AccesoPanelWebService) y sus
+     * revendedores y clientes no entran a la app (AuthController, Tenant).
+     * Su información se conserva; nada se borra.
      */
-    public const ESTADOS_SIN_OPERACION = ['rechazada'];
+    public const ESTADOS_SIN_OPERACION = ['suspendida', 'rechazada'];
 
     protected $fillable = [
         'nombre_comercial',
@@ -38,6 +40,26 @@ class Distribuidora extends Model
         'fecha_solicitud' => 'datetime',
         'fecha_aprobacion' => 'datetime',
     ];
+
+    /** TG-196: false si está suspendida o rechazada. */
+    public function puedeOperar(): bool
+    {
+        return ! in_array($this->estado, self::ESTADOS_SIN_OPERACION, true);
+    }
+
+    /**
+     * TG-196: lo que ve en la app un revendedor o cliente (o cualquier cuenta)
+     * de una distribuidora que no puede operar.
+     */
+    public function mensajeSinOperacionParaApp(): string
+    {
+        if ($this->estado === 'rechazada') {
+            return "{$this->nombre_comercial} no fue aprobada para usar FootwearPoint, así que no puedes usar la app con ella.";
+        }
+
+        return "{$this->nombre_comercial} está suspendida por ahora, así que no puedes usar la app con ella. "
+            .'Tu cuenta y tu información se conservan; intenta más tarde.';
+    }
 
     public function suscripciones()
     {
@@ -131,5 +153,19 @@ class Distribuidora extends Model
     public function productosDestacados()
     {
         return $this->hasMany(ProductoDestacado::class, 'distribuidora_id');
+    }
+
+    /**
+     * TG-197 (G16) — Categorías del directorio público en las que aparece.
+     * Las asigna el admin general; la tabla puente no lleva timestamps.
+     */
+    public function categoriasDirectorio()
+    {
+        return $this->belongsToMany(
+            CategoriaDirectorio::class,
+            'distribuidora_categoria_directorio',
+            'distribuidora_id',
+            'categoria_directorio_id'
+        );
     }
 }
