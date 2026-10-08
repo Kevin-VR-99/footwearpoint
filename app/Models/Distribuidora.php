@@ -8,6 +8,12 @@ class Distribuidora extends Model
 {
     protected $table = 'distribuidoras';
 
+    /**
+     * TG-195 (G4) — Estados en los que la distribuidora no puede operar: su
+     * personal no entra al panel web (ver AccesoPanelWebService).
+     */
+    public const ESTADOS_SIN_OPERACION = ['rechazada'];
+
     protected $fillable = [
         'nombre_comercial',
         'razon_social',
@@ -24,6 +30,7 @@ class Distribuidora extends Model
         'estado',
         'fecha_solicitud',
         'fecha_aprobacion',
+        'motivo_rechazo',
     ];
 
     protected $casts = [

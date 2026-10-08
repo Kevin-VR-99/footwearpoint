@@ -56,7 +56,10 @@ Route::prefix('admin')
     ->middleware(['auth:sanctum', 'tenant.team', 'role:admin_general'])
     ->group(function () {
         Route::get('/distribuidoras', [DistribuidoraController::class, 'index']);
+        Route::get('/distribuidoras/{id}', [DistribuidoraController::class, 'show'])->whereNumber('id');
         Route::post('/distribuidoras/{id}/aprobar', [DistribuidoraController::class, 'aprobar']);
+        // TG-195 (G4): rechazar una pendiente con su motivo.
+        Route::post('/distribuidoras/{id}/rechazar', [DistribuidoraController::class, 'rechazar'])->whereNumber('id');
         Route::post('/distribuidoras/{id}/suspender', [DistribuidoraController::class, 'suspender']);
         Route::post('/distribuidoras/{id}/reactivar', [DistribuidoraController::class, 'reactivar']);
         Route::post('/distribuidoras/{id}/suscripcion', [DistribuidoraController::class, 'asignarSuscripcion']);

@@ -34,6 +34,11 @@ class Usuario extends Authenticatable implements CanResetPassword
         'email_verified_at' => 'datetime',
     ];
 
+    /** Ver contacto(): se consulta una sola vez por instancia. */
+    protected Revendedor|ClienteDirecto|null $contactoEnMemoria = null;
+
+    protected bool $contactoConsultado = false;
+
     /**
      * El registro de contacto de esta cuenta, si es de un revendedor o de un
      * cliente directo (TG-216).
@@ -46,17 +51,33 @@ class Usuario extends Authenticatable implements CanResetPassword
      */
     public function contacto(): Revendedor|ClienteDirecto|null
     {
+        // Se recuerda en esta misma instancia: nombreVisible() y
+        // telefonoVisible() lo piden seguido, y pantallas como la auditoría
+        // muestran muchos renglones del mismo usuario (TG-216).
+        if ($this->contactoConsultado) {
+            return $this->contactoEnMemoria;
+        }
+
+        $this->contactoConsultado = true;
+
         $revendedor = Revendedor::withoutGlobalScopes()->where('usuario_id', $this->id)->first();
 
         if ($revendedor) {
-            return $revendedor;
+            return $this->contactoEnMemoria = $revendedor;
         }
 
-        return ClienteDirecto::withoutGlobalScopes()
+        return $this->contactoEnMemoria = ClienteDirecto::withoutGlobalScopes()
             ->where('usuario_id', $this->id)
             ->when(Tenant::id() !== null, fn ($consulta) => $consulta->where('distribuidora_id', Tenant::id()))
             ->orderBy('distribuidora_id')
             ->first();
+    }
+
+    /** Para volver a consultarlo después de cambiarlo. */
+    public function olvidarContacto(): void
+    {
+        $this->contactoConsultado = false;
+        $this->contactoEnMemoria = null;
     }
 
     /**
