@@ -119,11 +119,17 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             return;
         }
 
-        // TG-227 (G8): el pendiente puede ser del anticipo o del saldo.
-        $esSaldo = $this->pedido->pagos
+        // TG-227 (G8): el pendiente puede ser del anticipo o del saldo;
+        // TG-229 (G10): o el pago del cliente mayorista.
+        $tipoPendiente = $this->pedido->pagos
             ->filter(fn ($p) => $p->esMercadoPagoPendiente() && $p->preferencia_externa !== null)
             ->sortByDesc('id')
-            ->first()?->tipo === 'saldo_pedido';
+            ->first()?->tipo;
+        $deQue = match ($tipoPendiente) {
+            'saldo_pedido'     => 'este saldo',
+            'total_revendedor' => 'este pago',
+            default            => 'este anticipo',
+        };
 
         try {
             $resultado = $accion->ejecutar($this->pedido, $pagoMpId === '' ? null : $pagoMpId, 'panel');
@@ -134,7 +140,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 VerificarPagoMercadoPagoAction::APLICADO => 'Mercado Pago confirmó el pago. Ya quedó aplicado.',
                 VerificarPagoMercadoPagoAction::RECHAZADO => 'Mercado Pago rechazó el intento de pago. El cliente puede intentarlo de nuevo.',
                 VerificarPagoMercadoPagoAction::VENCIDO => 'El enlace de pago venció sin pagarse.',
-                VerificarPagoMercadoPagoAction::NO_CUADRA => 'Mercado Pago tiene un pago que no coincide con '.($esSaldo ? 'este saldo' : 'este anticipo').' (referencia, monto, moneda o cuenta) y no se aplicó. Revísalo en tu cuenta de Mercado Pago antes de registrar algo a mano.',
+                VerificarPagoMercadoPagoAction::NO_CUADRA => 'Mercado Pago tiene un pago que no coincide con '.$deQue.' (referencia, monto, moneda o cuenta) y no se aplicó. Revísalo en tu cuenta de Mercado Pago antes de registrar algo a mano.',
                 default => 'Mercado Pago todavía no confirma el pago.',
             };
 

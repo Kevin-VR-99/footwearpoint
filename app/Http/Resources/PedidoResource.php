@@ -75,8 +75,9 @@ class PedidoResource extends JsonResource
             // (la app muestra "Verificar pago").
             'pago_mercado_pago_pendiente' => $this->whenLoaded('pagos', fn () => $this->pagos
                 ->contains(fn ($p) => $p->metodo === 'mercado_pago' && $p->estado === 'pendiente')),
-            // TG-227 (G8): de qué es ese pago pendiente ('anticipo' o
-            // 'saldo_pedido'; null si no hay), para saber qué verificar.
+            // TG-227 (G8): de qué es ese pago pendiente ('anticipo',
+            // 'saldo_pedido' o, desde TG-229, 'total_revendedor'; null si no
+            // hay), para saber qué verificar.
             'pago_mercado_pago_pendiente_tipo' => $this->whenLoaded('pagos', fn () => $this->pagos
                 ->filter(fn ($p) => $p->metodo === 'mercado_pago' && $p->estado === 'pendiente')
                 ->sortByDesc('id')
@@ -86,6 +87,9 @@ class PedidoResource extends JsonResource
             // llegó a la distribuidora). No revisa si la distribuidora tiene
             // Mercado Pago conectado: eso lo dice el error al intentarlo.
             'puede_pagar_saldo_mercado_pago' => CrearPagoPedidoMercadoPagoAction::puedePagarSaldo($this->resource, $resumen),
+            // TG-229 (G10): el cliente mayorista ya puede pagar su pedido con
+            // Mercado Pago (pedido enviado, sin entregar y con saldo > 0).
+            'puede_pagar_total_mercado_pago' => CrearPagoPedidoMercadoPagoAction::puedePagarMayorista($this->resource, $resumen),
             'created_at' => optional($this->created_at)->toIso8601String(),
         ];
     }

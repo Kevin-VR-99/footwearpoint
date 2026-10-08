@@ -34,15 +34,23 @@ class NotificarPagoMercadoPagoAction
     {
         Tenant::forzar((int) $pago->distribuidora_id, function () use ($pago, $pedido) {
             $monto = '$'.number_format((float) $pago->monto, 2);
-            // TG-227 (G8): también el saldo.
+            // TG-227 (G8): también el saldo. TG-229 (G10): y el pago del
+            // cliente mayorista (en pantalla nunca se dice "revendedor").
             [$suyo, $deStaff] = match ($pago->tipo) {
-                'anticipo'     => ['tu anticipo', 'un anticipo'],
-                'saldo_pedido' => ['el pago de tu saldo', 'un pago del saldo'],
-                default        => ['tu pago', 'un pago'],
+                'anticipo'         => ['tu anticipo', 'un anticipo'],
+                'saldo_pedido'     => ['el pago de tu saldo', 'un pago del saldo'],
+                'total_revendedor' => ['tu pago', 'un pago de cliente mayorista'],
+                default            => ['tu pago', 'un pago'],
             };
 
-            $pedido->loadMissing('clienteDirecto');
-            $usuarioId = $pedido->tipo === 'cliente_directo' ? $pedido->clienteDirecto?->usuario_id : null;
+            // El dueño del pedido: el cliente directo o, desde TG-229, el
+            // cliente mayorista (si tiene cuenta).
+            $pedido->loadMissing('clienteDirecto', 'revendedorAfiliacion.revendedor');
+            $usuarioId = match ($pedido->tipo) {
+                'cliente_directo' => $pedido->clienteDirecto?->usuario_id,
+                'revendedor'      => $pedido->revendedorAfiliacion?->revendedor?->usuario_id,
+                default           => null,
+            };
 
             if ($usuarioId) {
                 $titulo = "Recibimos {$suyo} del pedido {$pedido->folio}";

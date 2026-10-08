@@ -8,6 +8,7 @@ use App\Http\Resources\PedidoResource;
 use App\Models\Pago;
 use App\Models\Pedido;
 use App\Services\Pago\CrearPagoAnticipoMercadoPagoAction;
+use App\Services\Pago\CrearPagoMayoristaMercadoPagoAction;
 use App\Services\Pago\CrearPagoPedidoMercadoPagoAction;
 use App\Services\Pago\CrearPagoSaldoMercadoPagoAction;
 use App\Services\Pago\VerificarPagoMercadoPagoAction;
@@ -17,8 +18,9 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * TG-226 (G7) / TG-227 (G8) — El cliente directo paga su anticipo o el saldo
- * de su pedido con Mercado Pago desde la app (Checkout Pro). Solo sobre SUS
- * pedidos: uno ajeno responde 404.
+ * de su pedido con Mercado Pago desde la app (Checkout Pro). TG-229 (G10): el
+ * cliente mayorista paga lo que falta de su pedido. Solo sobre SUS pedidos:
+ * uno ajeno responde 404.
  *
  * Los errores (sin conexión con MP, sin anticipo o saldo pendiente, ...) son
  * MercadoPagoException y responden { "message": "..." } en español.
@@ -42,6 +44,15 @@ class PagoMercadoPagoController extends Controller
         VerificarPagoMercadoPagoAction::NO_CUADRA => 'Mercado Pago tiene un pago que no coincide con este saldo, así que no se aplicó. No vuelvas a pagar: la distribuidora lo revisará contigo.',
     ];
 
+    /** TG-229 (G10): los mismos casos, para el pago del cliente mayorista. */
+    private const MENSAJES_VERIFICAR_MAYORISTA = [
+        VerificarPagoMercadoPagoAction::APLICADO  => 'Recibimos el pago de tu pedido. ¡Gracias!',
+        VerificarPagoMercadoPagoAction::PENDIENTE => 'Tu pago todavía no se confirma. Revisa de nuevo en unos minutos.',
+        VerificarPagoMercadoPagoAction::RECHAZADO => 'Mercado Pago rechazó el pago. Puedes intentarlo de nuevo con otro medio de pago.',
+        VerificarPagoMercadoPagoAction::VENCIDO   => 'El enlace de pago venció. Genera uno nuevo para pagar tu pedido.',
+        VerificarPagoMercadoPagoAction::NO_CUADRA => 'Mercado Pago tiene un pago que no coincide con este pedido, así que no se aplicó. No vuelvas a pagar: la distribuidora lo revisará contigo.',
+    ];
+
     public function crearAnticipo(int $id, CrearPagoAnticipoMercadoPagoAction $accion): JsonResponse
     {
         return $this->respuestaEnlace(
@@ -56,6 +67,15 @@ class PagoMercadoPagoController extends Controller
         return $this->respuestaEnlace(
             $accion->ejecutar($this->pedido($id)),
             'Abre el enlace para pagar el saldo de tu pedido con Mercado Pago.'
+        );
+    }
+
+    /** TG-229 (G10): el cliente mayorista paga todo lo que falta de su pedido. */
+    public function crearMayorista(int $id, CrearPagoMayoristaMercadoPagoAction $accion): JsonResponse
+    {
+        return $this->respuestaEnlace(
+            $accion->ejecutar($this->pedido($id)),
+            'Abre el enlace para pagar tu pedido con Mercado Pago.'
         );
     }
 
@@ -74,6 +94,12 @@ class PagoMercadoPagoController extends Controller
         return $this->verificarTipo($id, $request, $accion, CrearPagoPedidoMercadoPagoAction::SALDO, self::MENSAJES_VERIFICAR_SALDO);
     }
 
+    /** TG-229 (G10): igual que verificar(), con el pago del cliente mayorista. */
+    public function verificarMayorista(int $id, VerificarPagoMercadoPagoRequest $request, VerificarPagoMercadoPagoAction $accion): JsonResponse
+    {
+        return $this->verificarTipo($id, $request, $accion, CrearPagoPedidoMercadoPagoAction::MAYORISTA, self::MENSAJES_VERIFICAR_MAYORISTA);
+    }
+
     private function verificarTipo(
         int $id,
         VerificarPagoMercadoPagoRequest $request,
@@ -87,7 +113,7 @@ class PagoMercadoPagoController extends Controller
 
         return response()->json([
             'data'      => new PedidoResource(
-                Pedido::query()->with(['clienteDirecto', 'detalle', 'pagos'])->findOrFail($pedido->id)
+                Pedido::query()->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle', 'pagos'])->findOrFail($pedido->id)
             ),
             'resultado' => $resultado,
             'message'   => $mensajes[$resultado],
