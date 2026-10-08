@@ -128,13 +128,15 @@ class RegistrarPagoPedidoAction
         $total = round((float) $pedido->total, 2);
         $saldo = round(max(0, $total - $pagado), 2);
 
-        // El vale también cubre el anticipo (decisión del equipo en TG-167):
-        // es dinero que la distribuidora ya tiene del cliente. Solo cuenta
-        // hasta lo que faltaba de anticipo.
+        // El dinero que entra cubre PRIMERO el anticipo, sin importar cómo se
+        // marcó el pago (TG-275). Antes solo contaban los pagos de tipo
+        // "anticipo" y los vales, así que un cobro marcado como saldo en
+        // mostrador dejaba el pedido pagado pero sin poder ir a fábrica (K8).
+        //
+        // Los vales siguen contando, igual que antes (TG-167): son dinero que
+        // la distribuidora ya tiene del cliente y van dentro de lo pagado.
         $anticipoRequerido = round((float) $pedido->detalle->sum('anticipo_requerido'), 2);
-        $anticipoEnPagos = (float) $entradas->where('tipo', 'anticipo')->sum('monto');
-        $anticipoConVales = min($conVales, max(0, $anticipoRequerido - $anticipoEnPagos));
-        $anticipoPagado = round($anticipoEnPagos + $anticipoConVales, 2);
+        $anticipoPagado = round(min($anticipoRequerido, $pagado), 2);
         $anticipoPendiente = round(max(0, $anticipoRequerido - $anticipoPagado), 2);
 
         return [
