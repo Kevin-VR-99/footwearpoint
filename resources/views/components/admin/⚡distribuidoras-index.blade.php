@@ -6,9 +6,11 @@ use App\Models\Suscripcion;
 use App\Services\Distribuidora\AprobacionDistribuidoraException;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
 use App\Services\Distribuidora\CrearDistribuidoraAction;
+use App\Support\MensajeError;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -173,9 +175,18 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 ],
                 $this->nuevo_activar_ya,
             );
-        } catch (\Throwable $e) {
+        } catch (ValidationException $e) {
+            // TG-224 (G3): los mensajes de validación de la acción ya están
+            // pensados para el usuario; cada uno va a su campo del formulario.
             $this->mensaje = '';
-            $this->addError('nuevo_nombre_comercial', $e->getMessage());
+            foreach ($e->errors() as $campo => $mensajes) {
+                $this->addError(property_exists($this, $campo) ? $campo : 'nuevo_nombre_comercial', $mensajes[0]);
+            }
+            return;
+        } catch (\Throwable $e) {
+            // TG-224 (G3): el detalle técnico va al log, nunca a la pantalla.
+            $this->mensaje = '';
+            $this->addError('nuevo_nombre_comercial', MensajeError::paraUsuario($e, 'No se pudo crear la distribuidora. Intenta de nuevo.'));
             return;
         }
 

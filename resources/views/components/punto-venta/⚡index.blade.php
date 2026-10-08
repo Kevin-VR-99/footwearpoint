@@ -315,6 +315,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
         } catch (OperacionInvalidaException $e) {
             $this->errorMsg = $e->getMessage();
         } catch (\Throwable $e) {
+            report($e); // TG-224 (G3): el detalle va al log.
             $this->errorMsg = 'No se pudo registrar la venta. Revisa las existencias e intenta de nuevo.';
         }
     }

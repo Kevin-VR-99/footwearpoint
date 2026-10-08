@@ -4,6 +4,7 @@ use App\Models\Pedido;
 use App\Services\Pedido\EntregaPedidoAction;
 use App\Services\Pedido\EnviarPedidoAction;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
+use App\Support\MensajeError;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -65,7 +66,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         } catch (ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo enviar.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo enviar el pedido. Intenta de nuevo.');
         }
     }
 
@@ -92,7 +93,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         } catch (ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo cambiar el estado.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo cambiar el estado del pedido. Intenta de nuevo.');
         }
     }
 
@@ -128,7 +129,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         } catch (ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo registrar el pago.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar el pago. Intenta de nuevo.');
         }
     }
 };
