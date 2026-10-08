@@ -1,10 +1,30 @@
 <?php
 
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Layout('layouts.panel')] class extends Component {
+    public const PESTANAS = [
+        'perfil' => 'Datos generales',
+        'general' => 'Anticipos y plazos',
+        'ciclos' => 'Ciclos de compra',
+        'usuarios' => 'Usuarios',
+        'clientes' => 'Clientes directos',
+        'mercado-pago' => 'Mercado Pago',
+    ];
+
+    // TG-225 (G6): ?pestana=mercado-pago abre esa pestaña directo (el
+    // regreso de Mercado Pago llega así).
+    #[Url(as: 'pestana', except: 'perfil')]
     public string $pestanaActiva = 'perfil';
+
+    public function mount(): void
+    {
+        if (! array_key_exists($this->pestanaActiva, self::PESTANAS)) {
+            $this->pestanaActiva = 'perfil';
+        }
+    }
 };
 ?>
 
@@ -34,16 +54,7 @@ new #[Layout('layouts.panel')] class extends Component {
     {{-- Pestañas tipo píldora --}}
     <div class="mb-6 rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-sm">
         <div class="flex flex-wrap gap-1">
-            @php
-                $tabs = [
-                    'perfil' => 'Datos generales',
-                    'general' => 'Anticipos y plazos',
-                    'ciclos' => 'Ciclos de compra',
-                    'usuarios' => 'Usuarios',
-                    'clientes' => 'Clientes directos',
-                ];
-            @endphp
-            @foreach ($tabs as $key => $label)
+            @foreach ($this::PESTANAS as $key => $label)
                 <button type="button"
                     wire:click="$set('pestanaActiva', '{{ $key }}')"
                     @class([
@@ -69,6 +80,8 @@ new #[Layout('layouts.panel')] class extends Component {
             <livewire:distribuidora.usuarios :key="'config-usuarios'" />
         @elseif ($pestanaActiva === 'clientes')
             <livewire:distribuidora.clientes :key="'config-clientes'" />
+        @elseif ($pestanaActiva === 'mercado-pago')
+            <livewire:distribuidora.mercado-pago :key="'config-mercado-pago'" />
         @endif
     </div>
 </div>
