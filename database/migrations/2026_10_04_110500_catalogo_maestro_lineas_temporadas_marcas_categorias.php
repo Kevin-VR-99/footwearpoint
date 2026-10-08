@@ -66,9 +66,12 @@ return new class extends Migration
         // único, la base deja muchas temporadas no activas por línea pero solo
         // una activa, aunque alguien lo intente con un update masivo que no
         // pase por el modelo. El mensaje bonito lo da el modelo Campana.
+        //
+        // STORED y no PERSISTENT: significan lo mismo, pero PERSISTENT solo
+        // existe en MariaDB y el servidor corre MySQL 8 (TG-218).
         DB::statement(
             'ALTER TABLE `campanas` '
-            ."ADD COLUMN `linea_activa_id` BIGINT UNSIGNED AS (IF(`estado` = 'activa', `linea_id`, NULL)) PERSISTENT, "
+            ."ADD COLUMN `linea_activa_id` BIGINT UNSIGNED AS (IF(`estado` = 'activa', `linea_id`, NULL)) STORED, "
             .'ADD UNIQUE KEY `uq_campana_una_activa_por_linea` (`linea_activa_id`)'
         );
 
