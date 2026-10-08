@@ -6,6 +6,7 @@ use App\Exceptions\RespuestaErrorApi;
 use App\Models\CategoriaDirectorio;
 use App\Models\Distribuidora;
 use App\Models\Usuario;
+use Database\Seeders\AdminGeneralSeeder;
 use App\Services\Directorio\AsignarCategoriasDirectorioAction;
 use App\Services\Directorio\GuardarCategoriaDirectorioAction;
 use App\Support\PropietarioActual;
@@ -43,12 +44,15 @@ class CategoriasDirectorioTest extends TestCase
         Tenant::olvidarCache();
         PropietarioActual::olvidarCache();
 
-        $this->adminGeneral = Usuario::create([
-            'nombre'   => 'Admin General',
-            'email'    => 'admin.general@footwearpoint.test',
-            'password' => Hash::make('password'),
-            'estado'   => 'activo',
-        ]);
+        // Desde TG-186 el admin general ya viene del seeder: aqui solo se usa.
+        $this->adminGeneral = Usuario::firstOrCreate(
+            ['email' => AdminGeneralSeeder::EMAIL],
+            [
+                'nombre'   => 'Admin General',
+                'password' => Hash::make('password'),
+                'estado'   => 'activo',
+            ]
+        );
 
         $registrar = app(PermissionRegistrar::class);
         $registrar->setPermissionsTeamId(0);
