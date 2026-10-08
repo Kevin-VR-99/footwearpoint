@@ -407,12 +407,15 @@ class ResolucionTenantMultiRolTest extends TestCase
             'activa' => true,
         ]));
 
-        $usuario = Usuario::create([
-            'nombre'   => 'Admin General',
-            'email'    => 'admin.general@footwearpoint.test',
-            'password' => Hash::make('password'),
-            'estado'   => 'activo',
-        ]);
+        // Desde TG-186 el admin general ya viene del seeder: aqui solo se usa.
+        $usuario = Usuario::firstOrCreate(
+            ['email' => 'admin.general@footwearpoint.test'],
+            [
+                'nombre'   => 'Admin General',
+                'password' => Hash::make('password'),
+                'estado'   => 'activo',
+            ]
+        );
 
         // El rol admin_general vive fuera de toda distribuidora (equipo 0).
         app(PermissionRegistrar::class)->setPermissionsTeamId(0);
