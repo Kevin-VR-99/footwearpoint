@@ -188,7 +188,7 @@ class PreciosDeLaDistribuidoraTest extends TestCase
             $this->assertStringContainsString('no puede ser mayor que el precio de catálogo', $e->getMessage());
         }
 
-        $this->assertSame(0, OfertaDistribuidora::count());
+        $this->assertSame(0, OfertaDistribuidora::where('producto_campana_id', $producto->id)->count());
     }
 
     public function test_el_precio_propio_tiene_que_ser_mayor_que_cero(): void

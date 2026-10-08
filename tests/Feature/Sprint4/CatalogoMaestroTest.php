@@ -89,11 +89,13 @@ class CatalogoMaestroTest extends TestCase
 
     public function test_no_puede_haber_dos_marcas_ni_dos_categorias_con_el_mismo_nombre(): void
     {
-        Marca::create(['nombre' => 'Cklass', 'activa' => true]);
+        // Nombres que no estan en el catalogo demo, para que choquen solo
+        // entre ellos (TG-217).
+        Marca::create(['nombre' => 'Marca Repetida', 'activa' => true]);
         CategoriaProducto::create(['nombre' => 'Botas', 'activa' => true]);
 
         try {
-            Marca::create(['nombre' => 'Cklass', 'activa' => true]);
+            Marca::create(['nombre' => 'Marca Repetida', 'activa' => true]);
             $this->fail('Se creó una marca repetida.');
         } catch (QueryException) {
             // Esperado.
