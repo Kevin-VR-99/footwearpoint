@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\Pago\CrearPagoPedidoMercadoPagoAction;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -74,6 +75,17 @@ class PedidoResource extends JsonResource
             // (la app muestra "Verificar pago").
             'pago_mercado_pago_pendiente' => $this->whenLoaded('pagos', fn () => $this->pagos
                 ->contains(fn ($p) => $p->metodo === 'mercado_pago' && $p->estado === 'pendiente')),
+            // TG-227 (G8): de qué es ese pago pendiente ('anticipo' o
+            // 'saldo_pedido'; null si no hay), para saber qué verificar.
+            'pago_mercado_pago_pendiente_tipo' => $this->whenLoaded('pagos', fn () => $this->pagos
+                ->filter(fn ($p) => $p->metodo === 'mercado_pago' && $p->estado === 'pendiente')
+                ->sortByDesc('id')
+                ->first()?->tipo),
+            // TG-227 (G8): el dueño ya puede pagar el saldo con Mercado Pago
+            // (cliente directo, anticipo cubierto, saldo > 0 y el pedido ya
+            // llegó a la distribuidora). No revisa si la distribuidora tiene
+            // Mercado Pago conectado: eso lo dice el error al intentarlo.
+            'puede_pagar_saldo_mercado_pago' => CrearPagoPedidoMercadoPagoAction::puedePagarSaldo($this->resource, $resumen),
             'created_at' => optional($this->created_at)->toIso8601String(),
         ];
     }

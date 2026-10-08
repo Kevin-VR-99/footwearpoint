@@ -34,13 +34,18 @@ class NotificarPagoMercadoPagoAction
     {
         Tenant::forzar((int) $pago->distribuidora_id, function () use ($pago, $pedido) {
             $monto = '$'.number_format((float) $pago->monto, 2);
-            $tipo = $pago->tipo === 'anticipo' ? 'anticipo' : 'pago';
+            // TG-227 (G8): también el saldo.
+            [$suyo, $deStaff] = match ($pago->tipo) {
+                'anticipo'     => ['tu anticipo', 'un anticipo'],
+                'saldo_pedido' => ['el pago de tu saldo', 'un pago del saldo'],
+                default        => ['tu pago', 'un pago'],
+            };
 
             $pedido->loadMissing('clienteDirecto');
             $usuarioId = $pedido->tipo === 'cliente_directo' ? $pedido->clienteDirecto?->usuario_id : null;
 
             if ($usuarioId) {
-                $titulo = "Recibimos tu {$tipo} del pedido {$pedido->folio}";
+                $titulo = "Recibimos {$suyo} del pedido {$pedido->folio}";
                 $mensaje = "Mercado Pago confirmó tu pago de {$monto}. ¡Gracias!";
 
                 $this->crear((int) $usuarioId, $pago, $pedido, $titulo, $mensaje);
@@ -48,7 +53,7 @@ class NotificarPagoMercadoPagoAction
             }
 
             $titulo = "Pago con Mercado Pago del pedido {$pedido->folio}";
-            $mensaje = "Mercado Pago confirmó un {$tipo} de {$monto} (folio {$pago->folio}).";
+            $mensaje = "Mercado Pago confirmó {$deStaff} de {$monto} (folio {$pago->folio}).";
 
             DistribuidoraStaff::query()
                 ->where('estado', 'activo')

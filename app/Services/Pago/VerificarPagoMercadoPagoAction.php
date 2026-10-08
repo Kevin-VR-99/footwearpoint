@@ -58,15 +58,18 @@ class VerificarPagoMercadoPagoAction
     /**
      * @param  string|null  $pagoMpId  El payment_id de Mercado Pago, si quien llama lo tiene.
      * @param  string  $origen  api, panel o retorno (solo para el log).
+     * @param  string|null  $tipo  TG-227: 'anticipo' o 'saldo_pedido' para ver solo
+     *                             los pagos de ese tipo (la app); null, todos (el panel).
      * @return string Uno de APLICADO, PENDIENTE, RECHAZADO, VENCIDO o NO_CUADRA.
      *
      * @throws MercadoPagoException si no hay nada que verificar o MP no responde.
      */
-    public function ejecutar(Pedido $pedido, ?string $pagoMpId = null, string $origen = 'api'): string
+    public function ejecutar(Pedido $pedido, ?string $pagoMpId = null, string $origen = 'api', ?string $tipo = null): string
     {
         $pagosMp = Pago::query()
             ->where('pedido_id', $pedido->id)
             ->where('metodo', 'mercado_pago')
+            ->when($tipo !== null, fn ($consulta) => $consulta->where('tipo', $tipo))
             ->orderByDesc('id')
             ->get();
 

@@ -40,9 +40,10 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empl
     });
 
 /*
-| TG-226 (G7) — El cliente directo paga su anticipo con Mercado Pago
-| (Checkout Pro) desde la app, sobre SUS pedidos. 'verificar' le pregunta a
-| Mercado Pago si ya se pagó cuando el cliente regresa a la app.
+| TG-226 (G7) / TG-227 (G8) — El cliente directo paga su anticipo o su saldo
+| con Mercado Pago (Checkout Pro) desde la app, sobre SUS pedidos.
+| 'verificar' le pregunta a Mercado Pago si ya se pagó cuando el cliente
+| regresa a la app.
 | Con límite de 10 por minuto: cada llamada sale a Mercado Pago.
 */
 Route::middleware(['auth:sanctum', 'tenant.team', 'role:cliente_directo', 'throttle:10,1'])
@@ -50,5 +51,11 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:cliente_directo', 'throt
         Route::post('/pedidos/{id}/anticipo/mercado-pago', [PagoMercadoPagoController::class, 'crearAnticipo'])
             ->whereNumber('id');
         Route::post('/pedidos/{id}/anticipo/mercado-pago/verificar', [PagoMercadoPagoController::class, 'verificar'])
+            ->whereNumber('id');
+
+        // TG-227 (G8): el saldo completo, cuando el pedido ya llegó a la distribuidora.
+        Route::post('/pedidos/{id}/saldo/mercado-pago', [PagoMercadoPagoController::class, 'crearSaldo'])
+            ->whereNumber('id');
+        Route::post('/pedidos/{id}/saldo/mercado-pago/verificar', [PagoMercadoPagoController::class, 'verificarSaldo'])
             ->whereNumber('id');
     });
