@@ -1,20 +1,17 @@
 <?php
 
-use App\Models\ConfiguracionCiclo;
-use App\Models\ConfiguracionDistribuidora;
 use App\Models\Distribuidora;
 use App\Models\PlanSuscripcion;
-use App\Models\Sucursal;
 use App\Models\Suscripcion;
+use App\Services\Distribuidora\AprobacionDistribuidoraException;
+use App\Services\Distribuidora\AprobarDistribuidoraAction;
+use App\Services\Distribuidora\CrearDistribuidoraAction;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use App\Models\DistribuidoraStaff;
-use App\Models\Usuario;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extends Component {
     public string $filtroEstado = '';
@@ -44,7 +41,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public bool $nuevo_marketplace_visible = true;
     public bool $nuevo_activar_ya = true; // activa al crear (admin)
 
-    // Admin de la distribuidora (opcional pero recomendado)
+    // Administrador de la distribuidora (obligatorio, TG-194)
     public string $admin_nombre = '';
     public string $admin_email = '';
     public string $admin_password = '';
@@ -106,125 +103,83 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     {
         $this->mensaje = '';
 
+        // Se normaliza antes de validar, para que formato y unicidad se
+        // revisen sobre lo mismo que se va a guardar.
+        $this->nuevo_rfc = CrearDistribuidoraAction::normalizarRfc($this->nuevo_rfc) ?? '';
+
         $this->validate([
             'nuevo_nombre_comercial' => ['required', 'string', 'max:150'],
             'nuevo_razon_social' => ['nullable', 'string', 'max:200'],
-            'nuevo_rfc' => ['nullable', 'string', 'max:20'],
+            // RFC mexicano: 12 caracteres persona moral, 13 persona física.
+            'nuevo_rfc' => ['nullable', 'string', 'regex:/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/u', Rule::unique('distribuidoras', 'rfc')],
             'nuevo_slug' => ['required', 'string', 'max:120', 'unique:distribuidoras,slug', 'alpha_dash'],
-            'nuevo_subdominio' => ['nullable', 'string', 'max:80', 'alpha_dash'],
+            'nuevo_subdominio' => ['nullable', 'string', 'max:80', 'alpha_dash', Rule::unique('distribuidoras', 'subdominio')],
             'nuevo_email_publico' => ['nullable', 'email', 'max:190'],
             'nuevo_telefono_publico' => ['nullable', 'string', 'max:30'],
             'nuevo_direccion_publica' => ['nullable', 'string', 'max:300'],
             'nuevo_descripcion_publica' => ['nullable', 'string'],
             'nuevo_horario_publico' => ['nullable', 'string', 'max:300'],
-            'admin_nombre' => ['nullable', 'string', 'max:150'],
-            'admin_email' => ['nullable', 'email', 'max:190', 'unique:usuarios,email'],
-            'admin_password' => ['nullable', 'string', 'min:8'],
+            // TG-194: el administrador de la tienda es obligatorio.
+            'admin_nombre' => ['required', 'string', 'max:150'],
+            'admin_email' => ['required', 'email', 'max:190', 'unique:usuarios,email'],
+            'admin_password' => ['required', 'string', 'min:8'],
+        ], [
+            'nuevo_nombre_comercial.required' => 'El nombre comercial es obligatorio.',
+            'nuevo_nombre_comercial.max' => 'El nombre comercial no puede pasar de 150 caracteres.',
+            'nuevo_razon_social.max' => 'La razón social no puede pasar de 200 caracteres.',
+            'nuevo_rfc.regex' => 'El RFC no tiene un formato válido (12 caracteres persona moral o 13 persona física).',
+            'nuevo_rfc.unique' => 'Ese RFC ya está registrado en otra distribuidora.',
+            'nuevo_slug.required' => 'El slug es obligatorio.',
+            'nuevo_slug.max' => 'El slug no puede pasar de 120 caracteres.',
+            'nuevo_slug.unique' => 'Ese slug ya lo usa otra distribuidora.',
+            'nuevo_slug.alpha_dash' => 'El slug solo puede tener letras, números, guiones y guiones bajos.',
+            'nuevo_subdominio.max' => 'El subdominio no puede pasar de 80 caracteres.',
+            'nuevo_subdominio.alpha_dash' => 'El subdominio solo puede tener letras, números, guiones y guiones bajos.',
+            'nuevo_subdominio.unique' => 'Ese subdominio ya lo usa otra distribuidora.',
+            'nuevo_email_publico.email' => 'El email público no es válido.',
+            'nuevo_email_publico.max' => 'El email público no puede pasar de 190 caracteres.',
+            'nuevo_telefono_publico.max' => 'El teléfono público no puede pasar de 30 caracteres.',
+            'nuevo_direccion_publica.max' => 'La dirección pública no puede pasar de 300 caracteres.',
+            'nuevo_horario_publico.max' => 'El horario público no puede pasar de 300 caracteres.',
+            'admin_nombre.required' => 'El nombre del administrador es obligatorio.',
+            'admin_nombre.max' => 'El nombre del administrador no puede pasar de 150 caracteres.',
+            'admin_email.required' => 'El correo del administrador es obligatorio.',
+            'admin_email.email' => 'El correo del administrador no es válido.',
+            'admin_email.max' => 'El correo del administrador no puede pasar de 190 caracteres.',
+            'admin_email.unique' => 'Ese correo ya tiene una cuenta.',
+            'admin_password.required' => 'La contraseña del administrador es obligatoria.',
+            'admin_password.min' => 'La contraseña debe tener al menos 8 caracteres.',
         ]);
 
-        // Si ponen admin, nombre/email/password obligatorios juntos
-        if ($this->admin_email !== '' || $this->admin_password !== '' || $this->admin_nombre !== '') {
-            $this->validate([
-                'admin_nombre' => ['required', 'string', 'max:150'],
-                'admin_email' => ['required', 'email', 'max:190', 'unique:usuarios,email'],
-                'admin_password' => ['required', 'string', 'min:8'],
-            ]);
-        }
-
-        $plan = PlanSuscripcion::where('nombre', 'Básico')->first() ?? PlanSuscripcion::first();
-
         try {
-            DB::transaction(function () use ($plan) {
-                $estado = $this->nuevo_activar_ya ? 'activa' : 'pendiente';
-
-                $d = Distribuidora::create([
+            app(CrearDistribuidoraAction::class)->ejecutar(
+                [
                     'nombre_comercial' => $this->nuevo_nombre_comercial,
-                    'razon_social' => $this->nuevo_razon_social ?: null,
-                    'rfc' => $this->nuevo_rfc ?: null,
+                    'razon_social' => $this->nuevo_razon_social,
+                    'rfc' => $this->nuevo_rfc,
                     'slug' => $this->nuevo_slug,
-                    'subdominio' => $this->nuevo_subdominio ?: $this->nuevo_slug,
-                    'descripcion_publica' => $this->nuevo_descripcion_publica ?: null,
-                    'direccion_publica' => $this->nuevo_direccion_publica ?: null,
-                    'telefono_publico' => $this->nuevo_telefono_publico ?: null,
-                    'email_publico' => $this->nuevo_email_publico ?: null,
-                    'horario_publico' => $this->nuevo_horario_publico ?: null,
-                    'marketplace_visible' => $this->nuevo_marketplace_visible && $estado === 'activa',
-                    'estado' => $estado,
-                    'fecha_solicitud' => now(),
-                    'fecha_aprobacion' => $estado === 'activa' ? now() : null,
-                ]);
-
-                Sucursal::withoutGlobalScopes()->create([
-                    'distribuidora_id' => $d->id,
-                    'nombre' => 'Sucursal Principal',
-                    'direccion' => $d->direccion_publica ?? 'Sin dirección',
-                    'telefono' => $d->telefono_publico,
-                    'es_principal' => true,
-                    'activa' => true,
-                ]);
-
-                ConfiguracionDistribuidora::withoutGlobalScopes()->create([
-                    'distribuidora_id' => $d->id,
-                    'anticipo_por_producto' => 100.0,
-                    'dias_solicitud_cambio' => 12,
-                    'dias_gestion_devolucion' => 20,
-                    'dias_vigencia_vale' => 90,
-                    'dias_maximos_recoleccion' => 5,
-                    'moneda' => 'MXN',
-                    'zona_horaria' => 'America/Mexico_City',
-                ]);
-
-                ConfiguracionCiclo::withoutGlobalScopes()->create([
-                    'distribuidora_id' => $d->id,
-                    'dia_cierre' => 5,
-                    'hora_cierre' => '18:00:00',
-                    'dia_solicitud_fabrica' => 5,
-                    'dias_estimados_llegada' => 5,
-                    'activa' => true,
-                ]);
-
-                if ($plan && $estado === 'activa') {
-                    Suscripcion::withoutGlobalScopes()->create([
-                        'distribuidora_id' => $d->id,
-                        'plan_id' => $plan->id,
-                        'fecha_inicio' => now()->toDateString(),
-                        'fecha_fin' => now()->addMonth()->toDateString(),
-                        'estado' => 'activa',
-                        'precio_base_contratado' => $plan->precio_base_mensual,
-                        'lineas_incluidas_contratadas' => $plan->lineas_incluidas,
-                        'precio_linea_extra_contratado' => $plan->precio_linea_extra,
-                        'lineas_extra_contratadas' => 0,
-                        'renovacion_automatica' => true,
-                    ]);
-                }
-
-                if ($this->admin_email !== '') {
-                    $usuario = Usuario::create([
-                        'nombre' => $this->admin_nombre,
-                        'email' => $this->admin_email,
-                        'password' => Hash::make($this->admin_password),
-                        'estado' => 'activo',
-                    ]);
-
-                    DistribuidoraStaff::withoutGlobalScopes()->create([
-                        'distribuidora_id' => $d->id,
-                        'usuario_id' => $usuario->id,
-                        'tipo' => 'admin', // o el valor que uses en seeder
-                        'estado' => 'activo',
-                        'fecha_alta' => now(),
-                    ]);
-
-                    setPermissionsTeamId($d->id);
-                    $usuario->assignRole('admin_distribuidora');
-                    setPermissionsTeamId(0);
-                }
-            });
+                    'subdominio' => $this->nuevo_subdominio,
+                    'descripcion_publica' => $this->nuevo_descripcion_publica,
+                    'direccion_publica' => $this->nuevo_direccion_publica,
+                    'telefono_publico' => $this->nuevo_telefono_publico,
+                    'email_publico' => $this->nuevo_email_publico,
+                    'horario_publico' => $this->nuevo_horario_publico,
+                    'marketplace_visible' => $this->nuevo_marketplace_visible,
+                ],
+                [
+                    'nombre' => $this->admin_nombre,
+                    'email' => $this->admin_email,
+                    'password' => $this->admin_password,
+                ],
+                $this->nuevo_activar_ya,
+            );
         } catch (\Throwable $e) {
             $this->mensaje = '';
             $this->addError('nuevo_nombre_comercial', $e->getMessage());
             return;
         }
 
+        $this->admin_password = '';
         $this->mostrandoFormularioCrear = false;
         $this->mensaje = 'Distribuidora creada correctamente.';
     }
@@ -255,74 +210,14 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     {
         $distribuidora = Distribuidora::findOrFail($id);
 
-        if ($distribuidora->estado !== 'pendiente') {
-            $this->mensaje = 'Solo se pueden aprobar distribuidoras pendientes.';
+        try {
+            app(AprobarDistribuidoraAction::class)->ejecutar($distribuidora);
+        } catch (AprobacionDistribuidoraException $e) {
+            $this->mensaje = $e->esNoPendiente()
+                ? 'Solo se pueden aprobar distribuidoras pendientes.'
+                : 'No hay planes configurados.';
             return;
         }
-
-        $plan = PlanSuscripcion::where('nombre', 'Básico')->first() ?? PlanSuscripcion::first();
-
-        if (!$plan) {
-            $this->mensaje = 'No hay planes configurados.';
-            return;
-        }
-
-        DB::transaction(function () use ($distribuidora, $plan) {
-            $distribuidora->update([
-                'estado' => 'activa',
-                'fecha_aprobacion' => now(),
-            ]);
-
-            Sucursal::withoutGlobalScopes()->firstOrCreate(
-                [
-                    'distribuidora_id' => $distribuidora->id,
-                    'es_principal' => true,
-                ],
-                [
-                    'nombre' => 'Sucursal Principal',
-                    'direccion' => $distribuidora->direccion_publica ?? 'Sin dirección',
-                    'telefono' => $distribuidora->telefono_publico,
-                    'activa' => true,
-                ],
-            );
-
-            ConfiguracionDistribuidora::withoutGlobalScopes()->firstOrCreate(
-                ['distribuidora_id' => $distribuidora->id],
-                [
-                    'anticipo_por_producto' => 100.0,
-                    'dias_solicitud_cambio' => 12,
-                    'dias_gestion_devolucion' => 20,
-                    'dias_vigencia_vale' => 90,
-                    'dias_maximos_recoleccion' => 5,
-                    'moneda' => 'MXN',
-                    'zona_horaria' => 'America/Mexico_City',
-                ],
-            );
-
-            ConfiguracionCiclo::withoutGlobalScopes()->firstOrCreate(
-                ['distribuidora_id' => $distribuidora->id],
-                [
-                    'dia_cierre' => 5,
-                    'hora_cierre' => '18:00:00',
-                    'dia_solicitud_fabrica' => 5,
-                    'dias_estimados_llegada' => 5,
-                    'activa' => true,
-                ],
-            );
-
-            Suscripcion::withoutGlobalScopes()->create([
-                'distribuidora_id' => $distribuidora->id,
-                'plan_id' => $plan->id,
-                'fecha_inicio' => now()->toDateString(),
-                'fecha_fin' => now()->addMonth()->toDateString(),
-                'estado' => 'activa',
-                'precio_base_contratado' => $plan->precio_base_mensual,
-                'lineas_incluidas_contratadas' => $plan->lineas_incluidas,
-                'precio_linea_extra_contratado' => $plan->precio_linea_extra,
-                'lineas_extra_contratadas' => 0,
-                'renovacion_automatica' => true,
-            ]);
-        });
 
         $this->mensaje = "Distribuidora «{$distribuidora->nombre_comercial}» aprobada.";
     }
@@ -493,6 +388,9 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 <div>
                     <label class="block text-sm font-medium mb-1">RFC</label>
                     <input type="text" wire:model="nuevo_rfc" class="w-full rounded-lg border-slate-300 text-sm">
+                    @error('nuevo_rfc')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Slug * (URL interna)</label>
@@ -505,6 +403,9 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <label class="block text-sm font-medium mb-1">Subdominio</label>
                     <input type="text" wire:model="nuevo_subdominio"
                         class="w-full rounded-lg border-slate-300 text-sm" placeholder="calzados-ejemplo">
+                    @error('nuevo_subdominio')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Email público</label>
@@ -544,10 +445,10 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             </div>
 
             <div class="border-t pt-4">
-                <h4 class="text-sm font-semibold text-slate-700 mb-2">Administrador de la tienda (opcional)</h4>
+                <h4 class="text-sm font-semibold text-slate-700 mb-2">Administrador de la tienda</h4>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Nombre</label>
+                        <label class="block text-sm font-medium mb-1">Nombre *</label>
                         <input type="text" wire:model="admin_nombre"
                             class="w-full rounded-lg border-slate-300 text-sm">
                         @error('admin_nombre')
@@ -555,7 +456,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         @enderror
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Email login</label>
+                        <label class="block text-sm font-medium mb-1">Email login *</label>
                         <input type="email" wire:model="admin_email"
                             class="w-full rounded-lg border-slate-300 text-sm">
                         @error('admin_email')
@@ -563,7 +464,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         @enderror
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-1">Contraseña</label>
+                        <label class="block text-sm font-medium mb-1">Contraseña * (mínimo 8)</label>
                         <input type="password" wire:model="admin_password"
                             class="w-full rounded-lg border-slate-300 text-sm">
                         @error('admin_password')
