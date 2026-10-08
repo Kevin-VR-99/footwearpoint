@@ -8,9 +8,12 @@ use App\Models\PlanSuscripcion;
 use App\Models\Suscripcion;
 use App\Services\Distribuidora\AprobacionDistribuidoraException;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
+use App\Services\Distribuidora\DatosSolicitudDistribuidoraAction;
+use App\Services\Distribuidora\RechazarDistribuidoraAction;
 use Illuminate\Http\Request;
 use App\Http\Requests\Admin\AsignarSuscripcionRequest;
 use App\Http\Requests\Admin\MarketplaceConfigRequest;
+use App\Http\Requests\Admin\RechazarDistribuidoraRequest;
 
 class DistribuidoraController extends Controller
 {
@@ -32,10 +35,46 @@ class DistribuidoraController extends Controller
             'fecha_solicitud',
             'fecha_aprobacion',
             'marketplace_visible',
+            'motivo_rechazo',
         ]);
 
         return response()->json([
             'data' => $distribuidoras,
+        ]);
+    }
+
+    /**
+     * TG-195 (G4) — Los datos de la distribuidora y su administrador, para
+     * revisarla antes de aprobarla o rechazarla.
+     */
+    public function show(DatosSolicitudDistribuidoraAction $datos, int $id)
+    {
+        return response()->json([
+            'data' => $datos->ejecutar(Distribuidora::findOrFail($id)),
+        ]);
+    }
+
+    /**
+     * TG-195 (G4) — Rechaza una distribuidora pendiente con su motivo.
+     *
+     * Si no está pendiente, la acción lanza OperacionInvalidaException, que
+     * responde sola un 422 con su mensaje.
+     */
+    public function rechazar(RechazarDistribuidoraRequest $request, RechazarDistribuidoraAction $rechazar, int $id)
+    {
+        $distribuidora = $rechazar->ejecutar(
+            Distribuidora::findOrFail($id),
+            $request->validated('motivo_rechazo'),
+        );
+
+        return response()->json([
+            'data' => [
+                'id'               => $distribuidora->id,
+                'nombre_comercial' => $distribuidora->nombre_comercial,
+                'estado'           => $distribuidora->estado,
+                'motivo_rechazo'   => $distribuidora->motivo_rechazo,
+            ],
+            'message' => 'Distribuidora rechazada correctamente.',
         ]);
     }
 
