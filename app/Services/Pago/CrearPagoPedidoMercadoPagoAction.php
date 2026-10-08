@@ -305,10 +305,12 @@ class CrearPagoPedidoMercadoPagoAction
             $preferencia['auto_return'] = 'approved';
         }
 
-        // El aviso de Mercado Pago llega en G9: solo se manda cuando la ruta
-        // ya existe.
+        // TG-228 (G9): Mercado Pago avisa aquí cuando el pago cambia.
+        // source_news=webhooks: solo el formato nuevo (con firma), no el IPN.
+        // d: la distribuidora, solo como pista para avisos sin user_id (todo
+        // se vuelve a revisar con la API de Mercado Pago).
         if (Route::has('mercado-pago.webhook')) {
-            $aviso = route('mercado-pago.webhook');
+            $aviso = route('mercado-pago.webhook', ['source_news' => 'webhooks', 'd' => $pedido->distribuidora_id]);
 
             if (str_starts_with($aviso, 'https://')) {
                 $preferencia['notification_url'] = $aviso;

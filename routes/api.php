@@ -114,6 +114,9 @@ require __DIR__.'/api/perfil.php';
 
 require __DIR__.'/api/reportes.php';
 
+// TG-228 (G9) — avisos de Mercado Pago (pública, sin sesión)
+require __DIR__.'/api/webhooks.php';
+
 /*
 |--------------------------------------------------------------------------
 | Clientes particulares privados del revendedor (E9-06)
