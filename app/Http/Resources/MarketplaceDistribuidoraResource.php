@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\Tienda\EnlaceTienda;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -12,6 +13,9 @@ class MarketplaceDistribuidoraResource extends JsonResource
         return [
             'id'                  => $this->id,
             'nombre_comercial'    => $this->nombre_comercial,
+            // TG-234 (G15): para abrir su tienda pública (null si no tiene).
+            'slug'                => $this->slug,
+            'url_tienda'          => app(EnlaceTienda::class)->url($this->resource),
             'logotipo_url'        => $this->logotipo_url,
             'descripcion_publica' => $this->descripcion_publica,
             'telefono_publico'    => $this->telefono_publico,
