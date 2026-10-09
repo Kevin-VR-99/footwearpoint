@@ -133,27 +133,26 @@ new #[Layout('layouts.admin')] #[Title('Categorías del directorio — Admin')] 
 ?>
 
 <div>
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <h2 class="text-2xl font-bold text-slate-900">Categorías del directorio</h2>
-            <p class="text-sm text-slate-500">
+    <x-panel.encabezado titulo="Categorías del directorio" class="mb-6">
+            <p class="mt-1 text-sm text-fp-text-muted">
                 Con ellas se filtran las distribuidoras en el marketplace. Se asignan desde «Ver datos» en Distribuidoras.
             </p>
-        </div>
+        <x-slot:acciones>
         <button wire:click="nuevo"
-                class="rounded-lg bg-[#111E38] text-white text-sm px-4 py-2 hover:bg-[#1E2F52]">
+                class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
             Nueva categoría
         </button>
-    </div>
+        </x-slot:acciones>
+    </x-panel.encabezado>
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg bg-green-50 text-green-700 text-sm p-3">
+        <x-panel.alerta tipo="exito" class="mb-4">
             {{ $mensaje }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($mostrarForm)
-        <div class="mb-6 bg-white rounded-xl border border-slate-200 p-5 max-w-xl">
+        <div class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm max-w-xl">
             <h3 class="font-semibold mb-4">{{ $editId ? 'Editar categoría' : 'Nueva categoría' }}</h3>
             <form wire:submit="guardar" class="space-y-4">
                 <div>
@@ -162,14 +161,14 @@ new #[Layout('layouts.admin')] #[Title('Categorías del directorio — Admin')] 
                         maxlength="{{ \App\Models\CategoriaDirectorio::LARGO_MAXIMO_NOMBRE }}"
                         placeholder="Por ejemplo: Calzado infantil"
                         class="w-full rounded-lg border-slate-300">
-                    @error('nombre') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    @error('nombre') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
                 <label class="flex items-center gap-2 text-sm">
-                    <input type="checkbox" wire:model="activa" class="rounded border-slate-300 text-blue-600">
+                    <input type="checkbox" wire:model="activa" class="rounded border-slate-300 text-fp-primary">
                     Activa (se muestra en el marketplace)
                 </label>
                 <div class="flex gap-2">
-                    <button type="submit" class="rounded-lg bg-[#111E38] text-white text-sm px-4 py-2" wire:loading.attr="disabled">
+                    <button type="submit" class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90" wire:loading.attr="disabled">
                         Guardar
                     </button>
                     <button type="button" wire:click="cancelar" class="rounded-lg border border-slate-200 text-sm px-4 py-2">
@@ -180,9 +179,9 @@ new #[Layout('layouts.admin')] #[Title('Categorías del directorio — Admin')] 
         </div>
     @endif
 
-    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-slate-50 text-slate-600">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
                     <th class="text-left px-4 py-3 font-medium">Categoría</th>
                     <th class="text-left px-4 py-3 font-medium">Distribuidoras</th>
@@ -196,24 +195,24 @@ new #[Layout('layouts.admin')] #[Title('Categorías del directorio — Admin')] 
                         <td class="px-4 py-3 font-medium">{{ $categoria->nombre }}</td>
                         <td class="px-4 py-3">{{ $categoria->distribuidoras_count }}</td>
                         <td class="px-4 py-3">
-                            <span class="text-xs px-2 py-0.5 rounded-full {{ $categoria->activa ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500' }}">
+                            <span class="text-xs px-2 py-0.5 rounded-full {{ $categoria->activa ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
                                 {{ $categoria->activa ? 'Activa' : 'Inactiva' }}
                             </span>
                         </td>
                         <td class="px-4 py-3 space-x-2">
-                            <button wire:click="editar({{ $categoria->id }})" class="text-xs text-blue-700 hover:underline">Editar</button>
+                            <button wire:click="editar({{ $categoria->id }})" class="text-xs text-fp-primary hover:underline">Editar</button>
                             @if ($categoria->activa)
                                 <button wire:click="desactivar({{ $categoria->id }})"
                                     wire:confirm="Dejará de mostrarse en el marketplace. Sus distribuidoras la conservan por si la activas de nuevo. ¿Continuar?"
-                                    class="text-xs text-red-600 hover:underline">Desactivar</button>
+                                    class="text-xs text-fp-danger hover:underline">Desactivar</button>
                             @else
-                                <button wire:click="activar({{ $categoria->id }})" class="text-xs text-green-700 hover:underline">Activar</button>
+                                <button wire:click="activar({{ $categoria->id }})" class="text-xs text-fp-badge-success-fg hover:underline">Activar</button>
                             @endif
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="px-4 py-8 text-center text-slate-400">
+                        <td colspan="4" class="px-4 py-10 text-center text-fp-text-muted">
                             Aún no hay categorías. Crea la primera con «Nueva categoría».
                         </td>
                     </tr>
