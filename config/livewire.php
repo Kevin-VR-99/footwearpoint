@@ -129,8 +129,29 @@ return [
     */
 
     'temporary_file_upload' => [
-        'disk' => env('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK'), // Example: 'local', 's3'             | Default: 'default'
-        'rules' => null,                                      // Example: ['file', 'mimes:png,jpg'] | Default: ['required', 'file', 'max:12288'] (12MB)
+        // TG-237 (A7): el archivo temporal va al disco local, no al de
+        // omision. FILESYSTEM_DISK es 'productos', que es un bucket de R2:
+        // sin credenciales (en local) cualquier subida truena con
+        // "region is required", y con ellas se mandaria el PDF de 28 MB a R2
+        // para borrarlo a las pocas horas. Esto es lo que se queda mientras
+        // la persona termina el formulario; el archivo definitivo lo guarda
+        // la pantalla en el disco que le toque.
+        //
+        // Si algun dia Railway corre mas de una instancia, hay que ponerlo en
+        // un disco compartido: la peticion que sube y la que guarda pueden
+        // caer en instancias distintas.
+        'disk' => env('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK', 'local'),
+        // TG-237 (A7): el tope de Livewire son 12 MB y los catalogos de
+        // fabrica pesan unos 28 MB; con el valor de fabrica se rechazaban
+        // antes de que el codigo los viera.
+        //
+        // Este es el tope DURO, el que evita que alguien llene el disco. Se
+        // deja por encima del limite real (40 MB, en la pantalla) a
+        // proposito: el aviso de Livewire sale en ingles y diciendo
+        // "archivo", asi que conviene que el que vea la gente sea el de la
+        // pantalla, que esta en espanol. Que tipo de archivo se acepta
+        // tambien lo decide la pantalla, no esto.
+        'rules' => ['required', 'file', 'max:51200'], // 50 MB
         'directory' => null,                                  // Example: 'tmp'                     | Default: 'livewire-tmp'
         'middleware' => null,                                 // Example: 'throttle:5,1'            | Default: 'throttle:60,1'
         'preview_mimes' => [                                  // Supported file types for temporary pre-signed file URLs...

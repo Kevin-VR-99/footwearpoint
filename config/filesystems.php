@@ -28,6 +28,19 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Disco de los catalogos de fabrica (TG-237)
+    |--------------------------------------------------------------------------
+    |
+    | Cual de los discos de abajo guarda los PDF que sube el admin general
+    | para la IA. En local y en pruebas, 'local'; en Railway, 'catalogos'
+    | cuando el bucket privado este listo.
+    |
+    */
+
+    'catalogos_disk' => env('CATALOGOS_DISK', 'local'),
+
     'disks' => [
 
         'local' => [
@@ -70,6 +83,27 @@ return [
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'visibility' => 'public',
             'throw' => false,
+        ],
+
+        // TG-237 (A7): los catalogos de fabrica que sube el admin general para
+        // que la IA los lea. Bucket PRIVADO: es material del proveedor, no va
+        // en el bucket publico de las fotos.
+        //
+        // CATALOGOS_DISK decide de verdad cual se usa: en local y en pruebas
+        // se queda en 'local' y no hace falta configurar nada; en Railway se
+        // pone en 'catalogos' cuando el bucket este listo. Ojo: con 'local',
+        // en Railway el archivo se borra en cada despliegue.
+        'catalogos' => [
+            'driver' => 's3',
+            'key' => env('CATALOGOS_AWS_ACCESS_KEY_ID'),
+            'secret' => env('CATALOGOS_AWS_SECRET_ACCESS_KEY'),
+            'region' => env('CATALOGOS_AWS_DEFAULT_REGION', 'auto'),
+            'bucket' => env('CATALOGOS_AWS_BUCKET'),
+            'endpoint' => env('CATALOGOS_AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('CATALOGOS_AWS_USE_PATH_STYLE_ENDPOINT', true),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => false,
         ],
 
         // TG-235 (G17): respaldos de la base de datos. Bucket PRIVADO y
