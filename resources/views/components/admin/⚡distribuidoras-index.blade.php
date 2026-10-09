@@ -4,7 +4,6 @@ use App\Exceptions\OperacionInvalidaException;
 use App\Models\CategoriaDirectorio;
 use App\Models\Distribuidora;
 use App\Models\PlanSuscripcion;
-use App\Models\Suscripcion;
 use App\Services\Distribuidora\AprobacionDistribuidoraException;
 use App\Services\Directorio\AsignarCategoriasDirectorioAction;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
@@ -15,6 +14,7 @@ use App\Services\Distribuidora\DatosSolicitudDistribuidoraAction;
 use App\Services\Distribuidora\ReactivarDistribuidoraAction;
 use App\Services\Distribuidora\RechazarDistribuidoraAction;
 use App\Services\Distribuidora\SuspenderDistribuidoraAction;
+use App\Services\Suscripcion\AsignarSuscripcionAction;
 use App\Support\MensajeError;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -500,31 +500,19 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         $distribuidora = Distribuidora::findOrFail($this->distribuidoraSuscripcionId);
         $plan = PlanSuscripcion::findOrFail($this->plan_id);
 
-        if (!$plan->activo) {
-            $this->mensaje = 'El plan seleccionado no está activo.';
+        // TG-224 (G3): misma acción que usa la API (antes estaba copiada aquí).
+        try {
+            app(AsignarSuscripcionAction::class)->ejecutar(
+                $distribuidora,
+                $plan,
+                (int) $this->meses,
+                (int) $this->lineas_extra_contratadas,
+                (bool) $this->renovacion_automatica,
+            );
+        } catch (OperacionInvalidaException $e) {
+            $this->mensaje = $e->getMessage();
             return;
         }
-
-        Suscripcion::withoutGlobalScopes()
-            ->where('distribuidora_id', $distribuidora->id)
-            ->where('estado', 'activa')
-            ->update([
-                'estado' => 'cancelada',
-                'fecha_fin' => now()->toDateString(),
-            ]);
-
-        Suscripcion::withoutGlobalScopes()->create([
-            'distribuidora_id' => $distribuidora->id,
-            'plan_id' => $plan->id,
-            'fecha_inicio' => now()->toDateString(),
-            'fecha_fin' => now()->addMonths((int) $this->meses)->toDateString(),
-            'estado' => 'activa',
-            'precio_base_contratado' => $plan->precio_base_mensual,
-            'lineas_incluidas_contratadas' => $plan->lineas_incluidas,
-            'precio_linea_extra_contratado' => $plan->precio_linea_extra,
-            'lineas_extra_contratadas' => (int) $this->lineas_extra_contratadas,
-            'renovacion_automatica' => $this->renovacion_automatica,
-        ]);
 
         $this->mensaje = "Suscripción «{$plan->nombre}» asignada a «{$distribuidora->nombre_comercial}».";
         $this->cancelarSuscripcion();
