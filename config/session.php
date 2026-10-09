@@ -169,7 +169,9 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // TG-235 (G17): si la app vive en https (APP_URL), la cookie de sesión
+    // solo viaja por https. SESSION_SECURE_COOKIE lo puede cambiar.
+    'secure' => env('SESSION_SECURE_COOKIE', str_starts_with((string) env('APP_URL', ''), 'https://')),
 
     /*
     |--------------------------------------------------------------------------
