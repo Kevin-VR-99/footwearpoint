@@ -10,6 +10,25 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
+// TG-232 (G12/G13): con FOOTWEARPOINT_DOMINIO, la tienda de cada
+// distribuidora vive en {subdominio}.{dominio}. Van ANTES que todo: '/' sin
+// dominio también coincidiría con el subdominio. ResolverTiendaPorSubdominio
+// encuentra la distribuidora (o responde el 404 de tienda) y pasa su slug a
+// los mismos componentes de /tienda/{slug}.
+if ($dominioTiendas = config('app.dominio_base')) {
+    Route::domain('{subdominio}.'.$dominioTiendas)
+        ->where(['subdominio' => '[^.]+'])
+        ->middleware('tienda.subdominio')
+        ->group(function () {
+            Route::livewire('/', 'tienda.index')
+                ->name('tienda.subdominio');
+
+            Route::livewire('/productos/{productoCampana}', 'tienda.producto')
+                ->whereNumber('productoCampana')
+                ->name('tienda.subdominio.producto');
+        });
+}
+
 Route::get('/', function () {
     return redirect()->route('login');
 });
@@ -20,13 +39,16 @@ Route::livewire('/marketplace', 'marketplace.index')
 // TG-233 (G14): tienda pública de cada distribuidora (solo las activas). Con
 // sesión o sin ella se ve igual: el catálogo y el precio de menudeo de ESA
 // distribuidora (ver App\Services\Tienda\TiendaPublica).
+// TG-232: con FOOTWEARPOINT_DOMINIO redirigen (301) al subdominio de la tienda.
 Route::livewire('/tienda/{slug}', 'tienda.index')
     ->where('slug', '[a-z0-9-]+')
+    ->middleware('tienda.redirigir')
     ->name('tienda');
 
 Route::livewire('/tienda/{slug}/productos/{productoCampana}', 'tienda.producto')
     ->where('slug', '[a-z0-9-]+')
     ->whereNumber('productoCampana')
+    ->middleware('tienda.redirigir')
     ->name('tienda.producto');
 
 // TG-226 (G7): a donde regresa Mercado Pago después de pagar (back_urls).

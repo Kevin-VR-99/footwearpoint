@@ -1,11 +1,11 @@
 {{-- TG-233 (G14): un producto en la tienda pública. $producto es la ficha que arma TiendaPublica. --}}
-@props(['producto', 'slug'])
+@props(['producto', 'distribuidora'])
 
 @php
     $tallas = collect($producto['tallas'])->pluck('talla')->unique()->values();
 @endphp
 
-<a href="{{ route('tienda.producto', [$slug, $producto['id']]) }}"
+<a href="{{ app(\App\Services\Tienda\EnlaceTienda::class)->producto($distribuidora, (int) $producto['id']) }}"
    class="group h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition">
     <div class="aspect-square bg-slate-100 flex items-center justify-center overflow-hidden">
         @if ($producto['imagen'])

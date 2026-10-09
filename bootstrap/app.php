@@ -32,7 +32,21 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.team' => \App\Http\Middleware\SetTenantTeam::class,
             // TG-184: el panel web es solo para el personal.
             'solo.personal' => \App\Http\Middleware\SoloPersonalPanel::class,
+            // TG-232 (G12/G13): la tienda por subdominio.
+            'tienda.subdominio' => \App\Http\Middleware\ResolverTiendaPorSubdominio::class,
+            'tienda.redirigir' => \App\Http\Middleware\RedirigirTiendaAlSubdominio::class,
         ]);
+
+        // TG-232 (G12/G13): en el subdominio de una tienda solo vive la tienda
+        // (el panel y el login van al dominio principal; la API, 404).
+        // Es global para correr antes que 'auth' y que las rutas.
+        $middleware->append(\App\Http\Middleware\SepararTiendaDelPanel::class);
+
+        // TG-232: con FOOTWEARPOINT_DOMINIO solo se aceptan peticiones para
+        // ese dominio (y sus subdominios), el de APP_URL y el chequeo de salud
+        // de Railway. Sin él no se restringe nada, como antes. Laravel no lo
+        // aplica en local ni en pruebas.
+        $middleware->trustHosts(at: fn () => \App\Services\Tienda\DominioTienda::hostsDeConfianza(), subdomains: false);
 
         // TG-193: con una contraseña temporal puesta, la API solo deja ver la
         // sesión, cambiar la contraseña y cerrar sesión.
