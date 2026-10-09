@@ -131,21 +131,17 @@ new #[Layout('layouts.panel')] #[Title('Auditoría — FootwearPoint')] class ex
 ?>
 
 <div>
-    <div class="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-fp-primary">Seguridad</p>
-            <h2 class="text-2xl font-bold text-slate-900">Auditoría</h2>
-            <p class="mt-1 text-sm text-slate-500">
-                Registro de operaciones sensibles de la distribuidora (E17-03).
-            </p>
-        </div>
+    <x-panel.encabezado eyebrow="Seguridad" titulo="Auditoría"
+        subtitulo="Registro de operaciones sensibles de la distribuidora (E17-03)." class="mb-6">
+        <x-slot:acciones>
         <span class="inline-flex items-center gap-1.5 self-start rounded-full border border-fp-danger/20 bg-fp-danger-soft px-2.5 py-1 text-[11px] font-medium text-fp-danger">
             <span class="h-1.5 w-1.5 rounded-full bg-fp-danger"></span>
             Solo admin
         </span>
-    </div>
+        </x-slot:acciones>
+    </x-panel.encabezado>
 
-    <div class="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div class="mb-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
         <div class="flex flex-wrap gap-3 items-end">
             <div class="min-w-[10rem] flex-1">
                 <label class="mb-1 block text-xs text-slate-500">Buscar</label>
@@ -189,7 +185,7 @@ new #[Layout('layouts.panel')] #[Title('Auditoría — FootwearPoint')] class ex
     <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-slate-50 text-left text-slate-500">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="px-4 py-3 font-medium">Fecha</th>
                         <th class="px-4 py-3 font-medium">Usuario</th>
@@ -210,7 +206,7 @@ new #[Layout('layouts.panel')] #[Title('Auditoría — FootwearPoint')] class ex
                                 <div class="text-xs text-slate-500">{{ $row->usuario?->email }}</div>
                             </td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-fp-primary">
+                                <span class="inline-flex rounded-full bg-fp-badge-info-bg px-2 py-0.5 text-xs font-medium text-fp-primary">
                                     {{ $row->accion }}
                                 </span>
                             </td>

@@ -47,7 +47,7 @@ new class extends Component {
 ?>
 
 <div>
-    <form wire:submit="guardarConfiguracion" class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 space-y-4 max-w-2xl">
+    <form wire:submit="guardarConfiguracion" class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 space-y-4 max-w-2xl">
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Anticipo por producto (MXN)</label>

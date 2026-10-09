@@ -73,30 +73,27 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
 ?>
 
 <div class="mx-auto max-w-3xl">
-    <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-            <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Centro de avisos</p>
-            <h1 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Notificaciones</h1>
-            <p class="mt-1 text-sm text-slate-500">
+    <x-panel.encabezado eyebrow="Centro de avisos" titulo="Notificaciones" nivel="h1" class="mb-8">
+            <p class="mt-1 text-sm text-fp-text-muted">
                 @if ($this->noLeidasCount > 0)
                     {{ $this->noLeidasCount }} sin leer
                 @else
                     Todo al día
                 @endif
             </p>
-        </div>
+        <x-slot:acciones>
         <div class="flex flex-wrap items-center gap-2">
             <div class="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
                 <button type="button" wire:click="$set('filtro', 'todas')"
                     @class([
                         'rounded-md px-3 py-1.5 text-sm font-medium transition',
-                        'bg-slate-900 text-white shadow-sm' => $filtro === 'todas',
+                        'bg-fp-primary text-white shadow-sm' => $filtro === 'todas',
                         'text-slate-600 hover:text-slate-900' => $filtro !== 'todas',
                     ])>Todas</button>
                 <button type="button" wire:click="$set('filtro', 'no_leidas')"
                     @class([
                         'rounded-md px-3 py-1.5 text-sm font-medium transition',
-                        'bg-slate-900 text-white shadow-sm' => $filtro === 'no_leidas',
+                        'bg-fp-primary text-white shadow-sm' => $filtro === 'no_leidas',
                         'text-slate-600 hover:text-slate-900' => $filtro !== 'no_leidas',
                     ])>Sin leer</button>
             </div>
@@ -107,12 +104,13 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
                 </button>
             @endif
         </div>
-    </div>
+        </x-slot:acciones>
+    </x-panel.encabezado>
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg border border-emerald-200/80 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <x-panel.alerta tipo="exito" class="mb-4">
             {{ $mensaje }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
@@ -125,7 +123,7 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
                 <div class="mt-1.5 shrink-0">
                     <span @class([
                         'block h-2 w-2 rounded-full',
-                        'bg-blue-600' => ! $n->leida_at,
+                        'bg-fp-primary' => ! $n->leida_at,
                         'bg-slate-200' => $n->leida_at,
                     ])></span>
                 </div>
@@ -137,7 +135,7 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
                     <p class="mt-1 text-sm leading-relaxed text-slate-600">{{ $n->mensaje }}</p>
                     @if (! $n->leida_at)
                         <button type="button" wire:click="marcarLeida({{ $n->id }})"
-                            class="mt-3 text-xs font-medium text-blue-700 hover:underline">
+                            class="mt-3 text-xs font-medium text-fp-primary hover:underline">
                             Marcar como leída
                         </button>
                     @endif

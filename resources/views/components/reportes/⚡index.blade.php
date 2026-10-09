@@ -43,10 +43,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
 ?>
 
 <div>
-    <div class="mb-6">
-        <h2 class="text-2xl font-bold text-slate-900">Reportes</h2>
-        <p class="text-sm text-slate-500 mt-1">Resumen operativo de la distribuidora</p>
-    </div>
+    <x-panel.encabezado titulo="Reportes" subtitulo="Resumen operativo de la distribuidora" class="mb-6" />
 
     <div class="mb-6 flex flex-wrap gap-3 items-end">
         <div>
@@ -103,10 +100,10 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">Pedidos por estado</div>
         <table class="min-w-full text-sm">
-            <thead class="bg-slate-50 text-left text-slate-500">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
                     <th class="px-4 py-2">Estado</th>
                     <th class="px-4 py-2 text-right">Cantidad</th>
@@ -121,18 +118,16 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                         <td class="px-4 py-3 text-right tabular-nums">{{ $fila['cantidad'] }}</td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="2" class="px-4 py-8 text-center text-slate-500">Sin datos</td>
-                    </tr>
+                    <x-panel.vacio colspan="2" mensaje="Sin datos" />
                 @endforelse
             </tbody>
         </table>
     </div>
 
-    <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">Pedidos por ciclo</div>
         <table class="min-w-full text-sm">
-            <thead class="bg-slate-50 text-left text-slate-500">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
                     <th class="px-4 py-2">Ciclo</th>
                     <th class="px-4 py-2 text-right">Cantidad</th>
@@ -147,22 +142,20 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                         <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="3" class="px-4 py-8 text-center text-slate-500">Sin datos</td>
-                    </tr>
+                    <x-panel.vacio colspan="3" mensaje="Sin datos" />
                 @endforelse
             </tbody>
         </table>
     </div>
 
-    <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Detalle de pedidos
             <span class="text-xs font-normal text-slate-500">(máx. 100 del periodo)</span>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-slate-50 text-left text-slate-500">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="px-4 py-2">Folio</th>
                         <th class="px-4 py-2">Quién</th>
@@ -210,25 +203,21 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="7" class="px-4 py-8 text-center text-slate-500">
-                                No hay pedidos en el periodo.
-                            </td>
-                        </tr>
+                        <x-panel.vacio colspan="7" mensaje="No hay pedidos en el periodo." />
                     @endforelse
                 </tbody>
             </table>
         </div>
     </div>
 
-    <div class="mt-6 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Detalle de ventas (punto de venta)
             <span class="text-xs font-normal text-slate-500">(máx. 100 del periodo)</span>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-slate-50 text-left text-slate-500">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="px-4 py-2">Folio</th>
                         <th class="px-4 py-2">Quién</th>
@@ -275,11 +264,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">
-                                No hay ventas directas en el periodo.
-                            </td>
-                        </tr>
+                        <x-panel.vacio colspan="6" mensaje="No hay ventas directas en el periodo." />
                     @endforelse
                 </tbody>
             </table>
