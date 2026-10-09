@@ -61,11 +61,19 @@ new class extends Component {
         ]);
 
         $distribuidora = Distribuidora::findOrFail(Tenant::id());
-        app(ActualizarPerfilDistribuidoraAction::class)->ejecutar(
+        $conLogotipo = $this->logotipo !== null;
+        $guardada = app(ActualizarPerfilDistribuidoraAction::class)->ejecutar(
             $distribuidora,
             collect($datos)->except('logotipo')->all(),
             $this->logotipo
         );
+
+        // Si se mandó logotipo y no quedó guardado, se dice en vez de "Listo".
+        if ($conLogotipo && blank($guardada->logotipo_url)) {
+            $this->addError('logotipo', 'No pudimos guardar el logotipo. Intenta subirlo de nuevo.');
+
+            return;
+        }
 
         $this->logotipo = null;
         $this->mount();
@@ -95,7 +103,12 @@ new class extends Component {
 ?>
 
 <div>
-    <form wire:submit="guardarPerfil" class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 space-y-4 max-w-2xl">
+    <form wire:submit="guardarPerfil" x-data="{ subiendo: false }"
+        x-on:livewire-upload-start="subiendo = true"
+        x-on:livewire-upload-finish="subiendo = false"
+        x-on:livewire-upload-cancel="subiendo = false"
+        x-on:livewire-upload-error="subiendo = false"
+        class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 space-y-4 max-w-2xl">
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Nombre Comercial</label>
             <input type="text" wire:model="nombre_comercial" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
@@ -131,6 +144,8 @@ new class extends Component {
                 <img src="{{ $logotipo_url_actual }}" class="h-16 w-16 object-cover rounded mb-2">
             @endif
             <input type="file" wire:model="logotipo" accept="image/png,image/jpeg">
+            <p x-show="subiendo" x-cloak class="text-xs text-fp-text-muted mt-1">Subiendo logotipo…</p>
+            @error('logotipo') <span class="block text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
             <p class="text-xs text-fp-text-muted mt-1">PNG o JPG, hasta 2MB.</p>
         </div>
         <div>
@@ -146,7 +161,7 @@ new class extends Component {
             @endif
             <p class="text-xs text-fp-text-muted mt-1">Las asigna FootwearPoint. Si te falta alguna, comunícate con nosotros.</p>
         </div>
-        <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar Cambios</button>
+        <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled" wire:target="logotipo,guardarPerfil" x-bind:disabled="subiendo">Guardar Cambios</button>
     </form>
 
     {{-- TG-232 (E3-02): subdominio de la tienda pública. --}}
