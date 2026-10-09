@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\ProcesarCatalogoConIa;
 use App\Models\Campana;
 use App\Models\ImportacionCatalogo;
 use App\Models\Linea;
@@ -64,6 +65,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
     public function getImportacionesProperty()
     {
         return ImportacionCatalogo::with(['linea', 'campana', 'iniciadaPor'])
+            ->withCount('productosStaging')
             ->orderByDesc('id')
             ->get();
     }
@@ -107,6 +109,42 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
 
         $this->mensaje = 'Catálogo cargado (#' . $importacion->id . '). Ya se puede procesar con la IA.';
         $this->esError = false;
+    }
+
+
+    /**
+     * TG-238 (A8): manda a leer el catalogo con la IA.
+     *
+     * Va a la cola y no aqui: un catalogo de 122 paginas son trece llamadas a
+     * la IA, varios minutos, y el servidor corta las peticiones web a los 30
+     * segundos.
+     */
+    public function procesar(int $id): void
+    {
+        $importacion = ImportacionCatalogo::findOrFail($id);
+
+        if (! in_array($importacion->estado, ['cargado', 'error'], true)) {
+            $this->mensaje = 'Ese catalogo ya se esta procesando o ya se proceso.';
+            $this->esError = true;
+
+            return;
+        }
+
+        // Si se reintenta, se limpia lo que habia quedado del intento anterior.
+        $importacion->productosStaging()->delete();
+        $importacion->update(['estado' => 'procesando', 'mensaje_error' => null]);
+
+        ProcesarCatalogoConIa::dispatch($importacion->id);
+
+        $this->mensaje = 'Se mando a procesar. La IA va de '.config('ia.paginas_por_bloque')
+            .' en '.config('ia.paginas_por_bloque').' paginas; el avance se actualiza solo.';
+        $this->esError = false;
+    }
+
+    /** True si hay alguno trabajando: con eso la pantalla se refresca sola. */
+    public function getHayTrabajoProperty(): bool
+    {
+        return ImportacionCatalogo::where('estado', 'procesando')->exists();
     }
 
     /** Solo mientras nadie lo haya procesado: después ya hay productos colgando. */
@@ -187,8 +225,17 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         </button>
     </form>
 
-    <div class="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
+    {{-- Mientras la IA trabaja, la tabla se refresca sola para ver el avance. --}}
+    <div class="rounded-xl border border-slate-200 bg-white p-5 sm:p-6"
+        @if ($this->hayTrabajo) wire:poll.5s @endif>
         <h2 class="text-sm font-semibold text-slate-700 mb-3">Catálogos subidos</h2>
+
+        @if ($this->hayTrabajo)
+            <p class="mb-3 text-sm text-blue-800">
+                La IA está leyendo un catálogo. Va de {{ config('ia.paginas_por_bloque') }} en
+                {{ config('ia.paginas_por_bloque') }} páginas y puede tardar varios minutos; esta página se actualiza sola.
+            </p>
+        @endif
 
         @if ($this->importaciones->isEmpty())
             <p class="text-sm text-slate-500">Todavía no se ha subido ningún catálogo.</p>
@@ -199,10 +246,11 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                         <th class="py-2">#</th>
                         <th class="py-2">Línea</th>
                         <th class="py-2">Temporada</th>
-                        <th class="py-2">Tipo</th>
                         <th class="py-2">Estado</th>
+                        <th class="py-2">Páginas</th>
+                        <th class="py-2">Productos</th>
+                        <th class="py-2">Costo</th>
                         <th class="py-2">Subido por</th>
-                        <th class="py-2">Fecha</th>
                         <th class="py-2"></th>
                     </tr>
                 </thead>
@@ -212,11 +260,31 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                             <td class="py-2">{{ $importacion->id }}</td>
                             <td class="py-2">{{ $importacion->linea?->nombre }}</td>
                             <td class="py-2">{{ $importacion->campana?->nombre ?? '—' }}</td>
-                            <td class="py-2">{{ $importacion->tipo_archivo }}</td>
-                            <td class="py-2">{{ str_replace('_', ' ', $importacion->estado) }}</td>
+                            <td class="py-2">
+                                <span @class([
+                                    'rounded-full px-2 py-0.5 text-xs font-medium',
+                                    'bg-slate-100 text-slate-700' => $importacion->estado === 'cargado',
+                                    'bg-blue-100 text-blue-800' => $importacion->estado === 'procesando',
+                                    'bg-amber-100 text-amber-900' => $importacion->estado === 'requiere_revision',
+                                    'bg-emerald-100 text-emerald-800' => $importacion->estado === 'aprobado',
+                                    'bg-red-100 text-red-800' => in_array($importacion->estado, ['error', 'rechazado'], true),
+                                ])>{{ str_replace('_', ' ', $importacion->estado) }}</span>
+                                @if ($importacion->mensaje_error)
+                                    <p class="mt-1 text-xs text-red-600">{{ $importacion->mensaje_error }}</p>
+                                @endif
+                            </td>
+                            <td class="py-2">{{ $importacion->paginas ?? '—' }}</td>
+                            <td class="py-2">{{ $importacion->productos_staging_count ?: '—' }}</td>
+                            <td class="py-2">{{ $importacion->costo_usd ? '$'.number_format((float) $importacion->costo_usd, 2).' USD' : '—' }}</td>
                             <td class="py-2">{{ $importacion->iniciadaPor?->nombreVisible() }}</td>
-                            <td class="py-2">{{ $importacion->created_at?->format('d/m/Y H:i') }}</td>
                             <td class="py-2 text-right">
+                                @if (in_array($importacion->estado, ['cargado', 'error'], true))
+                                    <button type="button" wire:click="procesar({{ $importacion->id }})"
+                                        wire:loading.attr="disabled"
+                                        class="text-fp-primary text-xs font-semibold mr-3">
+                                        {{ $importacion->estado === 'error' ? 'Reintentar con IA' : 'Procesar con IA' }}
+                                    </button>
+                                @endif
                                 <a href="{{ route('admin.catalogos.archivo', $importacion->id) }}"
                                     class="text-fp-primary text-xs font-medium mr-3">Ver archivo</a>
                                 @if (in_array($importacion->estado, ['cargado', 'error'], true))

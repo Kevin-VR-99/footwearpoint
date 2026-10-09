@@ -2,9 +2,12 @@
 
 namespace App\Providers;
 
+use Anthropic\Client as Claude;
 use App\Mail\RestablecerPasswordMail;
 use App\Models\Usuario;
 use App\Services\Auth\ExpiracionDeSesion;
+use App\Services\Ia\LectorDeCatalogos;
+use App\Services\Ia\LectorDeCatalogosClaude;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Services\Notificacion\Push\EnviadorPush;
 use App\Http\Middleware\SoloPersonalPanel;
@@ -15,6 +18,7 @@ use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\PersonalAccessToken;
 use Laravel\Sanctum\Sanctum;
 use Livewire\Livewire;
+use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +29,22 @@ class AppServiceProvider extends ServiceProvider
         // Uno solo por petición: guarda el descuento y los precios propios que
         // ya consultó, para no repetir consultas al armar el catálogo (TG-213).
         $this->app->scoped(PrecioEfectivo::class);
+
+        // TG-238 (A8): quien lee los catálogos. En las pruebas se cambia por
+        // un lector falso, así que nunca gastan dinero ni piden la llave.
+        $this->app->bind(LectorDeCatalogos::class, LectorDeCatalogosClaude::class);
+
+        $this->app->bind(Claude::class, function () {
+            $llave = (string) config('ia.llave');
+
+            if ($llave === '') {
+                throw new RuntimeException(
+                    'Falta ANTHROPIC_API_KEY. En local va en tu .env; en Railway, en las variables del servicio.'
+                );
+            }
+
+            return new Claude(apiKey: $llave);
+        });
     }
 
     public function boot(): void
