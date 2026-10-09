@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ArchivoCatalogoImportacionController;
 use App\Http\Controllers\ComprobanteVentaController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -230,4 +231,14 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_general'])->group(function
     // TG-197 (G16): categorías generales del directorio público.
     Route::livewire('/admin/categorias-directorio', 'admin.categorias-directorio-index')
         ->name('admin.categorias-directorio');
+
+    // TG-237 (A7): subir el catálogo de la fábrica para que lo lea la IA.
+    Route::livewire('/admin/catalogos', 'admin.catalogos-importaciones')
+        ->name('admin.catalogos');
+
+    // El archivo vive en un disco privado: se sirve desde aquí para que pase
+    // por la sesión y por el rol, no con una dirección pública.
+    Route::get('/admin/catalogos/{importacion}/archivo', [ArchivoCatalogoImportacionController::class, 'show'])
+        ->whereNumber('importacion')
+        ->name('admin.catalogos.archivo');
 });

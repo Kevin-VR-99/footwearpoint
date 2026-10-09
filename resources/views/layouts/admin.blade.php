@@ -32,6 +32,10 @@
                     class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('admin.categorias-directorio') ? 'bg-white/15' : '' }}">
                     Categorías del directorio
                 </a>
+                <a href="{{ route('admin.catalogos') }}"
+                    class="block rounded-lg px-3 py-2 text-sm hover:bg-white/10 {{ request()->routeIs('admin.catalogos') ? 'bg-white/15' : '' }}">
+                    Catálogos para importar
+                </a>
                 <a href="{{ route('marketplace') }}"
                     class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" target="_blank">
                     Marketplace público
