@@ -308,12 +308,12 @@ new class extends Component {
 <div class="space-y-6">
 
     {{-- Empleados: listado o formulario inline --}}
-    <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
+    <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioEmpleado)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Empleados</h2>
                 <button type="button" wire:click="abrirFormularioInvitarEmpleado"
-                    class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
+                    class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
                     + Invitar empleado
                 </button>
             </div>
@@ -386,12 +386,12 @@ new class extends Component {
     </div>
 
     {{-- Revendedores --}}
-    <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
+    <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioRevendedor)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Clientes mayoristas</h2>
                 <button type="button" wire:click="abrirFormularioAfiliarRevendedor"
-                    class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
+                    class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
                     + Afiliar cliente mayorista
                 </button>
             </div>
@@ -400,12 +400,12 @@ new class extends Component {
                  del componente: esas viajan al navegador en cada accion
                  posterior. Asi se ve una vez y no queda guardada en ningun lado. --}}
             @if (session('aviso_password_temporal'))
-                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div class="mb-4 rounded-lg border border-fp-badge-warning-fg/20 bg-fp-badge-warning-bg px-4 py-3 text-sm text-fp-badge-warning-fg">
                     {{ session('aviso_password_temporal') }}
                 </div>
             @endif
             @if ($avisoEnlace)
-                <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ $avisoEnlaceEsError ? 'border-fp-danger/20 bg-fp-danger-soft text-fp-badge-danger-fg' : 'border-emerald-200 bg-fp-badge-success-bg text-fp-badge-success-fg' }}">
+                <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ $avisoEnlaceEsError ? 'border-fp-danger/20 bg-fp-danger-soft text-fp-badge-danger-fg' : 'border-fp-badge-success-fg/20 bg-fp-badge-success-bg text-fp-badge-success-fg' }}">
                     {{ $avisoEnlace }}
                 </div>
             @endif

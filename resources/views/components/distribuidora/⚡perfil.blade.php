@@ -108,7 +108,7 @@ new class extends Component {
         x-on:livewire-upload-finish="subiendo = false"
         x-on:livewire-upload-cancel="subiendo = false"
         x-on:livewire-upload-error="subiendo = false"
-        class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 space-y-4 max-w-2xl">
+        class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 space-y-4 max-w-2xl">
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Nombre Comercial</label>
             <input type="text" wire:model="nombre_comercial" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
@@ -165,7 +165,7 @@ new class extends Component {
     </form>
 
     {{-- TG-232 (E3-02): subdominio de la tienda pública. --}}
-    <form wire:submit="guardarSubdominio" class="mt-6 rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 space-y-3 max-w-2xl">
+    <form wire:submit="guardarSubdominio" class="mt-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 space-y-3 max-w-2xl">
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Subdominio de tu tienda</label>
             <div class="flex items-center gap-2">

@@ -101,10 +101,10 @@ new class extends Component {
 
 <div>
     @if (! $mostrandoFormularioCiclo)
-        <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Configuraciones de ciclo</h2>
-                <button type="button" wire:click="abrirFormularioCrearCiclo" class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">+ Nueva configuración</button>
+                <button type="button" wire:click="abrirFormularioCrearCiclo" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">+ Nueva configuración</button>
             </div>
             <table class="w-full text-sm">
                 <thead>
@@ -138,7 +138,7 @@ new class extends Component {
             </table>
         </div>
     @else
-        <form wire:submit="guardarCiclo" class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 space-y-4 max-w-2xl">
+        <form wire:submit="guardarCiclo" class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 space-y-4 max-w-2xl">
             <h2 class="text-sm font-semibold text-slate-700">{{ $cicloEditandoId ? 'Editar configuración de ciclo' : 'Nueva configuración de ciclo' }}</h2>
             <div class="grid grid-cols-2 gap-4">
                 <div>
