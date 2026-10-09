@@ -30,6 +30,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // TG-184: el panel web es solo para el personal.
             'solo.personal' => \App\Http\Middleware\SoloPersonalPanel::class,
         ]);
+
+        // TG-193: con una contraseña temporal puesta, la API solo deja ver la
+        // sesión, cambiar la contraseña y cerrar sesión.
+        $middleware->appendToGroup('api', \App\Http\Middleware\DebeCambiarPassword::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // TG-224 (G3): el usuario nunca ve el error técnico; el detalle solo

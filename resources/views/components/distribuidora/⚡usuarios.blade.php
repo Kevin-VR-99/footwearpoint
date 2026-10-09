@@ -5,6 +5,7 @@ use App\Models\RevendedorDistribuidora;
 use App\Models\Usuario;
 use App\Services\Distribuidora\ActivarCuentaAccesoAction;
 use App\Services\Auth\EnviarEnlaceRestablecerPanelAction;
+use App\Services\Auth\GenerarPasswordTemporalAction;
 use App\Services\Distribuidora\GestionarRevendedorAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
@@ -180,6 +181,32 @@ new class extends Component {
             $this->avisoEnlace = $e->errors()['enlace'][0] ?? 'No se pudo enviar el enlace.';
             $this->avisoEnlaceEsError = true;
         }
+    }
+
+    /**
+     * TG-193 (A4): respaldo del enlace por correo. Le pone una contraseña
+     * temporal y se la muestra al personal UNA vez, para que se la dicte. La
+     * persona tendra que cambiarla al entrar.
+     */
+    public function generarPasswordTemporalRevendedor(int $id): void
+    {
+        $afiliacion = RevendedorDistribuidora::with('revendedor.usuario')->findOrFail($id);
+        $cuenta = $afiliacion->revendedor->usuario;
+        $entidadId = $afiliacion->revendedor_id;
+
+        if (! $cuenta) {
+            $this->avisoEnlace = 'Primero hay que darle acceso a la app.';
+            $this->avisoEnlaceEsError = true;
+
+            return;
+        }
+
+        $password = app(GenerarPasswordTemporalAction::class)
+            ->ejecutar($cuenta, 'revendedor', (int) $entidadId);
+
+        $this->avisoEnlace = 'Contraseña temporal para '.$cuenta->email.': '.$password
+            .'. Anótala ahora, no se vuelve a mostrar. Se le pedirá cambiarla al entrar.';
+        $this->avisoEnlaceEsError = false;
     }
 
     public function cancelarFormularioRevendedor(): void
@@ -403,6 +430,9 @@ new class extends Component {
                                     <button type="button" wire:click="enviarEnlaceRevendedor({{ $afiliacion->id }})"
                                         wire:loading.attr="disabled"
                                         class="text-fp-primary text-xs font-medium mr-3">Enviar enlace</button>
+                                    <button type="button" wire:click="generarPasswordTemporalRevendedor({{ $afiliacion->id }})"
+                                        wire:loading.attr="disabled"
+                                        class="text-fp-primary text-xs font-medium mr-3">Contraseña temporal</button>
                                 @endif
                                 <button type="button" wire:click="abrirFormularioEditarRevendedor({{ $afiliacion->id }})"
                                     class="text-fp-primary text-xs font-medium">Editar</button>

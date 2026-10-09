@@ -200,6 +200,9 @@ class AuthController extends Controller
             ],
             'rol'              => $rol,
             'distribuidora_id' => $distribuidoraId,
+            // TG-193: si es true, la app debe mandarla a cambiar su
+            // contraseña antes de dejarla usar lo demás.
+            'debe_cambiar_password' => (bool) $usuario->debe_cambiar_password,
         ];
     }
 

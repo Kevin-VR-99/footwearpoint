@@ -35,6 +35,10 @@ class AuthProvider extends ChangeNotifier {
   Usuario? _usuario;
   String? _rol;
   int? _distribuidoraId;
+
+  /// TG-193: la distribuidora le puso una contraseña temporal y tiene que
+  /// cambiarla antes de poder usar la app.
+  bool _debeCambiarPassword = false;
   bool _iniciando = true;
   bool _sinConexion = false;
   bool _ocupado = false;
@@ -43,6 +47,7 @@ class AuthProvider extends ChangeNotifier {
   Usuario? get usuario => _usuario;
   String? get rol => _rol;
   int? get distribuidoraId => _distribuidoraId;
+  bool get debeCambiarPassword => _debeCambiarPassword;
   bool get ocupado => _ocupado;
   String? get error => _error;
   bool get haySesion => _usuario != null;
@@ -215,10 +220,22 @@ class AuthProvider extends ChangeNotifier {
     final usuario = Usuario.desdeJson(datos['usuario'] as Map<String, dynamic>);
     final rol = datos['rol'] as String?;
     final distribuidoraId = datos['distribuidora_id'] as int?;
+    // Si el servidor no manda la llave (versión vieja), se asume que no.
+    final debeCambiar = datos['debe_cambiar_password'] as bool? ?? false;
 
     _usuario = usuario;
     _rol = rol;
     _distribuidoraId = distribuidoraId;
+    _debeCambiarPassword = debeCambiar;
+  }
+
+  /// TG-193: la acaba de cambiar desde la pantalla obligatoria, así que ya
+  /// puede usar la app sin tener que volver a preguntarle al servidor.
+  void confirmarPasswordCambiada() {
+    if (!_debeCambiarPassword) return;
+
+    _debeCambiarPassword = false;
+    notifyListeners();
   }
 
   /// Borra la sesión de memoria y el token del teléfono.
@@ -228,6 +245,7 @@ class AuthProvider extends ChangeNotifier {
     _usuario = null;
     _rol = null;
     _distribuidoraId = null;
+    _debeCambiarPassword = false;
 
     await api.borrarToken();
   }

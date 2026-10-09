@@ -2,6 +2,7 @@
 
 use App\Models\ClienteDirecto;
 use App\Services\Auth\EnviarEnlaceRestablecerPanelAction;
+use App\Services\Auth\GenerarPasswordTemporalAction;
 use App\Services\Distribuidora\ActivarCuentaAccesoAction;
 use App\Services\Distribuidora\GestionarClienteDirectoAction;
 use Illuminate\Support\Facades\DB;
@@ -85,6 +86,32 @@ new class extends Component {
             $this->avisoEnlace = $e->errors()['enlace'][0] ?? 'No se pudo enviar el enlace.';
             $this->avisoEnlaceEsError = true;
         }
+    }
+
+    /**
+     * TG-193 (A4): respaldo del enlace por correo. Le pone una contraseña
+     * temporal y se la muestra al personal UNA vez, para que se la dicte. La
+     * persona tendra que cambiarla al entrar.
+     */
+    public function generarPasswordTemporalCliente(int $id): void
+    {
+        $cliente = ClienteDirecto::with('usuario')->findOrFail($id);
+        $cuenta = $cliente->usuario;
+        $entidadId = $cliente->id;
+
+        if (! $cuenta) {
+            $this->avisoEnlace = 'Primero hay que darle acceso a la app.';
+            $this->avisoEnlaceEsError = true;
+
+            return;
+        }
+
+        $password = app(GenerarPasswordTemporalAction::class)
+            ->ejecutar($cuenta, 'cliente_directo', (int) $entidadId);
+
+        $this->avisoEnlace = 'Contraseña temporal para '.$cuenta->email.': '.$password
+            .'. Anótala ahora, no se vuelve a mostrar. Se le pedirá cambiarla al entrar.';
+        $this->avisoEnlaceEsError = false;
     }
 
     public function cancelarFormularioCliente(): void
@@ -218,6 +245,9 @@ new class extends Component {
                                     <button type="button" wire:click="enviarEnlaceCliente({{ $cliente->id }})"
                                         wire:loading.attr="disabled"
                                         class="text-fp-primary text-xs font-medium mr-3">Enviar enlace</button>
+                                    <button type="button" wire:click="generarPasswordTemporalCliente({{ $cliente->id }})"
+                                        wire:loading.attr="disabled"
+                                        class="text-fp-primary text-xs font-medium mr-3">Contraseña temporal</button>
                                 @endif
                                 <button type="button" wire:click="abrirFormularioEditarCliente({{ $cliente->id }})"
                                     class="text-fp-primary text-xs font-medium">Editar</button>
