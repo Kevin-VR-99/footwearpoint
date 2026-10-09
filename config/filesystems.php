@@ -72,6 +72,21 @@ return [
             'throw' => false,
         ],
 
+        // TG-235 (G17): respaldos de la base de datos. Bucket PRIVADO y
+        // credenciales propias (nunca el bucket público de las fotos).
+        'respaldos' => [
+            'driver' => 's3',
+            'key' => env('RESPALDO_AWS_ACCESS_KEY_ID'),
+            'secret' => env('RESPALDO_AWS_SECRET_ACCESS_KEY'),
+            'region' => env('RESPALDO_AWS_DEFAULT_REGION', 'auto'),
+            'bucket' => env('RESPALDO_AWS_BUCKET'),
+            'endpoint' => env('RESPALDO_AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('RESPALDO_AWS_USE_PATH_STYLE_ENDPOINT', true),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => false,
+        ],
+
     ],
 
     /*
