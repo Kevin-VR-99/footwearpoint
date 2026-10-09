@@ -150,7 +150,7 @@ new class extends Component {
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 @foreach ($destacados as $producto)
                     <div wire:key="destacado-{{ $producto['id'] }}">
-                        <x-tienda.tarjeta-producto :producto="$producto" :slug="$distribuidora->slug" />
+                        <x-tienda.tarjeta-producto :producto="$producto" :distribuidora="$distribuidora" />
                     </div>
                 @endforeach
             </div>
@@ -218,7 +218,7 @@ new class extends Component {
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 @foreach ($productos as $producto)
                     <div wire:key="producto-{{ $producto['id'] }}">
-                        <x-tienda.tarjeta-producto :producto="$producto" :slug="$distribuidora->slug" />
+                        <x-tienda.tarjeta-producto :producto="$producto" :distribuidora="$distribuidora" />
                     </div>
                 @endforeach
             </div>

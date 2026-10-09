@@ -56,6 +56,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | TG-232 (G12/G13) — Dominio base de las tiendas
+    |--------------------------------------------------------------------------
+    |
+    | Con FOOTWEARPOINT_DOMINIO (p. ej. footwearpoint.app) cada tienda pública
+    | se sirve en {subdominio}.footwearpoint.app. Vacío: todo sigue en
+    | /tienda/{slug}, como antes (local, pruebas y la dirección de Railway).
+    |
+    | El panel, la API y Mercado Pago siempre van en APP_URL.
+    |
+    */
+
+    'dominio_base' => strtolower(trim((string) env('FOOTWEARPOINT_DOMINIO', ''), " .\t\n\r\0\x0B")) ?: null,
+
+    // Nombres que ninguna distribuidora puede usar como subdominio.
+    'subdominios_reservados' => [
+        'www', 'api', 'admin', 'panel', 'app', 'mail', 'correo', 'smtp', 'imap', 'pop', 'ftp',
+        'static', 'assets', 'cdn', 'storage', 'media', 'img', 'status', 'docs', 'blog',
+        'soporte', 'ayuda', 'help', 'login', 'cuenta', 'tienda', 'tiendas', 'marketplace',
+        'footwearpoint', 'mercadopago', 'mercado-pago', 'pago', 'pagos', 'webhook', 'webhooks',
+        'dev', 'staging', 'test', 'demo', 'localhost', 'livewire',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

@@ -62,6 +62,31 @@ class TiendaPublica
     }
 
     /**
+     * TG-232 (G12/G13): la distribuidora activa de {etiqueta}.{dominio}.
+     * Primero por su subdominio y, si ninguna lo tiene, por su slug. Null si
+     * la etiqueta no es válida, está reservada o no hay tienda activa.
+     */
+    public function porSubdominio(string $etiqueta): ?Distribuidora
+    {
+        $etiqueta = strtolower($etiqueta);
+
+        if (! DominioTienda::etiquetaValida($etiqueta)) {
+            return null;
+        }
+
+        $porSubdominio = Distribuidora::query()->where('subdominio', $etiqueta)->first();
+
+        if ($porSubdominio !== null) {
+            return $porSubdominio->estado === 'activa' ? $porSubdominio : null;
+        }
+
+        return Distribuidora::query()
+            ->where('slug', $etiqueta)
+            ->where('estado', 'activa')
+            ->first();
+    }
+
+    /**
      * Los productos de la tienda, por nombre y paginados.
      *
      * @param  array{marca?: int|null, linea?: int|null, busqueda?: string|null}  $filtros

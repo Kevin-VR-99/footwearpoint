@@ -20,7 +20,7 @@
     <header class="bg-[#111E38] text-white">
         <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
             @isset($distribuidora)
-                <a href="{{ route('tienda', $distribuidora->slug) }}" class="flex items-center gap-3 min-w-0">
+                <a href="{{ app(\App\Services\Tienda\EnlaceTienda::class)->url($distribuidora) }}" class="flex items-center gap-3 min-w-0">
                     @if ($distribuidora->logotipo_url)
                         <img src="{{ $distribuidora->logotipo_url }}" alt="Logo {{ $distribuidora->nombre_comercial }}"
                              class="h-10 w-10 rounded-lg bg-white object-contain p-1">
@@ -34,7 +34,7 @@
                 <span class="text-lg font-bold">FootwearPoint</span>
             @endisset
 
-            <a href="{{ route('marketplace') }}"
+            <a href="{{ app(\App\Services\Tienda\EnlaceTienda::class)->marketplace() }}"
                 class="shrink-0 text-sm px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition">
                 Ver marketplace
             </a>

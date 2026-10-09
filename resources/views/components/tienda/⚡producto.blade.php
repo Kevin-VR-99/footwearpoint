@@ -47,7 +47,7 @@ new class extends Component {
 ?>
 
 <div class="space-y-6">
-    <a href="{{ route('tienda', $distribuidora->slug) }}" class="text-sm text-[#2563EB] hover:underline">
+    <a href="{{ app(\App\Services\Tienda\EnlaceTienda::class)->url($distribuidora) }}" class="text-sm text-[#2563EB] hover:underline">
         ← Volver a la tienda
     </a>
 
