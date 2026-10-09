@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ClienteDirecto;
+use App\Services\Auth\EnviarEnlaceRestablecerPanelAction;
 use App\Services\Distribuidora\ActivarCuentaAccesoAction;
 use App\Services\Distribuidora\GestionarClienteDirectoAction;
 use Illuminate\Support\Facades\DB;
@@ -8,6 +9,10 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 new class extends Component {
+    // TG-192: aviso del envio del enlace de restablecimiento.
+    public ?string $avisoEnlace = null;
+    public bool $avisoEnlaceEsError = false;
+
     public $clientesDirectos = [];
     public ?int $clienteEditandoId = null;
     public bool $mostrandoFormularioCliente = false;
@@ -57,6 +62,29 @@ new class extends Component {
         $this->limpiarAccesoCliente();
         $this->cliente_cuenta_email_actual = $cliente->usuario?->email;
         $this->mostrandoFormularioCliente = true;
+    }
+
+    /** TG-192 (A3): le manda al cliente el enlace para cambiar su contrasena. */
+    public function enviarEnlaceCliente(int $id): void
+    {
+        $cliente = ClienteDirecto::with('usuario')->findOrFail($id);
+        $cuenta = $cliente->usuario;
+
+        if (! $cuenta) {
+            $this->avisoEnlace = 'Ese cliente todavia no tiene cuenta para la app.';
+            $this->avisoEnlaceEsError = true;
+
+            return;
+        }
+
+        try {
+            $this->avisoEnlace = app(EnviarEnlaceRestablecerPanelAction::class)
+                ->ejecutar($cuenta, 'cliente_directo', (int) $cliente->id);
+            $this->avisoEnlaceEsError = false;
+        } catch (ValidationException $e) {
+            $this->avisoEnlace = $e->errors()['enlace'][0] ?? 'No se pudo enviar el enlace.';
+            $this->avisoEnlaceEsError = true;
+        }
     }
 
     public function cancelarFormularioCliente(): void
@@ -149,6 +177,12 @@ new class extends Component {
                 <button type="button" wire:click="abrirFormularioCrearCliente"
                     class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">+ Nuevo cliente</button>
             </div>
+            {{-- TG-192: resultado del envio del enlace de restablecimiento. --}}
+            @if ($avisoEnlace)
+                <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ $avisoEnlaceEsError ? 'border-fp-danger/20 bg-fp-danger-soft text-fp-badge-danger-fg' : 'border-emerald-200 bg-fp-badge-success-bg text-fp-badge-success-fg' }}">
+                    {{ $avisoEnlace }}
+                </div>
+            @endif
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-slate-500 border-b">
@@ -179,6 +213,12 @@ new class extends Component {
                                 @endif
                             </td>
                             <td class="py-2 text-right">
+                                {{-- TG-192: solo tiene sentido si ya tiene cuenta en la app. --}}
+                                @if ($cliente->usuario_id)
+                                    <button type="button" wire:click="enviarEnlaceCliente({{ $cliente->id }})"
+                                        wire:loading.attr="disabled"
+                                        class="text-fp-primary text-xs font-medium mr-3">Enviar enlace</button>
+                                @endif
                                 <button type="button" wire:click="abrirFormularioEditarCliente({{ $cliente->id }})"
                                     class="text-fp-primary text-xs font-medium">Editar</button>
                             </td>
