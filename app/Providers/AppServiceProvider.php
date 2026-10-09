@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Mail\RestablecerPasswordMail;
+use App\Models\Usuario;
 use App\Services\Auth\ExpiracionDeSesion;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Services\Notificacion\Push\EnviadorPush;
 use App\Http\Middleware\SoloPersonalPanel;
 use App\Services\Notificacion\Push\EnviadorPushFirebase;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -53,6 +56,15 @@ class AppServiceProvider extends ServiceProvider
             fn (PersonalAccessToken $token, bool $valido) => $this->app
                 ->make(ExpiracionDeSesion::class)
                 ->sigueValido($token, $valido)
+        );
+
+        // TG-188 (A6): el correo del enlace llegaba en inglés y firmado
+        // "Laravel", porque era la plantilla de fábrica. Se le cambia solo el
+        // contenido y la notificación sigue siendo la de Laravel, así valen
+        // igual las tres puertas que lo mandan: la web, la app (TG-141) y el
+        // botón del panel (TG-192).
+        ResetPassword::toMailUsing(
+            fn (Usuario $usuario, string $token) => new RestablecerPasswordMail($usuario, $token)
         );
     }
 }
