@@ -19,6 +19,7 @@ use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Services\Auth\RestablecerPasswordAction;
 use App\Services\Auth\EnviarEnlaceRecuperacionAction;
+use App\Services\Auth\LimiteIntentosLogin;
 
 class AuthController extends Controller
 {
@@ -31,15 +32,28 @@ class AuthController extends Controller
      */
     private const ROLES_SOLO_WEB = ['admin_general', 'admin_distribuidora', 'empleado'];
 
-    public function login(LoginRequest $request)
+    public function login(LoginRequest $request, LimiteIntentosLogin $limite)
     {
+        // TG-185 (A2): mismo limite que el panel web. Se revisa ANTES de mirar
+        // la contrasena, para que agotar los intentos sirva de freno real.
+        if ($limite->bloqueado($request->email, $request->ip())) {
+            return response()->json([
+                'message' => $limite->mensaje($limite->segundosRestantes($request->email, $request->ip())),
+            ], 429);
+        }
+
         $usuario = Usuario::where('email', $request->email)->first();
 
         if (!$usuario || !Hash::check($request->password, $usuario->password)) {
+            $limite->registrarFallo($request->email, $request->ip());
+
             throw ValidationException::withMessages([
                 'email' => ['Las credenciales son incorrectas.'],
             ]);
         }
+
+        // Entro bien: los fallos anteriores ya no cuentan.
+        $limite->limpiar($request->email, $request->ip());
 
         if ($usuario->estado !== 'activo') {
             throw ValidationException::withMessages([
