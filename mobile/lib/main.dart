@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'providers/auth_provider.dart';
 import 'providers/carrito_revendedor_provider.dart';
+import 'screens/cambiar_password_screen.dart';
 import 'screens/inicio_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/api_service.dart';
@@ -65,6 +66,8 @@ class _Raiz extends StatelessWidget {
     final sinConexion = context.select<AuthProvider, bool>((auth) => auth.sinConexion);
     final haySesion = context.select<AuthProvider, bool>((auth) => auth.haySesion);
     final sinAcceso = context.select<AuthProvider, bool>((auth) => auth.sinAcceso);
+    final debeCambiarPassword =
+        context.select<AuthProvider, bool>((auth) => auth.debeCambiarPassword);
 
     // Mientras se revisa el token guardado, para que no parpadee el login
     // antes de entrar solo.
@@ -76,6 +79,13 @@ class _Raiz extends StatelessWidget {
 
     // Va antes que la pantalla de inicio: sin distribuidora no se entra.
     if (sinAcceso) return const _SinAccesoScreen();
+
+    // TG-193: con una contraseña temporal puesta, lo único que puede hacer es
+    // cambiarla. El servidor también lo impide (middleware DebeCambiarPassword),
+    // así que de nada serviría saltarse esta pantalla.
+    if (haySesion && debeCambiarPassword) {
+      return const CambiarPasswordScreen(obligatorio: true);
+    }
 
     if (haySesion) return const InicioScreen();
 

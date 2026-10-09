@@ -23,6 +23,8 @@ class Usuario extends Authenticatable implements CanResetPassword
         'password',
         'telefono',
         'estado',
+        // TG-193: contraseña temporal que hay que cambiar al entrar.
+        'debe_cambiar_password',
     ];
 
     protected $hidden = [
@@ -31,7 +33,8 @@ class Usuario extends Authenticatable implements CanResetPassword
     ];
 
     protected $casts = [
-        'email_verified_at' => 'datetime',
+        'email_verified_at'     => 'datetime',
+        'debe_cambiar_password' => 'boolean',
     ];
 
     /** Ver contacto(): se consulta una sola vez por instancia. */

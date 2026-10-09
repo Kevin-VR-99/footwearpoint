@@ -14,7 +14,12 @@ import '../widgets/fp_componentes.dart';
 /// que la app no tiene que hacer nada más. Al terminar regresa al perfil con
 /// el mensaje del servidor, que el perfil muestra abajo.
 class CambiarPasswordScreen extends StatefulWidget {
-  const CambiarPasswordScreen({super.key});
+  const CambiarPasswordScreen({super.key, this.obligatorio = false});
+
+  /// TG-193: cuando la distribuidora le puso una contraseña temporal, esta
+  /// pantalla es lo único que puede usar: no hay botón para regresar y al
+  /// terminar se queda dentro de la app, no vuelve al perfil.
+  final bool obligatorio;
 
   @override
   State<CambiarPasswordScreen> createState() => _CambiarPasswordScreenState();
@@ -70,6 +75,15 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
       );
 
       if (!mounted) return;
+
+      if (widget.obligatorio) {
+        // Ya tiene una contraseña suya: se levanta el candado y la app sigue
+        // sola a la pantalla de inicio.
+        context.read<AuthProvider>().confirmarPasswordCambiada();
+
+        return;
+      }
+
       navegador.pop(respuesta['message'] as String? ?? 'Contraseña actualizada.');
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -97,94 +111,123 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Cambiar contraseña'), bottom: const FpBordeMarca()),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: AutofillGroup(
-                child: Form(
-                  key: _formulario,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: FpColores.primario.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: FpColores.primario.withValues(alpha: 0.15)),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.info_outline, size: 20, color: FpColores.primario),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Al cambiarla se cerrará tu sesión en tus otros dispositivos. '
-                                'En este seguirás dentro.',
-                                style: tema.textTheme.bodyMedium?.copyWith(
-                                  color: tema.colorScheme.onSurfaceVariant,
+    return PopScope(
+      // En modo obligatorio no se puede salir con el botón de atrás.
+      canPop: !widget.obligatorio,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Cambiar contraseña'),
+          automaticallyImplyLeading: !widget.obligatorio,
+          bottom: const FpBordeMarca(),
+        ),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: AutofillGroup(
+                  child: Form(
+                    key: _formulario,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // TG-193: explica por qué no puede usar la app todavía.
+                        if (widget.obligatorio) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              color: FpColores.insigniaAvisoFondo,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.key_outlined, color: FpColores.insigniaAvisoTexto),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Tu distribuidora te dio una contraseña temporal. '
+                                    'Cámbiala por una tuya para poder usar la app.',
+                                    style: TextStyle(color: FpColores.insigniaAvisoTexto),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: FpColores.primario.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: FpColores.primario.withValues(alpha: 0.15)),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.info_outline, size: 20, color: FpColores.primario),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Al cambiarla se cerrará tu sesión en tus otros dispositivos. '
+                                  'En este seguirás dentro.',
+                                  style: tema.textTheme.bodyMedium?.copyWith(
+                                    color: tema.colorScheme.onSurfaceVariant,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      _CampoPassword(
-                        controller: _actual,
-                        etiqueta: 'Contraseña actual',
-                        habilitado: !_guardando,
-                        autofill: AutofillHints.password,
-                        validator: (valor) => (valor == null || valor.isEmpty)
-                            ? 'Escribe tu contraseña actual.'
-                            : null,
-                        errorServidor: _erroresServidor['password_actual']?.first,
-                        alCambiar: () => _limpiarErrorServidor('password_actual'),
-                      ),
-                      const SizedBox(height: 16),
-                      _CampoPassword(
-                        controller: _nueva,
-                        etiqueta: 'Nueva contraseña',
-                        ayuda: 'Mínimo 8 caracteres.',
-                        habilitado: !_guardando,
-                        autofill: AutofillHints.newPassword,
-                        validator: _validarNueva,
-                        errorServidor: _erroresServidor['password']?.first,
-                        alCambiar: () => _limpiarErrorServidor('password'),
-                      ),
-                      const SizedBox(height: 16),
-                      _CampoPassword(
-                        controller: _confirmacion,
-                        etiqueta: 'Confirma la nueva contraseña',
-                        habilitado: !_guardando,
-                        autofill: AutofillHints.newPassword,
-                        validator: _validarConfirmacion,
-                        alEnviar: _guardar,
-                      ),
-                      if (_error != null) ...[
+                        const SizedBox(height: 24),
+                        _CampoPassword(
+                          controller: _actual,
+                          etiqueta: 'Contraseña actual',
+                          habilitado: !_guardando,
+                          autofill: AutofillHints.password,
+                          validator: (valor) =>
+                              (valor == null || valor.isEmpty) ? 'Escribe tu contraseña actual.' : null,
+                          errorServidor: _erroresServidor['password_actual']?.first,
+                          alCambiar: () => _limpiarErrorServidor('password_actual'),
+                        ),
                         const SizedBox(height: 16),
-                        AvisoError(mensaje: _error!),
+                        _CampoPassword(
+                          controller: _nueva,
+                          etiqueta: 'Nueva contraseña',
+                          ayuda: 'Mínimo 8 caracteres.',
+                          habilitado: !_guardando,
+                          autofill: AutofillHints.newPassword,
+                          validator: _validarNueva,
+                          errorServidor: _erroresServidor['password']?.first,
+                          alCambiar: () => _limpiarErrorServidor('password'),
+                        ),
+                        const SizedBox(height: 16),
+                        _CampoPassword(
+                          controller: _confirmacion,
+                          etiqueta: 'Confirma la nueva contraseña',
+                          habilitado: !_guardando,
+                          autofill: AutofillHints.newPassword,
+                          validator: _validarConfirmacion,
+                          alEnviar: _guardar,
+                        ),
+                        if (_error != null) ...[const SizedBox(height: 16), AvisoError(mensaje: _error!)],
+                        const SizedBox(height: 24),
+                        FilledButton(
+                          onPressed: _guardando ? null : _guardar,
+                          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                          child: _guardando
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Cambiar contraseña'),
+                        ),
                       ],
-                      const SizedBox(height: 24),
-                      FilledButton(
-                        onPressed: _guardando ? null : _guardar,
-                        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                        child: _guardando
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Cambiar contraseña'),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
