@@ -4,6 +4,7 @@ use App\Models\DistribuidoraStaff;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Usuario;
 use App\Services\Distribuidora\ActivarCuentaAccesoAction;
+use App\Services\Auth\EnviarEnlaceRestablecerPanelAction;
 use App\Services\Distribuidora\GestionarRevendedorAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,10 @@ new class extends Component {
     public ?string $empleado_telefono = null;
     public string $empleado_password = '';
     public string $empleado_password_confirmation = '';
+
+    // TG-192: aviso del envio del enlace de restablecimiento.
+    public ?string $avisoEnlace = null;
+    public bool $avisoEnlaceEsError = false;
 
     public $revendedores = [];
     public ?int $revendedorEditandoId = null;
@@ -146,6 +151,35 @@ new class extends Component {
         $this->limpiarAccesoRevendedor();
         $this->revendedor_cuenta_email_actual = $afiliacion->revendedor->usuario?->email;
         $this->mostrandoFormularioRevendedor = true;
+    }
+
+    /**
+     * TG-192 (A3): le manda al revendedor el enlace para que se ponga una
+     * contrasena nueva. Antes, quien olvidaba la suya se quedaba fuera: el
+     * panel no podia hacer nada por el.
+     */
+    public function enviarEnlaceRevendedor(int $id): void
+    {
+        // findOrFail respeta el scope de la distribuidora: una afiliacion de
+        // otra tienda ni siquiera se encuentra.
+        $afiliacion = RevendedorDistribuidora::with('revendedor.usuario')->findOrFail($id);
+        $cuenta = $afiliacion->revendedor->usuario;
+
+        if (! $cuenta) {
+            $this->avisoEnlace = 'Ese cliente mayorista todavia no tiene cuenta para la app.';
+            $this->avisoEnlaceEsError = true;
+
+            return;
+        }
+
+        try {
+            $this->avisoEnlace = app(EnviarEnlaceRestablecerPanelAction::class)
+                ->ejecutar($cuenta, 'revendedor', (int) $afiliacion->revendedor_id);
+            $this->avisoEnlaceEsError = false;
+        } catch (ValidationException $e) {
+            $this->avisoEnlace = $e->errors()['enlace'][0] ?? 'No se pudo enviar el enlace.';
+            $this->avisoEnlaceEsError = true;
+        }
     }
 
     public function cancelarFormularioRevendedor(): void
@@ -321,6 +355,12 @@ new class extends Component {
                     + Afiliar revendedor
                 </button>
             </div>
+            {{-- TG-192: resultado del envio del enlace de restablecimiento. --}}
+            @if ($avisoEnlace)
+                <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ $avisoEnlaceEsError ? 'border-fp-danger/20 bg-fp-danger-soft text-fp-badge-danger-fg' : 'border-emerald-200 bg-fp-badge-success-bg text-fp-badge-success-fg' }}">
+                    {{ $avisoEnlace }}
+                </div>
+            @endif
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-slate-500 border-b">
@@ -358,6 +398,12 @@ new class extends Component {
                                 @endif
                             </td>
                             <td class="py-2 text-right">
+                                {{-- TG-192: solo tiene sentido si ya tiene cuenta en la app. --}}
+                                @if ($afiliacion->revendedor->usuario_id)
+                                    <button type="button" wire:click="enviarEnlaceRevendedor({{ $afiliacion->id }})"
+                                        wire:loading.attr="disabled"
+                                        class="text-fp-primary text-xs font-medium mr-3">Enviar enlace</button>
+                                @endif
                                 <button type="button" wire:click="abrirFormularioEditarRevendedor({{ $afiliacion->id }})"
                                     class="text-fp-primary text-xs font-medium">Editar</button>
                             </td>
