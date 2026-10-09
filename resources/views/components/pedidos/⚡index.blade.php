@@ -42,21 +42,17 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
 ?>
 
 <div>
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-            <h2 class="text-2xl font-bold text-slate-900">Pedidos</h2>
-            <p class="text-sm text-slate-500 mt-1">Listado de pedidos de la distribuidora</p>
-        </div>
+    <x-panel.encabezado titulo="Pedidos" subtitulo="Listado de pedidos de la distribuidora" class="mb-6">
+        <x-slot:acciones>
+            <x-panel.boton :href="route('pedidos.create')" class="shrink-0">
+                Nuevo pedido
+            </x-panel.boton>
+        </x-slot:acciones>
+    </x-panel.encabezado>
 
-        <a href="{{ route('pedidos.create') }}"
-           class="inline-flex items-center justify-center rounded-lg bg-[#2563EB] text-white text-sm font-medium px-4 py-2 hover:bg-blue-700 shrink-0">
-            Nuevo pedido
-        </a>
-    </div>
-
-    <div class="mb-4 flex flex-wrap gap-3">
+    <x-panel.filtros class="mb-4">
         <select wire:model.live="filtro_estado"
-                class="rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]">
+                class="rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
             <option value="">Todos los estados</option>
             <option value="borrador">Borrador</option>
             <option value="descartado">Descartado</option>
@@ -77,16 +73,15 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
         </select>
 
         <select wire:model.live="filtro_tipo"
-                class="rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]">
+                class="rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
             <option value="">Todos los tipos</option>
             <option value="cliente_directo">Cliente directo</option>
             <option value="revendedor">Cliente mayorista</option>
         </select>
-    </div>
+    </x-panel.filtros>
 
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <table class="min-w-full text-sm">
-            <thead class="bg-slate-50 text-left text-slate-500">
+    <x-panel.tabla>
+        <x-slot:encabezado>
                 <tr>
                     <th class="px-4 py-3 font-medium">Folio</th>
                     <th class="px-4 py-3 font-medium">Tipo</th>
@@ -95,8 +90,7 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
                     <th class="px-4 py-3 font-medium text-right">Total</th>
                     <th class="px-4 py-3 font-medium"></th>
                 </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
+        </x-slot:encabezado>
                 @forelse ($this->pedidos as $p)
                     <tr class="hover:bg-slate-50/80">
                         <td class="px-4 py-3 font-medium text-slate-900">{{ $p->folio }}</td>
@@ -116,19 +110,13 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
                         </td>
                         <td class="px-4 py-3 text-right">
                             <a href="{{ route('pedidos.show', $p->id) }}"
-                               class="text-[#2563EB] hover:underline text-sm">
+                               class="text-fp-primary hover:underline text-sm">
                                 Ver
                             </a>
                         </td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="6" class="px-4 py-10 text-center text-slate-500">
-                            No hay pedidos.
-                        </td>
-                    </tr>
+                    <x-panel.vacio colspan="6" mensaje="No hay pedidos." />
                 @endforelse
-            </tbody>
-        </table>
-    </div>
+    </x-panel.tabla>
 </div>
