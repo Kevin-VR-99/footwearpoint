@@ -2,12 +2,15 @@
 
 namespace App\Providers;
 
+use App\Services\Auth\ExpiracionDeSesion;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Services\Notificacion\Push\EnviadorPush;
 use App\Http\Middleware\SoloPersonalPanel;
 use App\Services\Notificacion\Push\EnviadorPushFirebase;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\Sanctum;
 use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
@@ -41,5 +44,15 @@ class AppServiceProvider extends ServiceProvider
         // está el componente tenía ese middleware: el login y el panel del
         // admin general no lo tienen, así que no les cambia nada.
         Livewire::addPersistentMiddleware([SoloPersonalPanel::class]);
+
+        // TG-187 (A5): la sesión de la app caduca por inactividad y tiene un
+        // tope de vida. Se engancha aquí, en el guard de Sanctum, para que
+        // valga en TODAS las rutas de la API de una sola vez y sin depender
+        // del orden de los middlewares (ver ExpiracionDeSesion).
+        Sanctum::authenticateAccessTokensUsing(
+            fn (PersonalAccessToken $token, bool $valido) => $this->app
+                ->make(ExpiracionDeSesion::class)
+                ->sigueValido($token, $valido)
+        );
     }
 }
