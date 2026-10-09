@@ -27,7 +27,11 @@ Route::get('/ping', function () {
 */
 
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
+    // TG-185: segunda capa. El límite fino (5 intentos por correo + IP) vive
+    // en LimiteIntentosLogin; este tope por IP evita que alguien pruebe
+    // muchas cuentas distintas desde la misma máquina.
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:20,1');
     Route::post('/logout', [AuthController::class, 'logout'])
         ->middleware('auth:sanctum');
 
