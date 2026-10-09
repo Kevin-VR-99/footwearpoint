@@ -22,6 +22,7 @@
                     setPermissionsTeamId(0);
                     $esAdminGeneral = auth()->user()->hasRole('admin_general');
                     if (!$esAdminGeneral) {
+                        // TG-224: sin scope a propósito, aquí se RESUELVE la distribuidora del usuario (ver Tenant::desdeStaff).
                         $staff = \App\Models\DistribuidoraStaff::withoutGlobalScopes()
                             ->where('usuario_id', auth()->id())
                             ->where('estado', 'activo')

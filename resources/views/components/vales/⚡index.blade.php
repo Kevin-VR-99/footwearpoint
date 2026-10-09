@@ -129,7 +129,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 <select wire:model.live="propietario_tipo"
                         class="w-full rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]">
                     <option value="cliente_directo">Cliente directo</option>
-                    <option value="revendedor">Revendedor</option>
+                    <option value="revendedor">Cliente mayorista</option>
                 </select>
             </div>
 
@@ -146,7 +146,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 @else
                     <select wire:model="propietario_id"
                             class="w-full rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]">
-                        <option value="">— Seleccionar revendedor —</option>
+                        <option value="">— Seleccionar cliente mayorista —</option>
                         @foreach ($this->revendedores as $r)
                             <option value="{{ $r->id }}">
                                 {{ $r->revendedor?->nombre ?? 'Revendedor #'.$r->id }}
@@ -190,7 +190,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                     class="rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]">
                 <option value="">Todos</option>
                 <option value="cliente_directo">Solo clientes</option>
-                <option value="revendedor">Solo revendedores</option>
+                <option value="revendedor">Solo clientes mayoristas</option>
             </select>
         </div>
 

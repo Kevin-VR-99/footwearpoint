@@ -22,6 +22,7 @@ final class FolioPago
     {
         $prefijo = 'PAG-'.now()->format('Ymd').'-';
 
+        // TG-224: sin scope a propósito (ver el bloque de arriba).
         $ultimo = Pago::withoutGlobalScopes()
             ->where('distribuidora_id', $distribuidoraId)
             ->where('folio', 'like', $prefijo.'%')

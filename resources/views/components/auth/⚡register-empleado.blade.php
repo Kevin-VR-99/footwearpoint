@@ -2,6 +2,7 @@
 
 use App\Models\DistribuidoraStaff;
 use App\Models\Usuario;
+use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -26,6 +27,7 @@ new #[Layout('layouts.guest')] #[Title('Registrar empleado — FootwearPoint')] 
             return $this->redirect(route('login'), navigate: true);
         }
 
+        // TG-224: sin scope a propósito, esta consulta RESUELVE la distribuidora del usuario (ver Tenant::desdeStaff).
         setPermissionsTeamId(
             DistribuidoraStaff::withoutGlobalScopes()
                 ->where('usuario_id', $user->id)
@@ -66,6 +68,7 @@ new #[Layout('layouts.guest')] #[Title('Registrar empleado — FootwearPoint')] 
 
         $admin = Auth::user();
 
+        // TG-224: sin scope a propósito, esta consulta RESUELVE la distribuidora del usuario (ver Tenant::desdeStaff).
         $staffAdmin = DistribuidoraStaff::withoutGlobalScopes()
             ->where('usuario_id', $admin->id)
             ->first();
@@ -86,13 +89,13 @@ new #[Layout('layouts.guest')] #[Title('Registrar empleado — FootwearPoint')] 
                 'estado'   => 'activo',
             ]);
 
-            DistribuidoraStaff::withoutGlobalScopes()->create([
+            Tenant::forzar($distribuidoraId, fn () => DistribuidoraStaff::create([
                 'distribuidora_id' => $distribuidoraId,
                 'usuario_id'       => $usuario->id,
                 'tipo'             => 'empleado',
                 'estado'           => 'activo',
                 'fecha_alta'       => now(),
-            ]);
+            ]));
 
             setPermissionsTeamId($distribuidoraId);
             $usuario->assignRole('empleado');

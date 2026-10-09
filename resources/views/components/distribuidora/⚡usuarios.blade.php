@@ -111,13 +111,13 @@ new class extends Component {
                 'estado' => 'activo',
             ]);
 
-            DistribuidoraStaff::withoutGlobalScopes()->create([
+            Tenant::forzar($distribuidoraId, fn () => DistribuidoraStaff::create([
                 'distribuidora_id' => $distribuidoraId,
                 'usuario_id' => $usuario->id,
                 'tipo' => 'empleado',
                 'estado' => 'activo',
                 'fecha_alta' => now(),
-            ]);
+            ]));
 
             setPermissionsTeamId($distribuidoraId);
             $usuario->assignRole('empleado');
@@ -376,10 +376,10 @@ new class extends Component {
     <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioRevendedor)
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-sm font-semibold text-slate-700">Revendedores</h2>
+                <h2 class="text-sm font-semibold text-slate-700">Clientes mayoristas</h2>
                 <button type="button" wire:click="abrirFormularioAfiliarRevendedor"
                     class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
-                    + Afiliar revendedor
+                    + Afiliar cliente mayorista
                 </button>
             </div>
             {{-- TG-192: resultado del envio del enlace de restablecimiento. --}}

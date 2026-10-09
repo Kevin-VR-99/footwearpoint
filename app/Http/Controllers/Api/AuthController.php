@@ -238,7 +238,7 @@ class AuthController extends Controller
         try {
             $admin = $request->user();
 
-            // Sin Global Scope para evitar el crash
+            // TG-224: sin scope a propósito, esta consulta RESUELVE la distribuidora del usuario (ver Tenant::desdeStaff).
             $staffAdmin = \App\Models\DistribuidoraStaff::withoutGlobalScopes()
                 ->where('usuario_id', $admin->id)
                 ->first();
@@ -259,13 +259,13 @@ class AuthController extends Controller
                 'estado'   => 'activo',
             ]);
 
-            \App\Models\DistribuidoraStaff::withoutGlobalScopes()->create([
+            Tenant::forzar($distribuidoraId, fn () => \App\Models\DistribuidoraStaff::create([
                 'distribuidora_id' => $distribuidoraId,
                 'usuario_id'       => $usuario->id,
                 'tipo'             => 'empleado',
                 'estado'           => 'activo',
                 'fecha_alta'       => now(),
-            ]);
+            ]));
 
             setPermissionsTeamId($distribuidoraId);
             $usuario->assignRole('empleado');

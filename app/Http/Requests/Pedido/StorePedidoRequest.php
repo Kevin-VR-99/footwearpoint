@@ -32,8 +32,8 @@ class StorePedidoRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'tipo.required' => 'Indica si el pedido es de cliente_directo o revendedor.',
-            'tipo.in' => 'tipo debe ser cliente_directo o revendedor.',
+            'tipo.required' => 'Indica si el pedido es de cliente directo o de cliente mayorista.',
+            'tipo.in' => 'El tipo debe ser cliente directo (cliente_directo) o cliente mayorista (revendedor).',
             'propietario_id.required' => 'El propietario es obligatorio.',
             'sucursal_id.required' => 'La sucursal es obligatoria.',
         ];

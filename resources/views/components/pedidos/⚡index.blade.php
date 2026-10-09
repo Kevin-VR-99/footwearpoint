@@ -80,7 +80,7 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
                 class="rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]">
             <option value="">Todos los tipos</option>
             <option value="cliente_directo">Cliente directo</option>
-            <option value="revendedor">Revendedor</option>
+            <option value="revendedor">Cliente mayorista</option>
         </select>
     </div>
 
