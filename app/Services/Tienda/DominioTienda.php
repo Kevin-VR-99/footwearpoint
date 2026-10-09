@@ -65,7 +65,8 @@ class DominioTienda
     }
 
     /**
-     * Patrones de host aceptados (TrustHosts). Vacío = se acepta cualquiera,
+     * Patrones de host aceptados (TrustHosts): dominio base y subdominios,
+     * healthcheck, host de APP_URL, RAILWAY_PUBLIC_DOMAIN y FOOTWEARPOINT_HOSTS_EXTRA. Vacío = se acepta cualquiera,
      * que es lo que pasa sin dominio base configurado.
      *
      * @return list<string>
@@ -85,7 +86,13 @@ class DominioTienda
             $hosts[] = '^'.preg_quote($principal).'$';
         }
 
-        return $hosts;
+        foreach ([config('app.railway_dominio'), ...(array) config('app.hosts_extra', [])] as $extra) {
+            if (is_string($extra) && $extra !== '') {
+                $hosts[] = '^'.preg_quote($extra).'$';
+            }
+        }
+
+        return array_values(array_unique($hosts));
     }
 
     /** Dirección del dominio principal (APP_URL), sin la diagonal final. */

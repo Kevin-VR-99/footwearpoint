@@ -69,6 +69,18 @@ return [
 
     'dominio_base' => strtolower(trim((string) env('FOOTWEARPOINT_DOMINIO', ''), " .\t\n\r\0\x0B")) ?: null,
 
+    // Dirección pública de Railway (la pone Railway sola, sin esquema). La
+    // APK y webhooks viejos la siguen usando: se acepta como host de confianza.
+    'railway_dominio' => strtolower(trim((string) env('RAILWAY_PUBLIC_DOMAIN', ''), " .\t\n\r\0\x0B")) ?: null,
+
+    // Otros hosts aceptados, separados por coma (sin esquema). Railway pone
+    // RAILWAY_PUBLIC_DOMAIN en el dominio propio en cuanto existe, así que la
+    // dirección *.up.railway.app (APK, webhooks viejos) va aquí.
+    'hosts_extra' => array_values(array_filter(array_map(
+        fn ($h) => strtolower(trim($h, " .\t\n\r\0\x0B")),
+        explode(',', (string) env('FOOTWEARPOINT_HOSTS_EXTRA', ''))
+    ))),
+
     // Nombres que ninguna distribuidora puede usar como subdominio.
     'subdominios_reservados' => [
         'www', 'api', 'admin', 'panel', 'app', 'mail', 'correo', 'smtp', 'imap', 'pop', 'ftp',
