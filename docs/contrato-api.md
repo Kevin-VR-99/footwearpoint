@@ -687,7 +687,8 @@ La nueva sigue las mismas reglas que el cambio por enlace: mínimo 8 caracteres 
 
 **`slug` y `url_tienda`** (TG-234):
 
-- `url_tienda` es la dirección **completa** (absoluta) de la tienda pública de la distribuidora. **La app la abre tal cual** (navegador o WebView), sin armarla a mano con el `slug`: cuando cada distribuidora tenga su propio subdominio (G12/G13), el servidor cambiará esta dirección y la app no tendrá que cambiar nada.
+- `url_tienda` es la dirección **completa** (absoluta) de la tienda pública de la distribuidora. **La app la abre tal cual** (navegador o WebView), sin armarla a mano con el `slug`.
+- Desde TG-232 (G12/G13), con el dominio de tiendas configurado en el servidor, `url_tienda` es **`https://{subdominio}.footwearpoint.app/`** (el subdominio de la distribuidora o, si no tiene uno válido, su `slug`). Sin ese dominio sigue siendo `…/tienda/{slug}`. La app no tiene que cambiar nada: siempre abre lo que llegue. Las direcciones viejas `/tienda/{slug}` redirigen solas a la nueva.
 - `url_tienda` viene en **`null`** si la distribuidora no está activa o su `slug` no es válido. En ese caso la app **no muestra** el botón "Ver tienda". Hoy el marketplace solo lista activas, así que lo normal es que traiga dirección, pero la app debe aguantar el `null`.
 - `slug` es el identificador de la tienda (por ejemplo, `calzados-ramirez`). Sirve para identificarla, **no** para armar la dirección.
 
