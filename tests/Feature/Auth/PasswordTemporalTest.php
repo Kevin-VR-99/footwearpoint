@@ -3,6 +3,8 @@
 namespace Tests\Feature\Auth;
 
 use App\Http\Middleware\DebeCambiarPassword;
+use App\Services\Auth\CuentaEnVariasDistribuidoras;
+use App\Services\Auth\GenerarPasswordTemporalAction;
 use App\Models\Auditoria;
 use App\Models\ClienteDirecto;
 use App\Models\RevendedorDistribuidora;
@@ -10,7 +12,11 @@ use App\Models\Usuario;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -58,11 +64,14 @@ class PasswordTemporalTest extends TestCase
     /** Genera la temporal desde el panel y regresa la que se le mostro al admin. */
     private function generarDesdeElPanel(): string
     {
-        $componente = Livewire::test('distribuidora.usuarios')
+        Livewire::test('distribuidora.usuarios')
             ->call('generarPasswordTemporalRevendedor', $this->afiliacionDeMaria()->id)
-            ->assertSet('avisoEnlaceEsError', false);
+            ->assertSet('avisoEnlaceEsError', false)
+            // La contrasena NO se queda en una propiedad del componente: esas
+            // viajan al navegador en cada accion siguiente (lo reporto Gaby).
+            ->assertSet('avisoEnlace', null);
 
-        $aviso = $componente->get('avisoEnlace');
+        $aviso = session('aviso_password_temporal');
 
         // El aviso trae "...: LACLAVE. Anótala ahora..."
         preg_match('/: ([A-Za-z0-9]{10})\./', $aviso, $partes);
@@ -177,7 +186,9 @@ class PasswordTemporalTest extends TestCase
         $this->assertSame('revendedor', $registro->entidad_tipo);
 
         // La contraseña NUNCA se guarda en la bitácora.
-        $this->assertSame(['email' => 'maria.lopez@revendedor.test'], $registro->datos_nuevos);
+        // assertEquals y no assertSame: MySQL guarda el JSON reordenando las
+        // llaves por longitud, asi que el orden no es de fiar.
+        $this->assertEquals(['email' => 'maria.lopez@revendedor.test'], $registro->datos_nuevos);
     }
 
     public function test_tambien_funciona_con_un_cliente_directo(): void
@@ -191,6 +202,146 @@ class PasswordTemporalTest extends TestCase
             ->call('generarPasswordTemporalCliente', $cliente->id)
             ->assertSet('avisoEnlaceEsError', false);
 
+        $this->assertStringContainsString('Contraseña temporal', (string) session('aviso_password_temporal'));
+
         $this->assertTrue((bool) $cuenta->fresh()->debe_cambiar_password);
+    }
+
+    // ------------------------------------------------------------------
+    // Cuentas que comparten dos distribuidoras (hallazgo de seguridad)
+    // ------------------------------------------------------------------
+
+    /** Da de alta a la misma persona en la otra distribuidora del seeder. */
+    private function afiliarMariaATambienOtraDistribuidora(string $estado = 'activo'): void
+    {
+        $otra = DB::table('distribuidoras')
+            ->where('nombre_comercial', 'Boutique del Calzado')
+            ->value('id');
+
+        // Se busca por la cuenta y no por el correo: al activarle el acceso,
+        // el correo vive en usuarios y el del contacto queda vacio.
+        $revendedorId = DB::table('revendedores')
+            ->where('usuario_id', $this->cuentaDeMaria()->id)
+            ->value('id');
+
+        DB::table('revendedor_distribuidora')->insert([
+            'distribuidora_id' => $otra,
+            'revendedor_id'    => $revendedorId,
+            'codigo_interno'   => 'REV-OTRA',
+            'estado'           => $estado,
+            'fecha_alta'       => now()->toDateString(),
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+    }
+
+    public function test_no_se_permite_si_la_cuenta_la_usa_otra_distribuidora(): void
+    {
+        // El riesgo: la cuenta es UNA sola. Si la distribuidora A le pone una
+        // contrasena temporal, con esa contrasena puede entrar como esa
+        // persona y ver lo suyo con la distribuidora B.
+        $this->afiliarMariaATambienOtraDistribuidora();
+
+        $this->entrarComoAdmin();
+        $antes = $this->cuentaDeMaria()->password;
+
+        Livewire::test('distribuidora.usuarios')
+            ->call('generarPasswordTemporalRevendedor', $this->afiliacionDeMaria()->id)
+            ->assertSet('avisoEnlaceEsError', true)
+            ->assertSet('avisoEnlace', CuentaEnVariasDistribuidoras::MENSAJE);
+
+        $this->assertNull(session('aviso_password_temporal'), 'No debio mostrarse ninguna contrasena.');
+
+        // Y sobre todo: la cuenta quedo intacta.
+        $cuenta = $this->cuentaDeMaria()->fresh();
+        $this->assertSame($antes, $cuenta->password, 'Le cambiaron la contrasena de todos modos.');
+        $this->assertFalse((bool) $cuenta->debe_cambiar_password);
+    }
+
+    public function test_no_se_puede_saltar_la_regla_llamando_a_la_accion_directo(): void
+    {
+        // La revision vive en la accion, no solo en la pantalla.
+        $this->afiliarMariaATambienOtraDistribuidora();
+        $this->entrarComoAdmin();
+
+        $this->expectException(ValidationException::class);
+
+        app(GenerarPasswordTemporalAction::class)
+            ->ejecutar($this->cuentaDeMaria(), 'revendedor', 1);
+    }
+
+    public function test_no_se_cierran_las_sesiones_de_una_cuenta_compartida(): void
+    {
+        $this->afiliarMariaATambienOtraDistribuidora();
+
+        $maria = $this->cuentaDeMaria();
+        $maria->createToken('celular');
+
+        $this->entrarComoAdmin();
+
+        Livewire::test('distribuidora.usuarios')
+            ->call('generarPasswordTemporalRevendedor', $this->afiliacionDeMaria()->id)
+            ->assertSet('avisoEnlaceEsError', true);
+
+        // Si se le hubieran borrado, la habrian sacado de la app de la otra
+        // distribuidora sin tener por que.
+        $this->assertSame(1, $this->cuentaDeMaria()->fresh()->tokens()->count());
+    }
+
+    public function test_una_afiliacion_inactiva_en_otra_distribuidora_no_estorba(): void
+    {
+        // Ya no opera con la otra distribuidora: ahi no hay nada que proteger.
+        $this->afiliarMariaATambienOtraDistribuidora('inactivo');
+
+        $this->entrarComoAdmin();
+        $password = $this->generarDesdeElPanel();
+
+        $this->assertTrue(Hash::check($password, $this->cuentaDeMaria()->fresh()->password));
+    }
+
+    public function test_tampoco_para_un_cliente_dado_de_alta_en_dos_distribuidoras(): void
+    {
+        $cuenta = Usuario::where('email', 'jose.hernandez@cliente.test')->firstOrFail();
+        $cliente = ClienteDirecto::withoutGlobalScopes()->where('usuario_id', $cuenta->id)->firstOrFail();
+
+        $otra = DB::table('distribuidoras')
+            ->where('nombre_comercial', 'Boutique del Calzado')
+            ->value('id');
+
+        DB::table('clientes_directos')->insert([
+            'distribuidora_id' => $otra,
+            'usuario_id'       => $cuenta->id,
+            'nombre'           => 'Jose Hernandez',
+            'telefono'         => '9635554444',
+            'email'            => 'jose.hernandez@cliente.test',
+            'estado'           => 'activo',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $this->entrarComoAdmin();
+
+        Livewire::test('distribuidora.clientes')
+            ->call('generarPasswordTemporalCliente', $cliente->id)
+            ->assertSet('avisoEnlaceEsError', true)
+            ->assertSet('avisoEnlace', CuentaEnVariasDistribuidoras::MENSAJE);
+
+        $this->assertFalse((bool) $cuenta->fresh()->debe_cambiar_password);
+    }
+
+    public function test_el_enlace_por_correo_si_funciona_con_una_cuenta_compartida(): void
+    {
+        // Es la salida que se le ofrece al personal: el correo solo le llega
+        // al dueno de la cuenta, asi que no sirve para apropiarsela.
+        Notification::fake();
+
+        $this->afiliarMariaATambienOtraDistribuidora();
+        $this->entrarComoAdmin();
+
+        Livewire::test('distribuidora.usuarios')
+            ->call('enviarEnlaceRevendedor', $this->afiliacionDeMaria()->id)
+            ->assertSet('avisoEnlaceEsError', false);
+
+        Notification::assertSentTo($this->cuentaDeMaria(), ResetPassword::class);
     }
 }

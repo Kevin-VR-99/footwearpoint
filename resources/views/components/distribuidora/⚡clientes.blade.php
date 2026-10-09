@@ -106,11 +106,24 @@ new class extends Component {
             return;
         }
 
-        $password = app(GenerarPasswordTemporalAction::class)
-            ->ejecutar($cuenta, 'cliente_directo', (int) $entidadId);
+        try {
+            $password = app(GenerarPasswordTemporalAction::class)
+                ->ejecutar($cuenta, 'cliente_directo', (int) $entidadId);
+        } catch (ValidationException $e) {
+            // La cuenta la comparte otra distribuidora: solo queda el enlace.
+            $this->avisoEnlace = $e->errors()['password_temporal'][0]
+                ?? 'No se pudo generar la contraseña temporal.';
+            $this->avisoEnlaceEsError = true;
 
-        $this->avisoEnlace = 'Contraseña temporal para '.$cuenta->email.': '.$password
-            .'. Anótala ahora, no se vuelve a mostrar. Se le pedirá cambiarla al entrar.';
+            return;
+        }
+
+        // En la sesion y solo por esta respuesta: una propiedad publica
+        // del componente viajaria al navegador en cada accion siguiente.
+        session()->now('aviso_password_temporal', 'Contraseña temporal para '.$cuenta->email.': '.$password
+            .'. Anótala ahora, no se vuelve a mostrar. Se le pedirá cambiarla al entrar.');
+
+        $this->avisoEnlace = null;
         $this->avisoEnlaceEsError = false;
     }
 
@@ -205,6 +218,14 @@ new class extends Component {
                     class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">+ Nuevo cliente</button>
             </div>
             {{-- TG-192: resultado del envio del enlace de restablecimiento. --}}
+            {{-- La contrasena temporal se saca de la sesion, no de una propiedad
+                 del componente: esas viajan al navegador en cada accion
+                 posterior. Asi se ve una vez y no queda guardada en ningun lado. --}}
+            @if (session('aviso_password_temporal'))
+                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    {{ session('aviso_password_temporal') }}
+                </div>
+            @endif
             @if ($avisoEnlace)
                 <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ $avisoEnlaceEsError ? 'border-fp-danger/20 bg-fp-danger-soft text-fp-badge-danger-fg' : 'border-emerald-200 bg-fp-badge-success-bg text-fp-badge-success-fg' }}">
                     {{ $avisoEnlace }}
