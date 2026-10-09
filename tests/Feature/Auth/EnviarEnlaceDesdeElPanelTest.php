@@ -114,7 +114,8 @@ class EnviarEnlaceDesdeElPanelTest extends TestCase
         $this->assertNotNull($registro, 'No quedo el registro en la bitacora.');
         $this->assertSame($admin->id, $registro->usuario_id);
         $this->assertSame('revendedor', $registro->entidad_tipo);
-        $this->assertSame(['email' => 'maria.lopez@revendedor.test'], $registro->datos_nuevos);
+        // assertEquals y no assertSame: MySQL reordena las llaves del JSON.
+        $this->assertEquals(['email' => 'maria.lopez@revendedor.test'], $registro->datos_nuevos);
     }
 
     public function test_si_se_pidio_hace_poco_avisa_que_hay_que_esperar(): void
