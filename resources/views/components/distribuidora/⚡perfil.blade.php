@@ -2,6 +2,10 @@
 
 use App\Models\Distribuidora;
 use App\Services\Distribuidora\ActualizarPerfilDistribuidoraAction;
+use App\Services\Distribuidora\CambiarSubdominioAction;
+use App\Services\Tienda\DominioTienda;
+use App\Services\Tienda\EnlaceTienda;
+use Illuminate\Validation\ValidationException;
 use App\Support\Tenant;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -21,6 +25,10 @@ new class extends Component {
     /** TG-197 (G16): sus categorías del directorio, solo para ver (las asigna FootwearPoint). */
     public array $categoriasDirectorio = [];
 
+    /** TG-232 (E3-02): subdominio de su tienda y la dirección con la que se abre hoy. */
+    public string $subdominio = '';
+    public ?string $urlTienda = null;
+
     public function mount(): void
     {
         $distribuidora = Distribuidora::findOrFail(Tenant::id());
@@ -31,6 +39,8 @@ new class extends Component {
         $this->email_publico = $distribuidora->email_publico;
         $this->horario_publico = $distribuidora->horario_publico;
         $this->logotipo_url_actual = $distribuidora->logotipo_url;
+        $this->subdominio = (string) $distribuidora->subdominio;
+        $this->urlTienda = app(EnlaceTienda::class)->url($distribuidora);
         $this->categoriasDirectorio = $distribuidora->categoriasDirectorio()
             ->activas()
             ->orderBy('nombre')
@@ -60,6 +70,25 @@ new class extends Component {
         $this->logotipo = null;
         $this->mount();
         $this->dispatch('guardado', mensaje: 'Perfil actualizado correctamente.');
+    }
+
+    /** TG-232 (E3-02): solo el administrador de la distribuidora. */
+    public function guardarSubdominio(): void
+    {
+        abort_unless(auth()->user()?->hasRole('admin_distribuidora'), 403);
+
+        $distribuidora = Distribuidora::findOrFail(Tenant::id());
+
+        try {
+            app(CambiarSubdominioAction::class)->ejecutar($distribuidora, $this->subdominio);
+        } catch (ValidationException $e) {
+            $this->addError('subdominio', collect($e->errors())->flatten()->first());
+
+            return;
+        }
+
+        $this->mount();
+        $this->dispatch('guardado', mensaje: 'Subdominio actualizado correctamente.');
     }
 
 };
@@ -118,5 +147,25 @@ new class extends Component {
             <p class="text-xs text-fp-text-muted mt-1">Las asigna FootwearPoint. Si te falta alguna, comunícate con nosotros.</p>
         </div>
         <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar Cambios</button>
+    </form>
+
+    {{-- TG-232 (E3-02): subdominio de la tienda pública. --}}
+    <form wire:submit="guardarSubdominio" class="mt-6 rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 space-y-3 max-w-2xl">
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Subdominio de tu tienda</label>
+            <div class="flex items-center gap-2">
+                <input type="text" wire:model="subdominio" maxlength="63" autocomplete="off"
+                    class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                @if (DominioTienda::base())
+                    <span class="shrink-0 text-sm text-fp-text-muted">.{{ DominioTienda::base() }}</span>
+                @endif
+            </div>
+            @error('subdominio') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+            <p class="text-xs text-fp-text-muted mt-1">De 3 a 63 caracteres: letras minúsculas, números y guiones.</p>
+            @if ($urlTienda)
+                <p class="text-xs text-fp-text-muted mt-1">Tu tienda: <a href="{{ $urlTienda }}" target="_blank" rel="noopener" class="text-fp-primary hover:underline">{{ $urlTienda }}</a></p>
+            @endif
+        </div>
+        <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar subdominio</button>
     </form>
 </div>

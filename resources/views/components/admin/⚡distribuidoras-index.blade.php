@@ -4,6 +4,7 @@ use App\Exceptions\OperacionInvalidaException;
 use App\Models\CategoriaDirectorio;
 use App\Models\Distribuidora;
 use App\Models\PlanSuscripcion;
+use App\Rules\SubdominioValido;
 use App\Services\Distribuidora\AprobacionDistribuidoraException;
 use App\Services\Directorio\AsignarCategoriasDirectorioAction;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
@@ -128,6 +129,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         // Se normaliza antes de validar, para que formato y unicidad se
         // revisen sobre lo mismo que se va a guardar.
         $this->nuevo_rfc = CrearDistribuidoraAction::normalizarRfc($this->nuevo_rfc) ?? '';
+        // TG-232: el subdominio es un nombre DNS, siempre en minúsculas.
+        $this->nuevo_subdominio = strtolower(trim($this->nuevo_subdominio));
 
         $this->validate([
             'nuevo_nombre_comercial' => ['required', 'string', 'max:150'],
@@ -135,7 +138,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             // RFC mexicano: 12 caracteres persona moral, 13 persona física.
             'nuevo_rfc' => ['nullable', 'string', 'regex:/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/u', Rule::unique('distribuidoras', 'rfc')],
             'nuevo_slug' => ['required', 'string', 'max:120', 'unique:distribuidoras,slug', 'alpha_dash'],
-            'nuevo_subdominio' => ['nullable', 'string', 'max:80', 'alpha_dash', Rule::unique('distribuidoras', 'subdominio')],
+            'nuevo_subdominio' => ['nullable', 'string', new SubdominioValido(), Rule::unique('distribuidoras', 'subdominio')],
             'nuevo_email_publico' => ['nullable', 'email', 'max:190'],
             'nuevo_telefono_publico' => ['nullable', 'string', 'max:30'],
             'nuevo_direccion_publica' => ['nullable', 'string', 'max:300'],
@@ -155,8 +158,6 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             'nuevo_slug.max' => 'El slug no puede pasar de 120 caracteres.',
             'nuevo_slug.unique' => 'Ese slug ya lo usa otra distribuidora.',
             'nuevo_slug.alpha_dash' => 'El slug solo puede tener letras, números, guiones y guiones bajos.',
-            'nuevo_subdominio.max' => 'El subdominio no puede pasar de 80 caracteres.',
-            'nuevo_subdominio.alpha_dash' => 'El subdominio solo puede tener letras, números, guiones y guiones bajos.',
             'nuevo_subdominio.unique' => 'Ese subdominio ya lo usa otra distribuidora.',
             'nuevo_email_publico.email' => 'El email público no es válido.',
             'nuevo_email_publico.max' => 'El email público no puede pasar de 190 caracteres.',
