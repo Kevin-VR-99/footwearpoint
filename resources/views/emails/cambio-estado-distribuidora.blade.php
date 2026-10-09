@@ -25,14 +25,14 @@
 
         @case('suspendida')
             <p><strong>{{ $nombreDistribuidora }}</strong> fue suspendida en FootwearPoint.</p>
-            <p>Mientras siga suspendida, ni tu personal ni tus revendedores y clientes podrán usar el panel ni la app.
+            <p>Mientras siga suspendida, ni tu personal ni tus clientes (mayoristas y directos) podrán usar el panel ni la app.
                 Tu información se conserva.</p>
             <p>Comunícate con FootwearPoint para reactivarla.</p>
             @break
 
         @case('reactivada')
             <p><strong>{{ $nombreDistribuidora }}</strong> fue reactivada en FootwearPoint.</p>
-            <p>Tu personal, revendedores y clientes ya pueden volver a usar el panel y la app.</p>
+            <p>Tu personal y tus clientes (mayoristas y directos) ya pueden volver a usar el panel y la app.</p>
             <p><a href="{{ $urlLogin }}">Entrar a FootwearPoint</a></p>
             @break
 

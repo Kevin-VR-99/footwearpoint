@@ -305,7 +305,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 <label class="block text-sm text-slate-600 mb-1">Tipo</label>
                 <select wire:model.live="tipo" class="w-full rounded-lg border-slate-300 text-sm">
                     <option value="cliente_directo">Cliente directo</option>
-                    <option value="revendedor">Revendedor</option>
+                    <option value="revendedor">Cliente mayorista</option>
                 </select>
             </div>
 
