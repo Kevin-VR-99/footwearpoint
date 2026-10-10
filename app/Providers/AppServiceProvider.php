@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Anthropic\Client as Claude;
 use App\Mail\RestablecerPasswordMail;
+use App\Mail\VerificarCorreoMail;
 use App\Models\Usuario;
 use App\Services\Auth\ExpiracionDeSesion;
 use App\Services\Ia\LectorDeCatalogos;
@@ -13,6 +14,7 @@ use App\Services\Notificacion\Push\EnviadorPush;
 use App\Http\Middleware\SoloPersonalPanel;
 use App\Services\Notificacion\Push\EnviadorPushFirebase;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -85,6 +87,13 @@ class AppServiceProvider extends ServiceProvider
         // botón del panel (TG-192).
         ResetPassword::toMailUsing(
             fn (Usuario $usuario, string $token) => new RestablecerPasswordMail($usuario, $token)
+        );
+
+        // TG-189 (A11): igual que el anterior, el correo de verificación en
+        // español y con el nombre de FootwearPoint. La dirección la arma
+        // Laravel: viene firmada y con caducidad.
+        VerifyEmail::toMailUsing(
+            fn (Usuario $usuario, string $url) => new VerificarCorreoMail($usuario, $url)
         );
     }
 }

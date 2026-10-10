@@ -32,6 +32,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.team' => \App\Http\Middleware\SetTenantTeam::class,
             // TG-184: el panel web es solo para el personal.
             'solo.personal' => \App\Http\Middleware\SoloPersonalPanel::class,
+            // TG-240 (A11): enviar un pedido pide el correo confirmado.
+            'correo.verificado' => \App\Http\Middleware\CorreoVerificado::class,
             // TG-232 (G12/G13): la tienda por subdominio.
             'tienda.subdominio' => \App\Http\Middleware\ResolverTiendaPorSubdominio::class,
             'tienda.redirigir' => \App\Http\Middleware\RedirigirTiendaAlSubdominio::class,
