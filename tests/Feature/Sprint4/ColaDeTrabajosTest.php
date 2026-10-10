@@ -56,8 +56,8 @@ class ColaDeTrabajosTest extends TestCase
 
     public function test_las_pruebas_siguen_corriendo_los_trabajos_de_inmediato(): void
     {
-        // phpunit.xml deja QUEUE_CONNECTION=sync a propósito: lo que ya
-        // funcionaba no se vuelve asíncrono por este cambio.
+        // phpunit.xml deja QUEUE_CONNECTION=sync a propósito: en las pruebas
+        // un trabajo encolado corre al instante, sin esperar a un worker.
         $this->assertSame('sync', config('queue.default'));
     }
 }
