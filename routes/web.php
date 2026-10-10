@@ -78,6 +78,21 @@ Route::middleware('guest')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
+| Confirmar el correo (TG-189 / A11)
+|--------------------------------------------------------------------------
+|
+| Fuera del grupo "guest" a proposito: el enlace le llega a gente que usa la
+| APP, no el panel, y puede abrirlo con o sin sesion iniciada en el navegador.
+| Lo que la protege es la firma de la direccion ('signed'), no la sesion.
+|
+*/
+Route::livewire('/verificar-correo/{id}/{hash}', 'auth.correo-verificado')
+    ->middleware('signed')
+    ->whereNumber('id')
+    ->name('verification.verify');
+
+/*
+|--------------------------------------------------------------------------
 | Paquete B — config y catálogo (registran distribuidora.configuracion
 | y distribuidora.catalogo). Deben ir ANTES de cualquier alias con el
 | mismo nombre de ruta.

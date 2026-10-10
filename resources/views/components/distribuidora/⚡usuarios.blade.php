@@ -222,6 +222,36 @@ new class extends Component {
         $this->avisoEnlaceEsError = false;
     }
 
+
+    /**
+     * TG-189 (A11): reenviar el correo de confirmacion desde el mostrador,
+     * cuando la persona dice que no le llego.
+     */
+    public function reenviarVerificacionRevendedor(int $id): void
+    {
+        $afiliacion = RevendedorDistribuidora::with('revendedor.usuario')->findOrFail($id);
+        $cuenta = $afiliacion->revendedor->usuario;
+
+        if (! $cuenta) {
+            $this->avisoEnlace = 'Primero hay que darle acceso a la app.';
+            $this->avisoEnlaceEsError = true;
+
+            return;
+        }
+
+        if ($cuenta->hasVerifiedEmail()) {
+            $this->avisoEnlace = 'Ese correo ya esta confirmado.';
+            $this->avisoEnlaceEsError = false;
+
+            return;
+        }
+
+        $cuenta->sendEmailVerificationNotification();
+
+        $this->avisoEnlace = 'Le reenviamos el enlace de confirmacion a '.$cuenta->email.'.';
+        $this->avisoEnlaceEsError = false;
+    }
+
     public function cancelarFormularioRevendedor(): void
     {
         $this->mostrandoFormularioRevendedor = false;
@@ -441,6 +471,10 @@ new class extends Component {
                             <td class="py-2">
                                 @if ($afiliacion->revendedor->usuario_id)
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-fp-badge-success-bg text-fp-badge-success-fg">Con cuenta</span>
+                                    {{-- TG-189 (A11): el correo todavía sin confirmar. --}}
+                                    @if (! $afiliacion->revendedor->usuario?->hasVerifiedEmail())
+                                        <span class="mt-1 block text-xs text-amber-700">Correo sin confirmar</span>
+                                    @endif
                                 @else
                                     <span class="text-xs text-slate-400">Sin cuenta</span>
                                 @endif
@@ -451,6 +485,12 @@ new class extends Component {
                                     <button type="button" wire:click="enviarEnlaceRevendedor({{ $afiliacion->id }})"
                                         wire:loading.attr="disabled"
                                         class="text-fp-primary text-xs font-medium mr-3">Enviar enlace</button>
+                                    {{-- TG-189: solo si todavía no confirma su correo. --}}
+                                    @if (! $afiliacion->revendedor->usuario?->hasVerifiedEmail())
+                                        <button type="button" wire:click="reenviarVerificacionRevendedor({{ $afiliacion->id }})"
+                                            wire:loading.attr="disabled"
+                                            class="text-fp-primary text-xs font-medium mr-3">Reenviar confirmación</button>
+                                    @endif
                                     <button type="button" wire:click="generarPasswordTemporalRevendedor({{ $afiliacion->id }})"
                                         wire:loading.attr="disabled"
                                         class="text-fp-primary text-xs font-medium mr-3">Contraseña temporal</button>

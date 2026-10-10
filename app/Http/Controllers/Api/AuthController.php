@@ -203,6 +203,10 @@ class AuthController extends Controller
             // TG-193: si es true, la app debe mandarla a cambiar su
             // contraseña antes de dejarla usar lo demás.
             'debe_cambiar_password' => (bool) $usuario->debe_cambiar_password,
+            // TG-189 (A11): si es false, la app muestra el aviso y el botón
+            // para reenviar el enlace. No la saca de la app: solo enviar un
+            // pedido pide el correo confirmado.
+            'email_verificado' => $usuario->hasVerifiedEmail(),
         ];
     }
 
@@ -335,6 +339,26 @@ class AuthController extends Controller
     {
         return response()->json([
             'message' => $accion->ejecutar($request->validated('email')),
+        ]);
+    }
+
+    /**
+     * POST /api/auth/reenviar-verificacion (TG-189 / A11).
+     *
+     * El botón "no me llegó" de la app. Siempre responde lo mismo, haya o no
+     * haya algo que mandar: así nadie puede usarlo para averiguar si una
+     * cuenta ya confirmó o no.
+     */
+    public function reenviarVerificacion(Request $request)
+    {
+        $usuario = $request->user();
+
+        if ($usuario !== null && ! $usuario->hasVerifiedEmail()) {
+            $usuario->sendEmailVerificationNotification();
+        }
+
+        return response()->json([
+            'message' => 'Si tu correo está sin confirmar, te mandamos un enlace nuevo. Revisa tu bandeja y la carpeta de spam.',
         ]);
     }
 
