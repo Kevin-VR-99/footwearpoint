@@ -28,6 +28,9 @@ class LectorDeCatalogosFalso implements LectorDeCatalogos
     /** Si se pone, el bloque que empiece en esa página truena. */
     public ?int $fallaEnElBloqueQueEmpiezaEn = null;
 
+    /** Para probar que un borrado fallido no deja el identificador puesto. */
+    public bool $borrarTruena = false;
+
     /** @param array<int, array<string, mixed>> $productosPorPagina */
     public function __construct(private array $productosPorPagina = [])
     {
@@ -74,6 +77,10 @@ class LectorDeCatalogosFalso implements LectorDeCatalogos
 
     public function borrar(string $archivoIa): void
     {
+        if ($this->borrarTruena) {
+            throw new RuntimeException('El proveedor no dejó borrar el archivo.');
+        }
+
         $this->borrado = true;
     }
 }
