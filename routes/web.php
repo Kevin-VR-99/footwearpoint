@@ -241,4 +241,9 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_general'])->group(function
     Route::get('/admin/catalogos/{importacion}/archivo', [ArchivoCatalogoImportacionController::class, 'show'])
         ->whereNumber('importacion')
         ->name('admin.catalogos.archivo');
+
+    // TG-239 (A9): revisar y corregir lo que propuso la IA, antes de aprobar.
+    Route::livewire('/admin/catalogos/{importacion}/revisar', 'admin.revisar-catalogo')
+        ->whereNumber('importacion')
+        ->name('admin.catalogos.revisar');
 });

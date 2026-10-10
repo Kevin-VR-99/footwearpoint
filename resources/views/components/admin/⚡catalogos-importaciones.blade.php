@@ -285,6 +285,10 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                                         {{ $importacion->estado === 'error' ? 'Reintentar con IA' : 'Procesar con IA' }}
                                     </button>
                                 @endif
+                                @if ($importacion->productos_staging_count > 0)
+                                    <a href="{{ route('admin.catalogos.revisar', $importacion->id) }}"
+                                        class="text-fp-primary text-xs font-semibold mr-3">Revisar</a>
+                                @endif
                                 <a href="{{ route('admin.catalogos.archivo', $importacion->id) }}"
                                     class="text-fp-primary text-xs font-medium mr-3">Ver archivo</a>
                                 @if (in_array($importacion->estado, ['cargado', 'error'], true))
