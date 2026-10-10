@@ -33,6 +33,15 @@ class VerificarCorreoTest extends TestCase
 
         Tenant::olvidarCache();
         PropietarioActual::olvidarCache();
+
+        // TG-278: el seeder deja las dos cuentas de la demostracion con el
+        // correo ya confirmado, porque sus correos son inventados y nadie
+        // podria abrir el enlace. Aqui Maria hace de "cuenta sin confirmar",
+        // asi que se le quita a proposito, igual que al empleado mas abajo.
+        Usuario::where('email', 'maria.lopez@revendedor.test')
+            ->firstOrFail()
+            ->forceFill(['email_verified_at' => null])
+            ->save();
     }
 
     private function maria(): Usuario
@@ -324,7 +333,11 @@ class VerificarCorreoTest extends TestCase
 
         $jose = Usuario::where('email', 'jose.hernandez@cliente.test')->firstOrFail();
 
-        $this->actingAs($jose, 'sanctum')
+        // TG-278: el seeder tambien lo deja confirmado; aqui hace de cuenta
+        // sin confirmar, asi que se le quita a proposito.
+        $jose->forceFill(['email_verified_at' => null])->save();
+
+        $this->actingAs($jose->fresh(), 'sanctum')
             ->postJson('/api/pedidos/1/anticipo/mercado-pago')
             ->assertStatus(403)
             ->assertJsonPath('message', CorreoVerificado::MENSAJE);
