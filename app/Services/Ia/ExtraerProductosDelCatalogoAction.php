@@ -6,7 +6,6 @@ use App\Models\ImportacionCatalogo;
 use App\Models\ProductoImportadoStaging;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Catalogo\SubirCatalogoParaImportarAction;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -113,19 +112,25 @@ class ExtraerProductosDelCatalogoAction
     /**
      * Sube el catálogo, o reutiliza el que ya se subió.
      *
-     * Se recuerda en caché mientras dura el procesamiento para poder
-     * reintentar sin volver a mandar 29 MB. Cuando la tabla tenga su columna
-     * (pendiente con Kevin), esto se guarda ahí y sobrevive a un reinicio.
+     * El identificador se guarda en importaciones_catalogo.archivo_ia_id
+     * (TG-277). Antes vivía en el caché, y eso se perdía al reiniciar el
+     * worker o al desplegar: el reintento tenía que volver a mandar 29 MB y,
+     * peor, ya no sabíamos qué archivo había quedado colgado en el proveedor
+     * para borrarlo. En la tabla sobrevive a todo eso.
      */
     private function archivoEnLaIa(ImportacionCatalogo $importacion, string $contenido): string
     {
-        $llave = $this->llaveDeCache($importacion);
+        $yaSubido = $importacion->archivo_ia_id;
 
-        return Cache::remember(
-            $llave,
-            now()->addHours(max(1, (int) config('ia.horas_del_archivo'))),
-            fn () => $this->lector->subir($contenido, 'catalogo-'.$importacion->id.'.pdf'),
-        );
+        if (is_string($yaSubido) && $yaSubido !== '') {
+            return $yaSubido;
+        }
+
+        $archivoIa = $this->lector->subir($contenido, 'catalogo-'.$importacion->id.'.pdf');
+
+        $importacion->update(['archivo_ia_id' => $archivoIa]);
+
+        return $archivoIa;
     }
 
     private function olvidarArchivo(ImportacionCatalogo $importacion, string $archivoIa): void
@@ -141,12 +146,9 @@ class ExtraerProductosDelCatalogoAction
             ]);
         }
 
-        Cache::forget($this->llaveDeCache($importacion));
-    }
-
-    private function llaveDeCache(ImportacionCatalogo $importacion): string
-    {
-        return 'importacion_ia_archivo_'.$importacion->id;
+        // Se limpia pase lo que pase: si el borrado falló, el archivo vence
+        // solo, y dejar el identificador haría creer que todavía está ahí.
+        $importacion->update(['archivo_ia_id' => null]);
     }
 
     /** @param array<int, array<string, mixed>> $productos */

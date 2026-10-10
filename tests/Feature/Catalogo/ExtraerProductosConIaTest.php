@@ -341,4 +341,47 @@ class ExtraerProductosConIaTest extends TestCase
 
         Queue::assertNothingPushed();
     }
+
+    // ------------------------------------------------------------------
+    // El identificador del archivo subido (TG-277)
+    // ------------------------------------------------------------------
+
+    public function test_guarda_en_la_tabla_el_archivo_que_subio_a_la_ia(): void
+    {
+        $importacion = $this->importacionConCatalogoDe(15);
+
+        // A mitad del proceso tiene que estar anotado, para poder borrarlo
+        // si algo se cae.
+        $this->lector->fallaEnElBloqueQueEmpiezaEn = 11;
+
+        $this->accion()->ejecutar($importacion);
+
+        // Al terminar se limpia, porque el archivo ya se borro alla.
+        $this->assertNull($importacion->fresh()->archivo_ia_id);
+        $this->assertTrue($this->lector->borrado);
+    }
+
+    public function test_al_reintentar_no_vuelve_a_subir_los_29_mb(): void
+    {
+        // Era el motivo de pedir la columna: antes esto vivia en el cache y
+        // se perdia al reiniciar el worker o al desplegar.
+        $importacion = $this->importacionConCatalogoDe(15);
+        $importacion->update(['archivo_ia_id' => 'file_ya_subido_antes']);
+
+        $this->accion()->ejecutar($importacion);
+
+        $this->assertSame(0, $this->lector->vecesQueSubio, 'Volvió a subir el catálogo teniéndolo ya arriba.');
+    }
+
+    public function test_si_el_borrado_falla_igual_se_limpia_el_identificador(): void
+    {
+        // Dejarlo puesto haria creer que el archivo sigue alla, cuando en
+        // realidad vence solo.
+        $importacion = $this->importacionConCatalogoDe(15);
+        $this->lector->borrarTruena = true;
+
+        $this->accion()->ejecutar($importacion);
+
+        $this->assertNull($importacion->fresh()->archivo_ia_id);
+    }
 }
