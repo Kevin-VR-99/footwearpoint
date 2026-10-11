@@ -81,7 +81,7 @@ class CorregirProductoImportadoAction
         }
 
         return match ($campo) {
-            'pagina'         => $valor === null ? null : (int) $valor,
+            'pagina', 'categoria_id' => $valor === null ? null : (int) $valor,
             'precio_publico' => $valor === null ? null : round((float) $valor, 2),
             'medios_numeros' => $valor === null ? null : filter_var($valor, FILTER_VALIDATE_BOOLEAN),
             default          => $valor,
