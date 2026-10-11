@@ -267,6 +267,10 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_general'])->group(function
     Route::livewire('/admin/catalogo', 'admin.catalogo-maestro')
         ->name('admin.catalogo');
 
+    // TG-267 (U7): auditoría de lo que no es de ninguna distribuidora (catálogo compartido).
+    Route::livewire('/admin/auditoria', 'admin.auditoria')
+        ->name('admin.auditoria');
+
     // TG-197 (G16): categorías generales del directorio público.
     Route::livewire('/admin/categorias-directorio', 'admin.categorias-directorio-index')
         ->name('admin.categorias-directorio');
