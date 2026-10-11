@@ -42,6 +42,11 @@ Route::livewire('/marketplace', 'marketplace.index')
 // TG-219 (E15-04): los documentos legales, públicos. Quien todavía no tiene
 // cuenta tiene que poder leerlos; el texto sale de los mismos parciales que
 // usa la pantalla de aceptar documentos (x-legales.*).
+// TG-220 (E2-08): "Solicitar mi alta". El nombre de la ruta es el que busca
+// el botón de la página de inicio con Route::has.
+Route::livewire('/solicitar-alta', 'publico.solicitar-alta')
+    ->name('alta.solicitar');
+
 Route::livewire('/aviso-privacidad', 'publico.aviso-privacidad')
     ->name('aviso-privacidad');
 

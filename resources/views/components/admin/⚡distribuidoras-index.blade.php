@@ -23,9 +23,19 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extends Component {
+    /** Los únicos estados por los que se puede filtrar (enum de la tabla). */
+    public const ESTADOS_FILTRABLES = ['pendiente', 'activa', 'suspendida', 'rechazada'];
+
+    /**
+     * TG-220: va en la dirección (?estado=pendiente) para poder enlazar aquí
+     * desde el correo que avisa de una solicitud nueva. Un valor que no sea
+     * un estado válido se ignora y queda el filtro de siempre: todas.
+     */
+    #[Url(as: 'estado', except: '')]
     public string $filtroEstado = '';
     public string $mensaje = '';
 
@@ -228,11 +238,19 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             ])
             ->orderByDesc('id');
 
-        if ($this->filtroEstado !== '') {
+        // TG-220: el filtro puede venir de la dirección, así que solo se usa
+        // si es un estado de verdad; cualquier otra cosa se ignora.
+        if (in_array($this->filtroEstado, self::ESTADOS_FILTRABLES, true)) {
             $query->where('estado', $this->filtroEstado);
         }
 
         return $query->get();
+    }
+
+    /** Los mismos que acepta el filtro, para pintar los botones. */
+    public function getEstadosFiltrablesProperty(): array
+    {
+        return self::ESTADOS_FILTRABLES;
     }
 
     public function getPlanesActivosProperty()
@@ -734,6 +752,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 'Teléfono público' => $detalle['telefono_publico'],
                 'Dirección pública' => $detalle['direccion_publica'],
                 'Horario público' => $detalle['horario_publico'],
+                // TG-220: el plan que pidió en el formulario público.
+                'Plan solicitado' => $detalle['plan_solicitado'],
                 'Fecha de solicitud' => $fecha($detalle['fecha_solicitud']),
                 'Fecha de aprobación' => $fecha($detalle['fecha_aprobacion']),
             ];
@@ -764,7 +784,19 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <dt class="text-slate-500">Administrador</dt>
                     <dd class="text-slate-900">
                         @forelse ($detalle['administradores'] as $admin)
-                            <div>{{ $admin['nombre'] }} · {{ $admin['email'] }}</div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span>{{ $admin['nombre'] }} · {{ $admin['email'] }}</span>
+                                {{-- TG-220 (A11): avisa si nadie confirmó ese correo. --}}
+                                @if ($admin['correo_confirmado'])
+                                    <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
+                                        Correo confirmado
+                                    </span>
+                                @else
+                                    <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                        Correo sin confirmar
+                                    </span>
+                                @endif
+                            </div>
                         @empty
                             Sin administrador registrado
                         @endforelse
@@ -877,7 +909,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === '' ? 'bg-fp-primary text-white shadow-sm' : 'bg-white border border-slate-200' }}">
             Todas
         </button>
-        @foreach (['pendiente', 'activa', 'suspendida', 'rechazada'] as $estado)
+        @foreach ($this->estadosFiltrables as $estado)
             <button wire:click="$set('filtroEstado', '{{ $estado }}')"
                 class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === $estado ? 'bg-fp-primary text-white shadow-sm' : 'bg-white border border-slate-200' }}">
                 {{ ucfirst($estado) }}
