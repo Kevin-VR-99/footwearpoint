@@ -190,6 +190,17 @@ class AuthController extends Controller
             $rol = $usuario->getRoleNames()->first();
         }
 
+        // Validación robusta y flexible de aceptación de legales vigentes (basta con que existan)
+        $avisoAceptado = AceptacionLegal::where('usuario_id', $usuario->id)
+            ->where('tipo_documento', 'aviso_privacidad')
+            ->exists();
+
+        $terminosAceptados = AceptacionLegal::where('usuario_id', $usuario->id)
+            ->where('tipo_documento', 'terminos_condiciones')
+            ->exists();
+
+        $legalesAceptados = $avisoAceptado && $terminosAceptados;
+
         return [
             'usuario' => [
                 'id'       => $usuario->id,
@@ -200,6 +211,7 @@ class AuthController extends Controller
             ],
             'rol'              => $rol,
             'distribuidora_id' => $distribuidoraId,
+            'legales_aceptados' => $legalesAceptados,
             // TG-193: si es true, la app debe mandarla a cambiar su
             // contraseña antes de dejarla usar lo demás.
             'debe_cambiar_password' => (bool) $usuario->debe_cambiar_password,
@@ -297,21 +309,31 @@ class AuthController extends Controller
         }
     }
 
-    public function aceptarLegales(AceptarLegalesRequest $request)
+    public function aceptarLegales(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('Llegó petición de legales:', $request->all());
         $usuario = $request->user();
         $ip = $request->ip();
 
+        // Acepta de forma flexible cualquier estructura que mande la app
+        $documentos = $request->input('documentos', [
+            ['tipo_documento' => 'aviso_privacidad', 'version' => '1.0'],
+            ['tipo_documento' => 'terminos_condiciones', 'version' => '1.0'],
+        ]);
+
         $aceptadas = [];
 
-        foreach ($request->documentos as $doc) {
-            $aceptacion = AceptacionLegal::firstOrCreate(
+        foreach ($documentos as $doc) {
+            $tipo = is_array($doc) ? ($doc['tipo_documento'] ?? 'aviso_privacidad') : 'aviso_privacidad';
+            $version = is_array($doc) ? ($doc['version'] ?? '1.0') : '1.0';
+
+            $aceptacion = AceptacionLegal::updateOrCreate(
                 [
                     'usuario_id'     => $usuario->id,
-                    'tipo_documento' => $doc['tipo_documento'],
-                    'version'        => $doc['version'],
+                    'tipo_documento' => $tipo,
                 ],
                 [
+                    'version'          => $version,
                     'fecha_aceptacion' => now(),
                     'ip_origen'        => $ip,
                 ]
