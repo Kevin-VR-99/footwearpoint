@@ -30,9 +30,11 @@ if ($dominioTiendas = config('app.dominio_base')) {
         });
 }
 
-Route::get('/', function () {
-    return redirect()->route('login');
-})->name('inicio');
+// TG-219 (E15-04): la página pública de FootwearPoint. Es el "/" del dominio
+// principal: en un subdominio de distribuidora manda el grupo Route::domain de
+// arriba (TG-232), que se registra antes a propósito.
+Route::livewire('/', 'publico.inicio')
+    ->name('inicio');
 
 Route::livewire('/marketplace', 'marketplace.index')
     ->name('marketplace');
