@@ -191,10 +191,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
 ?>
 
 <div>
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div>
-            <a href="{{ route('pedidos.index') }}" class="text-sm text-[#2563EB] hover:underline">← Pedidos</a>
-            <h2 class="text-2xl font-bold text-slate-900 mt-1">{{ $this->pedido->folio }}</h2>
+    <x-panel.encabezado :titulo="$this->pedido->folio" :volver="route('pedidos.index')" volver-texto="← Pedidos" class="mb-6">
             <div class="mt-2 flex flex-wrap items-center gap-2">
                 <x-ui.insignia-estado :estado="$this->pedido->estado" />
                 <span class="text-sm text-slate-500">
@@ -202,11 +199,11 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     {{ $this->pedido->clienteDirecto?->nombre ?? ($this->pedido->revendedorAfiliacion?->revendedor?->nombre ?? '—') }}
                 </span>
             </div>
-        </div>
 
+        <x-slot:acciones>
         @if ($this->pedido->estado === 'borrador')
             <button type="button" wire:click="enviar"
-                class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB]">
+                class="rounded-lg bg-fp-accent px-4 py-2 text-sm font-medium text-white hover:bg-fp-primary">
                 Enviar pedido
             </button>
         @endif
@@ -216,7 +213,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 @if ($this->pedido->estado === 'recibido_distribuidora')
                     <button type="button" wire:click="marcarListo"
                         wire:confirm="¿Marcar listo para entrega? Se le avisará al cliente para que pase a recoger."
-                        class="rounded-lg border border-[#1E2F52] px-4 py-2 text-sm font-medium text-[#1E2F52] hover:bg-slate-50">
+                        class="rounded-lg border border-fp-accent px-4 py-2 text-sm font-medium text-fp-accent hover:bg-slate-50">
                         Marcar listo para entrega
                     </button>
                 @endif
@@ -224,23 +221,24 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     wire:confirm="¿Confirmar que el cliente se llevó su pedido?"
                     @disabled($this->resumen['saldo'] > 0)
                     @if ($this->resumen['saldo'] > 0) title="Cobra el saldo antes de entregar" @endif
-                    class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB] disabled:cursor-not-allowed disabled:opacity-50">
+                    class="rounded-lg bg-fp-accent px-4 py-2 text-sm font-medium text-white hover:bg-fp-primary disabled:cursor-not-allowed disabled:opacity-50">
                     Marcar entregado
                 </button>
             </div>
         @endif
-    </div>
+        </x-slot:acciones>
+    </x-panel.encabezado>
 
     @if ($this->pedido->estado === 'borrador')
-        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <x-panel.alerta tipo="aviso" class="mb-4">
             Este pedido sigue en borrador.
             <a href="{{ route('pedidos.create') }}?continuar={{ $this->pedido->id }}"
-                class="font-medium text-[#2563EB] hover:underline">Continuar editando</a>
-        </div>
+                class="font-medium text-fp-primary hover:underline">Continuar editando</a>
+        </x-panel.alerta>
     @endif
 
     @if (in_array($this->pedido->estado, ['recibido_distribuidora', 'listo_entrega'], true))
-        <div class="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <x-panel.alerta tipo="info" class="mb-4">
             La mercancía ya está en sucursal.
             @if ($this->resumen['saldo'] > 0)
                 Saldo pendiente:
@@ -252,19 +250,19 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             @if ($this->pedido->estado === 'listo_entrega' && $this->pedido->fecha_limite_recoleccion)
                 Tiene hasta el {{ $this->pedido->fecha_limite_recoleccion->format('d/m/Y') }} para recogerlo.
             @endif
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="exito" class="mb-4">
             {{ $mensaje }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($errorMsg)
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="error" class="mb-4">
             {{ $errorMsg }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     <div class="grid gap-4 sm:grid-cols-2 {{ $this->pedido->tipo === 'cliente_directo' ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} mb-6">
@@ -325,7 +323,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 </label>
                 <div class="sm:col-span-2 lg:col-span-4">
                     <button type="submit"
-                        class="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1E2F52]">
+                        class="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-fp-accent">
                         Registrar pago
                     </button>
                 </div>

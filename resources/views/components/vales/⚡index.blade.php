@@ -100,34 +100,29 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
 ?>
 
 <div>
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-            <h2 class="text-2xl font-bold text-slate-900">Vales</h2>
-            <p class="text-sm text-slate-500 mt-1">Emisión manual y consulta por propietario.</p>
-        </div>
-    </div>
+    <x-panel.encabezado titulo="Vales" subtitulo="Emisión manual y consulta por propietario." class="mb-6" />
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="exito" class="mb-4">
             {{ $mensaje }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($errorMsg)
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="error" class="mb-4">
             {{ $errorMsg }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     {{-- Formulario de emisión --}}
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
+    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 mb-6">
         <h3 class="text-sm font-semibold text-slate-800 mb-4">Emitir vale</h3>
 
         <form wire:submit="emitir" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de propietario</label>
                 <select wire:model.live="propietario_tipo"
-                        class="w-full rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]">
+                        class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
                     <option value="cliente_directo">Cliente directo</option>
                     <option value="revendedor">Cliente mayorista</option>
                 </select>
@@ -137,7 +132,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 <label class="block text-sm font-medium text-slate-700 mb-1">Propietario</label>
                 @if ($propietario_tipo === 'cliente_directo')
                     <select wire:model="propietario_id"
-                            class="w-full rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]">
+                            class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
                         <option value="">— Seleccionar cliente —</option>
                         @foreach ($this->clientes as $c)
                             <option value="{{ $c->id }}">{{ $c->nombre }}</option>
@@ -145,7 +140,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                     </select>
                 @else
                     <select wire:model="propietario_id"
-                            class="w-full rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]">
+                            class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
                         <option value="">— Seleccionar cliente mayorista —</option>
                         @foreach ($this->revendedores as $r)
                             <option value="{{ $r->id }}">
@@ -155,27 +150,27 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                         @endforeach
                     </select>
                 @endif
-                @error('propietario_id') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                @error('propietario_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Monto (MXN)</label>
                 <input type="number" step="0.01" min="0.01" wire:model="monto_original"
-                       class="w-full rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]"
+                       class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
                        placeholder="500.00">
-                @error('monto_original') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                @error('monto_original') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional)</label>
                 <input type="text" wire:model="motivo" maxlength="300"
-                       class="w-full rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]"
+                       class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
                        placeholder="Ej. compensación, promoción…">
             </div>
 
             <div class="md:col-span-2">
                 <button type="submit"
-                        class="rounded-lg bg-[#2563EB] text-white px-4 py-2 text-sm font-medium hover:bg-blue-700">
+                        class="rounded-lg bg-fp-primary text-white px-4 py-2 text-sm font-medium hover:bg-fp-primary/90">
                     Emitir vale
                 </button>
             </div>
@@ -183,11 +178,11 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
     </div>
 
     {{-- Listado --}}
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Vales emitidos</h3>
             <select wire:model.live="filtro_tipo"
-                    class="rounded-lg border-slate-300 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]">
+                    class="rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
                 <option value="">Todos</option>
                 <option value="cliente_directo">Solo clientes</option>
                 <option value="revendedor">Solo clientes mayoristas</option>
@@ -196,7 +191,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
 
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-slate-50 text-slate-600">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="text-left font-medium px-4 py-3">Folio</th>
                         <th class="text-left font-medium px-4 py-3">Propietario</th>
@@ -228,10 +223,10 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                             <td class="px-4 py-3">
                                 @php
                                     $colores = [
-                                        'activo'    => 'bg-green-100 text-green-800',
-                                        'agotado'   => 'bg-slate-100 text-slate-700',
-                                        'vencido'   => 'bg-amber-100 text-amber-800',
-                                        'bloqueado' => 'bg-red-100 text-red-800',
+                                        'activo'    => 'bg-fp-badge-success-bg text-fp-badge-success-fg',
+                                        'agotado'   => 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg',
+                                        'vencido'   => 'bg-fp-badge-warning-bg text-fp-badge-warning-fg',
+                                        'bloqueado' => 'bg-fp-badge-danger-bg text-fp-badge-danger-fg',
                                     ];
                                 @endphp
                                 <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {{ $colores[$vale->estado] ?? 'bg-slate-100' }}">
@@ -240,11 +235,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">
-                                No hay vales emitidos todavía.
-                            </td>
-                        </tr>
+                        <x-panel.vacio colspan="6" mensaje="No hay vales emitidos todavía." />
                     @endforelse
                 </tbody>
             </table>

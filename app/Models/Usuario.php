@@ -10,10 +10,17 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Auth\Passwords\CanResetPassword as CanResetPasswordTrait;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
 
-class Usuario extends Authenticatable implements CanResetPassword
+/**
+ * TG-189 (A11): implementa MustVerifyEmail, asi que Laravel ya sabe mandar el
+ * correo de verificacion y preguntar si esta verificado. La columna
+ * email_verified_at existia desde el principio y nadie la usaba.
+ */
+class Usuario extends Authenticatable implements CanResetPassword, MustVerifyEmail
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles, CanResetPasswordTrait;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles, CanResetPasswordTrait, MustVerifyEmailTrait;
 
     protected $table = 'usuarios';
 

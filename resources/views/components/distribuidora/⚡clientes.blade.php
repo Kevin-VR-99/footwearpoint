@@ -127,6 +127,36 @@ new class extends Component {
         $this->avisoEnlaceEsError = false;
     }
 
+
+    /**
+     * TG-189 (A11): reenviar el correo de confirmacion desde el mostrador,
+     * cuando la persona dice que no le llego.
+     */
+    public function reenviarVerificacionCliente(int $id): void
+    {
+        $cliente = ClienteDirecto::with('usuario')->findOrFail($id);
+        $cuenta = $cliente->usuario;
+
+        if (! $cuenta) {
+            $this->avisoEnlace = 'Primero hay que darle acceso a la app.';
+            $this->avisoEnlaceEsError = true;
+
+            return;
+        }
+
+        if ($cuenta->hasVerifiedEmail()) {
+            $this->avisoEnlace = 'Ese correo ya esta confirmado.';
+            $this->avisoEnlaceEsError = false;
+
+            return;
+        }
+
+        $cuenta->sendEmailVerificationNotification();
+
+        $this->avisoEnlace = 'Le reenviamos el enlace de confirmacion a '.$cuenta->email.'.';
+        $this->avisoEnlaceEsError = false;
+    }
+
     public function cancelarFormularioCliente(): void
     {
         $this->mostrandoFormularioCliente = false;
@@ -211,23 +241,23 @@ new class extends Component {
 
 <div>
     @if (! $mostrandoFormularioCliente)
-        <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Clientes Directos</h2>
                 <button type="button" wire:click="abrirFormularioCrearCliente"
-                    class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">+ Nuevo cliente</button>
+                    class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">+ Nuevo cliente</button>
             </div>
             {{-- TG-192: resultado del envio del enlace de restablecimiento. --}}
             {{-- La contrasena temporal se saca de la sesion, no de una propiedad
                  del componente: esas viajan al navegador en cada accion
                  posterior. Asi se ve una vez y no queda guardada en ningun lado. --}}
             @if (session('aviso_password_temporal'))
-                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div class="mb-4 rounded-lg border border-fp-badge-warning-fg/20 bg-fp-badge-warning-bg px-4 py-3 text-sm text-fp-badge-warning-fg">
                     {{ session('aviso_password_temporal') }}
                 </div>
             @endif
             @if ($avisoEnlace)
-                <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ $avisoEnlaceEsError ? 'border-fp-danger/20 bg-fp-danger-soft text-fp-badge-danger-fg' : 'border-emerald-200 bg-fp-badge-success-bg text-fp-badge-success-fg' }}">
+                <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ $avisoEnlaceEsError ? 'border-fp-danger/20 bg-fp-danger-soft text-fp-badge-danger-fg' : 'border-fp-badge-success-fg/20 bg-fp-badge-success-bg text-fp-badge-success-fg' }}">
                     {{ $avisoEnlace }}
                 </div>
             @endif
@@ -266,6 +296,12 @@ new class extends Component {
                                     <button type="button" wire:click="enviarEnlaceCliente({{ $cliente->id }})"
                                         wire:loading.attr="disabled"
                                         class="text-fp-primary text-xs font-medium mr-3">Enviar enlace</button>
+                                    {{-- TG-189: solo si todavía no confirma su correo. --}}
+                                    @if (! $cliente->usuario?->hasVerifiedEmail())
+                                        <button type="button" wire:click="reenviarVerificacionCliente({{ $cliente->id }})"
+                                            wire:loading.attr="disabled"
+                                            class="text-fp-primary text-xs font-medium mr-3">Reenviar confirmación</button>
+                                    @endif
                                     <button type="button" wire:click="generarPasswordTemporalCliente({{ $cliente->id }})"
                                         wire:loading.attr="disabled"
                                         class="text-fp-primary text-xs font-medium mr-3">Contraseña temporal</button>
@@ -279,7 +315,7 @@ new class extends Component {
             </table>
         </div>
     @else
-        <form wire:submit="guardarCliente" class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 space-y-4 max-w-2xl">
+        <form wire:submit="guardarCliente" class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 space-y-4 max-w-2xl">
             <h2 class="text-sm font-semibold text-slate-700">
                 {{ $clienteEditandoId ? 'Editar cliente directo' : 'Nuevo cliente directo' }}
             </h2>

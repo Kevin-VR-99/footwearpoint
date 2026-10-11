@@ -251,6 +251,35 @@ new class extends Component {
         $this->avisoEnlaceEsError = false;
     }
 
+    /**
+     * TG-189 (A11): reenviar el correo de confirmacion desde el mostrador,
+     * cuando la persona dice que no le llego.
+     */
+    public function reenviarVerificacionRevendedor(int $id): void
+    {
+        $afiliacion = RevendedorDistribuidora::with('revendedor.usuario')->findOrFail($id);
+        $cuenta = $afiliacion->revendedor->usuario;
+
+        if (! $cuenta) {
+            $this->avisoEnlace = 'Primero hay que darle acceso a la app.';
+            $this->avisoEnlaceEsError = true;
+
+            return;
+        }
+
+        if ($cuenta->hasVerifiedEmail()) {
+            $this->avisoEnlace = 'Ese correo ya esta confirmado.';
+            $this->avisoEnlaceEsError = false;
+
+            return;
+        }
+
+        $cuenta->sendEmailVerificationNotification();
+
+        $this->avisoEnlace = 'Le reenviamos el enlace de confirmacion a '.$cuenta->email.'.';
+        $this->avisoEnlaceEsError = false;
+    }
+
     public function cancelarFormularioRevendedor(): void
     {
         $this->mostrandoFormularioRevendedor = false;
@@ -327,12 +356,13 @@ new class extends Component {
 ?>
 
 <div class="space-y-6">
-    <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
+    {{-- Empleados: listado o formulario inline --}}
+    <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioEmpleado)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Empleados</h2>
                 <button type="button" wire:click="abrirFormularioInvitarEmpleado"
-                    class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
+                    class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
                     + Invitar empleado
                 </button>
             </div>
@@ -422,22 +452,23 @@ new class extends Component {
         @endif
     </div>
 
-    <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
+    {{-- Revendedores --}}
+    <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioRevendedor)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Clientes mayoristas</h2>
                 <button type="button" wire:click="abrirFormularioAfiliarRevendedor"
-                    class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
+                    class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
                     + Afiliar cliente mayorista
                 </button>
             </div>
             @if (session('aviso_password_temporal'))
-                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div class="mb-4 rounded-lg border border-fp-badge-warning-fg/20 bg-fp-badge-warning-bg px-4 py-3 text-sm text-fp-badge-warning-fg">
                     {{ session('aviso_password_temporal') }}
                 </div>
             @endif
             @if ($avisoEnlace)
-                <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ $avisoEnlaceEsError ? 'border-fp-danger/20 bg-fp-danger-soft text-fp-badge-danger-fg' : 'border-emerald-200 bg-fp-badge-success-bg text-fp-badge-success-fg' }}">
+                <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ $avisoEnlaceEsError ? 'border-fp-danger/20 bg-fp-danger-soft text-fp-badge-danger-fg' : 'border-fp-badge-success-fg/20 bg-fp-badge-success-bg text-fp-badge-success-fg' }}">
                     {{ $avisoEnlace }}
                 </div>
             @endif
@@ -473,6 +504,9 @@ new class extends Component {
                             <td class="py-2">
                                 @if ($afiliacion->revendedor->usuario_id)
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-fp-badge-success-bg text-fp-badge-success-fg">Con cuenta</span>
+                                    @if (! $afiliacion->revendedor->usuario?->hasVerifiedEmail())
+                                        <span class="mt-1 block text-xs text-amber-700">Correo sin confirmar</span>
+                                    @endif
                                 @else
                                     <span class="text-xs text-slate-400">Sin cuenta</span>
                                 @endif
@@ -482,6 +516,11 @@ new class extends Component {
                                     <button type="button" wire:click="enviarEnlaceRevendedor({{ $afiliacion->id }})"
                                         wire:loading.attr="disabled"
                                         class="text-fp-primary text-xs font-medium mr-3">Enviar enlace</button>
+                                    @if (! $afiliacion->revendedor->usuario?->hasVerifiedEmail())
+                                        <button type="button" wire:click="reenviarVerificacionRevendedor({{ $afiliacion->id }})"
+                                            wire:loading.attr="disabled"
+                                            class="text-fp-primary text-xs font-medium mr-3">Reenviar confirmación</button>
+                                    @endif
                                     <button type="button" wire:click="generarPasswordTemporalRevendedor({{ $afiliacion->id }})"
                                         wire:loading.attr="disabled"
                                         class="text-fp-primary text-xs font-medium mr-3">Contraseña temporal</button>

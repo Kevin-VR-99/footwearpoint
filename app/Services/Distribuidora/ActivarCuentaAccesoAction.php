@@ -92,6 +92,11 @@ class ActivarCuentaAccesoAction
 
             $this->asignarRol($usuario, $rol, $distribuidoraId);
 
+            // TG-189 (A11): el correo para confirmar que la cuenta es suya.
+            // Va despues de la transaccion (afterCommit) para no mandarlo si
+            // algo falla y la cuenta termina no existiendo.
+            DB::afterCommit(fn () => $usuario->sendEmailVerificationNotification());
+
             return $usuario;
         });
     }

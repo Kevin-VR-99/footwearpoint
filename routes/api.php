@@ -47,6 +47,11 @@ Route::prefix('auth')->group(function () {
     Route::post('/aceptar-legales', [AuthController::class, 'aceptarLegales'])
         ->middleware('auth:sanctum');
 
+    // TG-189 (A11): el boton "no me llego" de la app. Con limite, porque cada
+    // llamada manda un correo.
+    Route::post('/reenviar-verificacion', [AuthController::class, 'reenviarVerificacion'])
+        ->middleware(['auth:sanctum', 'throttle:4,10']);
+
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 });

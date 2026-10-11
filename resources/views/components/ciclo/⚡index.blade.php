@@ -169,14 +169,9 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
 ?>
 
 <div>
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-        <div>
-            <h2 class="text-2xl font-bold text-slate-900">Ciclo de compra</h2>
-            <p class="text-sm text-slate-500 mt-1">
-                Pedidos agrupados por ciclo, consolidado para fábrica y avance del pedido.
-            </p>
-        </div>
-
+    <x-panel.encabezado titulo="Ciclo de compra"
+        subtitulo="Pedidos agrupados por ciclo, consolidado para fábrica y avance del pedido." class="mb-6">
+        <x-slot:acciones>
         <div class="w-full sm:w-72">
             <label class="block text-sm font-medium text-slate-700 mb-1">Ciclo</label>
             <select wire:model.live="cicloId"
@@ -186,22 +181,23 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
                 @endforeach
             </select>
         </div>
-    </div>
+        </x-slot:acciones>
+    </x-panel.encabezado>
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="exito" class="mb-4">
             {{ $mensaje }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($errorMsg)
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="error" class="mb-4">
             {{ $errorMsg }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($this->detalle === null)
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center text-slate-500">
+        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-8 text-center text-slate-500">
             No hay ningún ciclo de compra para mostrar.
         </div>
     @else
@@ -209,7 +205,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         @php($ciclo = $detalle->ciclo)
 
         {{-- Encabezado del ciclo --}}
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
+        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 mb-6">
             <div class="flex flex-wrap items-center gap-3 mb-5">
                 <h3 class="text-lg font-semibold text-slate-900">{{ $ciclo->nombre }}</h3>
                 <x-ui.insignia-estado :estado="$ciclo->estado" />
@@ -239,7 +235,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
             </div>
 
             @if ($this->sinAnticipo->isNotEmpty())
-                <div class="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div class="mt-5 rounded-xl border border-fp-badge-warning-fg/20 bg-fp-badge-warning-bg px-4 py-3 text-sm text-fp-badge-warning-fg">
                     <p class="font-semibold">
                         {{ $this->sinAnticipo->count() }}
                         {{ $this->sinAnticipo->count() === 1 ? 'pedido no se enviará' : 'pedidos no se enviarán' }}
@@ -262,7 +258,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
             @if ($this->accion)
                 <div class="mt-5 pt-5 border-t border-slate-100 flex flex-wrap items-center gap-4">
                     <button type="button" wire:click="{{ $this->accion[0] }}" wire:loading.attr="disabled"
-                            class="rounded-lg bg-fp-primary text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                            class="rounded-lg bg-fp-primary text-white px-4 py-2 text-sm font-medium hover:bg-fp-primary/90 disabled:opacity-50">
                         {{ $this->accion[1] }}
                     </button>
                     <p class="text-xs text-slate-500 flex-1 min-w-[16rem]">{{ $this->accion[2] }}</p>
@@ -277,7 +273,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {{-- Pedidos del ciclo --}}
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
                 <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-800">Pedidos del ciclo</h3>
                     <span class="text-xs text-slate-500">{{ $detalle->pedidos->count() }} en total</span>
@@ -285,7 +281,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
 
                 <div class="overflow-x-auto max-h-96 overflow-y-auto">
                     <table class="min-w-full text-sm">
-                        <thead class="bg-slate-50 text-slate-600 sticky top-0">
+                        <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted sticky top-0">
                             <tr>
                                 <th class="text-left font-medium px-4 py-3">Folio</th>
                                 <th class="text-left font-medium px-4 py-3">Tipo</th>
@@ -306,11 +302,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
                                     <td class="px-4 py-3 text-right">${{ number_format((float) $pedido->total, 2) }}</td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="4" class="px-4 py-8 text-center text-slate-500">
-                                        Este ciclo todavía no tiene pedidos.
-                                    </td>
-                                </tr>
+                                <x-panel.vacio colspan="4" mensaje="Este ciclo todavía no tiene pedidos." />
                             @endforelse
                         </tbody>
                     </table>
@@ -318,7 +310,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
             </div>
 
             {{-- Consolidado para fábrica --}}
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
                 <div class="px-5 py-3 border-b border-slate-100">
                     <h3 class="text-sm font-semibold text-slate-800">Consolidado por variante</h3>
                     <p class="text-xs text-slate-500 mt-0.5">
@@ -328,7 +320,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
 
                 <div class="overflow-x-auto max-h-96 overflow-y-auto">
                     <table class="min-w-full text-sm">
-                        <thead class="bg-slate-50 text-slate-600 sticky top-0">
+                        <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted sticky top-0">
                             <tr>
                                 <th class="text-left font-medium px-4 py-3">Producto</th>
                                 <th class="text-left font-medium px-4 py-3">Talla</th>
@@ -348,11 +340,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
                                     <td class="px-4 py-3 text-right font-medium">{{ $renglon['cantidad_total'] }}</td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="4" class="px-4 py-8 text-center text-slate-500">
-                                        Sin líneas que consolidar todavía.
-                                    </td>
-                                </tr>
+                                <x-panel.vacio colspan="4" mensaje="Sin líneas que consolidar todavía." />
                             @endforelse
                         </tbody>
                     </table>
