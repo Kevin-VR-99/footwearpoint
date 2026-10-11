@@ -32,10 +32,19 @@ if ($dominioTiendas = config('app.dominio_base')) {
 
 Route::get('/', function () {
     return redirect()->route('login');
-});
+})->name('inicio');
 
 Route::livewire('/marketplace', 'marketplace.index')
     ->name('marketplace');
+
+// TG-219 (E15-04): los documentos legales, públicos. Quien todavía no tiene
+// cuenta tiene que poder leerlos; el texto sale de los mismos parciales que
+// usa la pantalla de aceptar documentos (x-legales.*).
+Route::livewire('/aviso-privacidad', 'publico.aviso-privacidad')
+    ->name('aviso-privacidad');
+
+Route::livewire('/terminos', 'publico.terminos')
+    ->name('terminos');
 
 // TG-233 (G14): tienda pública de cada distribuidora (solo las activas). Con
 // sesión o sin ella se ve igual: el catálogo y el precio de menudeo de ESA
