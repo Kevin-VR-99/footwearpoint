@@ -23,9 +23,19 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extends Component {
+    /** Los únicos estados por los que se puede filtrar (enum de la tabla). */
+    public const ESTADOS_FILTRABLES = ['pendiente', 'activa', 'suspendida', 'rechazada'];
+
+    /**
+     * TG-220: va en la dirección (?estado=pendiente) para poder enlazar aquí
+     * desde el correo que avisa de una solicitud nueva. Un valor que no sea
+     * un estado válido se ignora y queda el filtro de siempre: todas.
+     */
+    #[Url(as: 'estado', except: '')]
     public string $filtroEstado = '';
     public string $mensaje = '';
 
@@ -228,11 +238,19 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             ])
             ->orderByDesc('id');
 
-        if ($this->filtroEstado !== '') {
+        // TG-220: el filtro puede venir de la dirección, así que solo se usa
+        // si es un estado de verdad; cualquier otra cosa se ignora.
+        if (in_array($this->filtroEstado, self::ESTADOS_FILTRABLES, true)) {
             $query->where('estado', $this->filtroEstado);
         }
 
         return $query->get();
+    }
+
+    /** Los mismos que acepta el filtro, para pintar los botones. */
+    public function getEstadosFiltrablesProperty(): array
+    {
+        return self::ESTADOS_FILTRABLES;
     }
 
     public function getPlanesActivosProperty()
@@ -891,7 +909,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === '' ? 'bg-fp-primary text-white shadow-sm' : 'bg-white border border-slate-200' }}">
             Todas
         </button>
-        @foreach (['pendiente', 'activa', 'suspendida', 'rechazada'] as $estado)
+        @foreach ($this->estadosFiltrables as $estado)
             <button wire:click="$set('filtroEstado', '{{ $estado }}')"
                 class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === $estado ? 'bg-fp-primary text-white shadow-sm' : 'bg-white border border-slate-200' }}">
                 {{ ucfirst($estado) }}

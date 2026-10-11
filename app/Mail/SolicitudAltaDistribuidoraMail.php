@@ -44,7 +44,8 @@ class SolicitudAltaDistribuidoraMail extends Mailable
                 'emailAdministrador' => $this->emailAdministrador,
                 'planSolicitado' => $this->planSolicitado,
                 'nombreDestinatario' => $this->nombreDestinatario,
-                'urlPanel' => route('admin.dashboard'),
+                // TG-220: cae directo en el filtro de pendientes.
+                'urlPanel' => route('admin.dashboard', ['estado' => 'pendiente']),
             ],
         );
     }

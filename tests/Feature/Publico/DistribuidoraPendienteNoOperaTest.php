@@ -170,6 +170,50 @@ class DistribuidoraPendienteNoOperaTest extends TestCase
             ->assertSee('Correo sin confirmar');
     }
 
+    public function test_el_filtro_por_estado_viaja_en_la_direccion(): void
+    {
+        $this->pendiente();
+
+        $this->actingAs($this->adminGeneral());
+        app(PermissionRegistrar::class)->setPermissionsTeamId(0);
+
+        // Es la dirección a la que enlaza el correo de aviso.
+        Livewire::withQueryParams(['estado' => 'pendiente'])
+            ->test('admin.distribuidoras-index')
+            ->assertSet('filtroEstado', 'pendiente')
+            ->assertSee('Zapatería Pendiente')
+            ->assertDontSee('Calzados Ramírez');
+    }
+
+    public function test_un_estado_inventado_en_la_direccion_se_ignora(): void
+    {
+        $this->pendiente();
+
+        $this->actingAs($this->adminGeneral());
+        app(PermissionRegistrar::class)->setPermissionsTeamId(0);
+
+        // No truena ni filtra por algo que no existe: se ven todas.
+        Livewire::withQueryParams(['estado' => 'inventado'])
+            ->test('admin.distribuidoras-index')
+            ->assertOk()
+            ->assertSee('Zapatería Pendiente')
+            ->assertSee('Calzados Ramírez');
+    }
+
+    public function test_el_correo_de_aviso_enlaza_al_filtro_de_pendientes(): void
+    {
+        $correo = new \App\Mail\SolicitudAltaDistribuidoraMail(
+            nombreDistribuidora: 'Zapatería Pendiente',
+            nombreAdministrador: 'Dueño Pendiente',
+            emailAdministrador: self::EMAIL_ADMIN,
+        );
+
+        $this->assertStringContainsString(
+            route('admin.dashboard', ['estado' => 'pendiente']),
+            (string) $correo->render()
+        );
+    }
+
     public function test_el_admin_general_aprueba_una_pendiente_y_queda_activa(): void
     {
         $distribuidora = $this->pendiente();

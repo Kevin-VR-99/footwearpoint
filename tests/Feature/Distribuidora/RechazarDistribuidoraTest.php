@@ -6,6 +6,7 @@ use App\Exceptions\RespuestaErrorApi;
 use App\Models\Distribuidora;
 use App\Models\Usuario;
 use App\Services\Auth\AccesoPanelWebService;
+use App\Services\Distribuidora\AprobarDistribuidoraAction;
 use App\Services\Distribuidora\CrearDistribuidoraAction;
 use App\Services\Distribuidora\RechazarDistribuidoraAction;
 use App\Support\PropietarioActual;
@@ -432,8 +433,15 @@ class RechazarDistribuidoraTest extends TestCase
         $distribuidora = $this->pendiente();
         $admin = Usuario::where('email', self::ADMIN_PENDIENTE)->firstOrFail();
 
-        // Entró mientras estaba pendiente (hoy se permite) ...
+        // TG-220: una pendiente ya no entra, así que para tener la sesión
+        // abierta primero se aprueba. Lo que se prueba aquí sigue siendo lo
+        // mismo: que al rechazarla se cierra la sesión y se dice el motivo.
+        app(AprobarDistribuidoraAction::class)->ejecutar($distribuidora);
+        Tenant::olvidarCache();
+
         $this->actingAs($admin)->get(route('dashboard'))->assertOk();
+
+        $distribuidora = $distribuidora->fresh();
 
         // ... y la rechazan con la sesión abierta.
         app(RechazarDistribuidoraAction::class)->ejecutar($distribuidora, self::MOTIVO);
@@ -450,16 +458,28 @@ class RechazarDistribuidoraTest extends TestCase
             ->assertSee('Motivo: ' . self::MOTIVO);
     }
 
-    public function test_el_admin_de_una_pendiente_sigue_entrando_como_hasta_ahora(): void
+    /**
+     * TG-220 (E2-08): antes sí entraba, porque solo el admin general podía
+     * crear una distribuidora y ya la había revisado. Con el formulario
+     * público eso dejaría entrar a cualquiera sin aprobación.
+     */
+    public function test_el_admin_de_una_pendiente_no_entra_y_ve_que_esta_en_revision(): void
     {
         $this->pendiente();
 
-        Livewire::test('auth.login')
+        $componente = Livewire::test('auth.login')
             ->set('email', self::ADMIN_PENDIENTE)
             ->set('password', 'clave-segura-1')
             ->call('login')
-            ->assertHasNoErrors()
-            ->assertRedirect(route('dashboard'));
+            ->assertHasErrors('email')
+            ->assertNoRedirect();
+
+        $this->assertSame(
+            AccesoPanelWebService::MENSAJE_DISTRIBUIDORA_PENDIENTE,
+            $componente->errors()->first('email')
+        );
+
+        $this->assertGuest();
     }
 
     public function test_motivo_sin_acceso_respeta_al_admin_general_y_al_personal_activo(): void
