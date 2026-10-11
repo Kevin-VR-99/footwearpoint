@@ -349,8 +349,8 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     @foreach ($this->pedido->pagos as $p)
                         <tr>
                             <td class="px-4 py-2">{{ $p->folio }}</td>
-                            <td class="px-4 py-2">{{ $p->tipo }}</td>
-                            <td class="px-4 py-2">{{ $p->metodo === 'mercado_pago' ? 'Mercado Pago' : $p->metodo }}</td>
+                            <td class="px-4 py-2">{{ \App\Models\Pago::etiquetaTipo($p->tipo) }}</td>
+                            <td class="px-4 py-2">{{ \App\Models\Pago::etiquetaMetodo($p->metodo) }}</td>
                             <td class="px-4 py-2 text-right tabular-nums">${{ number_format((float) $p->monto, 2) }}</td>
                             <td class="px-4 py-2">{{ optional($p->fecha_pago)->format('d/m/Y H:i') }}</td>
                             <td class="px-4 py-2">
