@@ -433,15 +433,11 @@ class RechazarDistribuidoraTest extends TestCase
         $distribuidora = $this->pendiente();
         $admin = Usuario::where('email', self::ADMIN_PENDIENTE)->firstOrFail();
 
-        // TG-220: una pendiente ya no entra, así que para tener la sesión
-        // abierta primero se aprueba. Lo que se prueba aquí sigue siendo lo
-        // mismo: que al rechazarla se cierra la sesión y se dice el motivo.
-        app(AprobarDistribuidoraAction::class)->ejecutar($distribuidora);
-        Tenant::olvidarCache();
-
-        $this->actingAs($admin)->get(route('dashboard'))->assertOk();
-
-        $distribuidora = $distribuidora->fresh();
+        // Tiene la sesión abierta de antes. Desde TG-220 una pendiente ya no
+        // puede iniciarla, pero una sesión que quedó viva es justo lo que
+        // esta prueba cuida: que al rechazarla se cierre y se diga el motivo.
+        $this->actingAs($admin);
+        $this->assertAuthenticatedAs($admin);
 
         // ... y la rechazan con la sesión abierta.
         app(RechazarDistribuidoraAction::class)->ejecutar($distribuidora, self::MOTIVO);
