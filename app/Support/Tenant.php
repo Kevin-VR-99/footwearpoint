@@ -67,7 +67,7 @@ class Tenant
      * que todavía NO es el usuario autenticado (por ejemplo, el login).
      *
      * TG-196 (G5): solo cuentan las distribuidoras que pueden operar. Una
-     * suspendida o rechazada (Distribuidora::ESTADOS_SIN_OPERACION) no se le
+     * pendiente, suspendida o rechazada (Distribuidora::ESTADOS_SIN_OPERACION) no se le
      * resuelve a nadie, así que su personal, revendedores y clientes quedan
      * sin distribuidora y el TenantScope no les muestra nada, aunque traigan
      * un token o una sesión de antes. Sus datos no se tocan.
@@ -81,7 +81,7 @@ class Tenant
 
     /**
      * TG-196 (G5) — La distribuidora que este usuario tendría, si no fuera
-     * porque está suspendida o rechazada. Null si sí tiene una distribuidora
+     * porque está pendiente, suspendida o rechazada. Null si sí tiene una distribuidora
      * que opera, o si no tiene ninguna por otro motivo (afiliación
      * suspendida, cuenta mal ligada).
      *
@@ -116,7 +116,8 @@ class Tenant
     // BelongsToTenant, así que la trampa es real en ambas.
     //
     // $soloOperativas (TG-196): con true, se ignoran las distribuidoras
-    // suspendidas o rechazadas. Solo distribuidoraSinOperacionDe() lo pasa
+    // pendientes, suspendidas o rechazadas. Solo distribuidoraSinOperacionDe()
+    // lo pasa
     // en false, para saber cuál era.
     // ------------------------------------------------------------------
 

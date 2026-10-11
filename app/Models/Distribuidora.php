@@ -13,8 +13,13 @@ class Distribuidora extends Model
      * su personal no entra al panel web (AccesoPanelWebService) y sus
      * revendedores y clientes no entran a la app (AuthController, Tenant).
      * Su información se conserva; nada se borra.
+     *
+     * TG-220 (E2-08): 'pendiente' entra a la lista. Antes una pendiente sí
+     * operaba, porque solo el admin general podía crearla y ya la había
+     * revisado. Ahora cualquiera pide su alta desde el formulario público,
+     * así que operar antes de que la aprueben sería entrar sin permiso.
      */
-    public const ESTADOS_SIN_OPERACION = ['suspendida', 'rechazada'];
+    public const ESTADOS_SIN_OPERACION = ['pendiente', 'suspendida', 'rechazada'];
 
     protected $fillable = [
         'nombre_comercial',
@@ -30,6 +35,8 @@ class Distribuidora extends Model
         'horario_publico',
         'marketplace_visible',
         'estado',
+        // TG-220: el plan que eligió quien pidió su alta, si lo eligió.
+        'plan_solicitado_id',
         'fecha_solicitud',
         'fecha_aprobacion',
         'motivo_rechazo',
@@ -41,7 +48,7 @@ class Distribuidora extends Model
         'fecha_aprobacion' => 'datetime',
     ];
 
-    /** TG-196: false si está suspendida o rechazada. */
+    /** TG-196 / TG-220: false si está pendiente, suspendida o rechazada. */
     public function puedeOperar(): bool
     {
         return ! in_array($this->estado, self::ESTADOS_SIN_OPERACION, true);
@@ -53,6 +60,12 @@ class Distribuidora extends Model
      */
     public function mensajeSinOperacionParaApp(): string
     {
+        // TG-220: todavía no la aprueban, así que aún no se puede usar.
+        if ($this->estado === 'pendiente') {
+            return "La solicitud de {$this->nombre_comercial} está en revisión. "
+                .'Te avisaremos por correo cuando sea aprobada.';
+        }
+
         if ($this->estado === 'rechazada') {
             return "{$this->nombre_comercial} no fue aprobada para usar FootwearPoint, así que no puedes usar la app con ella.";
         }
@@ -64,6 +77,12 @@ class Distribuidora extends Model
     public function suscripciones()
     {
         return $this->hasMany(Suscripcion::class, 'distribuidora_id');
+    }
+
+    /** TG-220: el plan que pidió en su solicitud, si eligió uno. */
+    public function planSolicitado()
+    {
+        return $this->belongsTo(PlanSuscripcion::class, 'plan_solicitado_id');
     }
 
     public function configuracion()

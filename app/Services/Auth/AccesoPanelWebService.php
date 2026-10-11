@@ -35,6 +35,10 @@ class AccesoPanelWebService
     public const MENSAJE_DISTRIBUIDORA_RECHAZADA = 'La solicitud de tu distribuidora fue rechazada, '
         .'así que no puede usar FootwearPoint.';
 
+    /** TG-220 (E2-08): lo que ve el personal de una distribuidora pendiente. */
+    public const MENSAJE_DISTRIBUIDORA_PENDIENTE = 'Tu solicitud está en revisión. '
+        .'Te avisaremos por correo cuando sea aprobada.';
+
     /**
      * TG-195 (G4) — Por qué esta persona no puede entrar al panel, o null si
      * sí puede. Lo usan el login web y el middleware SoloPersonalPanel.
@@ -44,8 +48,10 @@ class AccesoPanelWebService
      *    que sepa qué le faltó (E2-01: una rechazada no puede operar).
      *  - Su distribuidora está suspendida      -> MENSAJE_DISTRIBUIDORA_SUSPENDIDA
      *    (TG-196, E2-02: no puede operar, pero conserva su información).
-     *
-     * Las pendientes siguen entrando como hasta ahora.
+     *  - Su distribuidora está pendiente       -> MENSAJE_DISTRIBUIDORA_PENDIENTE
+     *    (TG-220, E2-08). Antes sí entraba, porque solo el admin general podía
+     *    crearla y ya la había revisado. Con el formulario público eso dejaría
+     *    entrar a cualquiera sin aprobación.
      */
     public function motivoSinAcceso(Usuario $usuario): ?string
     {
@@ -58,9 +64,11 @@ class AccesoPanelWebService
         $distribuidora = $staff->distribuidora;
 
         if ($distribuidora !== null && ! $distribuidora->puedeOperar()) {
-            return $distribuidora->estado === 'rechazada'
-                ? self::mensajeDistribuidoraRechazada($distribuidora->motivo_rechazo)
-                : self::MENSAJE_DISTRIBUIDORA_SUSPENDIDA;
+            return match ($distribuidora->estado) {
+                'rechazada' => self::mensajeDistribuidoraRechazada($distribuidora->motivo_rechazo),
+                'pendiente' => self::MENSAJE_DISTRIBUIDORA_PENDIENTE,
+                default => self::MENSAJE_DISTRIBUIDORA_SUSPENDIDA,
+            };
         }
 
         return null;

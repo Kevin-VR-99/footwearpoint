@@ -124,15 +124,15 @@ class PaginaDeInicioTest extends TestCase
             ->assertSee(route('marketplace'), false);
     }
 
-    /** K14 todavía no registra la ruta: el botón baja a contacto y no truena. */
-    public function test_mientras_no_exista_k14_el_boton_del_alta_baja_a_contacto(): void
+    /** TG-220 ya registró la ruta, así que el botón la sigue. */
+    public function test_el_boton_del_alta_lleva_al_formulario(): void
     {
-        $this->assertFalse(
-            \Illuminate\Support\Facades\Route::has('alta.solicitar'),
-            'Si K14 ya registró la ruta, esta prueba hay que cambiarla por una que la siga'
-        );
+        $this->assertTrue(\Illuminate\Support\Facades\Route::has('alta.solicitar'));
 
-        $this->get('/')->assertOk()->assertSee('href="#contacto"', false);
+        $this->get('/')
+            ->assertOk()
+            ->assertSee(route('alta.solicitar'), false)
+            ->assertDontSee('href="#contacto"', false);
     }
 
     public function test_enlaza_al_aviso_de_privacidad_y_a_los_terminos(): void

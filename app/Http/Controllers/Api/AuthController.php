@@ -61,7 +61,8 @@ class AuthController extends Controller
             ]);
         }
 
-        // TG-196 (G5): si su distribuidora está suspendida o rechazada no
+        // TG-196 (G5) / TG-220: si su distribuidora está pendiente, suspendida
+        // o rechazada no
         // puede operar. Se revisa ANTES de la regla del personal (TG-93):
         // sin distribuidora, el rol del personal saldría en null y esa regla
         // ya no lo detendría. Tampoco se crea token.

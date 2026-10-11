@@ -734,6 +734,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 'Teléfono público' => $detalle['telefono_publico'],
                 'Dirección pública' => $detalle['direccion_publica'],
                 'Horario público' => $detalle['horario_publico'],
+                // TG-220: el plan que pidió en el formulario público.
+                'Plan solicitado' => $detalle['plan_solicitado'],
                 'Fecha de solicitud' => $fecha($detalle['fecha_solicitud']),
                 'Fecha de aprobación' => $fecha($detalle['fecha_aprobacion']),
             ];
@@ -764,7 +766,19 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <dt class="text-slate-500">Administrador</dt>
                     <dd class="text-slate-900">
                         @forelse ($detalle['administradores'] as $admin)
-                            <div>{{ $admin['nombre'] }} · {{ $admin['email'] }}</div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span>{{ $admin['nombre'] }} · {{ $admin['email'] }}</span>
+                                {{-- TG-220 (A11): avisa si nadie confirmó ese correo. --}}
+                                @if ($admin['correo_confirmado'])
+                                    <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
+                                        Correo confirmado
+                                    </span>
+                                @else
+                                    <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                        Correo sin confirmar
+                                    </span>
+                                @endif
+                            </div>
                         @empty
                             Sin administrador registrado
                         @endforelse
