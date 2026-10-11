@@ -12,7 +12,6 @@
 
 <body class="min-h-screen bg-fp-page text-slate-800 antialiased">
     <div class="min-h-screen flex">
-        {{-- Sidebar (TG-179: mismos colores que el panel de la distribuidora) --}}
         <aside class="w-64 shrink-0 bg-gradient-to-b from-fp-sidebar via-fp-sidebar to-fp-accent text-white flex flex-col shadow-xl shadow-fp-sidebar/30">
             <div class="h-0.5 w-full bg-gradient-to-r from-fp-primary via-white/40 to-fp-danger"></div>
             <div class="px-5 py-4 border-b border-white/10">
@@ -28,6 +27,10 @@
                 <a href="{{ route('admin.planes') }}"
                     class="block rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('admin.planes') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
                     Planes
+                </a>
+                <a href="{{ route('admin.catalogo') }}"
+                    class="block rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('admin.catalogo') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                    Catálogo maestro
                 </a>
                 <a href="{{ route('admin.categorias-directorio') }}"
                     class="block rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('admin.categorias-directorio') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
@@ -52,7 +55,6 @@
             </div>
         </aside>
 
-        {{-- Contenido --}}
         <main class="flex-1 p-6 lg:p-8 overflow-auto">
             {{ $slot }}
         </main>
