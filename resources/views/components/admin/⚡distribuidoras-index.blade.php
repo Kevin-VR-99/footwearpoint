@@ -974,7 +974,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                             @endif
                             @if ($d->estado === 'activa')
                                 <button wire:click="suspender({{ $d->id }})"
-                                    wire:confirm="Su personal, revendedores y clientes no podrán usar FootwearPoint hasta reactivarla. Su información se conserva. ¿Continuar?"
+                                    wire:confirm="Su personal, clientes mayoristas y clientes no podrán usar FootwearPoint hasta reactivarla. Su información se conserva. ¿Continuar?"
                                     class="text-xs text-fp-danger hover:underline">Suspender</button>
                             @endif
                             @if ($d->estado === 'suspendida')

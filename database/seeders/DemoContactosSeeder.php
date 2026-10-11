@@ -102,7 +102,7 @@ class DemoContactosSeeder extends Seeder
 
         $this->confirmarCorreoDeLasCuentasDemo();
 
-        $this->command->info('Contactos demo creados: 2 revendedores afiliados y 3 clientes directos.');
+        $this->command->info('Contactos demo creados: 2 clientes mayoristas afiliados y 3 clientes directos.');
         $this->command->info('Cuentas de la app: maria.lopez@revendedor.test y jose.hernandez@cliente.test.');
     }
 

@@ -24,4 +24,7 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_distribuidora'])->group(fu
 
     Route::livewire('/catalogo/productos/{producto}', 'catalogo.producto-detalle')
         ->name('catalogo.producto.detalle');
+        
+    Route::livewire('/catalogo/mis-lineas', 'catalogo.mis-lineas')
+    ->name('catalogo.mis-lineas');
 });

@@ -15,7 +15,7 @@ class ClientePrivadoRevendedorController extends Controller
         $revendedorId = $this->obtenerRevendedorId($request);
 
         if (!$revendedorId) {
-            return response()->json(['message' => 'No se encontró el perfil de revendedor.'], 403);
+            return response()->json(['message' => 'No se encontró el perfil de cliente mayorista.'], 403);
         }
 
         $clientes = ClientePrivadoRevendedor::where('revendedor_id', $revendedorId)
@@ -32,7 +32,7 @@ class ClientePrivadoRevendedorController extends Controller
         $revendedorId = $this->obtenerRevendedorId($request);
 
         if (!$revendedorId) {
-            return response()->json(['message' => 'No se encontró el perfil de revendedor.'], 403);
+            return response()->json(['message' => 'No se encontró el perfil de cliente mayorista.'], 403);
         }
 
         $validados = $this->validar($request, $revendedorId);
@@ -52,7 +52,7 @@ class ClientePrivadoRevendedorController extends Controller
         $revendedorId = $this->obtenerRevendedorId($request);
 
         if (!$revendedorId) {
-            return response()->json(['message' => 'No se encontró el perfil de revendedor.'], 403);
+            return response()->json(['message' => 'No se encontró el perfil de cliente mayorista.'], 403);
         }
 
         $cliente = ClientePrivadoRevendedor::where('revendedor_id', $revendedorId)
@@ -73,7 +73,7 @@ class ClientePrivadoRevendedorController extends Controller
         $revendedorId = $this->obtenerRevendedorId($request);
 
         if (!$revendedorId) {
-            return response()->json(['message' => 'No se encontró el perfil de revendedor.'], 403);
+            return response()->json(['message' => 'No se encontró el perfil de cliente mayorista.'], 403);
         }
 
         $cliente = ClientePrivadoRevendedor::where('revendedor_id', $revendedorId)

@@ -341,7 +341,7 @@ new class extends Component {
         $this->revendedorEditandoId = null;
         $this->limpiarAccesoRevendedor();
         $this->cargarRevendedores();
-        $this->dispatch('guardado', mensaje: 'Revendedor guardado correctamente.');
+        $this->dispatch('guardado', mensaje: 'Cliente mayorista guardado correctamente.');
     }
 
     private function limpiarAccesoRevendedor(): void
@@ -535,7 +535,7 @@ new class extends Component {
         @else
             <form wire:submit="guardarRevendedor" class="space-y-4">
                 <h2 class="text-sm font-semibold text-slate-700">
-                    {{ $revendedorEditandoId ? 'Editar revendedor' : 'Afiliar nuevo revendedor' }}
+                    {{ $revendedorEditandoId ? 'Editar cliente mayorista' : 'Afiliar nuevo cliente mayorista' }}
                 </h2>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
