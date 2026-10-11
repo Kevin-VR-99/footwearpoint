@@ -23,6 +23,9 @@ class CamposDelProductoImportado
         'talla_hasta'     => 'Talla hasta',
         'medios_numeros'  => 'Medias tallas',
         'disponibilidad'  => 'Disponibilidad',
+        // TG-240 (A10): la IA no extrae la categoria; se elige al revisar
+        // o se hereda la del lote al aprobar.
+        'categoria_id'    => 'Categoría',
     ];
 
     /** Los que se pueden rellenar de golpe en todos los productos de un catálogo. */
