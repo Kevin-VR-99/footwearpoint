@@ -28,7 +28,7 @@ class GestionarCampanaAction
         // puede mandar NULL de forma explícita y eso le "gana" al default
         // de la columna.
         return Campana::create([
-            'marca_id'     => $datos['marca_id'] ?? null,
+            'linea_id'     => $datos['linea_id'],
             'nombre'       => $datos['nombre'],
             'descripcion'  => $datos['descripcion'] ?? null,
             'fecha_inicio' => $datos['fecha_inicio'] ?? null,
@@ -52,7 +52,8 @@ class GestionarCampanaAction
             $this->validarTransicion($campana->estado, $datos['estado']);
         }
 
-        // marca_id nunca se acepta aquí (el Form Request ya lo bloquea).
+        // linea_id no se acepta aquí: una temporada no cambia de línea.
+        unset($datos['linea_id']);
         $campana->fill($datos);
         $campana->save();
 

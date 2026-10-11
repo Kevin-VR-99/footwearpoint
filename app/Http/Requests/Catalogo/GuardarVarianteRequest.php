@@ -10,7 +10,7 @@ class GuardarVarianteRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin_distribuidora') ?? false;
+        return $this->user()?->hasRole('admin_general') ?? false;
     }
 
     public function rules(): array
@@ -26,7 +26,7 @@ class GuardarVarianteRequest extends FormRequest
             $reglas['producto_id'] = [
                 'required',
                 'integer',
-                Rule::exists('productos', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
+                Rule::exists('productos', 'id'),
             ];
 
             $reglas['talla_id'] = ['required', 'integer', 'exists:tallas,id'];
@@ -41,8 +41,7 @@ class GuardarVarianteRequest extends FormRequest
                 'exists:colores,id',
                 Rule::unique('variantes')->where(function ($query) {
                     return $query->where('producto_id', $this->input('producto_id'))
-                        ->where('talla_id', $this->input('talla_id'))
-                        ->where('distribuidora_id', Tenant::id());
+                        ->where('talla_id', $this->input('talla_id'));
                 }),
             ];
         }

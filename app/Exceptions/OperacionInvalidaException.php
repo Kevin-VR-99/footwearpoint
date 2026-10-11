@@ -9,8 +9,11 @@ use Illuminate\Http\Request;
 /**
  * Respeta el formato de error de la seccion 1.7 sin tocar bootstrap/app.php:
  * Laravel llama solo al metodo render() de la excepcion.
+ *
+ * TG-224 (G3): su mensaje esta escrito para el usuario, asi que se puede
+ * mostrar tal cual (ver MensajeParaUsuario).
  */
-class OperacionInvalidaException extends Exception
+class OperacionInvalidaException extends Exception implements MensajeParaUsuario
 {
     public function __construct(
         string $message,

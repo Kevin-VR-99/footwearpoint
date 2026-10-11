@@ -1,14 +1,26 @@
 <?php
 
+use App\Exceptions\OperacionInvalidaException;
+use App\Models\CategoriaDirectorio;
 use App\Models\Distribuidora;
 use App\Models\PlanSuscripcion;
-use App\Models\Suscripcion;
+use App\Rules\SubdominioValido;
 use App\Services\Distribuidora\AprobacionDistribuidoraException;
+use App\Services\Directorio\AsignarCategoriasDirectorioAction;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
+use App\Services\Distribuidora\CambiarVisibilidadMarketplaceAction;
+use App\Services\Distribuidora\CambioEstadoDistribuidora;
 use App\Services\Distribuidora\CrearDistribuidoraAction;
+use App\Services\Distribuidora\DatosSolicitudDistribuidoraAction;
+use App\Services\Distribuidora\ReactivarDistribuidoraAction;
+use App\Services\Distribuidora\RechazarDistribuidoraAction;
+use App\Services\Distribuidora\SuspenderDistribuidoraAction;
+use App\Services\Suscripcion\AsignarSuscripcionAction;
+use App\Support\MensajeError;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -45,6 +57,17 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public string $admin_nombre = '';
     public string $admin_email = '';
     public string $admin_password = '';
+
+    // Revisar los datos antes de aprobar o rechazar (TG-195)
+    public ?int $distribuidoraDetalleId = null;
+
+    // Categorías del directorio de la distribuidora en "Ver datos" (TG-197)
+    public array $categoriasSeleccionadas = [];
+
+    // Rechazar con motivo (TG-195)
+    public ?int $distribuidoraRechazoId = null;
+    public string $distribuidoraRechazoNombre = '';
+    public string $motivo_rechazo = '';
 
     public function mount()
     {
@@ -106,6 +129,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         // Se normaliza antes de validar, para que formato y unicidad se
         // revisen sobre lo mismo que se va a guardar.
         $this->nuevo_rfc = CrearDistribuidoraAction::normalizarRfc($this->nuevo_rfc) ?? '';
+        // TG-232: el subdominio es un nombre DNS, siempre en minúsculas.
+        $this->nuevo_subdominio = strtolower(trim($this->nuevo_subdominio));
 
         $this->validate([
             'nuevo_nombre_comercial' => ['required', 'string', 'max:150'],
@@ -113,7 +138,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             // RFC mexicano: 12 caracteres persona moral, 13 persona física.
             'nuevo_rfc' => ['nullable', 'string', 'regex:/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/u', Rule::unique('distribuidoras', 'rfc')],
             'nuevo_slug' => ['required', 'string', 'max:120', 'unique:distribuidoras,slug', 'alpha_dash'],
-            'nuevo_subdominio' => ['nullable', 'string', 'max:80', 'alpha_dash', Rule::unique('distribuidoras', 'subdominio')],
+            'nuevo_subdominio' => ['nullable', 'string', new SubdominioValido(), Rule::unique('distribuidoras', 'subdominio')],
             'nuevo_email_publico' => ['nullable', 'email', 'max:190'],
             'nuevo_telefono_publico' => ['nullable', 'string', 'max:30'],
             'nuevo_direccion_publica' => ['nullable', 'string', 'max:300'],
@@ -133,8 +158,6 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             'nuevo_slug.max' => 'El slug no puede pasar de 120 caracteres.',
             'nuevo_slug.unique' => 'Ese slug ya lo usa otra distribuidora.',
             'nuevo_slug.alpha_dash' => 'El slug solo puede tener letras, números, guiones y guiones bajos.',
-            'nuevo_subdominio.max' => 'El subdominio no puede pasar de 80 caracteres.',
-            'nuevo_subdominio.alpha_dash' => 'El subdominio solo puede tener letras, números, guiones y guiones bajos.',
             'nuevo_subdominio.unique' => 'Ese subdominio ya lo usa otra distribuidora.',
             'nuevo_email_publico.email' => 'El email público no es válido.',
             'nuevo_email_publico.max' => 'El email público no puede pasar de 190 caracteres.',
@@ -173,9 +196,18 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 ],
                 $this->nuevo_activar_ya,
             );
-        } catch (\Throwable $e) {
+        } catch (ValidationException $e) {
+            // TG-224 (G3): los mensajes de validación de la acción ya están
+            // pensados para el usuario; cada uno va a su campo del formulario.
             $this->mensaje = '';
-            $this->addError('nuevo_nombre_comercial', $e->getMessage());
+            foreach ($e->errors() as $campo => $mensajes) {
+                $this->addError(property_exists($this, $campo) ? $campo : 'nuevo_nombre_comercial', $mensajes[0]);
+            }
+            return;
+        } catch (\Throwable $e) {
+            // TG-224 (G3): el detalle técnico va al log, nunca a la pantalla.
+            $this->mensaje = '';
+            $this->addError('nuevo_nombre_comercial', MensajeError::paraUsuario($e, 'No se pudo crear la distribuidora. Intenta de nuevo.'));
             return;
         }
 
@@ -191,6 +223,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 'suscripciones' => function ($q) {
                     $q->where('estado', 'activa')->latest('id');
                 },
+                // TG-197: sus categorías activas, para mostrarlas en la tabla.
+                'categoriasDirectorio' => fn ($q) => $q->activas()->orderBy('nombre'),
             ])
             ->orderByDesc('id');
 
@@ -211,7 +245,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         $distribuidora = Distribuidora::findOrFail($id);
 
         try {
-            app(AprobarDistribuidoraAction::class)->ejecutar($distribuidora);
+            $cambio = app(AprobarDistribuidoraAction::class)->ejecutar($distribuidora);
         } catch (AprobacionDistribuidoraException $e) {
             $this->mensaje = $e->esNoPendiente()
                 ? 'Solo se pueden aprobar distribuidoras pendientes.'
@@ -219,45 +253,198 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             return;
         }
 
-        $this->mensaje = "Distribuidora «{$distribuidora->nombre_comercial}» aprobada.";
+        $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$distribuidora->nombre_comercial}» aprobada.");
     }
 
+    /** TG-195: muestra los datos de la distribuidora para revisarla. */
+    public function verDatos(int $id): void
+    {
+        $distribuidora = Distribuidora::findOrFail($id);
+
+        $this->distribuidoraDetalleId = $distribuidora->id;
+        $this->mensaje = '';
+        $this->resetErrorBag('categoriasSeleccionadas');
+
+        // TG-197: se marcan las categorías activas que ya tiene.
+        $this->categoriasSeleccionadas = $distribuidora->categoriasDirectorio()
+            ->activas()
+            ->pluck('categorias_directorio.id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+    }
+
+    public function cerrarDatos(): void
+    {
+        $this->distribuidoraDetalleId = null;
+        $this->categoriasSeleccionadas = [];
+    }
+
+    /** TG-197: categorías activas que se pueden asignar, por nombre. */
+    public function getCategoriasDisponiblesProperty()
+    {
+        return CategoriaDirectorio::activas()->orderBy('nombre')->get(['id', 'nombre']);
+    }
+
+    /**
+     * TG-197 (G16) — Guarda en qué categorías del directorio aparece la
+     * distribuidora que se está viendo. Solo el admin general (E2-05).
+     */
+    public function guardarCategorias(): void
+    {
+        $this->mensaje = '';
+        $this->resetErrorBag('categoriasSeleccionadas');
+
+        if ($this->distribuidoraDetalleId === null) {
+            return;
+        }
+
+        try {
+            $distribuidora = Distribuidora::findOrFail($this->distribuidoraDetalleId);
+            app(AsignarCategoriasDirectorioAction::class)->ejecutar($distribuidora, $this->categoriasSeleccionadas);
+        } catch (ValidationException $e) {
+            $this->addError('categoriasSeleccionadas', collect($e->errors())->flatten()->first() ?? AsignarCategoriasDirectorioAction::MENSAJE_NO_DISPONIBLE);
+            return;
+        } catch (\Throwable $e) {
+            // TG-224 (G3): el detalle técnico va al log, nunca a la pantalla.
+            $this->addError('categoriasSeleccionadas', MensajeError::paraUsuario($e, 'No se pudieron guardar las categorías. Intenta de nuevo.'));
+            return;
+        }
+
+        $this->mensaje = "Categorías de «{$distribuidora->nombre_comercial}» guardadas.";
+    }
+
+    /** Datos del panel "Ver datos" (los mismos que da la API). */
+    public function getDetalleProperty(): ?array
+    {
+        if ($this->distribuidoraDetalleId === null) {
+            return null;
+        }
+
+        $distribuidora = Distribuidora::find($this->distribuidoraDetalleId);
+
+        return $distribuidora ? app(DatosSolicitudDistribuidoraAction::class)->ejecutar($distribuidora) : null;
+    }
+
+    /** TG-195: abre la ventana para escribir el motivo del rechazo. */
+    public function abrirRechazo(int $id): void
+    {
+        $distribuidora = Distribuidora::findOrFail($id);
+
+        if ($distribuidora->estado !== 'pendiente') {
+            $this->mensaje = RechazarDistribuidoraAction::MENSAJE_NO_PENDIENTE;
+            return;
+        }
+
+        $this->resetValidation();
+        $this->mensaje = '';
+        $this->mostrarSuscripcion = false;
+        $this->mostrandoFormularioCrear = false;
+        $this->distribuidoraRechazoId = $distribuidora->id;
+        $this->distribuidoraRechazoNombre = $distribuidora->nombre_comercial;
+        $this->motivo_rechazo = '';
+    }
+
+    public function cancelarRechazo(): void
+    {
+        $this->resetValidation('motivo_rechazo');
+        $this->distribuidoraRechazoId = null;
+        $this->distribuidoraRechazoNombre = '';
+        $this->motivo_rechazo = '';
+    }
+
+    public function rechazar(): void
+    {
+        $this->mensaje = '';
+
+        $this->validate([
+            'motivo_rechazo' => ['required', 'string', 'max:' . RechazarDistribuidoraAction::LARGO_MAXIMO_MOTIVO],
+        ], [
+            'motivo_rechazo.required' => RechazarDistribuidoraAction::MENSAJE_MOTIVO_OBLIGATORIO,
+            'motivo_rechazo.max' => RechazarDistribuidoraAction::MENSAJE_MOTIVO_LARGO,
+        ]);
+
+        try {
+            $cambio = app(RechazarDistribuidoraAction::class)->ejecutar(
+                Distribuidora::findOrFail($this->distribuidoraRechazoId),
+                $this->motivo_rechazo,
+            );
+        } catch (ValidationException $e) {
+            $this->addError('motivo_rechazo', collect($e->errors())->flatten()->first() ?? RechazarDistribuidoraAction::MENSAJE_MOTIVO_OBLIGATORIO);
+            return;
+        } catch (OperacionInvalidaException $e) {
+            // Ya no está pendiente (otro admin la aprobó o rechazó antes).
+            $this->cancelarRechazo();
+            $this->mensaje = $e->getMessage();
+            return;
+        } catch (\Throwable $e) {
+            // TG-224 (G3): el detalle técnico va al log, nunca a la pantalla.
+            $this->addError('motivo_rechazo', MensajeError::paraUsuario($e, 'No se pudo rechazar la distribuidora. Intenta de nuevo.'));
+            return;
+        }
+
+        $this->cancelarRechazo();
+        $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$cambio->distribuidora->nombre_comercial}» rechazada.");
+    }
+
+    /**
+     * TG-196 (G5) — Suspende una distribuidora activa: conserva sus datos,
+     * pero ni su personal ni sus revendedores y clientes pueden operar hasta
+     * reactivarla. Se le avisa por correo.
+     */
     public function suspender(int $id)
     {
-        $d = Distribuidora::findOrFail($id);
-
-        if ($d->estado !== 'activa') {
-            $this->mensaje = 'Solo se pueden suspender distribuidoras activas.';
+        try {
+            $cambio = app(SuspenderDistribuidoraAction::class)->ejecutar(Distribuidora::findOrFail($id));
+        } catch (OperacionInvalidaException $e) {
+            $this->mensaje = $e->getMessage();
+            return;
+        } catch (\Throwable $e) {
+            $this->mensaje = MensajeError::paraUsuario($e, 'No se pudo suspender la distribuidora. Intenta de nuevo.');
             return;
         }
 
-        $d->update(['estado' => 'suspendida']);
-        $this->mensaje = "Distribuidora «{$d->nombre_comercial}» suspendida.";
+        $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$cambio->distribuidora->nombre_comercial}» suspendida.");
     }
 
+    /** TG-196 (G5) — Reactiva una distribuidora suspendida y le avisa por correo. */
     public function reactivar(int $id)
     {
-        $d = Distribuidora::findOrFail($id);
-
-        if ($d->estado !== 'suspendida') {
-            $this->mensaje = 'Solo se pueden reactivar distribuidoras suspendidas.';
+        try {
+            $cambio = app(ReactivarDistribuidoraAction::class)->ejecutar(Distribuidora::findOrFail($id));
+        } catch (OperacionInvalidaException $e) {
+            $this->mensaje = $e->getMessage();
+            return;
+        } catch (\Throwable $e) {
+            $this->mensaje = MensajeError::paraUsuario($e, 'No se pudo reactivar la distribuidora. Intenta de nuevo.');
             return;
         }
 
-        $d->update(['estado' => 'activa']);
-        $this->mensaje = "Distribuidora «{$d->nombre_comercial}» reactivada.";
+        $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$cambio->distribuidora->nombre_comercial}» reactivada.");
     }
 
+    /** TG-196 (G5): si el correo no salió, el cambio quedó, pero se avisa al admin. */
+    private function conAviso(CambioEstadoDistribuidora $cambio, string $mensaje): string
+    {
+        return $cambio->avisoEnviado
+            ? $mensaje
+            : $mensaje . ' No se pudo enviar el aviso por correo a la distribuidora.';
+    }
+
+    /** Mostrar u ocultar en el marketplace (E2-05). Misma regla que la API (TG-197). */
     public function toggleMarketplace(int $id)
     {
         $d = Distribuidora::findOrFail($id);
 
-        if ($d->estado !== 'activa' && !$d->marketplace_visible) {
-            $this->mensaje = 'Solo distribuidoras activas pueden ser visibles en marketplace.';
+        try {
+            $d = app(CambiarVisibilidadMarketplaceAction::class)->ejecutar($d, ! $d->marketplace_visible);
+        } catch (OperacionInvalidaException $e) {
+            $this->mensaje = $e->getMessage();
+            return;
+        } catch (\Throwable $e) {
+            $this->mensaje = MensajeError::paraUsuario($e, 'No se pudo cambiar la visibilidad en el marketplace. Intenta de nuevo.');
             return;
         }
 
-        $d->update(['marketplace_visible' => !$d->marketplace_visible]);
         $estado = $d->marketplace_visible ? 'visible' : 'oculta';
         $this->mensaje = "Marketplace: «{$d->nombre_comercial}» ahora está {$estado}.";
     }
@@ -314,31 +501,19 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         $distribuidora = Distribuidora::findOrFail($this->distribuidoraSuscripcionId);
         $plan = PlanSuscripcion::findOrFail($this->plan_id);
 
-        if (!$plan->activo) {
-            $this->mensaje = 'El plan seleccionado no está activo.';
+        // TG-224 (G3): misma acción que usa la API (antes estaba copiada aquí).
+        try {
+            app(AsignarSuscripcionAction::class)->ejecutar(
+                $distribuidora,
+                $plan,
+                (int) $this->meses,
+                (int) $this->lineas_extra_contratadas,
+                (bool) $this->renovacion_automatica,
+            );
+        } catch (OperacionInvalidaException $e) {
+            $this->mensaje = $e->getMessage();
             return;
         }
-
-        Suscripcion::withoutGlobalScopes()
-            ->where('distribuidora_id', $distribuidora->id)
-            ->where('estado', 'activa')
-            ->update([
-                'estado' => 'cancelada',
-                'fecha_fin' => now()->toDateString(),
-            ]);
-
-        Suscripcion::withoutGlobalScopes()->create([
-            'distribuidora_id' => $distribuidora->id,
-            'plan_id' => $plan->id,
-            'fecha_inicio' => now()->toDateString(),
-            'fecha_fin' => now()->addMonths((int) $this->meses)->toDateString(),
-            'estado' => 'activa',
-            'precio_base_contratado' => $plan->precio_base_mensual,
-            'lineas_incluidas_contratadas' => $plan->lineas_incluidas,
-            'precio_linea_extra_contratado' => $plan->precio_linea_extra,
-            'lineas_extra_contratadas' => (int) $this->lineas_extra_contratadas,
-            'renovacion_automatica' => $this->renovacion_automatica,
-        ]);
 
         $this->mensaje = "Suscripción «{$plan->nombre}» asignada a «{$distribuidora->nombre_comercial}».";
         $this->cancelarSuscripcion();
@@ -347,28 +522,27 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 ?>
 
 <div>
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <h2 class="text-2xl font-bold text-slate-900">Distribuidoras</h2>
-            <p class="text-sm text-slate-500">Solicitudes, altas y estado de las tiendas</p>
-        </div>
+    <x-panel.encabezado titulo="Distribuidoras" class="mb-6">
+            <p class="mt-1 text-sm text-fp-text-muted">Solicitudes, altas y estado de las tiendas</p>
+        <x-slot:acciones>
         @if (!$mostrandoFormularioCrear)
             <button type="button" wire:click="abrirFormularioCrear"
-                class="rounded-lg bg-[#2563EB] text-white text-sm font-medium px-4 py-2 hover:bg-blue-700">
+                class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
                 + Nueva distribuidora
             </button>
         @endif
-    </div>
+        </x-slot:acciones>
+    </x-panel.encabezado>
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg bg-green-50 text-green-700 text-sm p-3">
+        <x-panel.alerta tipo="exito" class="mb-4">
             {{ $mensaje }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($mostrandoFormularioCrear)
         <form wire:submit="crearDistribuidora"
-            class="mb-6 bg-white rounded-xl border border-slate-200 p-5 space-y-4 max-w-3xl">
+            class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-4 max-w-3xl">
             <h3 class="font-semibold text-slate-800">Nueva distribuidora</h3>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -377,7 +551,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <input type="text" wire:model.live="nuevo_nombre_comercial"
                         class="w-full rounded-lg border-slate-300 text-sm">
                     @error('nuevo_nombre_comercial')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div>
@@ -389,14 +563,14 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <label class="block text-sm font-medium mb-1">RFC</label>
                     <input type="text" wire:model="nuevo_rfc" class="w-full rounded-lg border-slate-300 text-sm">
                     @error('nuevo_rfc')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Slug * (URL interna)</label>
                     <input type="text" wire:model="nuevo_slug" class="w-full rounded-lg border-slate-300 text-sm">
                     @error('nuevo_slug')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div>
@@ -404,7 +578,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <input type="text" wire:model="nuevo_subdominio"
                         class="w-full rounded-lg border-slate-300 text-sm" placeholder="calzados-ejemplo">
                     @error('nuevo_subdominio')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div>
@@ -452,7 +626,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         <input type="text" wire:model="admin_nombre"
                             class="w-full rounded-lg border-slate-300 text-sm">
                         @error('admin_nombre')
-                            <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
@@ -460,7 +634,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         <input type="email" wire:model="admin_email"
                             class="w-full rounded-lg border-slate-300 text-sm">
                         @error('admin_email')
-                            <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
@@ -468,14 +642,14 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         <input type="password" wire:model="admin_password"
                             class="w-full rounded-lg border-slate-300 text-sm">
                         @error('admin_password')
-                            <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                 </div>
             </div>
 
             <div class="flex gap-2">
-                <button type="submit" class="rounded-lg bg-[#2563EB] text-white text-sm font-medium px-4 py-2">
+                <button type="submit" class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
                     Crear distribuidora
                 </button>
                 <button type="button" wire:click="cancelarCrear" class="text-sm text-slate-600 px-4 py-2">
@@ -486,7 +660,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     @endif
 
     @if ($mostrarSuscripcion)
-        <div class="mb-6 bg-white rounded-xl border border-slate-200 p-5">
+        <div class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <h3 class="font-semibold mb-1">Asignar plan</h3>
             <p class="text-sm text-slate-500 mb-4">{{ $distribuidoraSuscripcionNombre }}</p>
 
@@ -503,7 +677,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         @endforeach
                     </select>
                     @error('plan_id')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
@@ -512,7 +686,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <input type="number" min="0" wire:model="lineas_extra_contratadas"
                         class="w-full rounded-lg border-slate-300">
                     @error('lineas_extra_contratadas')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
@@ -521,18 +695,18 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <input type="number" min="1" max="24" wire:model="meses"
                         class="w-full rounded-lg border-slate-300">
                     @error('meses')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
                 <div class="flex items-center gap-2 pt-6">
                     <input type="checkbox" wire:model="renovacion_automatica"
-                        class="rounded border-slate-300 text-blue-600">
+                        class="rounded border-slate-300 text-fp-primary">
                     <span class="text-sm">Renovación automática</span>
                 </div>
 
                 <div class="md:col-span-2 flex gap-2">
-                    <button type="submit" class="rounded-lg bg-[#111E38] text-white text-sm px-4 py-2">
+                    <button type="submit" class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
                         Asignar
                     </button>
                     <button type="button" wire:click="cancelarSuscripcion"
@@ -544,22 +718,176 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         </div>
     @endif
 
+    {{-- TG-195: revisar los datos antes de aprobar o rechazar --}}
+    @php
+        $detalle = $this->detalle;
+        $fecha = fn (?string $iso) => $iso ? \Illuminate\Support\Carbon::parse($iso)->format('d/m/Y H:i') : null;
+    @endphp
+    @if ($detalle)
+        @php
+            $camposDetalle = [
+                'Razón social' => $detalle['razon_social'],
+                'RFC' => $detalle['rfc'],
+                'Slug' => $detalle['slug'],
+                'Subdominio' => $detalle['subdominio'],
+                'Email público' => $detalle['email_publico'],
+                'Teléfono público' => $detalle['telefono_publico'],
+                'Dirección pública' => $detalle['direccion_publica'],
+                'Horario público' => $detalle['horario_publico'],
+                'Fecha de solicitud' => $fecha($detalle['fecha_solicitud']),
+                'Fecha de aprobación' => $fecha($detalle['fecha_aprobacion']),
+            ];
+        @endphp
+        <div class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div>
+                    <h3 class="font-semibold text-slate-800">{{ $detalle['nombre_comercial'] }}</h3>
+                    <p class="text-sm text-slate-500">Estado: {{ ucfirst($detalle['estado']) }}</p>
+                </div>
+                <button type="button" wire:click="cerrarDatos" class="text-sm text-slate-600 hover:underline">
+                    Cerrar
+                </button>
+            </div>
+
+            <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                @foreach ($camposDetalle as $etiqueta => $valor)
+                    <div>
+                        <dt class="text-slate-500">{{ $etiqueta }}</dt>
+                        <dd class="text-slate-900">{{ $valor ?: '—' }}</dd>
+                    </div>
+                @endforeach
+                <div class="md:col-span-2">
+                    <dt class="text-slate-500">Descripción pública</dt>
+                    <dd class="text-slate-900 whitespace-pre-line">{{ $detalle['descripcion_publica'] ?: '—' }}</dd>
+                </div>
+                <div class="md:col-span-2">
+                    <dt class="text-slate-500">Administrador</dt>
+                    <dd class="text-slate-900">
+                        @forelse ($detalle['administradores'] as $admin)
+                            <div>{{ $admin['nombre'] }} · {{ $admin['email'] }}</div>
+                        @empty
+                            Sin administrador registrado
+                        @endforelse
+                    </dd>
+                </div>
+                @if ($detalle['estado'] === 'rechazada')
+                    <div class="md:col-span-2">
+                        <dt class="text-slate-500">Motivo del rechazo</dt>
+                        <dd class="text-slate-900">{{ $detalle['motivo_rechazo'] ?: '—' }}</dd>
+                    </div>
+                @endif
+            </dl>
+
+            {{-- TG-197: categorías del directorio (solo el admin general las asigna) --}}
+            <div class="mt-5 border-t pt-4">
+                <h4 class="text-sm font-medium text-slate-800">Categorías del directorio</h4>
+                <p class="text-xs text-slate-500 mb-3">Con ellas la encuentran en el marketplace.</p>
+
+                @if ($this->categoriasDisponibles->isEmpty())
+                    <p class="text-sm text-slate-500">
+                        Aún no hay categorías activas.
+                        <a href="{{ route('admin.categorias-directorio') }}" class="text-fp-primary hover:underline">Créalas en Categorías del directorio</a>.
+                    </p>
+                @else
+                    <div class="flex flex-wrap gap-x-5 gap-y-2">
+                        @foreach ($this->categoriasDisponibles as $categoria)
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="checkbox" wire:model="categoriasSeleccionadas" value="{{ $categoria->id }}"
+                                    class="rounded border-slate-300">
+                                {{ $categoria->nombre }}
+                            </label>
+                        @endforeach
+                    </div>
+                    @error('categoriasSeleccionadas') <p class="text-xs text-fp-danger mt-2">{{ $message }}</p> @enderror
+                    <button type="button" wire:click="guardarCategorias" wire:loading.attr="disabled"
+                        class="mt-3 rounded-lg border border-slate-300 text-sm px-3 py-1.5 hover:bg-slate-50">
+                        Guardar categorías
+                    </button>
+                @endif
+
+                @php
+                    $inactivas = collect($detalle['categorias_directorio'])->where('activa', false);
+                @endphp
+                @if ($inactivas->isNotEmpty())
+                    <p class="text-xs text-slate-500 mt-2">
+                        También tiene categorías inactivas (no se muestran en el marketplace):
+                        {{ $inactivas->pluck('nombre')->join(', ') }}.
+                    </p>
+                @endif
+            </div>
+
+            @if ($detalle['estado'] === 'pendiente')
+                <div class="mt-5 flex gap-2">
+                    <button type="button" wire:click="aprobar({{ $detalle['id'] }})"
+                        class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
+                        Aprobar
+                    </button>
+                    <button type="button" wire:click="abrirRechazo({{ $detalle['id'] }})"
+                        class="rounded-lg border border-fp-danger/30 text-fp-danger text-sm px-4 py-2 hover:bg-fp-danger-soft">
+                        Rechazar
+                    </button>
+                </div>
+            @endif
+        </div>
+    @endif
+
+    {{-- TG-195: rechazar con motivo --}}
+    @if ($distribuidoraRechazoId)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <form wire:submit="rechazar" class="w-full max-w-lg bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+                <h3 class="font-semibold text-slate-900">Rechazar distribuidora</h3>
+                <p class="text-sm text-slate-500 mt-1">
+                    «{{ $distribuidoraRechazoNombre }}» no podrá usar FootwearPoint. El rechazo es definitivo.
+                </p>
+
+                <div class="mt-4" x-data="{ largo: {{ mb_strlen($motivo_rechazo) }} }">
+                    <label for="motivo_rechazo" class="block text-sm font-medium mb-1">Motivo del rechazo *</label>
+                    <textarea id="motivo_rechazo" wire:model="motivo_rechazo" rows="4"
+                        maxlength="{{ \App\Services\Distribuidora\RechazarDistribuidoraAction::LARGO_MAXIMO_MOTIVO }}"
+                        x-on:input="largo = $el.value.length"
+                        class="w-full rounded-lg border-slate-300 text-sm"
+                        placeholder="Por ejemplo: el RFC no coincide con la razón social."></textarea>
+                    <div class="flex justify-between mt-1">
+                        <div>
+                            @error('motivo_rechazo')
+                                <p class="text-xs text-fp-danger">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <p class="text-xs text-slate-500">
+                            <span x-text="largo">{{ mb_strlen($motivo_rechazo) }}</span>/{{ \App\Services\Distribuidora\RechazarDistribuidoraAction::LARGO_MAXIMO_MOTIVO }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-5 flex justify-end gap-2">
+                    <button type="button" wire:click="cancelarRechazo"
+                        class="rounded-lg border border-slate-200 text-sm px-4 py-2">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="rounded-lg bg-fp-danger text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-danger/90">
+                        Rechazar
+                    </button>
+                </div>
+            </form>
+        </div>
+    @endif
+
     <div class="mb-4 flex gap-2 flex-wrap">
         <button wire:click="$set('filtroEstado', '')"
-            class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === '' ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200' }}">
+            class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === '' ? 'bg-fp-primary text-white shadow-sm' : 'bg-white border border-slate-200' }}">
             Todas
         </button>
         @foreach (['pendiente', 'activa', 'suspendida', 'rechazada'] as $estado)
             <button wire:click="$set('filtroEstado', '{{ $estado }}')"
-                class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === $estado ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200' }}">
+                class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === $estado ? 'bg-fp-primary text-white shadow-sm' : 'bg-white border border-slate-200' }}">
                 {{ ucfirst($estado) }}
             </button>
         @endforeach
     </div>
 
-    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-slate-50 text-slate-600">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
                     <th class="text-left px-4 py-3 font-medium">ID</th>
                     <th class="text-left px-4 py-3 font-medium">Nombre</th>
@@ -575,43 +903,58 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         <td class="px-4 py-3">
                             <div class="font-medium">{{ $d->nombre_comercial }}</div>
                             <div class="text-xs text-slate-400">{{ $d->slug }}</div>
+                            @if ($d->categoriasDirectorio->isNotEmpty())
+                                <div class="mt-1 flex flex-wrap gap-1">
+                                    @foreach ($d->categoriasDirectorio as $categoria)
+                                        <span class="text-[11px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{{ $categoria->nombre }}</span>
+                                    @endforeach
+                                </div>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
                             <span
                                 class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium
-                                {{ $d->estado === 'activa' ? 'bg-green-100 text-green-700' : '' }}
-                                {{ $d->estado === 'pendiente' ? 'bg-amber-100 text-amber-700' : '' }}
-                                {{ $d->estado === 'suspendida' ? 'bg-red-100 text-red-700' : '' }}
+                                {{ $d->estado === 'activa' ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : '' }}
+                                {{ $d->estado === 'pendiente' ? 'bg-fp-badge-warning-bg text-fp-badge-warning-fg' : '' }}
+                                {{ $d->estado === 'suspendida' ? 'bg-fp-badge-danger-bg text-fp-badge-danger-fg' : '' }}
                                 {{ $d->estado === 'rechazada' ? 'bg-slate-100 text-slate-600' : '' }}
                             ">
-                                {{ $d->estado }}
+                                {{ ucfirst($d->estado) }}
                             </span>
+                            @if ($d->estado === 'rechazada' && $d->motivo_rechazo)
+                                <div class="text-xs text-slate-500 mt-1 max-w-xs">Motivo: {{ $d->motivo_rechazo }}</div>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
                             <button wire:click="toggleMarketplace({{ $d->id }})"
-                                class="text-xs {{ $d->marketplace_visible ? 'text-green-600' : 'text-slate-400' }}">
+                                class="text-xs {{ $d->marketplace_visible ? 'text-fp-badge-success-fg' : 'text-slate-400' }}">
                                 {{ $d->marketplace_visible ? 'Visible' : 'Oculta' }}
                             </button>
                         </td>
                         <td class="px-4 py-3 space-x-2">
+                            <button wire:click="verDatos({{ $d->id }})"
+                                class="text-xs text-slate-700 hover:underline">Ver datos</button>
                             @if ($d->estado === 'pendiente')
                                 <button wire:click="aprobar({{ $d->id }})"
-                                    class="text-xs text-green-700 hover:underline">Aprobar</button>
+                                    class="text-xs text-fp-badge-success-fg hover:underline">Aprobar</button>
+                                <button wire:click="abrirRechazo({{ $d->id }})"
+                                    class="text-xs text-fp-danger hover:underline">Rechazar</button>
                             @endif
                             @if ($d->estado === 'activa')
                                 <button wire:click="suspender({{ $d->id }})"
-                                    class="text-xs text-red-600 hover:underline">Suspender</button>
+                                    wire:confirm="Su personal, revendedores y clientes no podrán usar FootwearPoint hasta reactivarla. Su información se conserva. ¿Continuar?"
+                                    class="text-xs text-fp-danger hover:underline">Suspender</button>
                             @endif
                             @if ($d->estado === 'suspendida')
                                 <button wire:click="reactivar({{ $d->id }})"
-                                    class="text-xs text-blue-700 hover:underline">Reactivar</button>
+                                    class="text-xs text-fp-primary hover:underline">Reactivar</button>
                             @endif
                             @if (in_array($d->estado, ['activa', 'suspendida']))
                                 @php
                                     $tienePlan = $d->suscripciones->where('estado', 'activa')->isNotEmpty();
                                 @endphp
                                 <button wire:click="abrirSuscripcion({{ $d->id }})"
-                                    class="text-xs text-indigo-700 hover:underline">
+                                    class="text-xs text-fp-accent hover:underline">
                                     @if ($tienePlan)
                                         Cambiar plan
                                     @else
@@ -623,7 +966,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-slate-400">
+                        <td colspan="5" class="px-4 py-10 text-center text-fp-text-muted">
                             No hay distribuidoras con este filtro.
                         </td>
                     </tr>

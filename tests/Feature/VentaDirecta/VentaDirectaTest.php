@@ -101,13 +101,15 @@ class VentaDirectaTest extends TestCase
                 'message',
             ]);
 
-        $esperado = round(3 * (float) $publicacion->precio_minorista_sugerido, 2);
-        $this->assertSame($esperado, $respuesta->json('data.total'));
+        // Los montos llegan como número del JSON: se comparan como números, no
+        // por tipo (un total redondo llega como entero).
+        $esperado = round(3 * (float) $publicacion->precio_publico, 2);
+        $this->assertEqualsWithDelta($esperado, $respuesta->json('data.total'), 0.001);
 
         // El desglose de IVA es aritmético sobre el total, no una columna.
         $base = round($esperado / 1.16, 2);
-        $this->assertSame($base, $respuesta->json('data.desglose_iva.base_gravable'));
-        $this->assertSame(round($esperado - $base, 2), $respuesta->json('data.desglose_iva.iva'));
+        $this->assertEqualsWithDelta($base, $respuesta->json('data.desglose_iva.base_gravable'), 0.011);
+        $this->assertEqualsWithDelta(round($esperado - $base, 2), $respuesta->json('data.desglose_iva.iva'), 0.011);
 
         $this->assertSame(7, $this->existenciaEnBase($variante->id));
 

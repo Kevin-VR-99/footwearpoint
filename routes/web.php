@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ArchivoCatalogoImportacionController;
 use App\Http\Controllers\ComprobanteVentaController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -10,12 +11,64 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return redirect()->route('login');
-});
+// TG-232 (G12/G13): con FOOTWEARPOINT_DOMINIO, la tienda de cada
+// distribuidora vive en {subdominio}.{dominio}. Van ANTES que todo: '/' sin
+// dominio también coincidiría con el subdominio. ResolverTiendaPorSubdominio
+// encuentra la distribuidora (o responde el 404 de tienda) y pasa su slug a
+// los mismos componentes de /tienda/{slug}.
+if ($dominioTiendas = config('app.dominio_base')) {
+    Route::domain('{subdominio}.'.$dominioTiendas)
+        ->where(['subdominio' => '[^.]+'])
+        ->middleware('tienda.subdominio')
+        ->group(function () {
+            Route::livewire('/', 'tienda.index')
+                ->name('tienda.subdominio');
+
+            Route::livewire('/productos/{productoCampana}', 'tienda.producto')
+                ->whereNumber('productoCampana')
+                ->name('tienda.subdominio.producto');
+        });
+}
+
+// TG-219 (E15-04): la página pública de FootwearPoint. Es el "/" del dominio
+// principal: en un subdominio de distribuidora manda el grupo Route::domain de
+// arriba (TG-232), que se registra antes a propósito.
+Route::livewire('/', 'publico.inicio')
+    ->name('inicio');
 
 Route::livewire('/marketplace', 'marketplace.index')
     ->name('marketplace');
+
+// TG-219 (E15-04): los documentos legales, públicos. Quien todavía no tiene
+// cuenta tiene que poder leerlos; el texto sale de los mismos parciales que
+// usa la pantalla de aceptar documentos (x-legales.*).
+Route::livewire('/aviso-privacidad', 'publico.aviso-privacidad')
+    ->name('aviso-privacidad');
+
+Route::livewire('/terminos', 'publico.terminos')
+    ->name('terminos');
+
+// TG-233 (G14): tienda pública de cada distribuidora (solo las activas). Con
+// sesión o sin ella se ve igual: el catálogo y el precio de menudeo de ESA
+// distribuidora (ver App\Services\Tienda\TiendaPublica).
+// TG-232: con FOOTWEARPOINT_DOMINIO redirigen (301) al subdominio de la tienda.
+Route::livewire('/tienda/{slug}', 'tienda.index')
+    ->where('slug', '[a-z0-9-]+')
+    ->middleware('tienda.redirigir')
+    ->name('tienda');
+
+Route::livewire('/tienda/{slug}/productos/{productoCampana}', 'tienda.producto')
+    ->where('slug', '[a-z0-9-]+')
+    ->whereNumber('productoCampana')
+    ->middleware('tienda.redirigir')
+    ->name('tienda.producto');
+
+// TG-226 (G7): a donde regresa Mercado Pago después de pagar (back_urls).
+// Pública. Si trae payment_id y external_reference confirma el pago con la
+// API de Mercado Pago (nunca le cree a la URL); la app también puede
+// confirmar con POST /api/pedidos/{id}/anticipo/mercado-pago/verificar.
+Route::livewire('/mercado-pago/retorno', 'mercado-pago.retorno')
+    ->name('mercado-pago.retorno');
 
 /*
 |--------------------------------------------------------------------------
@@ -33,6 +86,21 @@ Route::middleware('guest')->group(function () {
     Route::livewire('/reset-password/{token}', 'auth.reset-password')
         ->name('password.reset');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Confirmar el correo (TG-189 / A11)
+|--------------------------------------------------------------------------
+|
+| Fuera del grupo "guest" a proposito: el enlace le llega a gente que usa la
+| APP, no el panel, y puede abrirlo con o sin sesion iniciada en el navegador.
+| Lo que la protege es la firma de la direccion ('signed'), no la sesion.
+|
+*/
+Route::livewire('/verificar-correo/{id}/{hash}', 'auth.correo-verificado')
+    ->middleware('signed')
+    ->whereNumber('id')
+    ->name('verification.verify');
 
 /*
 |--------------------------------------------------------------------------
@@ -185,4 +253,27 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_general'])->group(function
 
     Route::livewire('/admin/planes', 'admin.planes-index')
         ->name('admin.planes');
+
+    // TG-247 (R5): catálogo maestro, solo admin general.
+    Route::livewire('/admin/catalogo', 'admin.catalogo-maestro')
+        ->name('admin.catalogo');
+
+    // TG-197 (G16): categorías generales del directorio público.
+    Route::livewire('/admin/categorias-directorio', 'admin.categorias-directorio-index')
+        ->name('admin.categorias-directorio');
+
+    // TG-237 (A7): subir el catálogo de la fábrica para que lo lea la IA.
+    Route::livewire('/admin/catalogos', 'admin.catalogos-importaciones')
+        ->name('admin.catalogos');
+
+    // El archivo vive en un disco privado: se sirve desde aquí para que pase
+    // por la sesión y por el rol, no con una dirección pública.
+    Route::get('/admin/catalogos/{importacion}/archivo', [ArchivoCatalogoImportacionController::class, 'show'])
+        ->whereNumber('importacion')
+        ->name('admin.catalogos.archivo');
+
+    // TG-239 (A9): revisar y corregir lo que propuso la IA, antes de aprobar.
+    Route::livewire('/admin/catalogos/{importacion}/revisar', 'admin.revisar-catalogo')
+        ->whereNumber('importacion')
+        ->name('admin.catalogos.revisar');
 });

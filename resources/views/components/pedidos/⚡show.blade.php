@@ -3,7 +3,9 @@
 use App\Models\Pedido;
 use App\Services\Pedido\EntregaPedidoAction;
 use App\Services\Pedido\EnviarPedidoAction;
+use App\Services\Pago\VerificarPagoMercadoPagoAction;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
+use App\Support\MensajeError;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -20,6 +22,9 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     public string $pagoMetodo = 'efectivo';
     public string $pagoMonto = '';
     public string $pagoReferencia = '';
+
+    // TG-226 (bugfix): número de pago de Mercado Pago (opcional) para verificar.
+    public string $pagoMpId = '';
 
     public function mount(int $id)
     {
@@ -65,7 +70,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         } catch (ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo enviar.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo enviar el pedido. Intenta de nuevo.');
         }
     }
 
@@ -92,7 +97,58 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         } catch (ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo cambiar el estado.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo cambiar el estado del pedido. Intenta de nuevo.');
+        }
+    }
+
+    /**
+     * TG-226 (G7): el personal le pregunta a Mercado Pago si ya se pagó un
+     * anticipo (o, desde TG-227, un saldo) pendiente, mientras llega el aviso
+     * automático de G9.
+     */
+    public function verificarMercadoPago(VerificarPagoMercadoPagoAction $accion)
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        $pagoMpId = trim($this->pagoMpId);
+
+        if ($pagoMpId !== '' && preg_match('/^[0-9]{1,20}$/', $pagoMpId) !== 1) {
+            $this->errorMsg = 'El número de pago de Mercado Pago solo lleva dígitos.';
+
+            return;
+        }
+
+        // TG-227 (G8): el pendiente puede ser del anticipo o del saldo;
+        // TG-229 (G10): o el pago del cliente mayorista.
+        $tipoPendiente = $this->pedido->pagos
+            ->filter(fn ($p) => $p->esMercadoPagoPendiente() && $p->preferencia_externa !== null)
+            ->sortByDesc('id')
+            ->first()?->tipo;
+        $deQue = match ($tipoPendiente) {
+            'saldo_pedido'     => 'este saldo',
+            'total_revendedor' => 'este pago',
+            default            => 'este anticipo',
+        };
+
+        try {
+            $resultado = $accion->ejecutar($this->pedido, $pagoMpId === '' ? null : $pagoMpId, 'panel');
+            unset($this->pedido);
+            unset($this->resumen);
+
+            $this->mensaje = match ($resultado) {
+                VerificarPagoMercadoPagoAction::APLICADO => 'Mercado Pago confirmó el pago. Ya quedó aplicado.',
+                VerificarPagoMercadoPagoAction::RECHAZADO => 'Mercado Pago rechazó el intento de pago. El cliente puede intentarlo de nuevo.',
+                VerificarPagoMercadoPagoAction::VENCIDO => 'El enlace de pago venció sin pagarse.',
+                VerificarPagoMercadoPagoAction::NO_CUADRA => 'Mercado Pago tiene un pago que no coincide con '.$deQue.' (referencia, monto, moneda o cuenta) y no se aplicó. Revísalo en tu cuenta de Mercado Pago antes de registrar algo a mano.',
+                default => 'Mercado Pago todavía no confirma el pago.',
+            };
+
+            if ($resultado === VerificarPagoMercadoPagoAction::APLICADO) {
+                $this->pagoMpId = '';
+            }
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo verificar el pago con Mercado Pago. Intenta de nuevo.');
         }
     }
 
@@ -128,17 +184,14 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         } catch (ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo registrar el pago.';
         } catch (\Throwable $e) {
-            $this->errorMsg = $e->getMessage();
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar el pago. Intenta de nuevo.');
         }
     }
 };
 ?>
 
 <div>
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div>
-            <a href="{{ route('pedidos.index') }}" class="text-sm text-[#2563EB] hover:underline">← Pedidos</a>
-            <h2 class="text-2xl font-bold text-slate-900 mt-1">{{ $this->pedido->folio }}</h2>
+    <x-panel.encabezado :titulo="$this->pedido->folio" :volver="route('pedidos.index')" volver-texto="← Pedidos" class="mb-6">
             <div class="mt-2 flex flex-wrap items-center gap-2">
                 <x-ui.insignia-estado :estado="$this->pedido->estado" />
                 <span class="text-sm text-slate-500">
@@ -146,11 +199,11 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     {{ $this->pedido->clienteDirecto?->nombre ?? ($this->pedido->revendedorAfiliacion?->revendedor?->nombre ?? '—') }}
                 </span>
             </div>
-        </div>
 
+        <x-slot:acciones>
         @if ($this->pedido->estado === 'borrador')
             <button type="button" wire:click="enviar"
-                class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB]">
+                class="rounded-lg bg-fp-accent px-4 py-2 text-sm font-medium text-white hover:bg-fp-primary">
                 Enviar pedido
             </button>
         @endif
@@ -160,7 +213,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 @if ($this->pedido->estado === 'recibido_distribuidora')
                     <button type="button" wire:click="marcarListo"
                         wire:confirm="¿Marcar listo para entrega? Se le avisará al cliente para que pase a recoger."
-                        class="rounded-lg border border-[#1E2F52] px-4 py-2 text-sm font-medium text-[#1E2F52] hover:bg-slate-50">
+                        class="rounded-lg border border-fp-accent px-4 py-2 text-sm font-medium text-fp-accent hover:bg-slate-50">
                         Marcar listo para entrega
                     </button>
                 @endif
@@ -168,23 +221,24 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     wire:confirm="¿Confirmar que el cliente se llevó su pedido?"
                     @disabled($this->resumen['saldo'] > 0)
                     @if ($this->resumen['saldo'] > 0) title="Cobra el saldo antes de entregar" @endif
-                    class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB] disabled:cursor-not-allowed disabled:opacity-50">
+                    class="rounded-lg bg-fp-accent px-4 py-2 text-sm font-medium text-white hover:bg-fp-primary disabled:cursor-not-allowed disabled:opacity-50">
                     Marcar entregado
                 </button>
             </div>
         @endif
-    </div>
+        </x-slot:acciones>
+    </x-panel.encabezado>
 
     @if ($this->pedido->estado === 'borrador')
-        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <x-panel.alerta tipo="aviso" class="mb-4">
             Este pedido sigue en borrador.
             <a href="{{ route('pedidos.create') }}?continuar={{ $this->pedido->id }}"
-                class="font-medium text-[#2563EB] hover:underline">Continuar editando</a>
-        </div>
+                class="font-medium text-fp-primary hover:underline">Continuar editando</a>
+        </x-panel.alerta>
     @endif
 
     @if (in_array($this->pedido->estado, ['recibido_distribuidora', 'listo_entrega'], true))
-        <div class="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <x-panel.alerta tipo="info" class="mb-4">
             La mercancía ya está en sucursal.
             @if ($this->resumen['saldo'] > 0)
                 Saldo pendiente:
@@ -196,19 +250,19 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             @if ($this->pedido->estado === 'listo_entrega' && $this->pedido->fecha_limite_recoleccion)
                 Tiene hasta el {{ $this->pedido->fecha_limite_recoleccion->format('d/m/Y') }} para recogerlo.
             @endif
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="exito" class="mb-4">
             {{ $mensaje }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($errorMsg)
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="error" class="mb-4">
             {{ $errorMsg }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     <div class="grid gap-4 sm:grid-cols-2 {{ $this->pedido->tipo === 'cliente_directo' ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} mb-6">
@@ -269,7 +323,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 </label>
                 <div class="sm:col-span-2 lg:col-span-4">
                     <button type="submit"
-                        class="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1E2F52]">
+                        class="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-fp-accent">
                         Registrar pago
                     </button>
                 </div>
@@ -288,6 +342,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                         <th class="px-4 py-2 font-medium">Método</th>
                         <th class="px-4 py-2 font-medium text-right">Monto</th>
                         <th class="px-4 py-2 font-medium">Fecha</th>
+                        <th class="px-4 py-2 font-medium">Estado</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -295,9 +350,33 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                         <tr>
                             <td class="px-4 py-2">{{ $p->folio }}</td>
                             <td class="px-4 py-2">{{ $p->tipo }}</td>
-                            <td class="px-4 py-2">{{ $p->metodo }}</td>
+                            <td class="px-4 py-2">{{ $p->metodo === 'mercado_pago' ? 'Mercado Pago' : $p->metodo }}</td>
                             <td class="px-4 py-2 text-right tabular-nums">${{ number_format((float) $p->monto, 2) }}</td>
                             <td class="px-4 py-2">{{ optional($p->fecha_pago)->format('d/m/Y H:i') }}</td>
+                            <td class="px-4 py-2">
+                                {{-- TG-226: un pago pendiente todavía no cuenta como pagado. --}}
+                                @php
+                                    [$varianteEstado, $textoEstado] = match ($p->estado) {
+                                        'pendiente' => ['warning', 'Pendiente'],
+                                        'fallido' => ['neutral', 'Fallido'],
+                                        'revertido' => ['danger', 'Revertido'],
+                                        default => ['success', 'Aplicado'],
+                                    };
+                                @endphp
+                                <x-ui.insignia-estado :variante="$varianteEstado" :texto="$textoEstado" />
+                                @if ($p->esMercadoPagoPendiente() && $p->preferencia_externa)
+                                    <div class="mt-1 flex items-center gap-2">
+                                        {{-- Opcional: el número de pago que el cliente ve en su comprobante de Mercado Pago. --}}
+                                        <input type="text" inputmode="numeric" wire:model="pagoMpId" maxlength="20"
+                                            placeholder="N.º de pago (opcional)" aria-label="Número de pago de Mercado Pago (opcional)"
+                                            class="w-40 rounded-lg border-slate-300 px-2 py-1 text-xs" />
+                                        <button type="button" wire:click="verificarMercadoPago" wire:loading.attr="disabled"
+                                            class="text-xs font-medium text-fp-primary hover:underline">
+                                            Verificar con Mercado Pago
+                                        </button>
+                                    </div>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>

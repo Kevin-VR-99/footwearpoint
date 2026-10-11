@@ -10,7 +10,7 @@ class GuardarDisponibilidadVarianteCampanaRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin_distribuidora') ?? false;
+        return $this->user()?->hasRole('admin_general') ?? false;
     }
 
     public function rules(): array
@@ -28,12 +28,12 @@ class GuardarDisponibilidadVarianteCampanaRequest extends FormRequest
             $reglas['producto_campana_id'] = [
                 'required',
                 'integer',
-                Rule::exists('producto_campana', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
+                Rule::exists('producto_campana', 'id'),
             ];
             $reglas['variante_id'] = [
                 'required',
                 'integer',
-                Rule::exists('variantes', 'id')->where(fn ($q) => $q->where('distribuidora_id', Tenant::id())),
+                Rule::exists('variantes', 'id'),
             ];
         }
         // producto_campana_id/variante_id no se aceptan en edición — el par

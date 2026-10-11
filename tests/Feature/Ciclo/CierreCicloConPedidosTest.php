@@ -80,7 +80,7 @@ class CierreCicloConPedidosTest extends TestCase
         $variantes = DisponibilidadVarianteCampana::withoutGlobalScopes()
             ->where('estado', 'disponible')
             ->whereHas('productoCampana', fn ($q) => $q->withoutGlobalScopes()
-                ->where('publicado', true)
+                ->where('activo', true)
                 ->whereHas('campana', fn ($c) => $c->withoutGlobalScopes()->where('estado', 'activa')))
             ->orderBy('id')
             ->get()
@@ -127,6 +127,25 @@ class CierreCicloConPedidosTest extends TestCase
         return (int) $pedidoId;
     }
 
+    /** Cobra en mostrador el anticipo que le falte al pedido. */
+    private function cubrirAnticipo(int $pedidoId): void
+    {
+        $pedido = Pedido::withoutGlobalScopes()->findOrFail($pedidoId);
+        $falta = app(\App\Services\Pedido\RegistrarPagoPedidoAction::class)->resumen($pedido)['anticipo_pendiente'];
+
+        if ($falta <= 0) {
+            return;
+        }
+
+        $this->comoEmpleado();
+
+        $this->postJson("/api/pedidos/{$pedidoId}/pagos", [
+            'tipo' => 'anticipo',
+            'metodo' => 'efectivo',
+            'monto' => $falta,
+        ])->assertCreated();
+    }
+
     private function estadoDe(int $pedidoId): string
     {
         return Pedido::withoutGlobalScopes()->findOrFail($pedidoId)->estado;
@@ -168,6 +187,13 @@ class CierreCicloConPedidosTest extends TestCase
         ];
 
         $this->comoEmpleado();
+
+        // Los pedidos de cliente directo pagan su anticipo: desde TG-215, uno
+        // con anticipo pendiente no se le pide a fábrica. Aquí se prueban las
+        // transiciones del ciclo, no el cobro.
+        foreach (['en_revision', 'descartado'] as $deClienteDirecto) {
+            $this->cubrirAnticipo($pedidos[$deClienteDirecto]);
+        }
 
         $cambiar = app(CambiarEstadoPedidoService::class);
         foreach (['en_revision', 'confirmado', 'rechazado', 'descartado'] as $estado) {

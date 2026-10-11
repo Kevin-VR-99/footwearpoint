@@ -10,7 +10,7 @@ class GuardarCampanaRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin_distribuidora') ?? false;
+        return $this->user()?->hasRole('admin_general') ?? false;
     }
 
     public function rules(): array
@@ -25,17 +25,16 @@ class GuardarCampanaRequest extends FormRequest
             'fecha_fin'    => ['nullable', 'date', 'after_or_equal:fecha_inicio'],
         ];
 
-        // marca_id es legado y nullable: la campaña ya no se dueña por marca
-        // (relación real = Campaña → Líneas).
+        // La temporada pertenece a UNA línea (D1, TG-209). Se elige al crearla
+        // y no cambia después: mover una temporada de línea se llevaría con
+        // ella todo su catálogo.
         if ($esCreacion) {
-            $reglas['marca_id'] = [
-                'nullable',
+            $reglas['linea_id'] = [
+                'required',
                 'integer',
-                Rule::exists('marcas', 'id')->where(fn($q) => $q->where('distribuidora_id', Tenant::id())),
+                Rule::exists('lineas', 'id'),
             ];
         }
-        // marca_id NO se acepta en edición: una campaña no cambia de marca
-        // después de creada (decisión provisional mía, ver LEEME).
 
         // "estado" NO se valida aquí contra el enum completo: la Action
         // valida que solo avance a el SIGUIENTE estado de la secuencia,

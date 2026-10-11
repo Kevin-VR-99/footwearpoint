@@ -4,6 +4,8 @@ use App\Exceptions\OperacionInvalidaException;
 use App\Models\ClienteDirecto;
 use App\Models\Color;
 use App\Models\ProductoCampana;
+use App\Services\Catalogo\CatalogoVisible;
+use App\Services\Catalogo\PrecioEfectivo;
 use App\Models\StockLocal;
 use App\Models\Talla;
 use App\Services\VentaDirecta\RegistrarVentaDirectaService;
@@ -74,11 +76,14 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
 
         $variantes = $existencias->pluck('variante');
 
-        $publicaciones = ProductoCampana::query()
-            ->where('publicado', true)
+        // Solo lo que esta distribuidora vende del catálogo compartido
+        // (TG-213). El precio es el de menudeo del catálogo (D8).
+        $publicaciones = app(CatalogoVisible::class)->consulta()
             ->whereIn('producto_id', $variantes->pluck('producto_id')->unique()->all())
             ->get()
             ->groupBy('producto_id');
+
+        $precios = app(PrecioEfectivo::class)->precargar($publicaciones->flatten());
 
         // tallas y colores son catálogos GLOBALES: no llevan distribuidora_id.
         $tallas = Talla::query()
@@ -94,7 +99,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
         $termino = mb_strtolower(trim($this->busqueda));
 
         return $existencias
-            ->flatMap(function ($existencia) use ($publicaciones, $tallas, $colores) {
+            ->flatMap(function ($existencia) use ($publicaciones, $tallas, $colores, $precios) {
                 $variante = $existencia->variante;
                 $delProducto = $publicaciones->get($variante->producto_id, collect());
 
@@ -113,7 +118,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     'nombre' => (string) ($variante->producto?->nombre ?? ''),
                     'talla' => $textoTalla,
                     'color' => $textoColor,
-                    'precio' => round((float) $publicacion->precio_minorista_sugerido, 2),
+                    'precio' => $precios->menudeo($publicacion),
                     'disponible' => (int) $existencia->cantidad_disponible,
                 ]);
             })
@@ -315,6 +320,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
         } catch (OperacionInvalidaException $e) {
             $this->errorMsg = $e->getMessage();
         } catch (\Throwable $e) {
+            report($e); // TG-224 (G3): el detalle va al log.
             $this->errorMsg = 'No se pudo registrar la venta. Revisa las existencias e intenta de nuevo.';
         }
     }
@@ -322,34 +328,30 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
 ?>
 
 <div>
-    <div class="mb-6">
-        <h2 class="text-2xl font-bold text-slate-900">Punto de Venta</h2>
-        <p class="text-sm text-slate-500 mt-1">
-            Venta de contado con entrega inmediata. Solo se ofrece lo que hay en existencia.
-        </p>
-    </div>
+    <x-panel.encabezado titulo="Punto de Venta"
+        subtitulo="Venta de contado con entrega inmediata. Solo se ofrece lo que hay en existencia." class="mb-6" />
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="exito" class="mb-4">
             {{ $mensaje }}
             @if ($ultimaVentaId)
                 {{-- Pestaña nueva: el punto de venta queda listo para la siguiente venta. --}}
                 <a href="{{ route('ventas-directas.comprobante', $ultimaVentaId) }}" target="_blank"
                     class="ml-2 font-semibold underline">Ver comprobante</a>
             @endif
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($aviso)
-        <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="aviso" class="mb-4">
             {{ $aviso }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($errorMsg)
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="error" class="mb-4">
             {{ $errorMsg }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -393,7 +395,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                                 <td class="px-4 py-3 text-right text-slate-600">{{ $fila['disponible'] }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <button type="button" wire:click="agregar('{{ $fila['clave'] }}')"
-                                            class="rounded-lg bg-fp-primary text-white px-3 py-1.5 text-xs font-medium hover:bg-blue-700">
+                                            class="rounded-lg bg-fp-primary text-white px-3 py-1.5 text-xs font-medium hover:bg-fp-primary/90">
                                         Agregar
                                     </button>
                                 </td>
@@ -506,7 +508,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     </div>
 
                     <button type="button" wire:click="cobrar" wire:loading.attr="disabled"
-                            class="w-full rounded-lg bg-fp-primary text-white px-4 py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                            class="w-full rounded-lg bg-fp-primary text-white px-4 py-2.5 text-sm font-medium hover:bg-fp-primary/90 disabled:opacity-50">
                         <span wire:loading.remove wire:target="cobrar">
                             Cobrar ${{ number_format($this->total, 2) }}
                         </span>

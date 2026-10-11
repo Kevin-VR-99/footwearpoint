@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Admin\CategoriaDirectorioController;
 use App\Http\Controllers\Api\Admin\DistribuidoraController;
 use App\Http\Controllers\Api\Admin\PlanSuscripcionController;
 use App\Http\Controllers\Api\ClientePrivadoRevendedorController;
@@ -26,7 +27,11 @@ Route::get('/ping', function () {
 */
 
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
+    // TG-185: segunda capa. El límite fino (5 intentos por correo + IP) vive
+    // en LimiteIntentosLogin; este tope por IP evita que alguien pruebe
+    // muchas cuentas distintas desde la misma máquina.
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:20,1');
     Route::post('/logout', [AuthController::class, 'logout'])
         ->middleware('auth:sanctum');
 
@@ -42,6 +47,11 @@ Route::prefix('auth')->group(function () {
     Route::post('/aceptar-legales', [AuthController::class, 'aceptarLegales'])
         ->middleware('auth:sanctum');
 
+    // TG-189 (A11): el boton "no me llego" de la app. Con limite, porque cada
+    // llamada manda un correo.
+    Route::post('/reenviar-verificacion', [AuthController::class, 'reenviarVerificacion'])
+        ->middleware(['auth:sanctum', 'throttle:4,10']);
+
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 });
@@ -56,7 +66,10 @@ Route::prefix('admin')
     ->middleware(['auth:sanctum', 'tenant.team', 'role:admin_general'])
     ->group(function () {
         Route::get('/distribuidoras', [DistribuidoraController::class, 'index']);
+        Route::get('/distribuidoras/{id}', [DistribuidoraController::class, 'show'])->whereNumber('id');
         Route::post('/distribuidoras/{id}/aprobar', [DistribuidoraController::class, 'aprobar']);
+        // TG-195 (G4): rechazar una pendiente con su motivo.
+        Route::post('/distribuidoras/{id}/rechazar', [DistribuidoraController::class, 'rechazar'])->whereNumber('id');
         Route::post('/distribuidoras/{id}/suspender', [DistribuidoraController::class, 'suspender']);
         Route::post('/distribuidoras/{id}/reactivar', [DistribuidoraController::class, 'reactivar']);
         Route::post('/distribuidoras/{id}/suscripcion', [DistribuidoraController::class, 'asignarSuscripcion']);
@@ -68,6 +81,15 @@ Route::prefix('admin')
         Route::delete('/planes-suscripcion/{id}', [PlanSuscripcionController::class, 'destroy']);
 
         Route::patch('/marketplace/config', [DistribuidoraController::class, 'marketplaceConfig']);
+
+        // TG-197 (G16): categorías generales del directorio (no se borran,
+        // se activan o desactivan) y su asignación a cada distribuidora.
+        Route::get('/categorias-directorio', [CategoriaDirectorioController::class, 'index']);
+        Route::post('/categorias-directorio', [CategoriaDirectorioController::class, 'store']);
+        Route::put('/categorias-directorio/{id}', [CategoriaDirectorioController::class, 'update'])->whereNumber('id');
+        Route::patch('/categorias-directorio/{id}/activar', [CategoriaDirectorioController::class, 'activar'])->whereNumber('id');
+        Route::patch('/categorias-directorio/{id}/desactivar', [CategoriaDirectorioController::class, 'desactivar'])->whereNumber('id');
+        Route::put('/distribuidoras/{id}/categorias-directorio', [CategoriaDirectorioController::class, 'asignar'])->whereNumber('id');
     });
 
 /*
@@ -100,6 +122,9 @@ require __DIR__.'/api/dispositivos-fcm.php';
 require __DIR__.'/api/perfil.php';
 
 require __DIR__.'/api/reportes.php';
+
+// TG-228 (G9) — avisos de Mercado Pago (pública, sin sesión)
+require __DIR__.'/api/webhooks.php';
 
 /*
 |--------------------------------------------------------------------------

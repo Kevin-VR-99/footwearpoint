@@ -52,6 +52,7 @@ Algunos endpoints de listado regresan solo `data`, sin `message`.
 | 403 | El rol no tiene permitido ese endpoint |
 | 404 | No existe **o no es tuyo**. Ver la nota de abajo |
 | 422 | Validación: revisar `errors` |
+| 500 | Error del servidor. Solo trae `{ "message": "Ocurrió un error en el servidor. Intenta de nuevo más tarde." }`, nunca el detalle técnico (TG-224) |
 
 **Dos reglas invisibles pero importantes:**
 
@@ -99,6 +100,7 @@ Sin token. Es el único endpoint público que usa la app.
 
 - **422** con `errors.email` si las credenciales son incorrectas o la cuenta no está activa. El mensaje que hay que mostrarle al usuario viene ahí, no en `message`.
 - **422** con `errors.email` = `"Esta aplicación es solo para revendedores y clientes directos."` si el rol es `admin_general`, `admin_distribuidora` o `empleado` (TG-93). El personal interno entra por el panel web, que tiene su propio login. En este caso **no se crea token**.
+- **422** con `errors.email` si su distribuidora está **suspendida** o **rechazada** (TG-196). El mensaje dice cuál es y que su información se conserva; por ejemplo: `"Calzados Ramírez está suspendida por ahora, así que no puedes usar la app con ella. Tu cuenta y tu información se conservan; intenta más tarde."`. **No se crea token.** Si un revendedor está afiliado a otra distribuidora que sí opera, entra con esa.
 
 > Si `rol` o `distribuidora_id` salen en `null` para un revendedor o cliente directo, es que su cuenta no está bien ligada. Se arregla del lado del panel web (E3-07).
 
@@ -124,12 +126,14 @@ Para **recuperar la sesión al abrir la app**: la app solo guarda el token, y co
 
 - **401** si no hay token, si ya se cerró sesión con él, o si la cuenta se desactivó después del login.
 - **401** si el token es de personal interno (`admin_general`, `admin_distribuidora`, `empleado`), igual que el rechazo del login (TG-93).
+- **401** con `message` = el mismo aviso del login si su distribuidora se **suspendió** o **rechazó** después del login (TG-196).
 
-En los dos casos de rechazo (cuenta desactivada o personal interno) el servidor además revoca el token. En todos los 401 la app debe regresar a la pantalla de login.
+En los tres casos de rechazo (cuenta desactivada, personal interno o distribuidora sin operar) el servidor además revoca el token. En todos los 401 la app debe regresar a la pantalla de login.
 
 > **Suspendido puede ser en dos niveles, y responden distinto:**
 > - La **cuenta** inactiva (`usuarios.estado`) → **401**.
 > - Solo la **afiliación** suspendida (`revendedor_distribuidora.estado`) → **200**, pero con `rol` y `distribuidora_id` en `null`, igual que el login. El backend ya no le deja ver nada; la app debe tratar `distribuidora_id` en `null` como "sin acceso".
+> - La **distribuidora** suspendida o rechazada (`distribuidoras.estado`, TG-196) → **401** con el aviso, y el token se revoca. Mientras tanto, cualquier otro endpoint con un token viejo ya no devuelve datos de esa distribuidora. Al reactivarla, el usuario vuelve a entrar con su misma cuenta y todo está como lo dejó.
 
 ### POST `/api/auth/logout`
 
@@ -300,6 +304,23 @@ Un revendedor o cliente directo solo ve y toca **sus** pedidos. El empleado ve t
 
 Estados posibles: `borrador`, `colocado`, `en_revision`, `confirmado`, `parcialmente_disponible`, `rechazado`, `incluido_en_ciclo`, `solicitado_fabrica`, `en_transito`, `recibido_distribuidora`, `listo_entrega`, `entregado`, `no_surtido`, `vencido_recoleccion`, `descartado`.
 
+**Pago con Mercado Pago del cliente mayorista** (TG-229). El pedido también trae estos campos (el ejemplo de arriba no los muestra todos):
+
+```json
+{
+  "saldo": 1600.0,
+  "pago_mercado_pago_pendiente": false,
+  "pago_mercado_pago_pendiente_tipo": null,
+  "puede_pagar_total_mercado_pago": true
+}
+```
+
+- `puede_pagar_total_mercado_pago`: **true** si el pedido es de cliente mayorista (`tipo` = `revendedor`), ya se envió y todavía no se entrega (estado de `colocado` a `listo_entrega`) y `saldo` es mayor a 0. Con **true** la app muestra el botón "Pagar con Mercado Pago". No revisa si la distribuidora tiene Mercado Pago conectado: eso lo dice el error al intentarlo (ver abajo). Para un pedido de cliente directo siempre es **false**.
+- `pago_mercado_pago_pendiente`: **true** si hay un pago con Mercado Pago esperando confirmación. Mientras esté pendiente **no cuenta** en `saldo`.
+- `pago_mercado_pago_pendiente_tipo`: de qué es ese pago pendiente; para el cliente mayorista es `total_revendedor`. `null` si no hay. Si es `total_revendedor`, la app muestra "Verificar pago" y llama a `.../total/mercado-pago/verificar`.
+
+`pago_mercado_pago_pendiente` y `pago_mercado_pago_pendiente_tipo` vienen en `GET /api/pedidos/{id}` y en la respuesta de `verificar`, pero **no** en el listado `GET /api/pedidos`. `puede_pagar_total_mercado_pago` viene en los tres.
+
 ### POST `/api/pedidos`
 
 Crea el pedido en estado `borrador`.
@@ -345,6 +366,99 @@ Crea el pedido en estado `borrador`.
 Sin cuerpo. Saca el pedido de `borrador` y lo coloca.
 
 **Salida (200):** `{ "data": { ...pedido... }, "message": "Pedido enviado correctamente." }`
+
+### POST `/api/pedidos/{id}/total/mercado-pago`
+
+Rol: **solo `revendedor`** (cliente mayorista), y solo sobre **sus** pedidos. Límite: **10 por minuto** (cada llamada sale a Mercado Pago). (TG-229)
+
+Sin cuerpo. Prepara el pago con Mercado Pago (Checkout Pro) por **todo lo que falta** del pedido, al precio que ya tiene el pedido. El dinero va a la cuenta de Mercado Pago de la distribuidora.
+
+**Cuándo se puede:** desde que el pedido se envía hasta que está listo para entrega: `colocado`, `en_revision`, `confirmado`, `parcialmente_disponible`, `incluido_en_ciclo`, `solicitado_fabrica`, `en_transito`, `recibido_distribuidora`, `listo_entrega`. Siempre se cobra el **saldo completo**: no hay pagos parciales ni anticipo aparte. Es lo mismo que dice `puede_pagar_total_mercado_pago`.
+
+**Salida (201)**
+
+```json
+{
+  "data": {
+    "pago_id": 31,
+    "folio": "PAG-20261008-0004",
+    "tipo": "total_revendedor",
+    "monto": 1600.0,
+    "moneda": "MXN",
+    "preferencia_id": "123456789-abcd-...",
+    "init_point": "https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=...",
+    "vence_at": "2026-10-09T13:40:00-06:00",
+    "reutilizado": false
+  },
+  "message": "Abre el enlace para pagar tu pedido con Mercado Pago."
+}
+```
+
+- La app abre `init_point` en el navegador. Al terminar, Mercado Pago regresa al usuario y la app llama a `verificar`.
+- **Un solo enlace vivo por pedido.** Si ya hay uno vigente por el mismo monto, se regresa ese con **200** y `reutilizado: true` (no se crea otro). Si el monto cambió (por ejemplo, el mostrador cobró una parte), el enlace viejo se cancela y se crea uno nuevo por lo que falta.
+- El enlace dura 24 horas (`vence_at`).
+- Mientras el pago esté pendiente, `saldo` no cambia.
+
+**Errores** — todos con `{ "message": "..." }` en español, listo para mostrar:
+
+| Código | Cuándo | `message` |
+|---|---|---|
+| 401 | Sin token o ya no sirve | `"Tu sesión no es válida o expiró. Inicia sesión de nuevo."` |
+| 403 | El rol no es `revendedor` (cliente directo o personal) | `"No tienes permiso para realizar esta acción."` |
+| 404 | El pedido no existe o no es suyo | `"No se encontró lo que buscas."` |
+| 422 | El pedido sigue en `borrador` | `"Envía tu pedido antes de pagarlo."` |
+| 422 | El pedido ya se entregó o se cerró | `"Este pedido ya no admite pagos."` |
+| 422 | Ya no debe nada | `"Este pedido ya no tiene saldo pendiente."` |
+| 422 | El pedido no es de cliente mayorista | `"Este pago con Mercado Pago es para pedidos de cliente mayorista."` |
+| 422 | La distribuidora no tiene Mercado Pago conectado | `"Esta distribuidora todavía no recibe pagos con Mercado Pago. Puedes pagar en mostrador."` |
+| 422 | La conexión de la distribuidora venció | `"La distribuidora necesita volver a conectar su cuenta de Mercado Pago. Mientras tanto, puedes pagar en mostrador."` |
+| 422 | Otra petición está creando el enlace en este momento | `"Ya estamos preparando tu pago. Espera unos segundos e intenta de nuevo."` |
+| 422 | Mercado Pago no aceptó crear el pago | `"No se pudo preparar el pago con Mercado Pago. Intenta de nuevo en unos minutos o paga en mostrador."` |
+| 429 | Más de 10 llamadas en un minuto | `"Demasiados intentos. Espera un momento e intenta de nuevo."` |
+| 503 | Mercado Pago no respondió | `"Mercado Pago no respondió. Intenta de nuevo en unos minutos."` |
+
+> Las rutas del cliente directo (`.../anticipo/mercado-pago` y `.../saldo/mercado-pago`) responden **403** al cliente mayorista, y esta responde 403 al cliente directo.
+
+### POST `/api/pedidos/{id}/total/mercado-pago/verificar`
+
+Mismo rol y mismo límite que el anterior. (TG-229)
+
+Le pregunta a Mercado Pago si ya se pagó. Se llama **al regresar de Mercado Pago** o cuando el usuario toca "Verificar pago". Llamarlo varias veces no duplica nada.
+
+**Entrada (opcional)**
+
+```json
+{ "payment_id": "183120559018" }
+```
+
+`payment_id` es el que Mercado Pago pone en la dirección de regreso. Si la app lo tiene, lo manda; si no, el servidor lo busca solo. Solo dígitos (máximo 20).
+
+**Salida (200)** — el pedido actualizado (con sus `pagos`), el resultado y el mensaje para el usuario:
+
+```json
+{
+  "data": { ...pedido... },
+  "resultado": "aplicado",
+  "message": "Recibimos el pago de tu pedido. ¡Gracias!"
+}
+```
+
+| `resultado` | `message` | Qué hace la app |
+|---|---|---|
+| `aplicado` | `"Recibimos el pago de tu pedido. ¡Gracias!"` | Ya cuenta: `saldo` en 0 y `puede_pagar_total_mercado_pago` en false |
+| `pendiente` | `"Tu pago todavía no se confirma. Revisa de nuevo en unos minutos."` | Dejar el botón "Verificar pago" |
+| `rechazado` | `"Mercado Pago rechazó el pago. Puedes intentarlo de nuevo con otro medio de pago."` | Ofrecer pagar otra vez |
+| `vencido` | `"El enlace de pago venció. Genera uno nuevo para pagar tu pedido."` | Ofrecer pagar otra vez |
+| `no_cuadra` | `"Mercado Pago tiene un pago que no coincide con este pedido, así que no se aplicó. No vuelvas a pagar: la distribuidora lo revisará contigo."` | **No** ofrecer pagar otra vez |
+
+**Errores**
+
+- **401 / 403 / 404 / 429 / 503**: igual que el endpoint anterior.
+- **422** con `errors.payment_id` = `"El número de pago de Mercado Pago solo lleva dígitos."`.
+- **422** `"Este pedido no tiene un pago con Mercado Pago por confirmar."` si no hay ningún pago del cliente mayorista pendiente.
+- **422** con los mensajes de Mercado Pago no conectado o conexión vencida de la tabla anterior.
+
+> Aunque la app no llame a `verificar`, el pago se aplica solo cuando llega el aviso de Mercado Pago al servidor. `verificar` sirve para que el usuario vea el resultado en cuanto regresa.
 
 ---
 
@@ -541,7 +655,46 @@ La nueva sigue las mismas reglas que el cambio por enlace: mínimo 8 caracteres 
 
 ---
 
-## 8. De dónde salió cada cosa
+## 8. Marketplace (directorio público)
+
+### GET `/api/marketplace`
+
+**Sin token.** Lista las distribuidoras **activas** y visibles en el marketplace (E15-01), ordenadas por `nombre_comercial`.
+
+**Parámetro opcional:** `categoria` (id de una categoría del directorio, TG-197). Si no es un número válido: **422** con `errors.categoria` = `"La categoría no es válida."`.
+
+**Salida (200)**
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "nombre_comercial": "Calzados Ramírez",
+      "slug": "calzados-ramirez",
+      "url_tienda": "https://footwearpoint-production.up.railway.app/tienda/calzados-ramirez",
+      "logotipo_url": null,
+      "descripcion_publica": "Distribuidora multimarca de calzado.",
+      "telefono_publico": "9631234567",
+      "email_publico": "contacto@calzadosramirez.test",
+      "direccion_publica": "Av. Central 123, Comitán, Chiapas",
+      "horario_publico": "Lunes a sábado, 9:00 a 19:00",
+      "categorias": [ { "id": 2, "nombre": "Dama" } ]
+    }
+  ]
+}
+```
+
+**`slug` y `url_tienda`** (TG-234):
+
+- `url_tienda` es la dirección **completa** (absoluta) de la tienda pública de la distribuidora. **La app la abre tal cual** (navegador o WebView), sin armarla a mano con el `slug`.
+- Desde TG-232 (G12/G13), con el dominio de tiendas configurado en el servidor, `url_tienda` es **`https://{subdominio}.footwearpoint.app/`** (el subdominio de la distribuidora o, si no tiene uno válido, su `slug`). Sin ese dominio sigue siendo `…/tienda/{slug}`. La app no tiene que cambiar nada: siempre abre lo que llegue. Las direcciones viejas `/tienda/{slug}` redirigen solas a la nueva.
+- `url_tienda` viene en **`null`** si la distribuidora no está activa o su `slug` no es válido. En ese caso la app **no muestra** el botón "Ver tienda". Hoy el marketplace solo lista activas, así que lo normal es que traiga dirección, pero la app debe aguantar el `null`.
+- `slug` es el identificador de la tienda (por ejemplo, `calzados-ramirez`). Sirve para identificarla, **no** para armar la dirección.
+
+---
+
+## 9. De dónde salió cada cosa
 
 Para verificar o actualizar este documento:
 
@@ -550,10 +703,12 @@ Para verificar o actualizar este documento:
 | Auth | `app/Http/Controllers/Api/AuthController.php`, `app/Http/Requests/Auth/` |
 | Catálogo | `app/Http/Controllers/Api/Catalogo/CatalogoController.php`, `app/Http/Resources/Catalogo/CatalogoResource.php` |
 | Pedidos | `app/Http/Controllers/Api/PedidoController.php`, `app/Http/Requests/Pedido/`, `app/Http/Resources/PedidoResource.php` |
+| Pago del cliente mayorista con Mercado Pago | `app/Http/Controllers/Api/PagoMercadoPagoController.php`, `app/Services/Pago/CrearPagoPedidoMercadoPagoAction.php`, `app/Services/Pago/VerificarPagoMercadoPagoAction.php`, `app/Services/MercadoPago/MercadoPagoException.php`, `routes/api/pedidos.php` |
 | Vales | `app/Http/Controllers/Api/ValeController.php`, `app/Http/Requests/Vale/`, `app/Http/Resources/ValeResource.php` |
 | Notificaciones | `app/Http/Controllers/Api/NotificacionController.php`, `app/Http/Resources/NotificacionResource.php` |
 | Dispositivos FCM | `app/Http/Controllers/Api/DispositivoFcmController.php`, `app/Services/Notificacion/GestionarDispositivoFcmAction.php` |
 | Perfil | `app/Http/Controllers/Api/PerfilUsuarioController.php`, `app/Http/Requests/Perfil/`, `app/Services/Perfil/` |
+| Marketplace | `app/Http/Controllers/Api/MarketplaceController.php`, `app/Http/Resources/MarketplaceDistribuidoraResource.php`, `app/Services/Tienda/EnlaceTienda.php`, `routes/api/marketplace.php` |
 | Quién entra a qué | `routes/api.php` y `routes/api/*.php` |
 | Filtro por dueño | `app/Support/PropietarioActual.php` |
 | Filtro por distribuidora | `app/Support/Tenant.php`, `app/Models/Scopes/TenantScope.php` |

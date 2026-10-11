@@ -2,6 +2,7 @@
 
 use App\Models\Usuario;
 use App\Services\Auth\AccesoPanelWebService;
+use App\Services\Auth\LimiteIntentosLogin;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Layout;
@@ -33,8 +34,11 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         // TG-184: el panel es solo para el personal. Si quedo una sesion de
         // un revendedor o un cliente (de antes de esta correccion), se cierra
         // y se le dice que entre por la app, en vez de mandarlo al panel.
-        if (! $acceso->esPersonal($usuario)) {
-            $this->cerrarSesionAjena();
+        // TG-195: lo mismo con el personal de una distribuidora rechazada.
+        $motivo = $acceso->motivoSinAcceso($usuario);
+
+        if ($motivo !== null) {
+            $this->cerrarSesionAjena($motivo);
 
             return;
         }
@@ -54,14 +58,14 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         return $this->redirect(route('dashboard'), navigate: true);
     }
 
-    /** Cierra la sesion de quien no es personal y deja el aviso a la vista. */
-    private function cerrarSesionAjena(): void
+    /** Cierra la sesion de quien no puede usar el panel y deja el aviso a la vista. */
+    private function cerrarSesionAjena(string $motivo): void
     {
         Auth::logout();
         session()->invalidate();
         session()->regenerateToken();
 
-        session()->flash('aviso_acceso', AccesoPanelWebService::MENSAJE_SOLO_PERSONAL);
+        session()->flash('aviso_acceso', $motivo);
     }
 
     protected function messages(): array
@@ -77,12 +81,28 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
     {
         $this->validate();
 
+        $limite = app(LimiteIntentosLogin::class);
+        $ip = request()->ip();
+
+        // TG-185: sin esto se podian probar contrasenas sin limite. Se revisa
+        // antes de mirar la contrasena, para que el bloqueo frene de verdad.
+        if ($limite->bloqueado($this->email, $ip)) {
+            $this->addError('email', $limite->mensaje($limite->segundosRestantes($this->email, $ip)));
+
+            return;
+        }
+
         $usuario = Usuario::where('email', $this->email)->first();
 
         if (!$usuario || !Hash::check($this->password, $usuario->password)) {
+            $limite->registrarFallo($this->email, $ip);
+
             $this->addError('email', 'Las credenciales son incorrectas.');
             return;
         }
+
+        // Entro bien: los fallos anteriores ya no cuentan.
+        $limite->limpiar($this->email, $ip);
 
         if ($usuario->estado !== 'activo') {
             $this->addError('email', 'Tu cuenta no está activa.');
@@ -95,8 +115,11 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         // revisa ANTES de crear la sesion, para no dejarles una sesion valida
         // a quien se esta rechazando (igual que hace la API en
         // AuthController::login con el personal).
-        if (! $acceso->esPersonal($usuario)) {
-            $this->addError('email', AccesoPanelWebService::MENSAJE_SOLO_PERSONAL);
+        // TG-195: tampoco entra el personal de una distribuidora rechazada.
+        $motivo = $acceso->motivoSinAcceso($usuario);
+
+        if ($motivo !== null) {
+            $this->addError('email', $motivo);
 
             return;
         }

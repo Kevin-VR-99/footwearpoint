@@ -27,6 +27,53 @@ class AccesoPanelWebService
     public const MENSAJE_SOLO_PERSONAL = 'Este panel es solo para el personal de la distribuidora. '
         .'Si eres cliente o cliente mayorista, entra desde la app FootwearPoint.';
 
+    /** TG-196 (G5): lo que ve el personal de una distribuidora suspendida. */
+    public const MENSAJE_DISTRIBUIDORA_SUSPENDIDA = 'Tu distribuidora está suspendida, así que por ahora no puede usar '
+        .'FootwearPoint. Tu información se conserva. Comunícate con FootwearPoint para reactivarla.';
+
+    /** TG-195 (G4): lo que ve el personal de una distribuidora rechazada. */
+    public const MENSAJE_DISTRIBUIDORA_RECHAZADA = 'La solicitud de tu distribuidora fue rechazada, '
+        .'así que no puede usar FootwearPoint.';
+
+    /**
+     * TG-195 (G4) — Por qué esta persona no puede entrar al panel, o null si
+     * sí puede. Lo usan el login web y el middleware SoloPersonalPanel.
+     *
+     *  - No es personal (revendedor, cliente)  -> MENSAJE_SOLO_PERSONAL.
+     *  - Su distribuidora fue rechazada        -> mensaje con el motivo, para
+     *    que sepa qué le faltó (E2-01: una rechazada no puede operar).
+     *  - Su distribuidora está suspendida      -> MENSAJE_DISTRIBUIDORA_SUSPENDIDA
+     *    (TG-196, E2-02: no puede operar, pero conserva su información).
+     *
+     * Las pendientes siguen entrando como hasta ahora.
+     */
+    public function motivoSinAcceso(Usuario $usuario): ?string
+    {
+        $staff = $this->staffActivo($usuario);
+
+        if ($staff === null) {
+            return $this->esAdminGeneral($usuario) ? null : self::MENSAJE_SOLO_PERSONAL;
+        }
+
+        $distribuidora = $staff->distribuidora;
+
+        if ($distribuidora !== null && ! $distribuidora->puedeOperar()) {
+            return $distribuidora->estado === 'rechazada'
+                ? self::mensajeDistribuidoraRechazada($distribuidora->motivo_rechazo)
+                : self::MENSAJE_DISTRIBUIDORA_SUSPENDIDA;
+        }
+
+        return null;
+    }
+
+    /** El motivo va como texto: las vistas lo escapan al mostrarlo. */
+    public static function mensajeDistribuidoraRechazada(?string $motivo): string
+    {
+        $motivo = trim((string) $motivo);
+
+        return self::MENSAJE_DISTRIBUIDORA_RECHAZADA.($motivo !== '' ? ' Motivo: '.$motivo : '');
+    }
+
     /** True si la persona es personal: admin general o staff activo. */
     public function esPersonal(Usuario $usuario): bool
     {

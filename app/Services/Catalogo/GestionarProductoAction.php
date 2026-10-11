@@ -2,19 +2,21 @@
 
 namespace App\Services\Catalogo;
 
-use App\Exceptions\OperacionInvalidaException;
-use App\Models\Linea;
 use App\Models\Producto;
 
+/**
+ * Alta y edición de productos del catálogo compartido (TG-213).
+ *
+ * El producto ya no se amarra a una línea (D5): el mismo modelo puede salir en
+ * los catálogos de dos líneas. La línea se sabe por la temporada donde se
+ * publica.
+ */
 class GestionarProductoAction
 {
     public function crear(array $datos): Producto
     {
-        $this->validarMarcaEnLinea((int) $datos['linea_id'], (int) $datos['marca_id']);
-
         return Producto::create([
             'marca_id'     => $datos['marca_id'],
-            'linea_id'     => $datos['linea_id'],
             'categoria_id' => $datos['categoria_id'],
             'modelo'       => $datos['modelo'],
             'nombre'       => $datos['nombre'],
@@ -34,24 +36,7 @@ class GestionarProductoAction
         $producto->fill($datos);
         $producto->save();
 
-        return $producto->fresh(['marca', 'linea', 'categoria']);
+        return $producto->fresh(['marca', 'categoria']);
     }
 
-    private function validarMarcaEnLinea(int $lineaId, int $marcaId): void
-    {
-        $linea = Linea::find($lineaId);
-
-        if (! $linea) {
-            throw new OperacionInvalidaException('La línea indicada no existe.', 422);
-        }
-
-        $ok = $linea->marcas()->where('marcas.id', $marcaId)->exists();
-
-        if (! $ok) {
-            throw new OperacionInvalidaException(
-                'La marca no está asociada a esa línea. Asocia la marca a la línea antes de crear el producto.',
-                422
-            );
-        }
-    }
 }

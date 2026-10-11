@@ -3,103 +3,138 @@
 namespace Tests\Feature\Catalogo;
 
 use App\Models\Campana;
+use App\Models\CategoriaProducto;
+use App\Models\Distribuidora;
+use App\Models\DistribuidoraLinea;
+use App\Models\Linea;
+use App\Models\Marca;
 use App\Models\Producto;
 use App\Models\ProductoCampana;
 use App\Models\Usuario;
+use App\Services\Distribuidora\GestionarOfertaDistribuidoraAction;
+use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
+/**
+ * GET /api/catalogo: qué ve una distribuidora del catálogo compartido
+ * (regla 4.4 del diseño, TG-213).
+ *
+ * Aparece un producto cuando se cumple todo:
+ *   - su temporada está activa,
+ *   - esa temporada es de una línea que la distribuidora vende,
+ *   - el producto está activo en la temporada,
+ *   - y la distribuidora no lo ocultó.
+ */
 class CatalogoConsultableTest extends TestCase
 {
     use RefreshDatabase;
 
     protected bool $seed = true;
 
-    private function autenticarComoEmpleado(): void
+    private function comoEmpleado(): void
     {
-        $usuario = Usuario::where('email', 'empleado@calzadosramirez.test')->firstOrFail();
-        Sanctum::actingAs($usuario);
+        Sanctum::actingAs(Usuario::where('email', 'empleado@calzadosramirez.test')->firstOrFail());
+        Tenant::olvidarCache();
     }
 
-    /**
-     * Se crea y se avanza directo con Eloquent (no por la API) para no
-     * depender de ninguna Factory ni de la validación de transición paso a
-     * paso — aquí solo interesa dejar la campaña en 'activa' para el
-     * escenario de prueba.
-     */
-    private function crearCampanaActiva(int $marcaId): Campana
+    /** Un producto del catálogo, en su propia línea y temporada. */
+    private function publicar(string $sufijo, string $estadoTemporada = 'activa', bool $activo = true): ProductoCampana
     {
-        $campana = Campana::create([
-            'marca_id' => $marcaId,
-            'nombre'   => 'Campaña Activa Para Prueba ' . uniqid(),
+        $linea = Linea::create(['nombre' => 'Línea '.$sufijo, 'activa' => true]);
+
+        $producto = Producto::create([
+            'marca_id' => Marca::firstOrFail()->id,
+            'categoria_id' => CategoriaProducto::firstOrFail()->id,
+            'modelo' => 'MOD-'.$sufijo,
+            'nombre' => 'Producto '.$sufijo,
+            'activo' => true,
         ]);
-        $campana->update(['estado' => 'activa']);
 
-        return $campana->fresh();
-    }
+        $campana = Campana::create([
+            'linea_id' => $linea->id,
+            'nombre' => 'Temporada '.$sufijo,
+            'estado' => $estadoTemporada,
+        ]);
 
-    private function crearPublicacion(Producto $producto, Campana $campana, bool $publicado): ProductoCampana
-    {
         return ProductoCampana::create([
-            'producto_id'               => $producto->id,
-            'campana_id'                => $campana->id,
-            'codigo_catalogo'           => 'TEST-' . uniqid(),
-            'precio_mayorista'          => 500,
-            'precio_minorista_sugerido' => 800,
-            'publicado'                 => $publicado,
+            'producto_id' => $producto->id,
+            'campana_id' => $campana->id,
+            'codigo_catalogo' => 'TEST-'.$sufijo,
+            'precio_publico' => 800,
+            'activo' => $activo,
         ]);
     }
 
-    /**
-     * La prueba explícita que pide el documento de tareas (sección 4,
-     * Paquete B): "Un producto_campana no publicado no aparece en GET
-     * /api/catalogo."
-     */
-    public function test_una_publicacion_no_publicada_no_aparece_en_el_catalogo(): void
+    private function venderEsaLinea(ProductoCampana $publicacion): void
     {
-        $this->autenticarComoEmpleado();
-
-        $producto = Producto::firstOrFail();
-        $campana = $this->crearCampanaActiva($producto->marca_id);
-        $publicacion = $this->crearPublicacion($producto, $campana, publicado: false);
-
-        $respuesta = $this->getJson('/api/catalogo')->assertOk();
-
-        $idsEnCatalogo = collect($respuesta->json('data'))->pluck('id');
-        $this->assertNotContains($publicacion->id, $idsEnCatalogo);
+        DistribuidoraLinea::withoutGlobalScopes()->firstOrCreate(
+            [
+                'distribuidora_id' => Distribuidora::where('slug', 'calzados-ramirez')->value('id'),
+                'linea_id' => $publicacion->campana->linea_id,
+            ],
+            ['es_extra' => false, 'activa' => true, 'fecha_activacion' => now()]
+        );
     }
 
-    public function test_una_publicacion_publicada_en_campana_activa_si_aparece(): void
+    private function idsDelCatalogo(): \Illuminate\Support\Collection
     {
-        $this->autenticarComoEmpleado();
-
-        $producto = Producto::firstOrFail();
-        $campana = $this->crearCampanaActiva($producto->marca_id);
-        $publicacion = $this->crearPublicacion($producto, $campana, publicado: true);
-
-        $respuesta = $this->getJson('/api/catalogo')->assertOk();
-
-        $idsEnCatalogo = collect($respuesta->json('data'))->pluck('id');
-        $this->assertContains($publicacion->id, $idsEnCatalogo);
+        return collect($this->getJson('/api/catalogo')->assertOk()->json('data'))->pluck('id');
     }
 
-    public function test_una_publicacion_publicada_pero_en_campana_no_activa_no_aparece(): void
+    public function test_un_producto_de_una_linea_que_vende_si_aparece(): void
     {
-        $this->autenticarComoEmpleado();
+        $publicacion = $this->publicar('visible');
+        $this->venderEsaLinea($publicacion);
 
-        $producto = Producto::firstOrFail();
-        $campana = Campana::create([
-            'marca_id' => $producto->marca_id,
-            'nombre'   => 'Campaña En Borrador Para Prueba',
-        ]); // nace en 'borrador', nunca se avanza
+        $this->comoEmpleado();
 
-        $publicacion = $this->crearPublicacion($producto, $campana, publicado: true);
+        $this->assertContains($publicacion->id, $this->idsDelCatalogo());
+    }
 
-        $respuesta = $this->getJson('/api/catalogo')->assertOk();
+    public function test_un_producto_de_una_linea_que_no_vende_no_aparece(): void
+    {
+        $publicacion = $this->publicar('ajena');
 
-        $idsEnCatalogo = collect($respuesta->json('data'))->pluck('id');
-        $this->assertNotContains($publicacion->id, $idsEnCatalogo);
+        $this->comoEmpleado();
+
+        $this->assertNotContains($publicacion->id, $this->idsDelCatalogo());
+    }
+
+    public function test_un_producto_de_una_temporada_que_no_esta_activa_no_aparece(): void
+    {
+        $publicacion = $this->publicar('en-borrador', estadoTemporada: 'borrador');
+        $this->venderEsaLinea($publicacion);
+
+        $this->comoEmpleado();
+
+        $this->assertNotContains($publicacion->id, $this->idsDelCatalogo());
+    }
+
+    /** El admin general puede retirar un producto de la temporada. */
+    public function test_un_producto_retirado_de_la_temporada_no_aparece(): void
+    {
+        $publicacion = $this->publicar('retirado', activo: false);
+        $this->venderEsaLinea($publicacion);
+
+        $this->comoEmpleado();
+
+        $this->assertNotContains($publicacion->id, $this->idsDelCatalogo());
+    }
+
+    public function test_un_producto_que_la_distribuidora_oculto_no_aparece(): void
+    {
+        $publicacion = $this->publicar('oculto');
+        $this->venderEsaLinea($publicacion);
+
+        Sanctum::actingAs(Usuario::where('email', 'admin@calzadosramirez.test')->firstOrFail());
+        Tenant::olvidarCache();
+        app(GestionarOfertaDistribuidoraAction::class)->ocultar($publicacion->id);
+
+        $this->comoEmpleado();
+
+        $this->assertNotContains($publicacion->id, $this->idsDelCatalogo());
     }
 
     public function test_sin_autenticar_no_se_puede_consultar_el_catalogo(): void

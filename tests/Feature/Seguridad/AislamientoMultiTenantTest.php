@@ -5,25 +5,31 @@ namespace Tests\Feature\Seguridad;
 use App\Models\Campana;
 use App\Models\CategoriaProducto;
 use App\Models\Distribuidora;
+use App\Models\DistribuidoraLinea;
+use App\Models\Linea;
 use App\Models\Marca;
 use App\Models\Producto;
 use App\Models\ProductoCampana;
+use App\Models\Sucursal;
 use App\Models\Usuario;
+use App\Services\Distribuidora\GestionarOfertaDistribuidoraAction;
 use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Prueba obligatoria, prioridad alta (sección "Transversal — Seguridad,
- * auditoría y pruebas" del documento de tareas, aplica a los 5 paquetes):
- * un usuario de la distribuidora A intenta leer/modificar un recurso de la
- * distribuidora B — debe rechazarse (403/404), nunca exponer datos reales.
+ * Prueba obligatoria de seguridad: lo de una distribuidora no se le escapa a
+ * otra.
  *
- * Esta cubre los recursos del Paquete B (marcas, categorías, campañas,
- * productos, producto-campana) con una SEGUNDA distribuidora real, no con
- * un id inventado que no existe — así se prueba de verdad que el Global
- * Scope filtra, no solo que un id al azar da 404.
+ * Desde el Sprint 4 (TG-213) el catálogo cambió de dueño: líneas, marcas,
+ * productos y precios de catálogo son UNO SOLO para todo FootwearPoint, los
+ * administra el admin general y cualquiera los puede consultar. Entonces el
+ * aislamiento ya no se mide ahí, sino en lo que sí es de cada quien:
+ *
+ *   - qué parte del catálogo vende (sus líneas y lo que oculta),
+ *   - sus sucursales, su stock, sus pedidos y sus clientes,
+ *   - y que su personal ya no pueda editar el catálogo de todos.
  */
 class AislamientoMultiTenantTest extends TestCase
 {
@@ -31,160 +37,183 @@ class AislamientoMultiTenantTest extends TestCase
 
     protected bool $seed = true;
 
-    private function autenticarComoEmpleadoDistribuidoraA(): void
+    private function comoEmpleadoDeLaA(): void
     {
-        $usuario = Usuario::where('email', 'empleado@calzadosramirez.test')->firstOrFail();
-        Sanctum::actingAs($usuario);
+        Sanctum::actingAs(Usuario::where('email', 'empleado@calzadosramirez.test')->firstOrFail());
+        Tenant::olvidarCache();
     }
 
-    private function autenticarComoAdminDistribuidoraA(): void
+    private function comoAdminDeLaA(): void
     {
-        $usuario = Usuario::where('email', 'admin@calzadosramirez.test')->firstOrFail();
-        Sanctum::actingAs($usuario);
+        Sanctum::actingAs(Usuario::where('email', 'admin@calzadosramirez.test')->firstOrFail());
+        Tenant::olvidarCache();
+    }
+
+    private function otraDistribuidora(): Distribuidora
+    {
+        return Distribuidora::create([
+            'nombre_comercial' => 'Zapatería Rival (prueba)',
+            'rfc' => 'ZRI010101'.strtoupper(substr(uniqid(), -3)),
+            'slug' => 'zapateria-rival-'.uniqid(),
+            'estado' => 'activa',
+            'fecha_solicitud' => now(),
+            'fecha_aprobacion' => now(),
+        ]);
     }
 
     /**
-     * Crea una distribuidora B completamente aparte, con su propia marca,
-     * categoría, producto, campaña y producto-campana — usando
-     * Tenant::forzar() (la misma utilidad que ya usan los Seeders de Fase
-     * 0) para poder crear estos registros sin estar autenticado como esa
-     * distribuidora.
+     * Un producto del catálogo compartido, en su propia línea. Si se le pasa
+     * una distribuidora, se le activa esa línea: así es "de las que ella
+     * vende".
      */
-    private function crearRecursosDeOtraDistribuidora(): array
+    private function productoDelCatalogo(string $sufijo, ?int $paraDistribuidoraId = null): ProductoCampana
     {
-        $distribuidoraB = Distribuidora::create([
-            'nombre_comercial'    => 'Zapatería Rival (prueba)',
-            'razon_social'        => 'Zapatería Rival S.A. de C.V.',
-            'rfc'                 => 'ZRI010101' . strtoupper(substr(uniqid(), -3)),
-            'slug'                => 'zapateria-rival-' . uniqid(),
-            'estado'              => 'activa',
-            'fecha_solicitud'     => now(),
-            'fecha_aprobacion'    => now(),
+        $linea = Linea::create(['nombre' => 'Línea '.$sufijo, 'activa' => true]);
+
+        $producto = Producto::create([
+            'marca_id' => Marca::create(['nombre' => 'Marca '.$sufijo, 'activa' => true])->id,
+            'categoria_id' => CategoriaProducto::create(['nombre' => 'Categoría '.$sufijo, 'activa' => true])->id,
+            'modelo' => 'MOD-'.$sufijo,
+            'nombre' => 'Producto '.$sufijo,
+            'activo' => true,
         ]);
 
-        return Tenant::forzar($distribuidoraB->id, function () use ($distribuidoraB) {
-            $marca = Marca::create(['nombre' => 'Marca Rival', 'activa' => true]);
-            $categoria = CategoriaProducto::create(['nombre' => 'Categoría Rival', 'activa' => true]);
-            $producto = Producto::create([
-                'marca_id'     => $marca->id,
-                'categoria_id' => $categoria->id,
-                'modelo'       => 'RIVAL-01',
-                'nombre'       => 'Producto Rival',
-                'activo'       => true,
-            ]);
-            $campana = Campana::create(['marca_id' => $marca->id, 'nombre' => 'Campaña Rival']);
-            $productoCampana = ProductoCampana::create([
-                'producto_id'               => $producto->id,
-                'campana_id'                => $campana->id,
-                'codigo_catalogo'           => 'RIVAL-CAT-01',
-                'precio_mayorista'          => 500,
-                'precio_minorista_sugerido' => 800,
-            ]);
+        $campana = Campana::create([
+            'linea_id' => $linea->id,
+            'nombre' => 'Temporada '.$sufijo,
+            'estado' => 'activa',
+        ]);
 
-            return compact('distribuidoraB', 'marca', 'categoria', 'producto', 'campana', 'productoCampana');
+        if ($paraDistribuidoraId !== null) {
+            DistribuidoraLinea::withoutGlobalScopes()->create([
+                'distribuidora_id' => $paraDistribuidoraId,
+                'linea_id' => $linea->id,
+                'es_extra' => false,
+                'activa' => true,
+                'fecha_activacion' => now(),
+            ]);
+        }
+
+        return ProductoCampana::create([
+            'producto_id' => $producto->id,
+            'campana_id' => $campana->id,
+            'codigo_catalogo' => 'CAT-'.$sufijo,
+            'precio_publico' => 800,
+            'activo' => true,
+        ]);
+    }
+
+    // ------------------------------------------------------------------
+    // El catálogo es de todos
+    // ------------------------------------------------------------------
+
+    public function test_el_catalogo_es_el_mismo_para_todas_las_distribuidoras(): void
+    {
+        $otra = $this->otraDistribuidora();
+        $producto = $this->productoDelCatalogo('compartido', $otra->id);
+
+        $this->comoEmpleadoDeLaA();
+
+        // Consultarlo se puede: es el catálogo de FootwearPoint, no de nadie.
+        $this->getJson('/api/producto-campana/'.$producto->id)
+            ->assertOk()
+            ->assertJsonPath('data.codigo_catalogo', 'CAT-compartido');
+    }
+
+    public function test_el_personal_de_una_distribuidora_ya_no_puede_editar_el_catalogo(): void
+    {
+        $marca = Marca::create(['nombre' => 'Marca del catálogo', 'activa' => true]);
+
+        $this->comoAdminDeLaA();
+
+        // Crear y editar catálogo es solo del admin general (TG-213).
+        $this->postJson('/api/marcas', ['nombre' => 'Marca nueva'])->assertStatus(403);
+        $this->patchJson('/api/marcas/'.$marca->id, ['nombre' => 'Otro nombre'])->assertStatus(403);
+        $this->postJson('/api/productos', ['modelo' => 'X', 'nombre' => 'X'])->assertStatus(403);
+
+        $this->assertSame('Marca del catálogo', $marca->fresh()->nombre);
+    }
+
+    // ------------------------------------------------------------------
+    // Pero cada quien vende lo suyo
+    // ------------------------------------------------------------------
+
+    public function test_el_catalogo_consultable_no_trae_productos_de_lineas_que_no_vende(): void
+    {
+        $otra = $this->otraDistribuidora();
+        $soloDeLaOtra = $this->productoDelCatalogo('ajeno', $otra->id);
+
+        $this->comoEmpleadoDeLaA();
+
+        $idsEnCatalogo = collect($this->getJson('/api/catalogo')->assertOk()->json('data'))->pluck('id');
+
+        $this->assertNotContains($soloDeLaOtra->id, $idsEnCatalogo);
+        $this->assertNotEmpty($idsEnCatalogo, 'La distribuidora A no vio nada de su propio catálogo.');
+    }
+
+    public function test_un_producto_oculto_por_una_distribuidora_lo_sigue_viendo_la_otra(): void
+    {
+        $distribuidoraA = Distribuidora::where('slug', 'calzados-ramirez')->firstOrFail();
+        $otra = $this->otraDistribuidora();
+
+        // El mismo producto del catálogo, que las dos venden.
+        $producto = $this->productoDelCatalogo('comun', $distribuidoraA->id);
+        DistribuidoraLinea::withoutGlobalScopes()->create([
+            'distribuidora_id' => $otra->id,
+            'linea_id' => $producto->campana->linea_id,
+            'es_extra' => false,
+            'activa' => true,
+            'fecha_activacion' => now(),
+        ]);
+
+        // La A lo oculta...
+        $this->comoAdminDeLaA();
+        app(GestionarOfertaDistribuidoraAction::class)->ocultar($producto->id);
+
+        $idsDeLaA = collect($this->getJson('/api/catalogo')->assertOk()->json('data'))->pluck('id');
+        $this->assertNotContains($producto->id, $idsDeLaA);
+
+        // ...y a la otra no le afecta.
+        Tenant::forzar($otra->id, function () use ($producto) {
+            $visibles = app(\App\Services\Catalogo\CatalogoVisible::class)->consulta()->pluck('id');
+            $this->assertTrue($visibles->contains($producto->id));
         });
     }
 
-    public function test_no_se_puede_leer_una_marca_de_otra_distribuidora(): void
-    {
-        $recursos = $this->crearRecursosDeOtraDistribuidora();
-        $this->autenticarComoEmpleadoDistribuidoraA();
+    // ------------------------------------------------------------------
+    // Lo que sí es de cada quien sigue aislado
+    // ------------------------------------------------------------------
 
-        $this->getJson("/api/marcas/{$recursos['marca']->id}")->assertStatus(404);
+    public function test_una_distribuidora_no_ve_las_sucursales_ni_el_stock_de_otra(): void
+    {
+        $otra = $this->otraDistribuidora();
+
+        $sucursalAjena = Tenant::forzar($otra->id, fn () => Sucursal::create([
+            'nombre' => 'Sucursal rival',
+            'direccion' => 'Otra calle',
+            'es_principal' => true,
+            'activa' => true,
+        ]));
+
+        $this->comoEmpleadoDeLaA();
+
+        $this->assertNotContains($sucursalAjena->id, Sucursal::pluck('id'));
     }
 
-    public function test_no_se_puede_editar_una_marca_de_otra_distribuidora(): void
+    public function test_una_distribuidora_no_ve_las_lineas_que_activo_otra(): void
     {
-        $recursos = $this->crearRecursosDeOtraDistribuidora();
-        $this->autenticarComoEmpleadoDistribuidoraA();
+        $otra = $this->otraDistribuidora();
+        $this->productoDelCatalogo('solo-de-la-otra', $otra->id);
 
-        $this->patchJson("/api/marcas/{$recursos['marca']->id}", ['nombre' => 'Nombre Hackeado'])
-            ->assertStatus(404);
+        $this->comoEmpleadoDeLaA();
 
-        $this->assertDatabaseHas('marcas', ['id' => $recursos['marca']->id, 'nombre' => 'Marca Rival']);
-        $this->assertDatabaseMissing('marcas', ['nombre' => 'Nombre Hackeado']);
-    }
+        $lineasAjenas = DistribuidoraLinea::withoutGlobalScopes()
+            ->where('distribuidora_id', $otra->id)
+            ->pluck('id');
 
-    public function test_no_se_puede_leer_un_producto_de_otra_distribuidora(): void
-    {
-        $recursos = $this->crearRecursosDeOtraDistribuidora();
-        $this->autenticarComoEmpleadoDistribuidoraA();
-
-        $this->getJson("/api/productos/{$recursos['producto']->id}")->assertStatus(404);
-    }
-
-    public function test_no_se_puede_editar_un_producto_de_otra_distribuidora(): void
-    {
-        $recursos = $this->crearRecursosDeOtraDistribuidora();
-        $this->autenticarComoEmpleadoDistribuidoraA();
-
-        $this->patchJson("/api/productos/{$recursos['producto']->id}", ['nombre' => 'Producto Hackeado'])
-            ->assertStatus(404);
-    }
-
-    public function test_no_se_puede_leer_una_campana_de_otra_distribuidora(): void
-    {
-        $recursos = $this->crearRecursosDeOtraDistribuidora();
-        $this->autenticarComoEmpleadoDistribuidoraA();
-
-        $this->getJson("/api/campanas/{$recursos['campana']->id}")->assertStatus(404);
-    }
-
-    public function test_no_se_puede_avanzar_el_estado_de_una_campana_de_otra_distribuidora(): void
-    {
-        $recursos = $this->crearRecursosDeOtraDistribuidora();
-        $this->autenticarComoEmpleadoDistribuidoraA();
-
-        $this->patchJson("/api/campanas/{$recursos['campana']->id}", ['estado' => 'en_importacion'])
-            ->assertStatus(404);
-
-        $this->assertDatabaseHas('campanas', ['id' => $recursos['campana']->id, 'estado' => 'borrador']);
-    }
-
-    public function test_no_se_puede_leer_una_publicacion_producto_campana_de_otra_distribuidora(): void
-    {
-        $recursos = $this->crearRecursosDeOtraDistribuidora();
-        $this->autenticarComoEmpleadoDistribuidoraA();
-
-        $this->getJson("/api/producto-campana/{$recursos['productoCampana']->id}")->assertStatus(404);
-    }
-
-    /**
-     * Prueba de "control": confirma que el catálogo consultable de la
-     * distribuidora A (que sí puede tener publicaciones reales) NUNCA
-     * mezcla productos de la distribuidora B, aunque ambas existan al
-     * mismo tiempo en la misma base de datos compartida.
-     */
-    public function test_el_catalogo_consultable_nunca_mezcla_productos_de_otra_distribuidora(): void
-    {
-        $recursos = $this->crearRecursosDeOtraDistribuidora();
-
-        // La publicación de la distribuidora B se marca publicada y su
-        // campaña se avanza a 'activa' — para que, SI hubiera una fuga,
-        // cumpliera igual las 2 condiciones que exige el catálogo.
-        $recursos['productoCampana']->update(['publicado' => true]);
-        $recursos['campana']->update(['estado' => 'activa']);
-
-        $this->autenticarComoEmpleadoDistribuidoraA();
-
-        $respuesta = $this->getJson('/api/catalogo')->assertOk();
-
-        $idsEnCatalogo = collect($respuesta->json('data'))->pluck('id');
-        $this->assertNotContains($recursos['productoCampana']->id, $idsEnCatalogo);
-    }
-
-    /**
-     * Refuerzo sin ambigüedad de rol: aquí el usuario SÍ tiene el permiso
-     * correcto para tocar marcas (admin_distribuidora) — así el 404 solo
-     * puede venir del Global Scope de tenant, no de un rechazo de permiso
-     * que hubiera dado el mismo resultado por otra razón.
-     */
-    public function test_un_admin_distribuidora_con_permiso_valido_tampoco_puede_ver_una_marca_de_otra_distribuidora(): void
-    {
-        $recursos = $this->crearRecursosDeOtraDistribuidora();
-        $this->autenticarComoAdminDistribuidoraA();
-
-        $this->getJson("/api/marcas/{$recursos['marca']->id}")->assertStatus(404);
-        $this->patchJson("/api/marcas/{$recursos['marca']->id}", ['nombre' => 'Hackeado'])->assertStatus(404);
+        $this->assertNotEmpty($lineasAjenas);
+        foreach ($lineasAjenas as $id) {
+            $this->assertNotContains($id, DistribuidoraLinea::pluck('id'));
+        }
     }
 }

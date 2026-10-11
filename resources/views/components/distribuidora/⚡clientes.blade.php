@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\ClienteDirecto;
+use App\Services\Auth\EnviarEnlaceRestablecerPanelAction;
+use App\Services\Auth\GenerarPasswordTemporalAction;
 use App\Services\Distribuidora\ActivarCuentaAccesoAction;
 use App\Services\Distribuidora\GestionarClienteDirectoAction;
 use Illuminate\Support\Facades\DB;
@@ -8,6 +10,10 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 new class extends Component {
+    // TG-192: aviso del envio del enlace de restablecimiento.
+    public ?string $avisoEnlace = null;
+    public bool $avisoEnlaceEsError = false;
+
     public $clientesDirectos = [];
     public ?int $clienteEditandoId = null;
     public bool $mostrandoFormularioCliente = false;
@@ -59,6 +65,98 @@ new class extends Component {
         $this->mostrandoFormularioCliente = true;
     }
 
+    /** TG-192 (A3): le manda al cliente el enlace para cambiar su contrasena. */
+    public function enviarEnlaceCliente(int $id): void
+    {
+        $cliente = ClienteDirecto::with('usuario')->findOrFail($id);
+        $cuenta = $cliente->usuario;
+
+        if (! $cuenta) {
+            $this->avisoEnlace = 'Ese cliente todavia no tiene cuenta para la app.';
+            $this->avisoEnlaceEsError = true;
+
+            return;
+        }
+
+        try {
+            $this->avisoEnlace = app(EnviarEnlaceRestablecerPanelAction::class)
+                ->ejecutar($cuenta, 'cliente_directo', (int) $cliente->id);
+            $this->avisoEnlaceEsError = false;
+        } catch (ValidationException $e) {
+            $this->avisoEnlace = $e->errors()['enlace'][0] ?? 'No se pudo enviar el enlace.';
+            $this->avisoEnlaceEsError = true;
+        }
+    }
+
+    /**
+     * TG-193 (A4): respaldo del enlace por correo. Le pone una contraseña
+     * temporal y se la muestra al personal UNA vez, para que se la dicte. La
+     * persona tendra que cambiarla al entrar.
+     */
+    public function generarPasswordTemporalCliente(int $id): void
+    {
+        $cliente = ClienteDirecto::with('usuario')->findOrFail($id);
+        $cuenta = $cliente->usuario;
+        $entidadId = $cliente->id;
+
+        if (! $cuenta) {
+            $this->avisoEnlace = 'Primero hay que darle acceso a la app.';
+            $this->avisoEnlaceEsError = true;
+
+            return;
+        }
+
+        try {
+            $password = app(GenerarPasswordTemporalAction::class)
+                ->ejecutar($cuenta, 'cliente_directo', (int) $entidadId);
+        } catch (ValidationException $e) {
+            // La cuenta la comparte otra distribuidora: solo queda el enlace.
+            $this->avisoEnlace = $e->errors()['password_temporal'][0]
+                ?? 'No se pudo generar la contraseña temporal.';
+            $this->avisoEnlaceEsError = true;
+
+            return;
+        }
+
+        // En la sesion y solo por esta respuesta: una propiedad publica
+        // del componente viajaria al navegador en cada accion siguiente.
+        session()->now('aviso_password_temporal', 'Contraseña temporal para '.$cuenta->email.': '.$password
+            .'. Anótala ahora, no se vuelve a mostrar. Se le pedirá cambiarla al entrar.');
+
+        $this->avisoEnlace = null;
+        $this->avisoEnlaceEsError = false;
+    }
+
+
+    /**
+     * TG-189 (A11): reenviar el correo de confirmacion desde el mostrador,
+     * cuando la persona dice que no le llego.
+     */
+    public function reenviarVerificacionCliente(int $id): void
+    {
+        $cliente = ClienteDirecto::with('usuario')->findOrFail($id);
+        $cuenta = $cliente->usuario;
+
+        if (! $cuenta) {
+            $this->avisoEnlace = 'Primero hay que darle acceso a la app.';
+            $this->avisoEnlaceEsError = true;
+
+            return;
+        }
+
+        if ($cuenta->hasVerifiedEmail()) {
+            $this->avisoEnlace = 'Ese correo ya esta confirmado.';
+            $this->avisoEnlaceEsError = false;
+
+            return;
+        }
+
+        $cuenta->sendEmailVerificationNotification();
+
+        $this->avisoEnlace = 'Le reenviamos el enlace de confirmacion a '.$cuenta->email.'.';
+        $this->avisoEnlaceEsError = false;
+    }
+
     public function cancelarFormularioCliente(): void
     {
         $this->mostrandoFormularioCliente = false;
@@ -86,10 +184,15 @@ new class extends Component {
         $payload = [
             'nombre' => $datos['cliente_nombre'],
             'telefono' => $datos['cliente_telefono'],
-            'email' => $datos['cliente_email'],
             'direccion_contacto' => $datos['cliente_direccion_contacto'],
             'estado' => $this->cliente_estado,
         ];
+
+        // Si ya tiene cuenta, su correo es el de acceso y vive en la cuenta:
+        // desde aquí no se toca (D4, TG-216).
+        if ($this->cliente_cuenta_email_actual === null) {
+            $payload['email'] = $datos['cliente_email'];
+        }
 
         $accion = app(GestionarClienteDirectoAction::class);
 
@@ -138,12 +241,26 @@ new class extends Component {
 
 <div>
     @if (! $mostrandoFormularioCliente)
-        <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
+        <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Clientes Directos</h2>
                 <button type="button" wire:click="abrirFormularioCrearCliente"
-                    class="rounded-lg bg-fp-primary px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">+ Nuevo cliente</button>
+                    class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">+ Nuevo cliente</button>
             </div>
+            {{-- TG-192: resultado del envio del enlace de restablecimiento. --}}
+            {{-- La contrasena temporal se saca de la sesion, no de una propiedad
+                 del componente: esas viajan al navegador en cada accion
+                 posterior. Asi se ve una vez y no queda guardada en ningun lado. --}}
+            @if (session('aviso_password_temporal'))
+                <div class="mb-4 rounded-lg border border-fp-badge-warning-fg/20 bg-fp-badge-warning-bg px-4 py-3 text-sm text-fp-badge-warning-fg">
+                    {{ session('aviso_password_temporal') }}
+                </div>
+            @endif
+            @if ($avisoEnlace)
+                <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ $avisoEnlaceEsError ? 'border-fp-danger/20 bg-fp-danger-soft text-fp-badge-danger-fg' : 'border-fp-badge-success-fg/20 bg-fp-badge-success-bg text-fp-badge-success-fg' }}">
+                    {{ $avisoEnlace }}
+                </div>
+            @endif
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-slate-500 border-b">
@@ -174,6 +291,21 @@ new class extends Component {
                                 @endif
                             </td>
                             <td class="py-2 text-right">
+                                {{-- TG-192: solo tiene sentido si ya tiene cuenta en la app. --}}
+                                @if ($cliente->usuario_id)
+                                    <button type="button" wire:click="enviarEnlaceCliente({{ $cliente->id }})"
+                                        wire:loading.attr="disabled"
+                                        class="text-fp-primary text-xs font-medium mr-3">Enviar enlace</button>
+                                    {{-- TG-189: solo si todavía no confirma su correo. --}}
+                                    @if (! $cliente->usuario?->hasVerifiedEmail())
+                                        <button type="button" wire:click="reenviarVerificacionCliente({{ $cliente->id }})"
+                                            wire:loading.attr="disabled"
+                                            class="text-fp-primary text-xs font-medium mr-3">Reenviar confirmación</button>
+                                    @endif
+                                    <button type="button" wire:click="generarPasswordTemporalCliente({{ $cliente->id }})"
+                                        wire:loading.attr="disabled"
+                                        class="text-fp-primary text-xs font-medium mr-3">Contraseña temporal</button>
+                                @endif
                                 <button type="button" wire:click="abrirFormularioEditarCliente({{ $cliente->id }})"
                                     class="text-fp-primary text-xs font-medium">Editar</button>
                             </td>
@@ -183,7 +315,7 @@ new class extends Component {
             </table>
         </div>
     @else
-        <form wire:submit="guardarCliente" class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 space-y-4 max-w-2xl">
+        <form wire:submit="guardarCliente" class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 space-y-4 max-w-2xl">
             <h2 class="text-sm font-semibold text-slate-700">
                 {{ $clienteEditandoId ? 'Editar cliente directo' : 'Nuevo cliente directo' }}
             </h2>
@@ -199,7 +331,13 @@ new class extends Component {
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-                    <input type="email" wire:model="cliente_email" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                    @if ($cliente_cuenta_email_actual !== null)
+                        <input type="email" value="{{ $cliente_cuenta_email_actual }}" disabled
+                            class="w-full rounded-lg border-slate-200 bg-slate-100 text-sm text-slate-500 shadow-sm">
+                        <p class="mt-1 text-xs text-fp-text-muted">Es su correo para entrar a la app.</p>
+                    @else
+                        <input type="email" wire:model="cliente_email" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                    @endif
                 </div>
             </div>
             <div>

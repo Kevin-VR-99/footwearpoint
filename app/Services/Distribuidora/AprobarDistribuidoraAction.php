@@ -13,19 +13,22 @@ use Illuminate\Support\Facades\DB;
  * Es la única lógica de aprobación: la usan el panel del admin general y
  * POST /api/admin/distribuidoras/{id}/aprobar. Antes cada uno tenía su copia
  * y ninguno creaba los roles de la distribuidora.
+ *
+ * TG-196 (G5): al terminar avisa por correo a la distribuidora.
  */
 class AprobarDistribuidoraAction
 {
     public function __construct(
         private PrepararDistribuidoraAction $preparar,
         private ProvisionarRolesDistribuidoraAction $roles,
+        private NotificarCambioEstadoDistribuidoraAction $notificar,
     ) {
     }
 
     /**
      * @throws AprobacionDistribuidoraException si no está pendiente o no hay planes.
      */
-    public function ejecutar(Distribuidora $distribuidora): Distribuidora
+    public function ejecutar(Distribuidora $distribuidora): CambioEstadoDistribuidora
     {
         if ($distribuidora->estado !== 'pendiente') {
             throw AprobacionDistribuidoraException::noPendiente();
@@ -64,6 +67,12 @@ class AprobarDistribuidoraAction
             }
         });
 
-        return $distribuidora->fresh();
+        $distribuidora = $distribuidora->fresh();
+
+        // Ya guardado: si el correo falla, la aprobación se queda.
+        return new CambioEstadoDistribuidora(
+            $distribuidora,
+            $this->notificar->ejecutar($distribuidora, NotificarCambioEstadoDistribuidoraAction::APROBADA),
+        );
     }
 }

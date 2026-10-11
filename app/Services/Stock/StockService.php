@@ -164,12 +164,14 @@ class StockService
      * Si la variante es de otra distribuidora, el Global Scope la deja fuera
      * y esto responde 404: nunca se expone que existe.
      */
+    /**
+     * Desde TG-213 las variantes son del catálogo compartido, así que aquí
+     * solo se comprueba que exista. Lo que sigue siendo de cada distribuidora
+     * es su stock, y eso lo filtra cada consulta por distribuidora y sucursal.
+     */
     private function verificarVarianteDelTenant(int $varianteId): void
     {
-        $existe = Variante::query()
-            ->where('distribuidora_id', $this->contexto->distribuidoraId())
-            ->whereKey($varianteId)
-            ->exists();
+        $existe = Variante::query()->whereKey($varianteId)->exists();
 
         if (! $existe) {
             throw new OperacionInvalidaException('La variante no existe.', 404);

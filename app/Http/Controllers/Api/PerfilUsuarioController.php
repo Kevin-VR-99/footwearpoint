@@ -66,9 +66,9 @@ class PerfilUsuarioController extends Controller
     {
         return [
             'id'       => $usuario->id,
-            'nombre'   => $usuario->nombre,
+            'nombre'   => $usuario->nombreVisible(),
             'email'    => $usuario->email,
-            'telefono' => $usuario->telefono,
+            'telefono' => $usuario->telefonoVisible(),
             'estado'   => $usuario->estado,
         ];
     }

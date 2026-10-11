@@ -11,15 +11,16 @@ class LineaResource extends JsonResource
     {
         return [
             'id'          => $this->id,
-            'campana_id'  => $this->campana_id,
-            'nombre'      => $this->nombre,
-            'descripcion' => $this->descripcion,
-            'activa'      => (bool) $this->activa,
-            'campana'     => $this->whenLoaded('campana', fn () => [
-                'id'     => $this->campana->id,
-                'nombre' => $this->campana->nombre,
-                'estado' => $this->campana->estado,
-            ]),
+            'nombre'       => $this->nombre,
+            'descripcion'  => $this->descripcion,
+            'logotipo_url' => $this->logotipo_url,
+            'activa'       => (bool) $this->activa,
+            // Cada línea tiene sus temporadas (D1).
+            'campanas'     => $this->whenLoaded('campanas', fn () => $this->campanas->map(fn ($c) => [
+                'id'     => $c->id,
+                'nombre' => $c->nombre,
+                'estado' => $c->estado,
+            ])->values()),
             'marcas'      => $this->whenLoaded('marcas', fn () => $this->marcas->map(fn ($m) => [
                 'id'     => $m->id,
                 'nombre' => $m->nombre,

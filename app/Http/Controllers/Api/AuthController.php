@@ -19,6 +19,7 @@ use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Services\Auth\RestablecerPasswordAction;
 use App\Services\Auth\EnviarEnlaceRecuperacionAction;
+use App\Services\Auth\LimiteIntentosLogin;
 
 class AuthController extends Controller
 {
@@ -31,19 +32,44 @@ class AuthController extends Controller
      */
     private const ROLES_SOLO_WEB = ['admin_general', 'admin_distribuidora', 'empleado'];
 
-    public function login(LoginRequest $request)
+    public function login(LoginRequest $request, LimiteIntentosLogin $limite)
     {
+        // TG-185 (A2): mismo limite que el panel web. Se revisa ANTES de mirar
+        // la contrasena, para que agotar los intentos sirva de freno real.
+        if ($limite->bloqueado($request->email, $request->ip())) {
+            return response()->json([
+                'message' => $limite->mensaje($limite->segundosRestantes($request->email, $request->ip())),
+            ], 429);
+        }
+
         $usuario = Usuario::where('email', $request->email)->first();
 
         if (!$usuario || !Hash::check($request->password, $usuario->password)) {
+            $limite->registrarFallo($request->email, $request->ip());
+
             throw ValidationException::withMessages([
                 'email' => ['Las credenciales son incorrectas.'],
             ]);
         }
 
+        // Entro bien: los fallos anteriores ya no cuentan.
+        $limite->limpiar($request->email, $request->ip());
+
         if ($usuario->estado !== 'activo') {
             throw ValidationException::withMessages([
                 'email' => ['Tu cuenta no está activa.'],
+            ]);
+        }
+
+        // TG-196 (G5): si su distribuidora está suspendida o rechazada no
+        // puede operar. Se revisa ANTES de la regla del personal (TG-93):
+        // sin distribuidora, el rol del personal saldría en null y esa regla
+        // ya no lo detendría. Tampoco se crea token.
+        $sinOperacion = Tenant::distribuidoraSinOperacionDe((int) $usuario->id);
+
+        if ($sinOperacion !== null) {
+            throw ValidationException::withMessages([
+                'email' => [$sinOperacion->mensajeSinOperacionParaApp()],
             ]);
         }
 
@@ -95,6 +121,19 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => 'Tu cuenta no está activa.',
+            ], 401);
+        }
+
+        // TG-196 (G5): su distribuidora se suspendió o rechazó después del
+        // login. Igual que con la cuenta inactiva: 401, se revoca el token y
+        // la app regresa al login, donde verá el mismo aviso.
+        $sinOperacion = Tenant::distribuidoraSinOperacionDe((int) $usuario->id);
+
+        if ($sinOperacion !== null) {
+            $usuario->currentAccessToken()?->delete();
+
+            return response()->json([
+                'message' => $sinOperacion->mensajeSinOperacionParaApp(),
             ], 401);
         }
 
@@ -165,14 +204,21 @@ class AuthController extends Controller
         return [
             'usuario' => [
                 'id'       => $usuario->id,
-                'nombre'   => $usuario->nombre,
+                'nombre'   => $usuario->nombreVisible(),
                 'email'    => $usuario->email,
-                'telefono' => $usuario->telefono,
+                'telefono' => $usuario->telefonoVisible(),
                 'estado'   => $usuario->estado,
             ],
             'rol'              => $rol,
             'distribuidora_id' => $distribuidoraId,
             'legales_aceptados' => $legalesAceptados,
+            // TG-193: si es true, la app debe mandarla a cambiar su
+            // contraseña antes de dejarla usar lo demás.
+            'debe_cambiar_password' => (bool) $usuario->debe_cambiar_password,
+            // TG-189 (A11): si es false, la app muestra el aviso y el botón
+            // para reenviar el enlace. No la saca de la app: solo enviar un
+            // pedido pide el correo confirmado.
+            'email_verificado' => $usuario->hasVerifiedEmail(),
         ];
     }
 
@@ -208,7 +254,7 @@ class AuthController extends Controller
         try {
             $admin = $request->user();
 
-            // Sin Global Scope para evitar el crash
+            // TG-224: sin scope a propósito, esta consulta RESUELVE la distribuidora del usuario (ver Tenant::desdeStaff).
             $staffAdmin = \App\Models\DistribuidoraStaff::withoutGlobalScopes()
                 ->where('usuario_id', $admin->id)
                 ->first();
@@ -229,13 +275,13 @@ class AuthController extends Controller
                 'estado'   => 'activo',
             ]);
 
-            \App\Models\DistribuidoraStaff::withoutGlobalScopes()->create([
+            Tenant::forzar($distribuidoraId, fn () => \App\Models\DistribuidoraStaff::create([
                 'distribuidora_id' => $distribuidoraId,
                 'usuario_id'       => $usuario->id,
                 'tipo'             => 'empleado',
                 'estado'           => 'activo',
                 'fecha_alta'       => now(),
-            ]);
+            ]));
 
             setPermissionsTeamId($distribuidoraId);
             $usuario->assignRole('empleado');
@@ -243,9 +289,9 @@ class AuthController extends Controller
             return response()->json([
                 'data' => [
                     'id'               => $usuario->id,
-                    'nombre'           => $usuario->nombre,
+                    'nombre'           => $usuario->nombreVisible(),
                     'email'            => $usuario->email,
-                    'telefono'         => $usuario->telefono,
+                    'telefono'         => $usuario->telefonoVisible(),
                     'estado'           => $usuario->estado,
                     'rol'              => 'empleado',
                     'distribuidora_id' => $distribuidoraId,
@@ -253,11 +299,12 @@ class AuthController extends Controller
                 'message' => 'Empleado registrado correctamente.',
             ], 201);
         } catch (\Throwable $e) {
+            // TG-224 (G3): el detalle técnico solo va al log; nunca se
+            // devuelven mensaje, archivo ni línea de la excepción.
+            report($e);
+
             return response()->json([
-                'message' => 'Error al registrar empleado.',
-                'error'   => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
+                'message' => 'No se pudo registrar al empleado. Intenta de nuevo.',
             ], 500);
         }
     }
@@ -314,6 +361,26 @@ class AuthController extends Controller
     {
         return response()->json([
             'message' => $accion->ejecutar($request->validated('email')),
+        ]);
+    }
+
+    /**
+     * POST /api/auth/reenviar-verificacion (TG-189 / A11).
+     *
+     * El botón "no me llegó" de la app. Siempre responde lo mismo, haya o no
+     * haya algo que mandar: así nadie puede usarlo para averiguar si una
+     * cuenta ya confirmó o no.
+     */
+    public function reenviarVerificacion(Request $request)
+    {
+        $usuario = $request->user();
+
+        if ($usuario !== null && ! $usuario->hasVerifiedEmail()) {
+            $usuario->sendEmailVerificationNotification();
+        }
+
+        return response()->json([
+            'message' => 'Si tu correo está sin confirmar, te mandamos un enlace nuevo. Revisa tu bandeja y la carpeta de spam.',
         ]);
     }
 

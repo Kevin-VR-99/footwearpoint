@@ -3,18 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Concerns\BelongsToTenant;
 
+/** Foto de un producto en una temporada; es del catálogo, la ven todas (TG-209). */
 class ProductoImagen extends Model
 {
-    use BelongsToTenant;
     protected $table = 'producto_imagenes';
 
     // Esta tabla solo tiene created_at, no updated_at.
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'distribuidora_id',
         'producto_campana_id',
         'url',
         'orden',

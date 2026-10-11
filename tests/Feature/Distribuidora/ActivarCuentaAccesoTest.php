@@ -90,7 +90,9 @@ class ActivarCuentaAccesoTest extends TestCase
 
         // Quedó ligado por usuario_id, que antes siempre iba vacío.
         $this->assertSame($usuario->id, $afiliacion->revendedor->fresh()->usuario_id);
-        $this->assertSame('María López', $usuario->nombre);
+        // La cuenta guarda solo el acceso: el nombre vive en su contacto (TG-216).
+        $this->assertNull($usuario->nombre);
+        $this->assertSame('María López', $usuario->nombreVisible());
         $this->assertTrue(Hash::check('clave-segura-1', $usuario->password));
 
         $this->postJson('/api/auth/login', [

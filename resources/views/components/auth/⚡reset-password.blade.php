@@ -11,6 +11,9 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
     #[Url]
     public string $token = '';
 
+    // TG-188 (A6): el enlace del correo trae el correo en la direccion
+    // (?email=...). Sin #[Url] la persona tenia que escribirlo otra vez.
+    #[Url]
     public string $email = '';
     public string $password = '';
     public string $password_confirmation = '';

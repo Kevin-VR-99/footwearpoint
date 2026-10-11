@@ -2,6 +2,7 @@
 
 namespace App\Services\Distribuidora;
 
+use App\Exceptions\MensajeParaUsuario;
 use RuntimeException;
 
 /**
@@ -10,7 +11,7 @@ use RuntimeException;
  * El panel y la API responden cada uno con su propio mensaje y código, así
  * que la acción solo dice el motivo y cada quien decide cómo mostrarlo.
  */
-class AprobacionDistribuidoraException extends RuntimeException
+class AprobacionDistribuidoraException extends RuntimeException implements MensajeParaUsuario
 {
     public const NO_PENDIENTE = 'no_pendiente';
 

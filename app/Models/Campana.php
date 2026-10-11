@@ -2,18 +2,22 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 
+/**
+ * Una temporada del catálogo (en pantalla se llama "temporada").
+ *
+ * Pertenece a UNA línea (D1): "Impuls Otoño-Invierno 2026" es una temporada de
+ * la línea Impuls. Es del catálogo compartido, así que no tiene distribuidora
+ * (TG-209).
+ */
 class Campana extends Model
 {
-    use BelongsToTenant;
-
     protected $table = 'campanas';
 
     protected $fillable = [
-        'distribuidora_id',
-        'marca_id',
+        'linea_id',
         'nombre',
         'descripcion',
         'fecha_inicio',
@@ -26,19 +30,41 @@ class Campana extends Model
         'fecha_fin' => 'date',
     ];
 
-    public function distribuidora()
+    /**
+     * Solo una temporada activa por línea (D7).
+     *
+     * Reemplaza el límite de "2 temporadas" que tenía la pantalla. Se revisa
+     * aquí para dar un mensaje claro; además la base tiene su propio índice
+     * único, por si algún día alguien cambia estados sin pasar por el modelo.
+     */
+    protected static function booted(): void
     {
-        return $this->belongsTo(Distribuidora::class, 'distribuidora_id');
+        static::saving(function (self $campana) {
+            if ($campana->estado !== 'activa') {
+                return;
+            }
+
+            $yaHayOtra = static::query()
+                ->where('linea_id', $campana->linea_id)
+                ->where('estado', 'activa')
+                ->when($campana->exists, fn ($consulta) => $consulta->whereKeyNot($campana->getKey()))
+                ->exists();
+
+            if ($yaHayOtra) {
+                throw ValidationException::withMessages([
+                    'estado' => ['Esta línea ya tiene una temporada activa. Cierra la anterior antes de activar otra.'],
+                ]);
+            }
+        });
     }
 
-    /** @deprecated La campaña ya no se dueña por marca; se mantiene por datos legados */
-    public function marca()
+    public function linea()
     {
-        return $this->belongsTo(Marca::class, 'marca_id');
+        return $this->belongsTo(Linea::class, 'linea_id');
     }
 
-    public function lineas()
+    public function productosCampana()
     {
-        return $this->hasMany(Linea::class, 'campana_id');
+        return $this->hasMany(ProductoCampana::class, 'campana_id');
     }
 }

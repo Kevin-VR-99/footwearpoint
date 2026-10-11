@@ -14,13 +14,13 @@ class LineaController extends Controller
     public function index(): AnonymousResourceCollection
     {
         return LineaResource::collection(
-            Linea::with(['campana', 'marcas'])->latest()->get()
+            Linea::with(['campanas', 'marcas'])->latest()->get()
         );
     }
 
     public function show(Linea $linea): LineaResource
     {
-        return new LineaResource($linea->load(['campana', 'marcas']));
+        return new LineaResource($linea->load(['campanas', 'marcas']));
     }
 
     public function store(GuardarLineaRequest $request, GestionarLineaAction $accion): LineaResource
@@ -39,7 +39,7 @@ class LineaController extends Controller
 
         $linea = $accion->actualizar(
             $linea,
-            $request->safe()->except(['marca_ids', 'campana_id']),
+            $request->safe()->except(['marca_ids']),
             $marcaIds
         );
 

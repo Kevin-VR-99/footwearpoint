@@ -10,7 +10,7 @@ class GuardarProductoRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin_distribuidora') ?? false;
+        return $this->user()?->hasRole('admin_general') ?? false;
     }
 
     public function rules(): array
@@ -26,23 +26,14 @@ class GuardarProductoRequest extends FormRequest
             'categoria_id' => [
                 $requerido,
                 'integer',
-                Rule::exists('categorias_producto', 'id')->where(
-                    fn($q) => $q->where('distribuidora_id', Tenant::id())
-                ),
+                Rule::exists('categorias_producto', 'id'),
             ],
-            'linea_id' => [
-                $requerido,
-                'integer',
-                Rule::exists('lineas', 'id')->where(
-                    fn($q) => $q->where('distribuidora_id', Tenant::id())
-                ),
-            ],
+            // El producto ya no se amarra a una línea (D5): se sabe por la
+            // temporada en la que se publica.
             'marca_id' => [
                 $requerido,
                 'integer',
-                Rule::exists('marcas', 'id')->where(
-                    fn($q) => $q->where('distribuidora_id', Tenant::id())
-                ),
+                Rule::exists('marcas', 'id'),
             ],
         ];
 

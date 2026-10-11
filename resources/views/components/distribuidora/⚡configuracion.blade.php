@@ -1,26 +1,46 @@
 <?php
 
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Layout('layouts.panel')] class extends Component {
+    public const PESTANAS = [
+        'perfil' => 'Datos generales',
+        'general' => 'Anticipos y plazos',
+        'ciclos' => 'Ciclos de compra',
+        'usuarios' => 'Usuarios',
+        'clientes' => 'Clientes directos',
+        'mercado-pago' => 'Mercado Pago',
+        // TG-230 (G11): pago de la mensualidad con Mercado Pago.
+        'suscripcion' => 'Suscripción',
+    ];
+
+    // TG-225 (G6): ?pestana=mercado-pago abre esa pestaña directo (el
+    // regreso de Mercado Pago llega así).
+    #[Url(as: 'pestana', except: 'perfil')]
     public string $pestanaActiva = 'perfil';
+
+    public function mount(): void
+    {
+        if (! array_key_exists($this->pestanaActiva, self::PESTANAS)) {
+            $this->pestanaActiva = 'perfil';
+        }
+    }
 };
 ?>
 
 <div class="mx-auto max-w-5xl">
     {{-- Encabezado minimalista --}}
-    <div class="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-fp-primary">Administración</p>
-            <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Configuración</h1>
-            <p class="mt-1 text-sm text-slate-500">Datos, reglas y usuarios de tu distribuidora.</p>
-        </div>
+    <x-panel.encabezado eyebrow="Administración" titulo="Configuración" nivel="h1"
+        subtitulo="Datos, reglas y usuarios de tu distribuidora." class="mb-6">
+        <x-slot:acciones>
         <span class="inline-flex items-center gap-1.5 self-start rounded-full border border-fp-danger/20 bg-fp-danger-soft px-2.5 py-1 text-[11px] font-medium text-fp-danger">
             <span class="h-1.5 w-1.5 rounded-full bg-fp-danger"></span>
             Solo admin
         </span>
-    </div>
+        </x-slot:acciones>
+    </x-panel.encabezado>
 
     <div x-data="{ visible: false, mensaje: '' }"
         x-on:guardado.window="mensaje = $event.detail.mensaje; visible = true; setTimeout(() => visible = false, 3000)"
@@ -32,18 +52,9 @@ new #[Layout('layouts.panel')] class extends Component {
     </div>
 
     {{-- Pestañas tipo píldora --}}
-    <div class="mb-6 rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-sm">
+    <div class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-sm">
         <div class="flex flex-wrap gap-1">
-            @php
-                $tabs = [
-                    'perfil' => 'Datos generales',
-                    'general' => 'Anticipos y plazos',
-                    'ciclos' => 'Ciclos de compra',
-                    'usuarios' => 'Usuarios',
-                    'clientes' => 'Clientes directos',
-                ];
-            @endphp
-            @foreach ($tabs as $key => $label)
+            @foreach ($this::PESTANAS as $key => $label)
                 <button type="button"
                     wire:click="$set('pestanaActiva', '{{ $key }}')"
                     @class([
@@ -69,6 +80,10 @@ new #[Layout('layouts.panel')] class extends Component {
             <livewire:distribuidora.usuarios :key="'config-usuarios'" />
         @elseif ($pestanaActiva === 'clientes')
             <livewire:distribuidora.clientes :key="'config-clientes'" />
+        @elseif ($pestanaActiva === 'mercado-pago')
+            <livewire:distribuidora.mercado-pago :key="'config-mercado-pago'" />
+        @elseif ($pestanaActiva === 'suscripcion')
+            <livewire:distribuidora.suscripcion :key="'config-suscripcion'" />
         @endif
     </div>
 </div>

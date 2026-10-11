@@ -2,38 +2,94 @@
 
 namespace Database\Seeders;
 
-use App\Models\ConfiguracionCiclo;
-use App\Models\ConfiguracionCicloDiaRecepcion;
-use App\Models\ConfiguracionDistribuidora;
 use App\Models\Distribuidora;
 use App\Models\DistribuidoraStaff;
-use App\Models\Sucursal;
 use App\Models\Usuario;
+use App\Services\Distribuidora\PrepararDistribuidoraAction;
+use App\Services\Distribuidora\ProvisionarRolesDistribuidoraAction;
+use Database\Seeders\Support\PasswordDePrueba;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
+/**
+ * Las distribuidoras de demostración, con su personal (TG-186, TG-217).
+ *
+ * Se arman con las MISMAS acciones que una distribuidora real (G2): preparar
+ * sus datos iniciales (sucursal, configuración, ciclo y suscripción) y
+ * provisionar sus roles. Así, si mañana cambia el alta de verdad, la demo
+ * cambia con ella y no se queda contando una historia distinta.
+ *
+ * Son dos a propósito: el catálogo es uno solo para todas, y con dos se ve
+ * que cada una vende las líneas que quiere y pone sus propios precios
+ * (TG-217). La primera es la completa, con admin y empleado; la segunda solo
+ * tiene su admin, que es lo que hace falta para entrar y comparar.
+ */
 class DemoDistribuidoraSeeder extends Seeder
 {
+    public const SLUG = 'calzados-ramirez';
+
+    public const ADMIN = 'admin@calzadosramirez.test';
+
+    public const EMPLEADO = 'empleado@calzadosramirez.test';
+
+    public const SEGUNDA_SLUG = 'boutique-del-calzado';
+
+    public const SEGUNDA_ADMIN = 'admin@boutiquedelcalzado.test';
+
     public function run(): void
     {
-        $registrar = app(PermissionRegistrar::class);
+        $primera = $this->distribuidora([
+            'slug' => self::SLUG,
+            'nombre_comercial' => 'Calzados Ramírez',
+            'razon_social' => 'Calzados Ramírez S.A. de C.V.',
+            'rfc' => 'CRA010101AAA',
+            'descripcion_publica' => 'Distribuidora multimarca de calzado, de prueba para el equipo.',
+            'direccion_publica' => 'Av. Central 123, Comitán, Chiapas',
+            'telefono_publico' => '9631234567',
+            'email_publico' => 'contacto@calzadosramirez.test',
+            'horario_publico' => 'Lunes a sábado, 9:00 a 19:00',
+        ]);
 
-        // --- 1. La distribuidora ---
+        $admin = $this->cuenta(self::ADMIN, 'Ana Ramírez', '9631112233');
+        $this->comoStaff($admin, $primera, 'administrador');
+        app(ProvisionarRolesDistribuidoraAction::class)->asignarAdministrador($admin, $primera);
+
+        $empleado = $this->cuenta(self::EMPLEADO, 'Carlos Gómez', '9634445566');
+        $this->comoStaff($empleado, $primera, 'empleado');
+        $this->comoEmpleado($empleado, $primera);
+
+        $segunda = $this->distribuidora([
+            'slug' => self::SEGUNDA_SLUG,
+            'nombre_comercial' => 'Boutique del Calzado',
+            'razon_social' => 'Boutique del Calzado S. de R.L.',
+            'rfc' => 'BCA020202BBB',
+            'descripcion_publica' => 'Calzado de dama y deportivo, de prueba para el equipo.',
+            'direccion_publica' => 'Calle 5 de Mayo 45, Tuxtla Gutiérrez, Chiapas',
+            'telefono_publico' => '9617778899',
+            'email_publico' => 'contacto@boutiquedelcalzado.test',
+            'horario_publico' => 'Lunes a sábado, 10:00 a 20:00',
+            // No sale en el directorio público: está para ver el catálogo
+            // compartido desde otra distribuidora, no para la demo del
+            // directorio, que ya cuenta la primera (TG-217).
+            'marketplace_visible' => false,
+        ]);
+
+        $adminSegunda = $this->cuenta(self::SEGUNDA_ADMIN, 'Laura Méndez', '9617771122');
+        $this->comoStaff($adminSegunda, $segunda, 'administrador');
+        app(ProvisionarRolesDistribuidoraAction::class)->asignarAdministrador($adminSegunda, $segunda);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->command?->info("Distribuidoras demo listas: {$primera->id} y {$segunda->id}.");
+    }
+
+    /** La distribuidora con sus datos iniciales, su suscripción y sus roles. */
+    private function distribuidora(array $datos): Distribuidora
+    {
         $distribuidora = Distribuidora::firstOrCreate(
-            ['slug' => 'calzados-ramirez'],
-            [
-                'nombre_comercial' => 'Calzados Ramírez',
-                'razon_social' => 'Calzados Ramírez S.A. de C.V.',
-                'rfc' => 'CRA010101AAA',
-                'subdominio' => null,
-                'logotipo_url' => null,
-                'descripcion_publica' => 'Distribuidora multimarca de calzado, de prueba para el equipo.',
-                'direccion_publica' => 'Av. Central 123, Comitán, Chiapas',
-                'telefono_publico' => '9631234567',
-                'email_publico' => 'contacto@calzadosramirez.test',
-                'horario_publico' => 'Lunes a sábado, 9:00 a 19:00',
+            ['slug' => $datos['slug']],
+            $datos + [
                 'marketplace_visible' => true,
                 'estado' => 'activa',
                 'fecha_solicitud' => now(),
@@ -41,122 +97,63 @@ class DemoDistribuidoraSeeder extends Seeder
             ]
         );
 
-        // --- 2. Su sucursal principal ---
-        Sucursal::firstOrCreate(
-            ['distribuidora_id' => $distribuidora->id, 'nombre' => 'Sucursal Principal'],
-            [
-                'direccion' => 'Av. Central 123, Comitán, Chiapas',
-                'telefono' => '9631234567',
-                'es_principal' => true,
-                'activa' => true,
-            ]
-        );
+        $preparar = app(PrepararDistribuidoraAction::class);
 
-        // --- 3. Su configuración operativa (valores por defecto) ---
-        ConfiguracionDistribuidora::firstOrCreate(
-            ['distribuidora_id' => $distribuidora->id],
-            [
-                'anticipo_por_producto' => 100.00,
-                'dias_solicitud_cambio' => 12,
-                'dias_gestion_devolucion' => 20,
-                'dias_vigencia_vale' => 90,
-                'dias_maximos_recoleccion' => 5,
-                'moneda' => 'MXN',
-                'zona_horaria' => 'America/Mexico_City',
-            ]
-        );
+        // Sucursal principal, configuración operativa y ciclo de compra.
+        $preparar->datosIniciales($distribuidora);
 
-        // --- 4. Configuración de su ciclo de compra ---
-        // Nota: se usa la convención 1=lunes ... 7=domingo. Recepción
-        // miércoles a viernes, cierre viernes, solicitud a fábrica viernes,
-        // llegada estimada 5 días después (igual que el ejemplo del Plan
-        // de Trabajo).
-        $configCiclo = ConfiguracionCiclo::firstOrCreate(
-            ['distribuidora_id' => $distribuidora->id],
-            [
-                'dia_cierre' => 5,
-                'hora_cierre' => '18:00:00',
-                'dia_solicitud_fabrica' => 5,
-                'dias_estimados_llegada' => 5,
-                'activa' => true,
-            ]
-        );
-
-        foreach ([3, 4, 5] as $diaSemana) {
-            ConfiguracionCicloDiaRecepcion::firstOrCreate([
-                'configuracion_ciclo_id' => $configCiclo->id,
-                'dia_semana' => $diaSemana,
-            ]);
+        if ($distribuidora->suscripciones()->where('estado', 'activa')->doesntExist()) {
+            $preparar->suscripcionInicial($distribuidora, $preparar->planPorDefecto());
         }
 
-        // --- 5. Sus roles propios (scopeados a esta distribuidora) ---
-        $registrar->setPermissionsTeamId($distribuidora->id);
+        // Sus roles propios, incluidos los de la app (revendedor y cliente).
+        app(ProvisionarRolesDistribuidoraAction::class)->ejecutar($distribuidora);
 
-        $rolAdmin = Role::firstOrCreate([
-            'name' => 'admin_distribuidora',
-            'guard_name' => 'web',
-            'team_id' => $distribuidora->id,
-        ]);
+        return $distribuidora;
+    }
 
-        $rolEmpleado = Role::firstOrCreate([
-            'name' => 'empleado',
-            'guard_name' => 'web',
-            'team_id' => $distribuidora->id,
-        ]);
-
-        // Roles de la app móvil (Sprint 3): a partir de este sprint el
-        // revendedor y el cliente directo tienen cuenta propia y entran a la
-        // app por sí mismos. Se crean por distribuidora igual que los dos de
-        // arriba. En una distribuidora real no se crean aquí, sino al activar
-        // la primera cuenta (E3-07 / TG-133).
-        Role::firstOrCreate([
-            'name' => 'revendedor',
-            'guard_name' => 'web',
-            'team_id' => $distribuidora->id,
-        ]);
-
-        Role::firstOrCreate([
-            'name' => 'cliente_directo',
-            'guard_name' => 'web',
-            'team_id' => $distribuidora->id,
-        ]);
-
-        // --- 6. Sus 2 empleados de prueba ---
-        // Contraseña de prueba para ambos: "password"
-        $admin = Usuario::firstOrCreate(
-            ['email' => 'admin@calzadosramirez.test'],
+    /** El personal sí guarda su nombre y teléfono en la cuenta (TG-216). */
+    private function cuenta(string $email, string $nombre, string $telefono): Usuario
+    {
+        return Usuario::firstOrCreate(
+            ['email' => $email],
             [
-                'nombre' => 'Ana Ramírez',
-                'password' => Hash::make('password'),
-                'telefono' => '9631112233',
+                'nombre' => $nombre,
+                'password' => Hash::make(PasswordDePrueba::obtener()),
+                'telefono' => $telefono,
                 'estado' => 'activo',
                 'email_verified_at' => now(),
             ]
         );
-        DistribuidoraStaff::firstOrCreate(
-            ['distribuidora_id' => $distribuidora->id, 'usuario_id' => $admin->id],
-            ['tipo' => 'administrador', 'estado' => 'activo', 'fecha_alta' => now()]
-        );
-        $admin->assignRole($rolAdmin);
+    }
 
-        $empleado = Usuario::firstOrCreate(
-            ['email' => 'empleado@calzadosramirez.test'],
-            [
-                'nombre' => 'Carlos Gómez',
-                'password' => Hash::make('password'),
-                'telefono' => '9634445566',
-                'estado' => 'activo',
-                'email_verified_at' => now(),
-            ]
-        );
-        DistribuidoraStaff::firstOrCreate(
-            ['distribuidora_id' => $distribuidora->id, 'usuario_id' => $empleado->id],
-            ['tipo' => 'empleado', 'estado' => 'activo', 'fecha_alta' => now()]
-        );
-        $empleado->assignRole($rolEmpleado);
+    /**
+     * El rol de empleado se asigna dentro del "equipo" de la distribuidora: es
+     * el mismo criterio que usa ProvisionarRolesDistribuidoraAction para el
+     * administrador. Los roles ya los creó esa acción.
+     */
+    private function comoEmpleado(Usuario $usuario, Distribuidora $distribuidora): void
+    {
+        $registrar = app(PermissionRegistrar::class);
+        $equipoAnterior = $registrar->getPermissionsTeamId();
 
-        $registrar->forgetCachedPermissions();
+        try {
+            $registrar->setPermissionsTeamId($distribuidora->id);
+            $usuario->unsetRelation('roles');
 
-        $this->command->info("Distribuidora demo creada con id: {$distribuidora->id}");
+            if (! $usuario->hasRole(ProvisionarRolesDistribuidoraAction::ROL_EMPLEADO)) {
+                $usuario->assignRole(ProvisionarRolesDistribuidoraAction::ROL_EMPLEADO);
+            }
+        } finally {
+            $registrar->setPermissionsTeamId($equipoAnterior);
+        }
+    }
+
+    private function comoStaff(Usuario $usuario, Distribuidora $distribuidora, string $tipo): void
+    {
+        DistribuidoraStaff::withoutGlobalScopes()->firstOrCreate(
+            ['distribuidora_id' => $distribuidora->id, 'usuario_id' => $usuario->id],
+            ['tipo' => $tipo, 'estado' => 'activo', 'fecha_alta' => now()]
+        );
     }
 }

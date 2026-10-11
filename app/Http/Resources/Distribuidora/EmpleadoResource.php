@@ -15,7 +15,7 @@ class EmpleadoResource extends JsonResource
     {
         return [
             'id'         => $this->id,
-            'nombre'     => $this->usuario->nombre,
+            'nombre'     => $this->usuario->nombreVisible(),
             'email'      => $this->usuario->email,
             'telefono'   => $this->usuario->telefono,
             'tipo'       => $this->tipo,

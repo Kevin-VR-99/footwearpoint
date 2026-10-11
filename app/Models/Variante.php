@@ -3,15 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Concerns\BelongsToTenant;
 
+/**
+ * Una talla de un producto, del catálogo compartido (TG-209). El SKU es único
+ * en todo el sistema.
+ */
 class Variante extends Model
 {
-    use BelongsToTenant;
     protected $table = 'variantes';
 
     protected $fillable = [
-        'distribuidora_id',
         'producto_id',
         'talla_id',
         'color_id',
@@ -23,11 +24,6 @@ class Variante extends Model
     protected $casts = [
         'activa' => 'boolean',
     ];
-
-    public function distribuidora()
-    {
-        return $this->belongsTo(Distribuidora::class, 'distribuidora_id');
-    }
 
     public function producto()
     {
@@ -49,6 +45,7 @@ class Variante extends Model
         return $this->hasMany(DisponibilidadVarianteCampana::class, 'variante_id');
     }
 
+    /** El stock sí es de cada distribuidora y sucursal. */
     public function stockLocal()
     {
         return $this->hasMany(StockLocal::class, 'variante_id');
