@@ -228,7 +228,7 @@
 
     @if ($c['pago'])
         <table class="datos" style="margin-top: 12px;">
-            <tr><td class="clave">Pago</td><td>{{ ucfirst($c['pago']['metodo']) }} &middot; {{ $dinero($c['pago']['monto']) }}</td></tr>
+            <tr><td class="clave">Pago</td><td>{{ \App\Models\Pago::etiquetaMetodo($c['pago']['metodo']) }} &middot; {{ $dinero($c['pago']['monto']) }}</td></tr>
             <tr><td class="clave">Folio de pago</td><td>{{ $c['pago']['folio'] }}</td></tr>
         </table>
     @endif
