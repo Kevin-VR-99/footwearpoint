@@ -378,7 +378,7 @@ class SinErroresTecnicosTest extends TestCase
         $this->get('/esta-pagina-no-existe')
             ->assertNotFound()
             ->assertSee('Página no encontrada')
-            ->assertSee('Ir al inicio');
+            ->assertSee('Volver al inicio');
     }
 
     public function test_pagina_403_por_rol_en_espanol(): void
