@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'providers/auth_provider.dart';
 import 'providers/carrito_revendedor_provider.dart';
+import 'screens/aviso_privacidad_screen.dart';
 import 'screens/cambiar_password_screen.dart';
 import 'screens/inicio_screen.dart';
 import 'screens/login_screen.dart';
@@ -68,6 +69,8 @@ class _Raiz extends StatelessWidget {
     final sinAcceso = context.select<AuthProvider, bool>((auth) => auth.sinAcceso);
     final debeCambiarPassword =
         context.select<AuthProvider, bool>((auth) => auth.debeCambiarPassword);
+    final legalesAceptados =
+        context.select<AuthProvider, bool>((auth) => auth.legalesAceptados);
 
     // Mientras se revisa el token guardado, para que no parpadee el login
     // antes de entrar solo.
@@ -79,6 +82,11 @@ class _Raiz extends StatelessWidget {
 
     // Va antes que la pantalla de inicio: sin distribuidora no se entra.
     if (sinAcceso) return const _SinAccesoScreen();
+
+    // E1-04: sin aceptar el aviso de privacidad y los términos no se usa la
+    // app. Va aquí, en la raíz, y no después del login: así también aplica
+    // al reabrir la app con la sesión guardada, sin cerrarla.
+    if (haySesion && !legalesAceptados) return const AvisoPrivacidadScreen();
 
     // TG-193: con una contraseña temporal puesta, lo único que puede hacer es
     // cambiarla. El servidor también lo impide (middleware DebeCambiarPassword),

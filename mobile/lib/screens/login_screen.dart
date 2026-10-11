@@ -7,7 +7,6 @@ import '../tema/fp_colores.dart';
 import '../validaciones.dart';
 import '../widgets/fp_componentes.dart';
 import 'recuperar_password_screen.dart';
-import 'aviso_privacidad_screen.dart';
 
 /// Pantalla de inicio de sesión (E1-01).
 ///
@@ -35,6 +34,9 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // No se exige mínimo de caracteres aquí: el login del backend no lo pide,
+  // y ponerlo podría dejar fuera a cuentas que ya existen. El mínimo de 8 se
+  // aplica al crear o cambiar la contraseña, no al entrar.
   String? _validarPassword(String? valor) {
     return (valor == null || valor.isEmpty) ? 'Escribe tu contraseña.' : null;
   }
@@ -44,53 +46,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
     FocusScope.of(context).unfocus();
 
-    final authProvider = context.read<AuthProvider>();
-    final entro = await authProvider.login(_email.text.trim(), _password.text);
+    final entro = await context.read<AuthProvider>().login(_email.text.trim(), _password.text);
 
-    if (entro && mounted) {
-      TextInput.finishAutofillContext();
-
-      // Forzamos la verificación estricta del estado de legales del provider
-      bool legalesAceptados = authProvider.legalesAceptados;
-
-      // Si el backend dice que no los ha aceptado, se muestra el aviso obligatoriamente
-      while (!legalesAceptados) {
-        if (!mounted) return;
-        
-        final acepto = await Navigator.of(context).push<bool>(
-          MaterialPageRoute(
-            builder: (_) => const AvisoPrivacidadScreen(),
-          ),
-        );
-
-        // Si cierra la pantalla sin aceptar (acepto != true), destruimos sesión y detenemos el flujo
-        if (acepto != true) {
-          await authProvider.logout();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Debe aceptar el aviso de privacidad para continuar.'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return;
-        }
-
-        // Volvemos a consultar o actualizar el estado tras el intento
-        legalesAceptados = authProvider.legalesAceptados;
-      }
-
-      // Si ya los aceptó correctamente, avanzamos al inicio
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/inicio');
-      }
-    }
+    // Le avisa al teléfono que el login funcionó, para que ofrezca guardar
+    // la contraseña en su gestor (si el usuario tiene uno).
+    if (entro) TextInput.finishAutofillContext();
   }
 
   void _abrirRecuperarPassword() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
+        // Se lleva el correo que ya escribió, para no hacerlo escribir dos veces.
         builder: (_) => RecuperarPasswordScreen(correoInicial: _email.text.trim()),
       ),
     );
@@ -100,6 +66,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
 
+    // Diseño (TG-165): fondo azul marino como el menú de la web, con el logo
+    // arriba y el formulario en una tarjeta blanca. Mismos campos y botones.
+    // Íconos blancos en la barra de estado del teléfono, sobre el fondo oscuro.
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
@@ -115,6 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(24),
                       child: ConstrainedBox(
+                        // En tabletas o celulares acostados no se estira de lado a lado.
                         constraints: const BoxConstraints(maxWidth: 420),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -212,6 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
+/// Logo circular y nombre, como la marca del menú de la web.
 class _Encabezado extends StatelessWidget {
   const _Encabezado();
 
@@ -242,6 +213,11 @@ class _Encabezado extends StatelessWidget {
   }
 }
 
+/// Recuadro rojo con un mensaje de error: por qué no se pudo entrar
+/// (credenciales, cuenta inactiva, sin conexión), el aviso de que la sesión
+/// expiró, o por qué no se pudo mandar el enlace de recuperación.
+///
+/// Es público porque también lo usa RecuperarPasswordScreen.
 class AvisoError extends StatelessWidget {
   const AvisoError({super.key, required this.mensaje});
 
