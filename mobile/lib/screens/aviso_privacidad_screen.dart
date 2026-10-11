@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 import '../tema/fp_colores.dart';
 
 class AvisoPrivacidadScreen extends StatefulWidget {
@@ -22,7 +23,8 @@ class _AvisoPrivacidadScreenState extends State<AvisoPrivacidadScreen> {
     });
 
     try {
-      final api = context.read<AuthProvider>().api;
+      final auth = context.read<AuthProvider>();
+      final api = auth.api;
 
       // Petición al endpoint correspondiente para guardar la aceptación en Laravel
       await api.post(
@@ -42,13 +44,15 @@ class _AvisoPrivacidadScreenState extends State<AvisoPrivacidadScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true);
+        // E1-04: es la pantalla raíz mientras no acepte; al confirmarlo,
+        // la app pasa sola al inicio.
+        auth.confirmarLegalesAceptados();
       }
-    } catch (e) {
+    } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al registrar la aceptación: $e'),
+            content: Text(e.mensaje),
             backgroundColor: Colors.red,
           ),
         );
@@ -193,6 +197,12 @@ class _AvisoPrivacidadScreenState extends State<AvisoPrivacidadScreen> {
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                   ),
+                ),
+                const SizedBox(height: 8),
+                // Si no acepta, la única salida es cerrar la sesión.
+                TextButton(
+                  onPressed: _isLoading ? null : () => context.read<AuthProvider>().logout(),
+                  child: const Text('No acepto, cerrar sesión'),
                 ),
               ],
             ),

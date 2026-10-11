@@ -61,6 +61,7 @@ class _Servidor {
         'data': {
           'usuario': {'id': 7, 'nombre': 'María López', 'email': 'maria@ejemplo.com', 'telefono': null, 'estado': 'activo'},
           'rol': 'revendedor',
+          'legales_aceptados': true,
           'distribuidora_id': 1,
         },
       }, 200);

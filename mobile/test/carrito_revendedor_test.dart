@@ -42,6 +42,7 @@ http.Response _json(Object cuerpo, int codigo) => http.Response(
 Map<String, dynamic> _sesion(int id, String nombre, String email) => {
   'usuario': {'id': id, 'nombre': nombre, 'email': email, 'telefono': null, 'estado': 'activo'},
   'rol': 'revendedor',
+  'legales_aceptados': true,
   'distribuidora_id': 1,
 };
 
