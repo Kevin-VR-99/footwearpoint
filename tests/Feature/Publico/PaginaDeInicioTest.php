@@ -55,6 +55,9 @@ class PaginaDeInicioTest extends TestCase
             ->assertSee('Una distribuidora de calzado, ordenada de principio a fin')
             ->assertSee('Cómo funciona')
             ->assertSee('Eliges tus líneas')
+            // Lo que se activa son líneas (las empresas del catálogo); las
+            // marcas van dentro de cada línea.
+            ->assertSee('activas las líneas que vendes')
             ->assertSee('Qué ganas')
             ->assertSee('Tu tienda en línea');
     }

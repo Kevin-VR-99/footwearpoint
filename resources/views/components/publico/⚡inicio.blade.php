@@ -88,7 +88,7 @@ class extends Component
         <ol class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             @foreach ([
                 ['Pides tu alta', 'Nos dices de tu distribuidora y eliges tu plan. Te damos tu cuenta y tu tienda.'],
-                ['Eliges tus líneas', 'Del catálogo de FootwearPoint activas las marcas que tú vendes y pones tu precio de mayoreo.'],
+                ['Eliges tus líneas', 'Del catálogo de FootwearPoint activas las líneas que vendes y pones tu precio de mayoreo.'],
                 ['Recibes pedidos', 'Tus clientes y tus clientes mayoristas piden desde la app; tu personal captura en mostrador.'],
                 ['Cobras y entregas', 'Cobras el anticipo, haces el pedido a fábrica y entregas en tu sucursal.'],
             ] as $i => [$titulo, $texto])
