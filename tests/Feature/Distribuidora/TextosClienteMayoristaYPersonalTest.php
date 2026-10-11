@@ -117,4 +117,33 @@ class TextosClienteMayoristaYPersonalTest extends TestCase
             (int) DistribuidoraStaff::withoutGlobalScopes()->where('usuario_id', $usuario->id)->value('distribuidora_id')
         );
     }
+
+    // TG-263 (U2): textos que quedaban con "revendedor".
+
+    public function test_formulario_de_cliente_mayorista_sin_revendedor(): void
+    {
+        Livewire::test('distribuidora.usuarios')
+            ->call('abrirFormularioAfiliarRevendedor')
+            ->assertSee('Afiliar nuevo cliente mayorista')
+            ->set('revendedor_nombre', 'Laura Méndez')
+            ->call('guardarRevendedor')
+            ->assertHasNoErrors()
+            ->assertDispatched('guardado', mensaje: 'Cliente mayorista guardado correctamente.');
+    }
+
+    public function test_pedidos_ciclo_y_vales_no_dicen_revendedor(): void
+    {
+        foreach (['pedidos.index', 'vales.index', 'ciclo.index'] as $pantalla) {
+            Livewire::test($pantalla)->assertDontSeeText('Revendedor');
+        }
+    }
+
+    public function test_el_mensaje_de_tipo_de_vale_dice_cliente_mayorista(): void
+    {
+        Sanctum::actingAs(Usuario::where('email', DemoDistribuidoraSeeder::ADMIN)->firstOrFail());
+
+        $this->postJson('/api/vales', ['propietario_tipo' => 'otro'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.propietario_tipo.0', 'El propietario debe ser cliente directo (cliente_directo) o cliente mayorista (revendedor).');
+    }
 }
