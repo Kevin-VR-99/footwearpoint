@@ -678,6 +678,7 @@ La nueva sigue las mismas reglas que el cambio por enlace: mínimo 8 caracteres 
       "telefono_publico": "9631234567",
       "email_publico": "contacto@calzadosramirez.test",
       "direccion_publica": "Av. Central 123, Comitán, Chiapas",
+      "url_mapa": "https://www.google.com/maps/search/?api=1&query=Av.%20Central%20123%2C%20Comit%C3%A1n%2C%20Chiapas%2C%20M%C3%A9xico",
       "horario_publico": "Lunes a sábado, 9:00 a 19:00",
       "categorias": [ { "id": 2, "nombre": "Dama" } ]
     }
@@ -691,6 +692,12 @@ La nueva sigue las mismas reglas que el cambio por enlace: mínimo 8 caracteres 
 - Desde TG-232 (G12/G13), con el dominio de tiendas configurado en el servidor, `url_tienda` es **`https://{subdominio}.footwearpoint.app/`** (el subdominio de la distribuidora o, si no tiene uno válido, su `slug`). Sin ese dominio sigue siendo `…/tienda/{slug}`. La app no tiene que cambiar nada: siempre abre lo que llegue. Las direcciones viejas `/tienda/{slug}` redirigen solas a la nueva.
 - `url_tienda` viene en **`null`** si la distribuidora no está activa o su `slug` no es válido. En ese caso la app **no muestra** el botón "Ver tienda". Hoy el marketplace solo lista activas, así que lo normal es que traiga dirección, pero la app debe aguantar el `null`.
 - `slug` es el identificador de la tienda (por ejemplo, `calzados-ramirez`). Sirve para identificarla, **no** para armar la dirección.
+
+**`url_mapa`** (TG-269):
+
+- Dirección de Google Maps que **busca la ubicación** de la distribuidora ("Ver en mapa"). La app la abre tal cual (navegador o app de mapas).
+- Se arma con `direccion_publica` o, si viene vacía, con la dirección de la sucursal principal; se agrega ", México" si no lo trae.
+- Viene en **`null`** si no hay ninguna dirección. En ese caso la app **no muestra** "Ver en mapa".
 
 ---
 
