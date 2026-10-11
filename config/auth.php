@@ -127,15 +127,15 @@ return [
     | los dio de alta la distribuidora en persona, y si se frenaran se frena
     | el negocio.
     |
-    | Se deja apagable porque las cuentas que ya existen tienen el correo sin
-    | confirmar: hasta que esas queden marcadas, encenderlo las dejaria sin
-    | poder pedir.
+    | Encendida desde TG-278: las cuentas de la demostracion ya nacen con el
+    | correo confirmado (sus correos son inventados y nadie podria abrir el
+    | enlace). Se deja apagable por si hiciera falta en una emergencia.
     |
     */
 
     'verification' => [
         'expire' => (int) env('AUTH_VERIFICACION_MINUTOS', 60),
-        'obligatoria' => env('AUTH_VERIFICACION_OBLIGATORIA', false),
+        'obligatoria' => env('AUTH_VERIFICACION_OBLIGATORIA', true),
     ],
 
 ];
