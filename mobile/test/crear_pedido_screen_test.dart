@@ -41,7 +41,8 @@ http.Response _json(Object cuerpo, int codigo) => http.Response(
 /// El pedido como lo manda PedidoResource. Con [conVale], como queda después
 /// de aplicar un vale que cubre todo (TG-167: cuenta como pago y cubre el
 /// anticipo; "pagado" ya lo incluye).
-Map<String, dynamic> _pedido({bool conVale = false}) => {
+Map<String, dynamic> _pedido({bool conVale = false, bool mercadoPago = false}) => {
+  'puede_pagar_anticipo_mercado_pago': mercadoPago && !conVale,
   'id': 55,
   'folio': 'PED-20260918-0007',
   'estado': 'colocado',
@@ -56,7 +57,10 @@ Map<String, dynamic> _pedido({bool conVale = false}) => {
 
 /// Un servidor falso que anota todo lo que se le pide.
 class _Servidor {
-  _Servidor({this.vales = const [], this.aplicarFalla = false, this.lineaFalla = false});
+  _Servidor({this.vales = const [], this.aplicarFalla = false, this.lineaFalla = false, this.mercadoPago = false});
+
+  /// TG-118: la distribuidora recibe pagos con Mercado Pago.
+  final bool mercadoPago;
 
   final List<Map<String, dynamic>> vales;
   final bool aplicarFalla;
@@ -81,7 +85,7 @@ class _Servidor {
       }
       return _json({'data': _pedido()}, 201);
     }
-    if (ruta.endsWith('/pedidos/55/enviar')) return _json({'data': _pedido()}, 200);
+    if (ruta.endsWith('/pedidos/55/enviar')) return _json({'data': _pedido(mercadoPago: mercadoPago)}, 200);
     if (ruta.endsWith('/aplicar')) {
       if (aplicarFalla) {
         return _json({'message': 'El vale está vencido.', 'errors': {'vale': ['El vale está vencido.']}}, 422);
@@ -159,16 +163,31 @@ void main() {
     expect(servidor.rutas.where((r) => r.contains('aplicar')), isEmpty);
   });
 
-  testWidgets('después de enviar muestra el folio y el anticipo a pagar en mostrador', (tester) async {
+  testWidgets('después de enviar muestra el folio y el anticipo a pagar', (tester) async {
     await abrir(tester, _Servidor());
     await enviar(tester);
 
     expect(find.text('¡Pedido enviado!'), findsOneWidget);
     expect(find.text('Folio PED-20260918-0007'), findsOneWidget);
-    expect(find.text('Anticipo a pagar en mostrador'), findsOneWidget);
+    expect(find.text('Anticipo a pagar'), findsOneWidget);
     expect(find.text(r'$200.00'), findsOneWidget);
     // Ya no hay formulario de método de pago ni referencia (opción A).
     expect(find.textContaining('Método de pago'), findsNothing);
+  });
+
+  testWidgets('TG-118: después de enviar ofrece pagar el anticipo con Mercado Pago', (tester) async {
+    await abrir(tester, _Servidor(mercadoPago: true));
+    await enviar(tester);
+
+    expect(find.text('Pagar anticipo con Mercado Pago'), findsOneWidget);
+    expect(find.text('Paga tu anticipo con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.'), findsOneWidget);
+  });
+
+  testWidgets('TG-118: si el servidor no lo permite, no ofrece Mercado Pago', (tester) async {
+    await abrir(tester, _Servidor());
+    await enviar(tester);
+
+    expect(find.text('Pagar anticipo con Mercado Pago'), findsNothing);
   });
 
   testWidgets('el vale se aplica al pedido real, como máximo por lo que se debe', (tester) async {
@@ -193,7 +212,7 @@ void main() {
     // Lo que muestra sale del servidor: el vale pagó todo, incluido el anticipo.
     expect(find.text('Pagado con vale'), findsOneWidget);
     expect(find.text(r'-$1,600.00'), findsOneWidget);
-    expect(find.text('Anticipo a pagar en mostrador'), findsOneWidget);
+    expect(find.text('Anticipo a pagar'), findsOneWidget);
     expect(find.text(r'$0.00'), findsNWidgets(2));
     // "pagado" incluye el vale: no se muestra otra vez como otro pago.
     expect(find.text('Otros pagos'), findsNothing);
@@ -230,6 +249,6 @@ void main() {
     await enviar(tester);
 
     expect(find.text('Pendiente por pagar'), findsOneWidget);
-    expect(find.text('Anticipo a pagar en mostrador'), findsNothing);
+    expect(find.text('Anticipo a pagar'), findsNothing);
   });
 }
