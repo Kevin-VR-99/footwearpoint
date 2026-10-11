@@ -8,13 +8,16 @@ use App\Services\Auth\EnviarEnlaceRestablecerPanelAction;
 use App\Services\Auth\GenerarPasswordTemporalAction;
 use App\Services\Distribuidora\GestionarRevendedorAction;
 use App\Support\Tenant;
+use Database\Seeders\RolesPermissionsSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Spatie\Permission\PermissionRegistrar;
 
 new class extends Component {
     public $empleados = [];
+    public array $permisosEmpleado = [];
     public bool $mostrandoFormularioEmpleado = false;
     public string $empleado_nombre = '';
     public string $empleado_email = '';
@@ -22,7 +25,6 @@ new class extends Component {
     public string $empleado_password = '';
     public string $empleado_password_confirmation = '';
 
-    // TG-192: aviso del envio del enlace de restablecimiento.
     public ?string $avisoEnlace = null;
     public bool $avisoEnlaceEsError = false;
 
@@ -35,8 +37,6 @@ new class extends Component {
     public ?string $revendedor_codigo_interno = null;
     public string $revendedor_estado = 'activo';
 
-    // Cuenta para la app móvil (E3-07 / TG-133). Si ya tiene, se guarda su
-    // correo para mostrarlo; si no, se capturan los campos de acceso.
     public ?string $revendedor_cuenta_email_actual = null;
     public ?string $revendedor_acceso_email = null;
     public string $revendedor_acceso_password = '';
@@ -51,6 +51,19 @@ new class extends Component {
     private function cargarEmpleados(): void
     {
         $this->empleados = DistribuidoraStaff::with('usuario')->where('tipo', 'empleado')->get();
+        $this->permisosEmpleado = [];
+
+        $this->enEquipo(function () {
+            foreach ($this->empleados as $empleado) {
+                $usuario = $empleado->usuario;
+                if (! $usuario) {
+                    $this->permisosEmpleado[$empleado->id] = [];
+                    continue;
+                }
+                $usuario->unsetRelation('permissions');
+                $this->permisosEmpleado[$empleado->id] = $usuario->getDirectPermissions()->pluck('name')->all();
+            }
+        });
     }
 
     private function cargarRevendedores(): void
@@ -64,6 +77,37 @@ new class extends Component {
         $empleado->estado = $empleado->estado === 'activo' ? 'inactivo' : 'activo';
         $empleado->save();
         $this->cargarEmpleados();
+    }
+
+    public function guardarPermisos(int $id): void
+    {
+        $empleado = DistribuidoraStaff::with('usuario')->findOrFail($id);
+        $usuario = $empleado->usuario;
+        abort_if(! $usuario, 404);
+
+        $marcados = $this->permisosEmpleado[$id] ?? [];
+        $validos = array_values(array_intersect($marcados, RolesPermissionsSeeder::PERMISOS_POR_MODULO));
+
+        $this->enEquipo(function () use ($usuario, $validos) {
+            $usuario->syncPermissions($validos);
+        });
+
+        $this->cargarEmpleados();
+        $this->dispatch('guardado', mensaje: 'Permisos del empleado actualizados.');
+    }
+
+    private function enEquipo(callable $callback): void
+    {
+        $registrar = app(PermissionRegistrar::class);
+        $anterior = $registrar->getPermissionsTeamId();
+
+        try {
+            $registrar->setPermissionsTeamId(Tenant::id());
+            $callback();
+        } finally {
+            $registrar->setPermissionsTeamId($anterior);
+            $registrar->forgetCachedPermissions();
+        }
     }
 
     public function abrirFormularioInvitarEmpleado(): void
@@ -154,15 +198,8 @@ new class extends Component {
         $this->mostrandoFormularioRevendedor = true;
     }
 
-    /**
-     * TG-192 (A3): le manda al revendedor el enlace para que se ponga una
-     * contrasena nueva. Antes, quien olvidaba la suya se quedaba fuera: el
-     * panel no podia hacer nada por el.
-     */
     public function enviarEnlaceRevendedor(int $id): void
     {
-        // findOrFail respeta el scope de la distribuidora: una afiliacion de
-        // otra tienda ni siquiera se encuentra.
         $afiliacion = RevendedorDistribuidora::with('revendedor.usuario')->findOrFail($id);
         $cuenta = $afiliacion->revendedor->usuario;
 
@@ -183,11 +220,6 @@ new class extends Component {
         }
     }
 
-    /**
-     * TG-193 (A4): respaldo del enlace por correo. Le pone una contraseña
-     * temporal y se la muestra al personal UNA vez, para que se la dicte. La
-     * persona tendra que cambiarla al entrar.
-     */
     public function generarPasswordTemporalRevendedor(int $id): void
     {
         $afiliacion = RevendedorDistribuidora::with('revendedor.usuario')->findOrFail($id);
@@ -205,7 +237,6 @@ new class extends Component {
             $password = app(GenerarPasswordTemporalAction::class)
                 ->ejecutar($cuenta, 'revendedor', (int) $entidadId);
         } catch (ValidationException $e) {
-            // La cuenta la comparte otra distribuidora: solo queda el enlace.
             $this->avisoEnlace = $e->errors()['password_temporal'][0]
                 ?? 'No se pudo generar la contraseña temporal.';
             $this->avisoEnlaceEsError = true;
@@ -213,8 +244,6 @@ new class extends Component {
             return;
         }
 
-        // En la sesion y solo por esta respuesta: una propiedad publica
-        // del componente viajaria al navegador en cada accion siguiente.
         session()->now('aviso_password_temporal', 'Contraseña temporal para '.$cuenta->email.': '.$password
             .'. Anótala ahora, no se vuelve a mostrar. Se le pedirá cambiarla al entrar.');
 
@@ -236,7 +265,6 @@ new class extends Component {
             'revendedor_telefono' => ['nullable', 'string', 'max:30'],
             'revendedor_email' => ['nullable', 'email', 'max:190'],
             'revendedor_codigo_interno' => ['nullable', 'string', 'max:60'],
-            // E3-07: opcionales, pero si se llena uno se exige el otro.
             'revendedor_acceso_email' => ['nullable', 'required_with:revendedor_acceso_password', 'email', 'max:190'],
             'revendedor_acceso_password' => ['nullable', 'required_with:revendedor_acceso_email', 'string', 'min:8', 'same:revendedor_acceso_password_confirmation'],
         ], [
@@ -249,8 +277,6 @@ new class extends Component {
         $payload = [
             'nombre' => $datos['revendedor_nombre'],
             'telefono' => $datos['revendedor_telefono'],
-            // Si ya tiene cuenta, su correo es el de acceso y vive en la
-            // cuenta: desde aquí no se toca (D4, TG-216).
             ...($this->revendedor_cuenta_email_actual === null
                 ? ['email' => $datos['revendedor_email']]
                 : []),
@@ -260,8 +286,6 @@ new class extends Component {
 
         $accion = app(GestionarRevendedorAction::class);
 
-        // Una sola transacción: si la cuenta falla (correo repetido), tampoco
-        // se afilia al revendedor, para no dejar un duplicado en la lista.
         try {
             DB::transaction(function () use ($accion, $payload, $datos) {
                 $afiliacion = $this->revendedorEditandoId
@@ -277,8 +301,6 @@ new class extends Component {
                 }
             });
         } catch (ValidationException $e) {
-            // La acción nombra el campo "acceso_email"; aquí se llama
-            // "revendedor_acceso_email", para que el error salga debajo.
             foreach ($e->errors() as $campo => $mensajes) {
                 $this->addError('revendedor_' . $campo, $mensajes[0]);
             }
@@ -293,7 +315,6 @@ new class extends Component {
         $this->dispatch('guardado', mensaje: 'Revendedor guardado correctamente.');
     }
 
-    /** Las contraseñas no se quedan guardadas en el estado de la pantalla. */
     private function limpiarAccesoRevendedor(): void
     {
         $this->revendedor_cuenta_email_actual = null;
@@ -306,8 +327,6 @@ new class extends Component {
 ?>
 
 <div class="space-y-6">
-
-    {{-- Empleados: listado o formulario inline --}}
     <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioEmpleado)
             <div class="flex justify-between items-center mb-4">
@@ -329,7 +348,7 @@ new class extends Component {
                 </thead>
                 <tbody>
                     @foreach ($empleados as $empleado)
-                        <tr class="border-b last:border-0">
+                        <tr class="border-b last:border-0 align-top">
                             <td class="py-2">{{ $empleado->usuario?->nombreVisible() ?? '—' }}</td>
                             <td class="py-2">{{ $empleado->usuario?->email ?? '—' }}</td>
                             <td class="py-2">{{ $empleado->usuario?->telefono ?? '—' }}</td>
@@ -343,6 +362,24 @@ new class extends Component {
                                     class="text-fp-primary text-xs font-medium">
                                     {{ $empleado->estado === 'activo' ? 'Desactivar' : 'Activar' }}
                                 </button>
+                                <div class="mt-2 space-y-1 text-left text-xs text-slate-600">
+                                    @foreach ([
+                                        'ciclo.cerrar' => 'Cerrar ciclo',
+                                        'ciclo.solicitar_fabrica' => 'Solicitar a fábrica',
+                                        'reportes.ver_financieros' => 'Reportes financieros',
+                                        'configuracion.administrar' => 'Configuración',
+                                        'usuarios.administrar' => 'Usuarios',
+                                    ] as $permiso => $etiqueta)
+                                        <label class="flex items-center gap-1">
+                                            <input type="checkbox" wire:model="permisosEmpleado.{{ $empleado->id }}" value="{{ $permiso }}">
+                                            {{ $etiqueta }}
+                                        </label>
+                                    @endforeach
+                                    <button type="button" wire:click="guardarPermisos({{ $empleado->id }})"
+                                        class="mt-1 text-fp-primary text-xs font-medium">
+                                        Guardar permisos
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -385,7 +422,6 @@ new class extends Component {
         @endif
     </div>
 
-    {{-- Revendedores --}}
     <div class="rounded-xl border border-slate-200/80 bg-white p-5 sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioRevendedor)
             <div class="flex justify-between items-center mb-4">
@@ -395,10 +431,6 @@ new class extends Component {
                     + Afiliar cliente mayorista
                 </button>
             </div>
-            {{-- TG-192: resultado del envio del enlace de restablecimiento. --}}
-            {{-- La contrasena temporal se saca de la sesion, no de una propiedad
-                 del componente: esas viajan al navegador en cada accion
-                 posterior. Asi se ve una vez y no queda guardada en ningun lado. --}}
             @if (session('aviso_password_temporal'))
                 <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                     {{ session('aviso_password_temporal') }}
@@ -446,7 +478,6 @@ new class extends Component {
                                 @endif
                             </td>
                             <td class="py-2 text-right">
-                                {{-- TG-192: solo tiene sentido si ya tiene cuenta en la app. --}}
                                 @if ($afiliacion->revendedor->usuario_id)
                                     <button type="button" wire:click="enviarEnlaceRevendedor({{ $afiliacion->id }})"
                                         wire:loading.attr="disabled"
@@ -492,7 +523,6 @@ new class extends Component {
                         @endif
                     </div>
                 </div>
-                {{-- E3-07 (TG-133): cuenta para entrar a la app móvil --}}
                 <div class="border-t border-slate-200 pt-4">
                     <h3 class="text-sm font-semibold text-slate-700 mb-1">Acceso a la app</h3>
                     @if ($revendedor_cuenta_email_actual)
