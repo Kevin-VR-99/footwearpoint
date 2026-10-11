@@ -23,9 +23,9 @@ use Illuminate\Database\Seeder;
  * producto tiene precio propio y qué producto esconde (K5), y algo de
  * existencia para poder vender en mostrador.
  *
- * Las dos venden "Impuls Deportivo", pero con descuento distinto y con su
- * propio precio para el mismo producto: así se ve de un jalón que el precio de
- * mayoreo es de cada una y no del catálogo.
+ * Las dos venden "Impuls", pero con descuento distinto y con su propio precio
+ * para el mismo producto: así se ve de un jalón que el precio de mayoreo es de
+ * cada una y no del catálogo. La demo vende además "Cklass" (TG-279).
  *
  * Se usan las mismas acciones que usa el panel, no inserts a mano: si mañana
  * cambia una regla (el cupo del plan, el tope del precio de mayoreo), la demo
@@ -35,11 +35,11 @@ class DemoCatalogoDistribuidorasSeeder extends Seeder
 {
     public function run(): void
     {
-        // Dos líneas cada una: es lo que incluye el plan Básico, así ninguna
+        // Dos líneas como mucho: es lo que incluye el plan Básico, así ninguna
         // demo arranca pagando línea extra.
         $this->paraDistribuidora(
             DemoDistribuidoraSeeder::SLUG,
-            ['Impuls Deportivo', 'Impuls Escolar'],
+            ['Impuls', 'Cklass'],
             30.00,
             ['IR1458102' => 1990.00],
             ['JQ7143'],
@@ -49,7 +49,7 @@ class DemoCatalogoDistribuidorasSeeder extends Seeder
 
         $this->paraDistribuidora(
             DemoDistribuidoraSeeder::SEGUNDA_SLUG,
-            ['Impuls Deportivo', 'Confort Dama'],
+            ['Impuls'],
             20.00,
             ['IR1458102' => 2290.00],
             [],

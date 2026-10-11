@@ -264,7 +264,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
             </div>
             <div class="min-w-[14rem] flex-1">
                 <label class="mb-1 block text-sm font-medium">Valor</label>
-                <input type="text" wire:model="valorEnLote" placeholder="Por ejemplo: Confort Dama"
+                <input type="text" wire:model="valorEnLote" placeholder="Por ejemplo: 8 Days"
                     class="w-full rounded-lg border-slate-300 text-sm">
                 @error('valorEnLote') <p class="mt-1 text-xs text-fp-danger">{{ $message }}</p> @enderror
             </div>

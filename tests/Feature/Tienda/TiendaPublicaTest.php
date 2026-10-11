@@ -26,10 +26,10 @@ use Tests\TestCase;
 /**
  * TG-233 (G14) — La tienda pública de una distribuidora (/tienda/{slug}).
  *
- * Con los datos demo: Calzados Ramírez vende Impuls Deportivo e Impuls
- * Escolar, oculta el JQ7143 y le puso precio propio de mayoreo al IR1458102;
- * Boutique del Calzado vende Impuls Deportivo y Confort Dama y no sale en el
- * directorio (marketplace_visible = false).
+ * Con los datos demo (TG-279): Calzados Ramírez vende Impuls y Cklass, oculta
+ * el JQ7143 y le puso precio propio de mayoreo al IR1458102; Boutique del
+ * Calzado vende solo Impuls y no sale en el directorio
+ * (marketplace_visible = false).
  */
 class TiendaPublicaTest extends TestCase
 {
@@ -119,23 +119,21 @@ class TiendaPublicaTest extends TestCase
             ->assertSee('9631234567')
             ->assertSee('contacto@calzadosramirez.test')
             ->assertSee('Lunes a sábado, 9:00 a 19:00')
-            // Impuls Deportivo
+            // Impuls: lo deportivo y lo escolar van en la misma línea (TG-279)
             ->assertSee('Nike Reax 8 NS SL')
             ->assertSee('Puma Caven 2.0')
-            // Impuls Escolar
             ->assertSee('Escolar HGN 468')
             ->assertSee('Escolar Destroyer 1182')
-            // Confort Dama es solo de la otra distribuidora.
-            ->assertDontSee('Zapato charol tacón 7 cm')
-            ->assertDontSee('Mocasín charol cuña 3.5 cm')
+            // Cklass también es suya.
+            ->assertSee('Balerina tejida de piel')
             ->assertSee('Pídelo en mostrador o desde la app de FootwearPoint');
 
-        // Y la otra ve lo suyo.
+        // Y la otra ve lo suyo: solo Impuls, nada de Cklass.
         $this->tienda(self::BOUTIQUE)
             ->assertOk()
-            ->assertSee('Zapato charol tacón 7 cm')
             ->assertSee('Puma Caven 2.0')
-            ->assertDontSee('Escolar HGN 468');
+            ->assertSee('Escolar HGN 468')
+            ->assertDontSee('Balerina tejida de piel');
     }
 
     // ---------------------------------------------------------------
@@ -201,7 +199,7 @@ class TiendaPublicaTest extends TestCase
         $this->como('admin@boutiquedelcalzado.test');
         $this->tienda()->assertOk()
             ->assertSee('Escolar HGN 468')
-            ->assertDontSee('Zapato charol tacón 7 cm')
+            ->assertSee('Balerina tejida de piel')
             ->assertSee('$2,879.00 MXN')
             ->assertDontSee('2,290.00');
         // Al terminar, su distribuidora vuelve a ser la suya.
@@ -284,11 +282,11 @@ class TiendaPublicaTest extends TestCase
             ->assertSee('Bajo pedido');
 
         // La distribuidora desactiva una de sus líneas: desaparece todo lo de esa línea.
-        $escolar = Linea::where('nombre', 'Impuls Escolar')->firstOrFail();
-        $this->enDistribuidora(self::RAMIREZ, fn () => DistribuidoraLinea::where('linea_id', $escolar->id)->update(['activa' => false]));
+        $cklass = Linea::where('nombre', 'Cklass')->firstOrFail();
+        $this->enDistribuidora(self::RAMIREZ, fn () => DistribuidoraLinea::where('linea_id', $cklass->id)->update(['activa' => false]));
 
         $this->tienda()->assertOk()
-            ->assertDontSee('Escolar HGN 468')
+            ->assertDontSee('Balerina tejida de piel')
             ->assertSee('Nike Reax 8 NS SL');
     }
 
@@ -298,12 +296,15 @@ class TiendaPublicaTest extends TestCase
 
     public function test_el_detalle_de_un_producto_que_no_vende_es_404(): void
     {
-        $confort = $this->productoCampana('355-37');
+        // TG-279: Ramírez vende las dos líneas con productos, así que el
+        // "producto que no vende" se mira desde la Boutique, que solo vende
+        // Impuls y por eso no llega a lo de Cklass.
+        $cklass = $this->productoCampana('355-43');
         $finalizado = ProductoCampana::query()
             ->whereRelation('producto', 'modelo', '38528301')
             ->firstOrFail();
 
-        $this->get('/tienda/'.self::RAMIREZ.'/productos/'.$confort->id)->assertNotFound()->assertSee('Página no encontrada');
+        $this->get('/tienda/'.self::BOUTIQUE.'/productos/'.$cklass->id)->assertNotFound()->assertSee('Página no encontrada');
         $this->get('/tienda/'.self::RAMIREZ.'/productos/'.$finalizado->id)->assertNotFound();
         $this->get('/tienda/'.self::RAMIREZ.'/productos/999999')->assertNotFound();
         $this->get('/tienda/'.self::RAMIREZ.'/productos/abc')->assertNotFound();
@@ -314,7 +315,7 @@ class TiendaPublicaTest extends TestCase
             ->assertSee('<title>Nike Reax 8 NS SL Blanco/Plata — Calzados Ramírez | FootwearPoint</title>', false)
             ->assertSee('Nike Reax 8 NS SL')
             ->assertSee('Modelo IR1458102')
-            ->assertSee('Impuls Deportivo')
+            ->assertSee('Impuls')
             ->assertSee('Volver a la tienda');
     }
 
@@ -325,7 +326,7 @@ class TiendaPublicaTest extends TestCase
     public function test_filtra_por_marca_linea_y_busqueda(): void
     {
         $puma = Marca::where('nombre', 'Puma')->value('id');
-        $escolar = Linea::where('nombre', 'Impuls Escolar')->value('id');
+        $cklassLinea = Linea::where('nombre', 'Cklass')->value('id');
 
         $this->tienda(consulta: 'marca='.$puma)->assertOk()
             ->assertSee('Puma Caven 2.0')
@@ -333,8 +334,8 @@ class TiendaPublicaTest extends TestCase
             ->assertDontSee('Nike Reax 8 NS SL')
             ->assertDontSee('Escolar HGN 468');
 
-        $this->tienda(consulta: 'linea='.$escolar)->assertOk()
-            ->assertSee('Escolar HGN 468')
+        $this->tienda(consulta: 'linea='.$cklassLinea)->assertOk()
+            ->assertSee('Balerina tejida de piel')
             ->assertDontSee('Puma Caven 2.0');
 
         $this->tienda(consulta: 'q=caven')->assertOk()
@@ -344,11 +345,12 @@ class TiendaPublicaTest extends TestCase
         // Por código de catálogo.
         $this->tienda(consulta: 'q=889879')->assertOk()->assertSee('Nike Reax 8 NS SL')->assertDontSee('Puma Caven 2.0');
 
-        // Una marca que esta tienda no vende no muestra nada de otra.
-        $cklass = Marca::where('nombre', 'Cklass')->value('id');
-        $this->tienda(consulta: 'marca='.$cklass)->assertOk()
+        // Una marca que esta tienda no vende no muestra nada de otra. La
+        // Boutique solo vende Impuls, así que 8 Days (de Cklass) no le sale.
+        $ochoDays = Marca::where('nombre', '8 Days')->value('id');
+        $this->tienda(self::BOUTIQUE, consulta: 'marca='.$ochoDays)->assertOk()
             ->assertSee('No encontramos productos con esos filtros.')
-            ->assertDontSee('Zapato charol tacón 7 cm');
+            ->assertDontSee('Balerina tejida de piel');
 
         // Basura en la dirección: no truena.
         $this->tienda(consulta: 'marca=abc&linea=-1&q=%25')->assertOk()->assertSee('Calzados Ramírez');
@@ -360,7 +362,7 @@ class TiendaPublicaTest extends TestCase
             ->assertSet('marca', (string) $puma)
             ->assertSee('Puma Caven 2.0')
             ->assertDontSee('Nike Reax 8 NS SL')
-            ->call('filtrarLinea', $escolar)
+            ->call('filtrarLinea', $cklassLinea)
             ->assertSee('No encontramos productos con esos filtros.')
             ->call('limpiarFiltros')
             ->assertSee('Nike Reax 8 NS SL')

@@ -115,7 +115,7 @@ class LineaExtraConCargoTest extends TestCase
     {
         $this->conPlanDe(2);
 
-        $this->activar()->ejecutar($this->nuevaLinea('Impuls')->id);
+        $this->activar()->ejecutar($this->nuevaLinea('Incluida')->id);
 
         $this->assertSame(0, $this->cobro()->extrasQueSeCobran());
         $this->assertEqualsWithDelta(self::PRECIO_BASE, $this->cobro()->montoDelSiguienteCobro(), 0.001);
