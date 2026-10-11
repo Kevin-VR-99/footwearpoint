@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Services\Tienda\EnlaceTienda;
+use App\Support\MapaUbicacion;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +22,8 @@ class MarketplaceDistribuidoraResource extends JsonResource
             'telefono_publico'    => $this->telefono_publico,
             'email_publico'       => $this->email_publico,
             'direccion_publica'   => $this->direccion_publica,
+            // TG-269: búsqueda en Google Maps ("Ver en mapa"); null si no hay dirección.
+            'url_mapa'            => MapaUbicacion::urlVerEnMapa($this->resource),
             'horario_publico'     => $this->horario_publico,
             // TG-197 (G16): solo sus categorías activas, por nombre.
             'categorias'          => $this->categoriasActivas()

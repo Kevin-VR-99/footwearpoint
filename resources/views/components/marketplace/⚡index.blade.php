@@ -115,12 +115,17 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                         @endif
 
                         <ul class="mt-4 space-y-1.5 text-sm text-slate-600">
-                            @if ($d->direccion_publica)
+                            @php($direccionMapa = \App\Support\MapaUbicacion::direccion($d))
+                            @if ($direccionMapa)
                                 <li class="flex gap-2">
                                     <span class="text-slate-400 shrink-0">📍</span>
-                                    <span>{{ $d->direccion_publica }}</span>
+                                    <span>
+                                        {{ $direccionMapa }}
+                                        <a href="{{ \App\Support\MapaUbicacion::urlVerEnMapa($d) }}" target="_blank" rel="noopener" class="ml-1 whitespace-nowrap text-fp-primary hover:underline">Ver en mapa</a>
+                                    </span>
                                 </li>
                             @endif
+
                             @if ($d->telefono_publico)
                                 <li class="flex gap-2">
                                     <span class="text-slate-400 shrink-0">📞</span>
