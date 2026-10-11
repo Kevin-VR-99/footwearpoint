@@ -183,7 +183,11 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
     Route::livewire('/pedidos/crear', 'pedidos.create')
         ->name('pedidos.create');
 
+    // TG-265: /pedidos/create no existe (es /pedidos/crear); antes daba un 500.
+    Route::get('/pedidos/create', fn () => redirect()->route('pedidos.create'));
+
     Route::livewire('/pedidos/{id}', 'pedidos.show')
+        ->whereNumber('id')
         ->name('pedidos.show');
 
     // Paquete E
