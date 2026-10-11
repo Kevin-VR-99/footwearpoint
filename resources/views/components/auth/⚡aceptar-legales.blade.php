@@ -96,15 +96,8 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
                     Ver aviso de privacidad completo
                 </summary>
                 <div class="px-4 pb-4 text-sm text-slate-600 space-y-2 max-h-48 overflow-y-auto">
-                    <p><strong>Responsable:</strong> FootwearPoint y la distribuidora correspondiente.</p>
-                    <p>Los datos personales recabados (nombre, correo, teléfono, dirección y datos de pedidos) se utilizan para:</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li>Gestionar tu cuenta y pedidos de calzado.</li>
-                        <li>Contactarte sobre el estado de tus órdenes (Click & Collect).</li>
-                        <li>Cumplir obligaciones legales y de facturación cuando aplique.</li>
-                    </ul>
-                    <p>No se venden datos a terceros. Puedes solicitar acceso, rectificación o cancelación escribiendo a la distribuidora o a soporte de FootwearPoint.</p>
-                    <p class="text-xs text-slate-400">Versión 1.0 — FootwearPoint MVP</p>
+                    {{-- TG-219: el texto vive en el parcial, compartido con /aviso-privacidad. --}}
+                    <x-legales.aviso-privacidad />
                 </div>
             </details>
         </div>
@@ -127,16 +120,8 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
                     Ver términos y condiciones completos
                 </summary>
                 <div class="px-4 pb-4 text-sm text-slate-600 space-y-2 max-h-48 overflow-y-auto">
-                    <p>Al usar FootwearPoint aceptas que:</p>
-                    <ul class="list-disc pl-5 space-y-1">
-                        <li>La plataforma facilita pedidos a fábrica y recolección en sucursal (Click & Collect).</li>
-                        <li>Los precios, anticipos y plazos los define cada distribuidora.</li>
-                        <li>Los pedidos están sujetos a disponibilidad de fábrica y surtido parcial.</li>
-                        <li>El anticipo mínimo y políticas de cambio/devolución se aplican según la configuración de la distribuidora.</li>
-                        <li>FootwearPoint no es el vendedor final del calzado; actúa como plataforma tecnológica.</li>
-                    </ul>
-                    <p>El incumplimiento de pagos o mal uso de la cuenta puede derivar en suspensión del acceso.</p>
-                    <p class="text-xs text-slate-400">Versión 1.0 — FootwearPoint MVP</p>
+                    {{-- TG-219: el texto vive en el parcial, compartido con /terminos. --}}
+                    <x-legales.terminos />
                 </div>
             </details>
         </div>
