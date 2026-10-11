@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/carrito_revendedor_provider.dart';
 import '../services/api_service.dart';
 import '../services/pedido_service.dart';
+import '../widgets/botones_pago_mercado_pago.dart';
 import '../widgets/selector_vale.dart';
 import 'login_screen.dart';
 import '../tema/fp_colores.dart';
@@ -312,10 +313,15 @@ class _Enviado extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          'Paga en mostrador; ahí registran tu pago. Te avisaremos cuando tu pedido llegue.',
+          'Paga con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.',
           textAlign: TextAlign.center,
           style: tema.textTheme.bodyMedium,
         ),
+        // TG-268: el cliente mayorista puede pagar su pedido desde aquí.
+        if (pedido.pagoMercadoPagoDisponible != null) ...[
+          const SizedBox(height: 16),
+          BotonesPagoMercadoPago(pedido: pedido),
+        ],
         if (avisoVale != null) ...[
           const SizedBox(height: 12),
           AvisoError(mensaje: 'Tu pedido sí se envió, pero no se pudo aplicar el vale: $avisoVale'),

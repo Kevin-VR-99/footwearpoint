@@ -130,7 +130,7 @@ void main() {
     // Pagado 500 = 300 con vale + 200 en mostrador; queda 1,100.
     expect(find.text('Pagado con vale'), findsOneWidget);
     expect(find.text(r'-$300.00'), findsOneWidget);
-    expect(find.text('Pagado en mostrador'), findsOneWidget);
+    expect(find.text('Otros pagos'), findsOneWidget);
     expect(find.text(r'-$200.00'), findsOneWidget);
     expect(find.text(r'$1,100.00'), findsOneWidget);
 
