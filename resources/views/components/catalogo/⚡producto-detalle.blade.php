@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\DistribuidoraLinea;
 use App\Models\Producto;
+use App\Models\ProductoCampana;
 use App\Services\Catalogo\CatalogoVisible;
 use App\Services\Catalogo\PrecioEfectivo;
 use Livewire\Attributes\Layout;
@@ -41,6 +43,50 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
         return $publicaciones;
     }
 
+    /**
+     * TG-265 (U5): por qué esta distribuidora no vende el producto, para
+     * decirlo con nombre: la línea no está asociada, la temporada no está
+     * activa o lo tiene oculto.
+     *
+     * @return array{motivo: string, lineas: array<int, string>}
+     */
+    public function getMotivoNoSeVendeProperty(): array
+    {
+        $enTemporadaActiva = ProductoCampana::query()
+            ->where('producto_id', $this->productoId)
+            ->where('activo', true)
+            ->whereHas('campana', fn ($q) => $q->where('estado', 'activa'))
+            ->with('campana.linea')
+            ->get();
+
+        if ($enTemporadaActiva->isEmpty()) {
+            return ['motivo' => 'temporada', 'lineas' => []];
+        }
+
+        $lineasVigentes = DistribuidoraLinea::query()->vigentes()->pluck('linea_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $deSusLineas = $enTemporadaActiva
+            ->filter(fn ($pc) => in_array((int) $pc->campana?->linea_id, $lineasVigentes, true));
+
+        if ($deSusLineas->isEmpty()) {
+            return [
+                'motivo' => 'linea',
+                'lineas' => $enTemporadaActiva->map(fn ($pc) => $pc->campana?->linea?->nombre)
+                    ->filter()->unique()->values()->all(),
+            ];
+        }
+
+        return ['motivo' => 'oculto', 'lineas' => []];
+    }
+
+    /** TG-265: el personal ve el detalle, pero lo que se configura es del administrador. */
+    public function getEsAdminProperty(): bool
+    {
+        return (bool) auth()->user()?->hasRole('admin_distribuidora');
+    }
+
     public function getPreciosProperty(): PrecioEfectivo
     {
         return app(PrecioEfectivo::class);
@@ -49,7 +95,9 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
 
 <div class="space-y-6">
     <div>
-        <a href="{{ route('distribuidora.catalogo') }}" class="text-sm text-fp-primary hover:underline">← Catálogo</a>
+        @if ($this->esAdmin)
+            <a href="{{ route('distribuidora.catalogo') }}" class="text-sm text-fp-primary hover:underline">← Catálogo</a>
+        @endif
         <h1 class="mt-1 text-2xl font-bold tracking-tight text-fp-sidebar">{{ $this->producto->nombre }}</h1>
         <p class="mt-1 text-sm text-fp-text-muted">
             Modelo {{ $this->producto->modelo }}
@@ -105,10 +153,24 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
             </div>
         </section>
     @empty
-        <div class="rounded-2xl border border-slate-200/80 bg-white px-6 py-8 text-center text-fp-text-muted shadow-sm">
-            Tu distribuidora no está vendiendo este producto: puede ser de una línea que no tienes activa,
-            de una temporada que no está activa, o lo tienes oculto.
-        </div>
+        @php($razon = $this->motivoNoSeVende)
+        <x-panel.alerta tipo="aviso">
+            @if ($razon['motivo'] === 'linea')
+                @php($varias = count($razon['lineas']) > 1)
+                Tu distribuidora no vende este producto porque es {{ $varias ? 'de las líneas' : 'de la línea' }}
+                «{{ implode('», «', $razon['lineas']) }}», que tu distribuidora no tiene {{ $varias ? 'asociadas' : 'asociada' }}.
+                @if ($this->esAdmin)
+                    <a href="{{ route('catalogo.mis-lineas') }}" class="font-medium underline">Actívala en Mis líneas</a>.
+                @else
+                    Pídele al administrador de tu distribuidora que la active.
+                @endif
+            @elseif ($razon['motivo'] === 'temporada')
+                Tu distribuidora no vende este producto porque no está en una temporada activa.
+            @else
+                Tu distribuidora no vende este producto porque lo tiene oculto.
+            @endif
+        </x-panel.alerta>
+
     @endforelse
 
     {{-- Todas sus tallas en el catálogo --}}

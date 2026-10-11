@@ -61,10 +61,10 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
         <div class="absolute -right-2 top-10 h-16 w-16 rounded-full bg-fp-primary/10"></div>
         <div class="relative flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <div>
-                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-fp-primary">Panel distribuidora</p>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-fp-primary">{{ Auth::user()->hasRole('admin_distribuidora') ? 'Panel distribuidora' : 'Panel del personal' }}</p>
                 <h2 class="mt-1 text-2xl font-bold tracking-tight text-fp-sidebar">Inicio</h2>
                 <p class="mt-1 text-sm text-fp-text-muted">
-                    Hola, {{ Auth::user()->name }}. Resumen operativo de la distribuidora.
+                    {{ filled(Auth::user()->nombre) ? 'Hola, '.Auth::user()->nombre.'.' : 'Hola.' }} Resumen operativo de la distribuidora.
                 </p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
@@ -77,7 +77,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
                     </a>
                 @endif
                 <span class="inline-flex items-center rounded-full bg-fp-page px-3 py-1.5 text-xs font-medium text-fp-sidebar ring-1 ring-slate-200/80">
-                    {{ now()->translatedFormat('D d M Y') }}
+                    {{ now()->locale('es')->translatedFormat('D d M Y') }}
                 </span>
             </div>
         </div>

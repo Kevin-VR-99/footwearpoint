@@ -22,9 +22,14 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_distribuidora'])->group(fu
     Route::livewire('/catalogo', 'catalogo.index')
         ->name('distribuidora.catalogo');
 
-    Route::livewire('/catalogo/productos/{producto}', 'catalogo.producto-detalle')
-        ->name('catalogo.producto.detalle');
         
     Route::livewire('/catalogo/mis-lineas', 'catalogo.mis-lineas')
     ->name('catalogo.mis-lineas');
+});
+
+// TG-265 (U5): el personal también consulta el detalle del producto (solo lectura).
+Route::middleware(['auth', 'tenant.team', 'role:admin_distribuidora|empleado'])->group(function () {
+    Route::livewire('/catalogo/productos/{producto}', 'catalogo.producto-detalle')
+        ->whereNumber('producto')
+        ->name('catalogo.producto.detalle');
 });

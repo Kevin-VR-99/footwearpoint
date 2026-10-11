@@ -90,7 +90,7 @@ new class extends Component {
                         </td>
                         <td class="px-6 py-3.5 text-right">
                             <a href="{{ route('catalogo.producto.detalle', $pc->producto_id) }}"
-                                class="text-sm font-medium text-fp-primary hover:underline">Ver</a>
+                                class="text-sm font-medium text-fp-primary hover:underline">Ver variantes</a>
                         </td>
                     </tr>
                 @empty

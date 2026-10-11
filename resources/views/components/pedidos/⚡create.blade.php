@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ClienteDirecto;
+use App\Models\DistribuidoraLinea;
 use App\Models\Linea;
 use App\Models\Pedido;
 use App\Models\ProductoCampana;
@@ -136,6 +137,17 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
     }
 
     /** Los precios los calcula siempre el mismo servicio (TG-212). */
+    /** TG-265 (U5): para decir por qué no hay líneas que elegir. */
+    public function getTieneLineasAsociadasProperty(): bool
+    {
+        return DistribuidoraLinea::query()->vigentes()->exists();
+    }
+
+    public function getEsAdminProperty(): bool
+    {
+        return (bool) Auth::user()?->hasRole('admin_distribuidora');
+    }
+
     public function getPreciosProperty(): PrecioEfectivo
     {
         return app(PrecioEfectivo::class);
@@ -279,22 +291,18 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
 <div>
     <div class="mb-6">
-        <a href="{{ route('pedidos.index') }}" class="text-sm text-[#2563EB] hover:underline">← Pedidos</a>
-        <h2 class="text-2xl font-bold text-slate-900 mt-1">Nuevo pedido</h2>
+        <a href="{{ route('pedidos.index') }}" class="text-sm text-fp-primary hover:underline">← Pedidos</a>
+        <h2 class="text-2xl font-bold text-fp-sidebar mt-1">Nuevo pedido</h2>
         <p class="text-sm text-slate-500 mt-1">
             Captura borrador, agrega productos de la temporada activa y envía
         </p>
     </div>
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
-            {{ $mensaje }}
-        </div>
+        <x-panel.alerta tipo="exito" class="mb-4">{{ $mensaje }}</x-panel.alerta>
     @endif
     @if ($errorMsg)
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
-            {{ $errorMsg }}
-        </div>
+        <x-panel.alerta tipo="error" class="mb-4">{{ $errorMsg }}</x-panel.alerta>
     @endif
 
     @if (! $pedidoId)
@@ -345,10 +353,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                     class="w-full rounded-lg border-slate-300 text-sm"></textarea>
             </div>
 
-            <button type="button" wire:click="crearBorrador" wire:loading.attr="disabled"
-                class="rounded-lg bg-[#2563EB] text-white text-sm font-medium px-4 py-2 hover:bg-blue-700 disabled:opacity-60">
-                Crear borrador
-            </button>
+            <x-panel.boton wire:click="crearBorrador" wire:loading.attr="disabled">Crear borrador</x-panel.boton>
         </div>
     @else
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -359,10 +364,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                     Total: ${{ number_format((float) ($this->pedido?->total ?? 0), 2) }}
                 </p>
             </div>
-            <button type="button" wire:click="enviar" wire:loading.attr="disabled"
-                class="rounded-lg bg-emerald-600 text-white text-sm font-medium px-4 py-2 hover:bg-emerald-700 disabled:opacity-60">
-                Enviar pedido
-            </button>
+            <x-panel.boton wire:click="enviar" wire:loading.attr="disabled">Enviar pedido</x-panel.boton>
         </div>
 
         <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4 mb-6 max-w-2xl">
@@ -381,9 +383,19 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                     @endforeach
                 </select>
                 @if ($this->lineas->isEmpty())
-                    <p class="text-xs text-amber-600 mt-1">
-                        No hay líneas con productos publicados en la temporada activa.
-                    </p>
+                    <x-panel.alerta tipo="aviso" class="mt-2 text-xs">
+                        @if (! $this->tieneLineasAsociadas)
+                            Tu distribuidora no tiene líneas asociadas.
+                            @if ($this->esAdmin)
+                                <a href="{{ route('catalogo.mis-lineas') }}" class="font-medium underline">Actívalas en Mis líneas</a>.
+                            @else
+                                Pídele al administrador de tu distribuidora que las active.
+                            @endif
+                        @else
+                            Tus líneas asociadas no tienen una temporada activa con productos publicados.
+                        @endif
+                    </x-panel.alerta>
+
                 @endif
             </div>
 
@@ -434,10 +446,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                     class="w-32 rounded-lg border-slate-300 text-sm" />
             </div>
 
-            <button type="button" wire:click="agregarLinea" wire:loading.attr="disabled"
-                class="rounded-lg bg-[#2563EB] text-white text-sm font-medium px-4 py-2 hover:bg-blue-700 disabled:opacity-60">
-                Agregar Producto
-            </button>
+            <x-panel.boton wire:click="agregarLinea" wire:loading.attr="disabled">Agregar producto</x-panel.boton>
         </div>
 
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
