@@ -74,6 +74,11 @@ class AislamientoEntreRevendedoresTest extends TestCase
             'estado'   => 'activo',
         ]);
 
+        // TG-189: con el correo confirmado. Esta prueba es de AISLAMIENTO, y
+        // sin esto el candado de verificacion responderia antes de comprobar
+        // de quien es el pedido, tapando lo que se quiere probar.
+        $usuario->markEmailAsVerified();
+
         $revendedor = Revendedor::create([
             'usuario_id' => $usuario->id,
             'nombre'     => 'Revendedor ' . $email,
@@ -101,6 +106,9 @@ class AislamientoEntreRevendedoresTest extends TestCase
             'password' => Hash::make('password'),
             'estado'   => 'activo',
         ]);
+
+        // TG-189: igual que el de arriba, con el correo confirmado.
+        $usuario->markEmailAsVerified();
 
         ClienteDirecto::create([
             'distribuidora_id' => $distribuidoraId,
