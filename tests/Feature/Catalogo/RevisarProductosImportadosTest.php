@@ -166,7 +166,7 @@ class RevisarProductosImportadosTest extends TestCase
 
         $this->pantalla()
             ->call('editar', $fila->id)
-            ->set('campos.marca', 'Confort Dama')
+            ->set('campos.marca', '8 Days')
             ->set('campos.color', 'MIEL OSCURO')
             ->set('campos.precio_publico', '749.50')
             ->call('guardar')
@@ -174,7 +174,7 @@ class RevisarProductosImportadosTest extends TestCase
 
         $fila->refresh();
 
-        $this->assertSame('Confort Dama', $fila->datos_extraidos['marca']);
+        $this->assertSame('8 Days', $fila->datos_extraidos['marca']);
         $this->assertSame('MIEL OSCURO', $fila->datos_extraidos['color']);
         $this->assertSame(749.5, $fila->datos_extraidos['precio_publico']);
         $this->assertSame('corregido', $fila->estado);
@@ -187,7 +187,7 @@ class RevisarProductosImportadosTest extends TestCase
 
         $this->pantalla()
             ->call('editar', $fila->id)
-            ->set('campos.marca', 'Confort Dama')
+            ->set('campos.marca', '8 Days')
             ->call('guardar');
 
         // La marca ya la revisó alguien; el precio sigue sin mirarse.
@@ -298,19 +298,19 @@ class RevisarProductosImportadosTest extends TestCase
     {
         $sinMarca1 = $this->producto(['marca' => null], ['marca']);
         $sinMarca2 = $this->producto(['marca' => null], ['marca']);
-        $conMarca  = $this->producto(['marca' => 'Cklass']);
+        $conMarca  = $this->producto(['marca' => 'Yuyin']);
 
         $this->pantalla()
             ->set('campoEnLote', 'marca')
-            ->set('valorEnLote', 'Confort Dama')
+            ->set('valorEnLote', '8 Days')
             ->call('completarEnLote')
             ->assertHasNoErrors()
             ->assertSet('esError', false);
 
-        $this->assertSame('Confort Dama', $sinMarca1->fresh()->datos_extraidos['marca']);
-        $this->assertSame('Confort Dama', $sinMarca2->fresh()->datos_extraidos['marca']);
+        $this->assertSame('8 Days', $sinMarca1->fresh()->datos_extraidos['marca']);
+        $this->assertSame('8 Days', $sinMarca2->fresh()->datos_extraidos['marca']);
         // Lo que la IA sí leyó no se pisa.
-        $this->assertSame('Cklass', $conMarca->fresh()->datos_extraidos['marca']);
+        $this->assertSame('Yuyin', $conMarca->fresh()->datos_extraidos['marca']);
     }
 
     public function test_al_completar_en_lote_ese_campo_deja_de_ser_dudoso(): void
@@ -319,7 +319,7 @@ class RevisarProductosImportadosTest extends TestCase
 
         $this->pantalla()
             ->set('campoEnLote', 'marca')
-            ->set('valorEnLote', 'Confort Dama')
+            ->set('valorEnLote', '8 Days')
             ->call('completarEnLote');
 
         $fila->refresh();
@@ -333,7 +333,7 @@ class RevisarProductosImportadosTest extends TestCase
 
         $this->pantalla()
             ->set('campoEnLote', 'marca')
-            ->set('valorEnLote', 'Confort Dama')
+            ->set('valorEnLote', '8 Days')
             ->call('completarEnLote');
 
         $this->assertNull($descartado->fresh()->datos_extraidos['marca']);
@@ -356,7 +356,7 @@ class RevisarProductosImportadosTest extends TestCase
 
         $this->pantalla()
             ->set('campoEnLote', 'marca')
-            ->set('valorEnLote', 'Confort Dama')
+            ->set('valorEnLote', '8 Days')
             ->call('completarEnLote');
 
         $registro = Auditoria::withoutGlobalScopes()

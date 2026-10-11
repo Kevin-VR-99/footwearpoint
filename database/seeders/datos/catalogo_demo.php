@@ -3,10 +3,19 @@
 /**
  * El catálogo de demostración, sacado de catálogos de fábrica reales (TG-217).
  *
- * Los datos vienen de dos catálogos que mandó el negocio: "Impuls OI26 Niño"
- * (modelos, colores, tallas, códigos y precios tal como vienen impresos) y el
- * de Confort, de donde se tomaron unos modelos de dama. Los PDF NO están en el
- * repositorio: lo que quedó es esta lista.
+ * Los datos vienen de dos catálogos que mandó el negocio: "Impuls OI26 Niño" y
+ * "Cklass Confort OI26" (modelos, colores, tallas, códigos y precios tal como
+ * vienen impresos). Los PDF NO están en el repositorio: lo que quedó es esta
+ * lista.
+ *
+ * La línea es la EMPRESA del catálogo y las marcas van dentro de ella (TG-279);
+ * una misma marca puede repetirse entre líneas. Por eso Impuls es una sola
+ * línea con sus seis marcas, y Cklass es la empresa, no una marca: lo que
+ * vende en este catálogo va bajo "8 Days", su colección Confort (calzado
+ * ortopédico).
+ *
+ * Dankriz, Concord y Andrea quedan con su línea y su temporada abiertas, sin
+ * productos: se llenan al importar sus catálogos con la IA (A8).
  *
  * Reglas del catálogo que esto respeta (diseño del Sprint 4):
  *  - un producto es un modelo EN UN COLOR, con su propio código y precio (D9);
@@ -19,16 +28,72 @@
  */
 return [
     [
-        'linea' => 'Impuls Deportivo',
-        'descripcion' => 'Tenis deportivos de marca para niño y joven.',
-        'marcas' => ['Nike', 'Adidas', 'Puma'],
+        'linea' => 'Cklass',
+        'descripcion' => 'Calzado de dama de Cklass; su colección Confort es la de calzado ortopédico.',
+        'marcas' => ['8 Days'],
         'temporadas' => [
             [
-                'nombre' => 'Impuls Otoño-Invierno 2026',
+                'nombre' => 'Cklass Otoño-Invierno 2026',
                 'estado' => 'activa',
                 'inicio' => '-1 month',
+                'fin' => '+5 months',
+                'productos' => [
+                    [
+                        'marca' => '8 Days', 'categoria' => 'Calzado de dama',
+                        'modelo' => '355-43', 'nombre' => 'Balerina tejida de piel',
+                        'color' => 'Café', 'color_comercial' => 'Miel',
+                        'codigo' => '35543', 'precio' => 629.00,
+                        'tallas' => ['2', '3', '4', '5', '6'],
+                    ],
+                    [
+                        'marca' => '8 Days', 'categoria' => 'Calzado de dama',
+                        'modelo' => '106-32', 'nombre' => 'Balerina tejida con correa',
+                        'color' => 'Beige', 'color_comercial' => 'Multicolor',
+                        'codigo' => '10632', 'precio' => 699.00,
+                        'tallas' => ['3', '4', '5', '6'],
+                        'bajo_pedido' => ['6'],
+                    ],
+                    [
+                        'marca' => '8 Days', 'categoria' => 'Calzado de dama',
+                        'modelo' => '284-35', 'nombre' => 'Zapato destalonado perforado 3 cm',
+                        'color' => 'Café', 'color_comercial' => 'Shedrón',
+                        'codigo' => '28435', 'precio' => 849.00,
+                        'tallas' => ['2', '3', '4', '5', '6'],
+                    ],
+                    [
+                        'marca' => '8 Days', 'categoria' => 'Calzado de dama',
+                        'modelo' => '200-39', 'nombre' => 'Sandalia de cuña 3.5 cm',
+                        'color' => 'Café', 'color_comercial' => 'Miel',
+                        'codigo' => '20039', 'precio' => 699.00,
+                        'tallas' => ['3', '4', '5', '6'],
+                    ],
+                    [
+                        'marca' => '8 Days', 'categoria' => 'Calzado de dama',
+                        'modelo' => '215-63', 'nombre' => 'Sandalia de cuña de yute 7 cm',
+                        'color' => 'Azul', 'color_comercial' => 'Marino',
+                        'codigo' => '21563', 'precio' => 749.00,
+                        'tallas' => ['2', '3', '4', '5', '6'],
+                        'no_disponible' => ['6'],
+                    ],
+                ],
+            ],
+        ],
+    ],
+    [
+        'linea' => 'Impuls',
+        'descripcion' => 'Calzado deportivo, escolar y casual para niño y joven.',
+        'marcas' => ['Nike', 'Adidas', 'Puma', 'HGN by Mr Shu', 'Destroyer Kids', 'Yuyin'],
+        'temporadas' => [
+            [
+                // TG-279: antes esto estaba partido en "Impuls Deportivo" e
+                // "Impuls Escolar". Es una sola empresa, así que es una sola
+                // línea con una sola temporada activa (D7).
+                'nombre' => 'Impuls Otoño-Invierno 2026',
+                'estado' => 'activa',
+                'inicio' => '-2 months',
                 'fin' => '+4 months',
                 'productos' => [
+
                     [
                         'marca' => 'Nike', 'categoria' => 'Calzado deportivo',
                         'modelo' => 'IR1458102', 'nombre' => 'Nike Reax 8 NS SL',
@@ -109,37 +174,7 @@ return [
                         'tallas' => ['22', '23', '24', '25'],
                         'no_disponible' => ['22'],
                     ],
-                ],
-            ],
-            [
-                // Una temporada que ya pasó: solo una puede estar activa (D7).
-                'nombre' => 'Impuls Primavera-Verano 2026',
-                'estado' => 'finalizada',
-                'inicio' => '-9 months',
-                'fin' => '-3 months',
-                'productos' => [
-                    [
-                        'marca' => 'Puma', 'categoria' => 'Calzado deportivo',
-                        'modelo' => '38528301', 'nombre' => 'Puma Smash 3.0',
-                        'color' => 'Azul', 'color_comercial' => 'Azul/Blanco',
-                        'codigo' => '780112', 'precio' => 1599.00,
-                        'tallas' => ['22', '23', '24', '25'],
-                    ],
-                ],
-            ],
-        ],
-    ],
-    [
-        'linea' => 'Impuls Escolar',
-        'descripcion' => 'Zapato escolar y casual para primaria y secundaria.',
-        'marcas' => ['HGN by Mr Shu', 'Destroyer Kids', 'Yuyin'],
-        'temporadas' => [
-            [
-                'nombre' => 'Escolar Otoño-Invierno 2026',
-                'estado' => 'activa',
-                'inicio' => '-2 months',
-                'fin' => '+3 months',
-                'productos' => [
+
                     [
                         'marca' => 'HGN by Mr Shu', 'categoria' => 'Calzado escolar',
                         'modelo' => '468-GRIS', 'nombre' => 'Escolar HGN 468',
@@ -187,57 +222,64 @@ return [
                     ],
                 ],
             ],
+            [
+                // Una temporada que ya pasó: solo una puede estar activa (D7).
+                'nombre' => 'Impuls Primavera-Verano 2026',
+                'estado' => 'finalizada',
+                'inicio' => '-9 months',
+                'fin' => '-3 months',
+                'productos' => [
+
+                    [
+                        'marca' => 'Puma', 'categoria' => 'Calzado deportivo',
+                        'modelo' => '38528301', 'nombre' => 'Puma Smash 3.0',
+                        'color' => 'Azul', 'color_comercial' => 'Azul/Blanco',
+                        'codigo' => '780112', 'precio' => 1599.00,
+                        'tallas' => ['22', '23', '24', '25'],
+                    ],
+                ],
+            ],
         ],
     ],
     [
-        'linea' => 'Confort Dama',
-        'descripcion' => 'Calzado de piel para dama, de la línea Confort.',
-        'marcas' => ['Cklass'],
+        'linea' => 'Dankriz',
+        'descripcion' => 'Calzado de dama. Su catálogo se carga con la IA.',
+        'marcas' => [],
         'temporadas' => [
             [
-                'nombre' => 'Confort Otoño-Invierno 2026',
+                'nombre' => 'Dankriz Otoño-Invierno 2026',
                 'estado' => 'activa',
                 'inicio' => '-1 month',
                 'fin' => '+5 months',
-                'productos' => [
-                    [
-                        'marca' => 'Cklass', 'categoria' => 'Calzado de dama',
-                        'modelo' => '355-37', 'nombre' => 'Zapato charol tacón 7 cm',
-                        'color' => 'Negro', 'color_comercial' => 'Negro charol',
-                        'codigo' => '35537', 'precio' => 699.00,
-                        'tallas' => ['2', '3', '4', '5', '6'],
-                    ],
-                    [
-                        'marca' => 'Cklass', 'categoria' => 'Calzado de dama',
-                        'modelo' => '488-13', 'nombre' => 'Mocasín charol cuña 3.5 cm',
-                        'color' => 'Negro', 'color_comercial' => 'Negro charol',
-                        'codigo' => '48813', 'precio' => 649.00,
-                        'tallas' => ['2', '3', '4', '5', '6'],
-                        'bajo_pedido' => ['6'],
-                    ],
-                    [
-                        'marca' => 'Cklass', 'categoria' => 'Calzado de dama',
-                        'modelo' => '355-35', 'nombre' => 'Zapato charol agujeta tacón 7 cm',
-                        'color' => 'Negro', 'color_comercial' => 'Negro charol',
-                        'codigo' => '35535', 'precio' => 599.00,
-                        'tallas' => ['2', '3', '4', '5', '6'],
-                    ],
-                    [
-                        'marca' => 'Cklass', 'categoria' => 'Calzado de dama',
-                        'modelo' => '423-48', 'nombre' => 'Zapatilla destalonada 5 cm',
-                        'color' => 'Beige', 'color_comercial' => 'Multicolor',
-                        'codigo' => '42348', 'precio' => 879.00,
-                        'tallas' => ['2', '3', '4', '5', '6', '7'],
-                        'no_disponible' => ['7'],
-                    ],
-                    [
-                        'marca' => 'Cklass', 'categoria' => 'Calzado de dama',
-                        'modelo' => '423-49', 'nombre' => 'Zapatilla destalonada 5 cm',
-                        'color' => 'Negro', 'color_comercial' => 'Negro',
-                        'codigo' => '42349', 'precio' => 799.00,
-                        'tallas' => ['2', '3', '4', '5', '6', '7'],
-                    ],
-                ],
+                'productos' => [],
+            ],
+        ],
+    ],
+    [
+        'linea' => 'Concord',
+        'descripcion' => 'Calzado de caballero. Su catálogo se carga con la IA.',
+        'marcas' => [],
+        'temporadas' => [
+            [
+                'nombre' => 'Concord Otoño-Invierno 2026',
+                'estado' => 'activa',
+                'inicio' => '-1 month',
+                'fin' => '+5 months',
+                'productos' => [],
+            ],
+        ],
+    ],
+    [
+        'linea' => 'Andrea',
+        'descripcion' => 'Calzado para toda la familia. Su catálogo se carga con la IA.',
+        'marcas' => [],
+        'temporadas' => [
+            [
+                'nombre' => 'Andrea Otoño-Invierno 2026',
+                'estado' => 'activa',
+                'inicio' => '-1 month',
+                'fin' => '+5 months',
+                'productos' => [],
             ],
         ],
     ],

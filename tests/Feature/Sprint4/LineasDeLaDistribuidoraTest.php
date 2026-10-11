@@ -110,7 +110,7 @@ class LineasDeLaDistribuidoraTest extends TestCase
     public function test_la_distribuidora_activa_una_linea_del_catalogo(): void
     {
         $this->conPlanDe(2);
-        $linea = $this->nuevaLinea('Impuls');
+        $linea = $this->nuevaLinea('Linea de Prueba');
 
         $activada = $this->activar()->ejecutar($linea->id);
 

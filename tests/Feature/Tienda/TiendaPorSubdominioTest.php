@@ -117,12 +117,13 @@ class TiendaPorSubdominioTest extends TestCase
             ->assertOk()
             ->assertSee('Calzados Ramírez')
             ->assertSee('Escolar HGN 468')
-            ->assertDontSee('Zapato charol tacón 7 cm');
+            // TG-279: Cklass solo la vende Ramírez.
+            ->assertSee('Balerina tejida de piel');
 
         $this->get($this->url(self::BOUTIQUE))
             ->assertOk()
-            ->assertSee('Zapato charol tacón 7 cm')
-            ->assertDontSee('Escolar HGN 468');
+            ->assertSee('Boutique del Calzado')
+            ->assertDontSee('Balerina tejida de piel');
     }
 
     public function test_primero_cuenta_el_subdominio_propio_y_luego_el_slug(): void

@@ -42,11 +42,12 @@ class CatalogoDemoTest extends TestCase
         PropietarioActual::olvidarCache();
     }
 
-    public function test_el_catalogo_maestro_tiene_tres_lineas_con_una_sola_temporada_activa(): void
+    public function test_el_catalogo_maestro_tiene_cinco_lineas_con_una_sola_temporada_activa(): void
     {
         $lineas = Linea::all();
 
-        $this->assertCount(3, $lineas);
+        // TG-279: Cklass, Impuls, Dankriz, Concord y Andrea.
+        $this->assertCount(5, $lineas);
 
         foreach ($lineas as $linea) {
             $activas = Campana::where('linea_id', $linea->id)->where('estado', 'activa')->count();
@@ -62,20 +63,20 @@ class CatalogoDemoTest extends TestCase
     {
         $this->assertTrue(Talla::where('sistema', 'MX')->whereIn('valor', ['2', '7'])->count() === 2);
 
-        $confort = Linea::where('nombre', 'Confort Dama')->firstOrFail();
+        $cklass = Linea::where('nombre', 'Cklass')->firstOrFail();
 
         $this->assertTrue(
-            ProductoCampana::whereRelation('campana', 'linea_id', $confort->id)->exists()
+            ProductoCampana::whereRelation('campana', 'linea_id', $cklass->id)->exists()
         );
     }
 
-    public function test_la_distribuidora_demo_vende_dos_lineas_y_no_la_tercera(): void
+    public function test_la_distribuidora_demo_vende_dos_lineas_y_no_las_demas(): void
     {
         $this->comoLaDistribuidora(DemoDistribuidoraSeeder::SLUG, function () {
             $suyas = DistribuidoraLinea::query()->vigentes()->count();
 
             $this->assertSame(2, $suyas);
-            $this->assertLessThan(Linea::count(), $suyas, 'La demo tendría que dejar una línea sin activar');
+            $this->assertLessThan(Linea::count(), $suyas, 'La demo tendría que dejar líneas sin activar');
 
             // Ninguna le cuesta extra: caben en las que incluye su plan.
             $this->assertSame(0, DistribuidoraLinea::where('es_extra', true)->count());
