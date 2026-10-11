@@ -121,6 +121,7 @@ new class extends Component {
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Dirección</label>
             <input type="text" wire:model="direccion_publica" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+            <p class="mt-1 text-xs text-slate-500">Escribe calle, número, colonia y ciudad: con ella se muestra el mapa de tu tienda.</p>
         </div>
         <div class="grid grid-cols-2 gap-4">
             <div>
