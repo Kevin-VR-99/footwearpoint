@@ -20,7 +20,7 @@ class InicioScreen extends StatelessWidget {
 
   /// El rol como se lee en pantalla. Si llegara uno nuevo, se muestra tal cual.
   static String nombreRol(String? rol) => switch (rol) {
-    'revendedor' => 'Revendedor',
+    'revendedor' => 'Cliente mayorista',
     'cliente_directo' => 'Cliente directo',
     null => '',
     _ => rol,

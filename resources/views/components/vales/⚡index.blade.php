@@ -144,7 +144,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                         <option value="">— Seleccionar cliente mayorista —</option>
                         @foreach ($this->revendedores as $r)
                             <option value="{{ $r->id }}">
-                                {{ $r->revendedor?->nombre ?? 'Revendedor #'.$r->id }}
+                                {{ $r->revendedor?->nombre ?? 'Cliente mayorista #'.$r->id }}
                                 @if ($r->codigo_interno) ({{ $r->codigo_interno }}) @endif
                             </option>
                         @endforeach
@@ -212,7 +212,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                                         ?? '—' }}
                                 </div>
                                 <div class="text-xs text-slate-500">
-                                    {{ $vale->cliente_directo_id ? 'Cliente directo' : 'Revendedor' }}
+                                    {{ $vale->cliente_directo_id ? 'Cliente directo' : 'Cliente mayorista' }}
                                 </div>
                             </td>
                             <td class="px-4 py-3 text-right">${{ number_format($vale->monto_original, 2) }}</td>
