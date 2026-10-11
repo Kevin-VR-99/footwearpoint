@@ -113,7 +113,7 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pedido Acumulado de Revendedor'), bottom: const FpBordeMarca()),
+      appBar: AppBar(title: const Text('Pedido acumulado de cliente mayorista'), bottom: const FpBordeMarca()),
       body: items.isEmpty
           ? const Center(
               child: FpEstadoVacio(
@@ -152,7 +152,7 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      'Precio revendedor: ${formatoPrecio(precioUnitario)}',
+                                      'Precio mayorista: ${formatoPrecio(precioUnitario)}',
                                       style: TextStyle(color: tema.colorScheme.primary, fontWeight: FontWeight.w600),
                                     ),
                                   ],
@@ -216,7 +216,7 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                               const SizedBox(width: 8),
                               const Expanded(
                                 child: Text(
-                                  'El pedido se envía a nombre del revendedor (sin reserva de stock local).',
+                                  'El pedido se envía a nombre del cliente mayorista (sin reserva de stock local).',
                                   style: TextStyle(fontSize: 12),
                                 ),
                               ),

@@ -227,7 +227,7 @@ void main() {
     await tester.tap(find.text('Mi pedido acumulado (3)'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Pedido Acumulado de Revendedor'), findsOneWidget);
+    expect(find.text('Pedido acumulado de cliente mayorista'), findsOneWidget);
     expect(find.text('Botín casual'), findsNWidgets(2));
     expect(find.text(r'$1,500.00'), findsOneWidget);
   });
