@@ -309,17 +309,21 @@ Estados posibles: `borrador`, `colocado`, `en_revision`, `confirmado`, `parcialm
 ```json
 {
   "saldo": 1600.0,
+  "puede_pagar_anticipo_mercado_pago": false,
+  "puede_pagar_saldo_mercado_pago": false,
   "pago_mercado_pago_pendiente": false,
   "pago_mercado_pago_pendiente_tipo": null,
   "puede_pagar_total_mercado_pago": true
 }
 ```
 
+- `puede_pagar_anticipo_mercado_pago` (TG-268): **true** si el pedido es de cliente directo, ya se envió, no está cerrado y queda anticipo pendiente (y saldo). Con **true** la app muestra "Pagar anticipo con Mercado Pago". Es la misma regla que aplica `POST .../anticipo/mercado-pago`. Para el cliente mayorista siempre es **false**.
+- `puede_pagar_saldo_mercado_pago` (TG-227): **true** si el pedido es de cliente directo, el anticipo ya está cubierto, queda saldo y el pedido ya llegó a la distribuidora (`recibido_distribuidora` o `listo_entrega`). Con **true** la app muestra "Pagar saldo con Mercado Pago".
 - `puede_pagar_total_mercado_pago`: **true** si el pedido es de cliente mayorista (`tipo` = `revendedor`), ya se envió y todavía no se entrega (estado de `colocado` a `listo_entrega`) y `saldo` es mayor a 0. Con **true** la app muestra el botón "Pagar con Mercado Pago". No revisa si la distribuidora tiene Mercado Pago conectado: eso lo dice el error al intentarlo (ver abajo). Para un pedido de cliente directo siempre es **false**.
 - `pago_mercado_pago_pendiente`: **true** si hay un pago con Mercado Pago esperando confirmación. Mientras esté pendiente **no cuenta** en `saldo`.
-- `pago_mercado_pago_pendiente_tipo`: de qué es ese pago pendiente; para el cliente mayorista es `total_revendedor`. `null` si no hay. Si es `total_revendedor`, la app muestra "Verificar pago" y llama a `.../total/mercado-pago/verificar`.
+- `pago_mercado_pago_pendiente_tipo`: de qué es ese pago pendiente: `anticipo` o `saldo_pedido` (cliente directo; la app verifica con `.../anticipo/...` o `.../saldo/...`) o `total_revendedor` (cliente mayorista). `null` si no hay. Si es `total_revendedor`, la app muestra "Verificar pago" y llama a `.../total/mercado-pago/verificar`.
 
-`pago_mercado_pago_pendiente` y `pago_mercado_pago_pendiente_tipo` vienen en `GET /api/pedidos/{id}` y en la respuesta de `verificar`, pero **no** en el listado `GET /api/pedidos`. `puede_pagar_total_mercado_pago` viene en los tres.
+`pago_mercado_pago_pendiente` y `pago_mercado_pago_pendiente_tipo` vienen en `GET /api/pedidos/{id}` y en la respuesta de `verificar`, pero **no** en el listado `GET /api/pedidos`. Los tres `puede_pagar_*_mercado_pago` vienen en los tres.
 
 ### POST `/api/pedidos`
 
@@ -461,6 +465,33 @@ Le pregunta a Mercado Pago si ya se pagó. Se llama **al regresar de Mercado Pag
 > Aunque la app no llame a `verificar`, el pago se aplica solo cuando llega el aviso de Mercado Pago al servidor. `verificar` sirve para que el usuario vea el resultado en cuanto regresa.
 
 ---
+
+### POST `/api/pedidos/{id}/anticipo/mercado-pago` y `/api/pedidos/{id}/saldo/mercado-pago`
+
+Rol: **solo `cliente_directo`**, y solo sobre **sus** pedidos. Crear el enlace pide correo verificado. Límite: **10 por minuto**. (TG-226, TG-227; botón en la app desde TG-268)
+
+Sin cuerpo. Igual que el del cliente mayorista: prepara Checkout Pro y regresa la **misma salida** (`pago_id`, `folio`, `tipo` = `anticipo` o `saldo_pedido`, `monto`, `moneda`, `preferencia_id`, `init_point`, `vence_at`, `reutilizado`), 201 o 200 si reutiliza el enlace vivo.
+
+- **Anticipo**: cobra lo que falta del anticipo (nunca más que el saldo). Se puede desde que el pedido se envía hasta que se cierra. Es lo que dice `puede_pagar_anticipo_mercado_pago`.
+- **Saldo**: cobra todo el saldo, con el anticipo ya cubierto y el pedido en `recibido_distribuidora` o `listo_entrega`. Es lo que dice `puede_pagar_saldo_mercado_pago`.
+
+Errores `422` propios (además de los de conexión de Mercado Pago, 401/403/404/429/503 de la tabla anterior):
+
+| Cuándo | `message` |
+|---|---|
+| El pedido no es de cliente directo | `"El pago con Mercado Pago es para pedidos de cliente directo."` |
+| Anticipo de un pedido en borrador | `"Envía tu pedido antes de pagar el anticipo."` |
+| Pedido cerrado | `"Este pedido ya no admite pagos."` |
+| Ya no queda anticipo | `"Este pedido ya no tiene anticipo pendiente."` |
+| Saldo con anticipo pendiente | `"Primero paga tu anticipo; después podrás pagar el saldo."` |
+| Saldo antes de que llegue el pedido | `"Podrás pagar el saldo con Mercado Pago cuando tu pedido llegue a la distribuidora."` |
+| Ya no queda saldo | `"Este pedido ya no tiene saldo pendiente."` |
+
+### POST `/api/pedidos/{id}/anticipo/mercado-pago/verificar` y `/api/pedidos/{id}/saldo/mercado-pago/verificar`
+
+Igual que `.../total/mercado-pago/verificar` (mismo rol que su enlace, misma entrada opcional `payment_id`, misma salida `data` + `resultado` + `message`). Los mensajes hablan de "tu anticipo" o "tu saldo", por ejemplo `"Recibimos tu anticipo. ¡Gracias!"`.
+
+> **Cómo lo usa la app (TG-268):** abre `init_point` fuera de la app (navegador o app de Mercado Pago). Al volver a la app llama a `verificar` sola, y deja el botón "Verificar pago" mientras `pago_mercado_pago_pendiente` sea true. No hay enlace de regreso directo a la app: la página `/mercado-pago/retorno` le pide a la persona regresar a la app.
 
 ## 5. Vales
 

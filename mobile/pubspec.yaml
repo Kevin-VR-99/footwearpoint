@@ -44,6 +44,7 @@ dependencies:
   flutter_secure_storage: 11.1.1  # guarda el token de Sanctum cifrado
   firebase_core: 4.14.0           # conecta la app con Firebase al arrancar
   firebase_messaging: 16.7.0     # pide el token del dispositivo
+  url_launcher: 6.3.3           # abre el pago de Mercado Pago en el navegador (TG-268)
 
 dev_dependencies:
   flutter_test:

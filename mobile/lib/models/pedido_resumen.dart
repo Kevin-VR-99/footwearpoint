@@ -19,6 +19,11 @@ class PedidoResumen {
     this.fecha,
     this.lineas = const [],
     this.pagos = const [],
+    this.puedePagarAnticipoMercadoPago = false,
+    this.puedePagarSaldoMercadoPago = false,
+    this.puedePagarTotalMercadoPago = false,
+    this.pagoMercadoPagoPendiente = false,
+    this.pagoMercadoPagoPendienteTipo,
   });
 
   final int id;
@@ -52,7 +57,35 @@ class PedidoResumen {
   final List<LineaPedido> lineas;
   final List<PagoPedido> pagos;
 
+  /// TG-268: qué puede pagar ya con Mercado Pago (lo decide el servidor).
+  final bool puedePagarAnticipoMercadoPago;
+  final bool puedePagarSaldoMercadoPago;
+  final bool puedePagarTotalMercadoPago;
+
+  /// Hay un pago con Mercado Pago esperando confirmación (solo en el detalle).
+  final bool pagoMercadoPagoPendiente;
+
+  /// 'anticipo', 'saldo_pedido' o 'total_revendedor'.
+  final String? pagoMercadoPagoPendienteTipo;
+
   bool get esRevendedor => tipo == 'revendedor';
+
+  /// Lo que se puede pagar ahora con Mercado Pago, o null si nada.
+  TipoPagoMercadoPago? get pagoMercadoPagoDisponible {
+    if (puedePagarAnticipoMercadoPago) return TipoPagoMercadoPago.anticipo;
+    if (puedePagarTotalMercadoPago) return TipoPagoMercadoPago.total;
+    if (puedePagarSaldoMercadoPago) return TipoPagoMercadoPago.saldo;
+    return null;
+  }
+
+  /// El pago con Mercado Pago que falta confirmar, o null si no hay.
+  TipoPagoMercadoPago? get pagoMercadoPagoPorVerificar =>
+      pagoMercadoPagoPendiente ? TipoPagoMercadoPago.desdeTipoPago(pagoMercadoPagoPendienteTipo) : null;
+
+  /// Cuánto se cobraría con Mercado Pago por ese concepto.
+  double montoMercadoPago(TipoPagoMercadoPago tipoPago) => tipoPago == TipoPagoMercadoPago.anticipo
+      ? (anticipoPendiente < saldo ? anticipoPendiente : saldo)
+      : saldo;
 
   factory PedidoResumen.desdeJson(Map<String, dynamic> json) {
     double numero(String llave) => (json[llave] as num?)?.toDouble() ?? 0;
@@ -77,8 +110,35 @@ class PedidoResumen {
         for (final p in json['pagos'] as List<dynamic>? ?? const [])
           PagoPedido.desdeJson(p as Map<String, dynamic>),
       ],
+      puedePagarAnticipoMercadoPago: json['puede_pagar_anticipo_mercado_pago'] == true,
+      puedePagarSaldoMercadoPago: json['puede_pagar_saldo_mercado_pago'] == true,
+      puedePagarTotalMercadoPago: json['puede_pagar_total_mercado_pago'] == true,
+      pagoMercadoPagoPendiente: json['pago_mercado_pago_pendiente'] == true,
+      pagoMercadoPagoPendienteTipo: json['pago_mercado_pago_pendiente_tipo'] as String?,
     );
   }
+}
+
+/// TG-268: los tres pagos con Mercado Pago que acepta el servidor. [ruta] es
+/// el tramo de la URL: /pedidos/{id}/{ruta}/mercado-pago.
+enum TipoPagoMercadoPago {
+  anticipo('anticipo', 'Anticipo', 'Pagar anticipo con Mercado Pago'),
+  saldo('saldo', 'Saldo del pedido', 'Pagar saldo con Mercado Pago'),
+  total('total', 'Total del pedido', 'Pagar con Mercado Pago');
+
+  const TipoPagoMercadoPago(this.ruta, this.concepto, this.textoBoton);
+
+  final String ruta;
+  final String concepto;
+  final String textoBoton;
+
+  /// Desde pagos.tipo del servidor.
+  static TipoPagoMercadoPago? desdeTipoPago(String? tipo) => switch (tipo) {
+    'anticipo' => TipoPagoMercadoPago.anticipo,
+    'saldo_pedido' => TipoPagoMercadoPago.saldo,
+    'total_revendedor' => TipoPagoMercadoPago.total,
+    _ => null,
+  };
 }
 
 class LineaPedido {
@@ -121,8 +181,12 @@ class PagoPedido {
     required this.tipo,
     required this.metodo,
     required this.monto,
+    this.estado = '',
     this.fecha,
   });
+
+  /// 'aplicado', 'pendiente'... Un pago pendiente todavía no cuenta.
+  final String estado;
 
   final String folio;
   final String tipo;
@@ -136,9 +200,19 @@ class PagoPedido {
       tipo: json['tipo'] as String? ?? '',
       metodo: json['metodo'] as String? ?? '',
       monto: (json['monto'] as num?)?.toDouble() ?? 0,
+      estado: json['estado'] as String? ?? '',
       fecha: _fecha(json['fecha_pago']),
     );
   }
+
+  bool get esPendiente => estado == 'pendiente';
+
+  /// "mercado_pago" -> "Mercado Pago"; "efectivo" -> "Efectivo".
+  String get metodoParaMostrar => switch (metodo) {
+    'mercado_pago' => 'Mercado Pago',
+    '' => '',
+    _ => '${metodo[0].toUpperCase()}${metodo.substring(1).replaceAll('_', ' ')}',
+  };
 
   /// "saldo_pedido" -> "Saldo pedido".
   String get tipoParaMostrar =>

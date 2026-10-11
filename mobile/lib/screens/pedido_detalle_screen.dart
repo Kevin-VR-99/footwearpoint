@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../services/pedido_service.dart';
 import '../tema/fp_colores.dart';
 import 'producto_detalle_screen.dart';
+import '../widgets/botones_pago_mercado_pago.dart';
 import '../widgets/fp_componentes.dart';
 
 /// El detalle de un pedido propio (TG-165): su estado explicado, lo que se
@@ -155,7 +156,7 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
               if (pedido.pagadoConVales > 0)
                 _Fila(etiqueta: 'Pagado con vale', valor: '-${formatoPrecio(pedido.pagadoConVales)}'),
               if (otrosPagos > 0.009)
-                _Fila(etiqueta: 'Pagado en mostrador', valor: '-${formatoPrecio(otrosPagos)}'),
+                _Fila(etiqueta: 'Otros pagos', valor: '-${formatoPrecio(otrosPagos)}'),
               const Divider(height: 24),
               if (!pedido.esRevendedor && pedido.anticipoPendiente > 0)
                 _Fila(
@@ -171,6 +172,11 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
             ],
           ),
         ),
+        // TG-268: pagar o verificar con Mercado Pago, según el servidor.
+        if (pedido.pagoMercadoPagoDisponible != null || pedido.pagoMercadoPagoPorVerificar != null) ...[
+          const SizedBox(height: 12),
+          BotonesPagoMercadoPago(pedido: pedido, alTerminar: _cargar),
+        ],
         if (pedido.saldo > 0) ...[
           const SizedBox(height: 12),
           Container(
@@ -180,11 +186,17 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: FpColores.primario.withValues(alpha: 0.15)),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.storefront_outlined, size: 20, color: FpColores.primario),
-                SizedBox(width: 10),
-                Expanded(child: Text('Los pagos se hacen y se registran en mostrador.')),
+                const Icon(Icons.storefront_outlined, size: 20, color: FpColores.primario),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    pedido.pagoMercadoPagoDisponible != null
+                        ? 'Puedes pagar con Mercado Pago o en mostrador.'
+                        : 'Los pagos se hacen y se registran en mostrador.',
+                  ),
+                ),
               ],
             ),
           ),
@@ -207,7 +219,8 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
                 subtitle: Text(
                   [
                     pago.folio,
-                    if (pago.metodo.isNotEmpty) pago.metodo,
+                    if (pago.metodo.isNotEmpty) pago.metodoParaMostrar,
+                    if (pago.esPendiente) 'Por confirmar',
                     if (pago.fecha != null) formatoFecha(pago.fecha!, conHora: false),
                   ].join(' · '),
                 ),
