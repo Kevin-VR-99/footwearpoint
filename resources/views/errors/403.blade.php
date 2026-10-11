@@ -1,7 +1,7 @@
 @extends('errors.layout')
 
-{{-- Los mensajes de 403 están en español: abort(403, '...') del código y los
-     que bootstrap/app.php traduce (Spatie y policies). --}}
+{{-- TG-264: solo se muestran los mensajes propios de la app (App\Support\MensajeProhibido);
+     cualquier otro (p. ej. los de Laravel en inglés) cambia por el genérico. --}}
 @section('codigo', '403')
 @section('titulo', 'Acceso no permitido')
-@section('mensaje', ($exception ?? null)?->getMessage() ?: 'No tienes permiso para ver esta página.')
+@section('mensaje', \App\Support\MensajeProhibido::para($exception ?? null))
