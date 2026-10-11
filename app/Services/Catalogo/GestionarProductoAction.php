@@ -2,6 +2,7 @@
 
 namespace App\Services\Catalogo;
 
+use App\Services\Auditoria\AuditarCambios;
 use App\Models\Producto;
 
 /**
@@ -13,9 +14,13 @@ use App\Models\Producto;
  */
 class GestionarProductoAction
 {
+    public function __construct(private AuditarCambios $auditar)
+    {
+    }
+
     public function crear(array $datos): Producto
     {
-        return Producto::create([
+        $producto = Producto::create([
             'marca_id'     => $datos['marca_id'],
             'categoria_id' => $datos['categoria_id'],
             'modelo'       => $datos['modelo'],
@@ -23,6 +28,9 @@ class GestionarProductoAction
             'descripcion'  => $datos['descripcion'] ?? null,
             'activo'       => true,
         ]);
+        $this->auditar->creado($producto, 'catalogo.producto.creado', 'producto');
+
+        return $producto;
     }
 
     public function actualizar(Producto $producto, array $datos): Producto
@@ -34,7 +42,7 @@ class GestionarProductoAction
         }
 
         $producto->fill($datos);
-        $producto->save();
+        $this->auditar->guardar($producto, 'catalogo.producto.actualizado', 'producto');
 
         return $producto->fresh(['marca', 'categoria']);
     }

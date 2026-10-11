@@ -2,11 +2,16 @@
 
 namespace App\Services\Catalogo;
 
+use App\Services\Auditoria\AuditarCambios;
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\Campana;
 
 class GestionarCampanaAction
 {
+    public function __construct(private AuditarCambios $auditar)
+    {
+    }
+
     /**
      * Orden real de los 6 estados, tal como está documentado en el modelo
      * v3. Solo se permite avanzar UN paso a la vez en este orden — no
@@ -27,7 +32,7 @@ class GestionarCampanaAction
         // la base de datos aplique su propio valor por default — Eloquent
         // puede mandar NULL de forma explícita y eso le "gana" al default
         // de la columna.
-        return Campana::create([
+        $campana = Campana::create([
             'linea_id'     => $datos['linea_id'],
             'nombre'       => $datos['nombre'],
             'descripcion'  => $datos['descripcion'] ?? null,
@@ -35,6 +40,9 @@ class GestionarCampanaAction
             'fecha_fin'    => $datos['fecha_fin'] ?? null,
             'estado'       => 'borrador',
         ]);
+        $this->auditar->creado($campana, 'catalogo.temporada.creada', 'campana');
+
+        return $campana;
     }
 
     /**
@@ -55,7 +63,7 @@ class GestionarCampanaAction
         // linea_id no se acepta aquí: una temporada no cambia de línea.
         unset($datos['linea_id']);
         $campana->fill($datos);
-        $campana->save();
+        $this->auditar->guardar($campana, 'catalogo.temporada.actualizada', 'campana');
 
         return $campana->fresh();
     }
