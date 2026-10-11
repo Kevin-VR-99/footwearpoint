@@ -24,6 +24,7 @@ Map<String, dynamic> _sesion({required bool debeCambiar}) => {
     'estado': 'activo',
   },
   'rol': 'revendedor',
+  'legales_aceptados': true,
   'distribuidora_id': 1,
   'debe_cambiar_password': debeCambiar,
 };

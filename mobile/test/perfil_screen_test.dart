@@ -36,7 +36,7 @@ class _ServidorFalso {
 
     if (ruta.endsWith('/auth/me')) {
       return _json({
-        'data': {'usuario': usuario, 'rol': 'revendedor', 'distribuidora_id': 1},
+        'data': {'usuario': usuario, 'rol': 'revendedor', 'distribuidora_id': 1, 'legales_aceptados': true},
       }, 200);
     }
 
