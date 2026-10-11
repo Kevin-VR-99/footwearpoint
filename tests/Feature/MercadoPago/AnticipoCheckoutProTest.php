@@ -290,6 +290,38 @@ class AnticipoCheckoutProTest extends TestCase
         ], $cambios);
     }
 
+    /** TG-268: la app sabe cuándo mostrar el botón de pagar el anticipo. */
+    public function test_el_pedido_dice_si_se_puede_pagar_el_anticipo_con_mercado_pago(): void
+    {
+        $borrador = $this->pedido(enviar: false);
+        $this->assertFalse($this->verPedido($borrador)['puede_pagar_anticipo_mercado_pago']);
+
+        $pedidoId = $this->pedido();
+        $this->assertTrue($this->verPedido($pedidoId)['puede_pagar_anticipo_mercado_pago']);
+
+        $this->como(self::JOSE);
+        $listado = collect($this->getJson('/api/pedidos')->assertOk()->json('data'))->firstWhere('id', $pedidoId);
+        $this->assertTrue($listado['puede_pagar_anticipo_mercado_pago']);
+
+        $this->pagarEnMostrador($pedidoId, $this->anticipoPendiente($pedidoId));
+        $this->assertFalse($this->verPedido($pedidoId)['puede_pagar_anticipo_mercado_pago']);
+
+        $cerrado = $this->pedido();
+        DB::table('pedidos')->where('id', $cerrado)->update(['estado' => 'rechazado']);
+        $this->assertFalse($this->verPedido($cerrado)['puede_pagar_anticipo_mercado_pago']);
+    }
+
+    /** TG-268: el pedido de cliente mayorista nunca ofrece pagar anticipo. */
+    public function test_el_pedido_de_cliente_mayorista_no_ofrece_pagar_anticipo(): void
+    {
+        $this->como(self::MARIA);
+        $pedidos = $this->getJson('/api/pedidos')->assertOk()->json('data');
+
+        foreach ($pedidos as $pedido) {
+            $this->assertFalse($pedido['puede_pagar_anticipo_mercado_pago']);
+        }
+    }
+
     private function pagarEnMostrador(int $pedidoId, float $monto): void
     {
         $this->como(self::EMPLEADO);

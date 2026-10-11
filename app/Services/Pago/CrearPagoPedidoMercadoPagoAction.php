@@ -177,12 +177,7 @@ class CrearPagoPedidoMercadoPagoAction
     private function validarPedido(Pedido $pedido, string $tipo): void
     {
         $mensaje = match ($tipo) {
-            self::ANTICIPO => match (true) {
-                $pedido->tipo !== 'cliente_directo' => MercadoPagoException::SOLO_CLIENTE_DIRECTO,
-                $pedido->estado === 'borrador' => MercadoPagoException::PEDIDO_BORRADOR,
-                in_array($pedido->estado, RegistrarPagoPedidoAction::ESTADOS_CERRADOS, true) => MercadoPagoException::PEDIDO_CERRADO,
-                default => null,
-            },
+            self::ANTICIPO => self::motivoParaNoCobrarAnticipo($pedido, $this->pagos->resumen($pedido)),
             self::SALDO => self::motivoParaNoCobrarSaldo($pedido, $this->pagos->resumen($pedido)),
             self::MAYORISTA => self::motivoParaNoCobrarMayorista($pedido, $this->pagos->resumen($pedido)),
         };
@@ -193,6 +188,27 @@ class CrearPagoPedidoMercadoPagoAction
     }
 
     /** Por qué todavía no se puede cobrar el saldo con Mercado Pago, o null si sí. */
+    /**
+     * TG-268: ¿el cliente directo puede pagar ya su anticipo con Mercado Pago?
+     * Igual que puedePagarSaldo(), para el botón de la app.
+     */
+    public static function puedePagarAnticipo(Pedido $pedido, array $resumen): bool
+    {
+        return self::motivoParaNoCobrarAnticipo($pedido, $resumen) === null;
+    }
+
+    /** Por qué todavía no se puede cobrar el anticipo con Mercado Pago, o null si sí. */
+    private static function motivoParaNoCobrarAnticipo(Pedido $pedido, array $resumen): ?string
+    {
+        return match (true) {
+            $pedido->tipo !== 'cliente_directo' => MercadoPagoException::SOLO_CLIENTE_DIRECTO,
+            $pedido->estado === 'borrador' => MercadoPagoException::PEDIDO_BORRADOR,
+            in_array($pedido->estado, RegistrarPagoPedidoAction::ESTADOS_CERRADOS, true) => MercadoPagoException::PEDIDO_CERRADO,
+            round(min($resumen['anticipo_pendiente'], $resumen['saldo']), 2) <= 0 => MercadoPagoException::SIN_ANTICIPO_PENDIENTE,
+            default => null,
+        };
+    }
+
     private static function motivoParaNoCobrarSaldo(Pedido $pedido, array $resumen): ?string
     {
         return match (true) {

@@ -82,6 +82,9 @@ class PedidoResource extends JsonResource
                 ->filter(fn ($p) => $p->metodo === 'mercado_pago' && $p->estado === 'pendiente')
                 ->sortByDesc('id')
                 ->first()?->tipo),
+            // TG-268: el cliente directo ya puede pagar su anticipo con
+            // Mercado Pago (pedido enviado, sin cerrar y con anticipo pendiente).
+            'puede_pagar_anticipo_mercado_pago' => CrearPagoPedidoMercadoPagoAction::puedePagarAnticipo($this->resource, $resumen),
             // TG-227 (G8): el dueño ya puede pagar el saldo con Mercado Pago
             // (cliente directo, anticipo cubierto, saldo > 0 y el pedido ya
             // llegó a la distribuidora). No revisa si la distribuidora tiene
