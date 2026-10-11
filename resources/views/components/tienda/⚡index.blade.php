@@ -111,37 +111,60 @@ new class extends Component {
             </p>
         </div>
 
-        <ul class="md:w-72 space-y-1.5 text-sm text-slate-600">
-            @if ($distribuidora->direccion_publica)
+        <ul class="md:w-72 space-y-1.5 text-sm text-fp-text-muted">
+            @php($direccionMapa = \App\Support\MapaUbicacion::direccion($distribuidora))
+            @if ($direccionMapa)
                 <li class="flex gap-2">
-                    <span class="text-slate-400 shrink-0">📍</span>
-                    <span>{{ $distribuidora->direccion_publica }}</span>
+                    <span class="text-fp-primary shrink-0 font-medium">Dirección:</span>
+                    <span>{{ $direccionMapa }}</span>
                 </li>
             @endif
             @if ($distribuidora->telefono_publico)
                 <li class="flex gap-2">
-                    <span class="text-slate-400 shrink-0">📞</span>
-                    <a href="tel:{{ $distribuidora->telefono_publico }}" class="text-[#2563EB] hover:underline">
+                    <span class="text-fp-primary shrink-0 font-medium">Teléfono:</span>
+                    <a href="tel:{{ $distribuidora->telefono_publico }}" class="text-fp-primary hover:underline">
                         {{ $distribuidora->telefono_publico }}
                     </a>
                 </li>
             @endif
             @if ($distribuidora->email_publico)
                 <li class="flex gap-2">
-                    <span class="text-slate-400 shrink-0">✉️</span>
-                    <a href="mailto:{{ $distribuidora->email_publico }}" class="text-[#2563EB] hover:underline">
+                    <span class="text-fp-primary shrink-0 font-medium">Correo:</span>
+                    <a href="mailto:{{ $distribuidora->email_publico }}" class="text-fp-primary hover:underline break-all">
                         {{ $distribuidora->email_publico }}
                     </a>
                 </li>
             @endif
             @if ($distribuidora->horario_publico)
                 <li class="flex gap-2">
-                    <span class="text-slate-400 shrink-0">🕐</span>
+                    <span class="text-fp-primary shrink-0 font-medium">Horario:</span>
                     <span>{{ $distribuidora->horario_publico }}</span>
                 </li>
             @endif
         </ul>
     </section>
+
+    {{-- TG-269 (U9): mapa con la ubicación, buscado por la dirección (sin llave). --}}
+    @if ($direccionMapa)
+        <section aria-labelledby="titulo-ubicacion" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 id="titulo-ubicacion" class="text-xl font-bold text-fp-sidebar">Ubicación</h2>
+                    <p class="mt-1 text-sm text-fp-text-muted">{{ $direccionMapa }}</p>
+                </div>
+                <a href="{{ \App\Support\MapaUbicacion::urlComoLlegar($distribuidora) }}" target="_blank" rel="noopener"
+                   class="inline-flex items-center justify-center rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-fp-primary/90">
+                    Cómo llegar
+                </a>
+            </div>
+            <div class="overflow-hidden rounded-xl border border-slate-200">
+                <iframe src="{{ \App\Support\MapaUbicacion::urlInsertar($distribuidora) }}"
+                        title="Mapa con la ubicación de {{ $distribuidora->nombre_comercial }}"
+                        class="h-72 w-full" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </div>
+        </section>
+    @endif
+
 
     {{-- Destacados (solo si la distribuidora eligió alguno y no se está filtrando) --}}
     @if ($destacados->isNotEmpty())
