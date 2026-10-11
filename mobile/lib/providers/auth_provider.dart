@@ -35,6 +35,7 @@ class AuthProvider extends ChangeNotifier {
   Usuario? _usuario;
   String? _rol;
   int? _distribuidoraId;
+  bool _legalesAceptados = false;
   bool _iniciando = true;
   bool _sinConexion = false;
   bool _ocupado = false;
@@ -43,6 +44,7 @@ class AuthProvider extends ChangeNotifier {
   Usuario? get usuario => _usuario;
   String? get rol => _rol;
   int? get distribuidoraId => _distribuidoraId;
+  bool get legalesAceptados => _legalesAceptados;
   bool get ocupado => _ocupado;
   String? get error => _error;
   bool get haySesion => _usuario != null;
@@ -76,6 +78,15 @@ class AuthProvider extends ChangeNotifier {
 
       final respuesta = await api.get('auth/me');
       _llenarSesion(respuesta['data'] as Map<String, dynamic>);
+
+      // SEGURIDAD / USER STORY: Si al reabrir la app el usuario tenía token 
+      // pero nunca aceptó los legales, invalidamos la sesión de inmediato 
+      // para impedir el acceso no autorizado.
+      if (!_legalesAceptados) {
+        await _olvidarSesion();
+        return;
+      }
+
       _registrarDispositivoFCM();
     } on ApiException catch (e) {
       if (e.codigoHttp == null) {
@@ -145,7 +156,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       // Lo indispensable: avisarle SIEMPRE al servidor, para que invalide el
       // token. Desde TG-144 el servidor además quita este celular de las
-      // notificaciones al cerrar la sesión, así que no hace falta mandarle el
+      // notifications al cerrar la sesión, así que no hace falta mandarle el
       // token de Firebase. Va primero y aparte de Firebase: si Firebase
       // fallara antes, el servidor nunca se enteraría y la sesión seguiría
       // válida allá (E16-03, corrección TG-161).
@@ -208,26 +219,25 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Misma forma en el login y en auth/me: { usuario, rol, distribuidora_id }.
+  /// Misma forma en el login y en auth/me: { usuario, rol, distribuidora_id, legales_aceptados }.
   void _llenarSesion(Map<String, dynamic> datos) {
-    // Se lee todo antes de asignar, para no quedar con media sesión si algún
-    // campo no viene como se esperaba.
     final usuario = Usuario.desdeJson(datos['usuario'] as Map<String, dynamic>);
     final rol = datos['rol'] as String?;
     final distribuidoraId = datos['distribuidora_id'] as int?;
+    final legalesAceptados = datos['legales_aceptados'] as bool? ?? false;
 
     _usuario = usuario;
     _rol = rol;
     _distribuidoraId = distribuidoraId;
+    _legalesAceptados = legalesAceptados;
   }
 
   /// Borra la sesión de memoria y el token del teléfono.
   Future<void> _olvidarSesion() async {
-    // Primero la memoria, sin esperar a nada: así [haySesion] cambia en ese
-    // mismo instante, aunque borrar del teléfono tarde un poco.
     _usuario = null;
     _rol = null;
     _distribuidoraId = null;
+    _legalesAceptados = false;
 
     await api.borrarToken();
   }
@@ -235,7 +245,6 @@ class AuthProvider extends ChangeNotifier {
   /// Pide el token a Firebase y lo registra en Laravel (TG-96).
   void _registrarDispositivoFCM() async {
     try {
-      // 1. Pedimos el token de este celular a Firebase
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) {
         await api.post(
@@ -244,10 +253,6 @@ class AuthProvider extends ChangeNotifier {
         );
       }
 
-      // 2. Escuchamos por si Firebase decide renovar el token en segundo plano.
-      // Solo UNA vez: esto se llama en cada login y en cada apertura de la
-      // app, y sin el ??= se iba sumando un escuchador más cada vez (el
-      // celular se volvía a registrar repetido). Se cancela al cerrar sesión.
       _renovacionTokenFcm ??= FirebaseMessaging.instance.onTokenRefresh.listen((nuevoToken) async {
         if (haySesion) {
           await api.post(
@@ -257,7 +262,6 @@ class AuthProvider extends ChangeNotifier {
         }
       });
     } catch (e) {
-      // Si el usuario no tiene internet o Firebase falla, lo ignoramos para no tumbar la app
       debugPrint('Error al registrar FCM: $e');
     }
   }
