@@ -21,14 +21,33 @@ class LimiteSolicitudesAlta
 {
     private const VENTANA_SEGUNDOS = 3600;
 
+    /** Ventana del segundo límite, el de los intentos. */
+    private const VENTANA_INTENTOS_SEGUNDOS = 600;
+
     public function tope(): int
     {
         return max(1, (int) config('footwearpoint.solicitudes_alta.por_hora_por_ip', 3));
     }
 
+    /**
+     * Tope del segundo límite: intentos de envío, se guarden o no.
+     *
+     * El primer límite solo cuenta las solicitudes que sí se guardaron, así
+     * que un intento que falla la validación no gasta nada. Como el formulario
+     * dice "Ese correo ya tiene una cuenta en FootwearPoint", sin este
+     * segundo límite se podrían probar correos sin tope para averiguar quién
+     * está registrado. Por eso va más holgado: estorba a quien raspa, no a
+     * quien se equivoca al llenar.
+     */
+    public function topeDeIntentos(): int
+    {
+        return max(1, (int) config('footwearpoint.solicitudes_alta.intentos_por_ip', 10));
+    }
+
     public function bloqueado(?string $ip): bool
     {
-        return RateLimiter::tooManyAttempts($this->llave($ip), $this->tope());
+        return RateLimiter::tooManyAttempts($this->llave($ip), $this->tope())
+            || RateLimiter::tooManyAttempts($this->llaveDeIntentos($ip), $this->topeDeIntentos());
     }
 
     /** Se llama cuando una solicitud SÍ se guardó. */
@@ -37,10 +56,28 @@ class LimiteSolicitudesAlta
         RateLimiter::hit($this->llave($ip), self::VENTANA_SEGUNDOS);
     }
 
-    /** Minutos que faltan para poder intentar otra vez (al menos 1). */
+    /** Se llama en CADA envío, se guarde o no. */
+    public function registrarIntento(?string $ip): void
+    {
+        RateLimiter::hit($this->llaveDeIntentos($ip), self::VENTANA_INTENTOS_SEGUNDOS);
+    }
+
+    /**
+     * Minutos que faltan para poder intentar otra vez (al menos 1). Se toma
+     * la espera más larga de los dos límites.
+     */
     public function minutosRestantes(?string $ip): int
     {
-        return max(1, (int) ceil(RateLimiter::availableIn($this->llave($ip)) / 60));
+        $segundos = max(
+            RateLimiter::tooManyAttempts($this->llave($ip), $this->tope())
+                ? RateLimiter::availableIn($this->llave($ip))
+                : 0,
+            RateLimiter::tooManyAttempts($this->llaveDeIntentos($ip), $this->topeDeIntentos())
+                ? RateLimiter::availableIn($this->llaveDeIntentos($ip))
+                : 0,
+        );
+
+        return max(1, (int) ceil($segundos / 60));
     }
 
     /** En español y sin tecnicismos; tampoco dice cuántas van. */
@@ -54,5 +91,10 @@ class LimiteSolicitudesAlta
     private function llave(?string $ip): string
     {
         return 'solicitud-alta|'.(string) $ip;
+    }
+
+    private function llaveDeIntentos(?string $ip): string
+    {
+        return 'solicitud-alta-intento|'.(string) $ip;
     }
 }

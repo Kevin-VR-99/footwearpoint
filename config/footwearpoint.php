@@ -31,6 +31,11 @@ return [
 
     'solicitudes_alta' => [
         'por_hora_por_ip' => (int) env('FOOTWEARPOINT_SOLICITUDES_POR_HORA', 3),
+
+        // Segundo límite: intentos de envío en diez minutos, se guarden o no.
+        // Evita que se prueben correos sin tope para averiguar quién ya está
+        // registrado. Va más holgado, para no estorbarle a quien se equivoca.
+        'intentos_por_ip' => (int) env('FOOTWEARPOINT_INTENTOS_SOLICITUD', 10),
     ],
 
 ];
