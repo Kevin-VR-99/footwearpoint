@@ -294,7 +294,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
                                 <tr class="hover:bg-slate-50" wire:key="pedido-{{ $pedido->id }}">
                                     <td class="px-4 py-3 font-mono text-xs">{{ $pedido->folio }}</td>
                                     <td class="px-4 py-3 text-slate-700">
-                                        {{ $pedido->tipo === 'revendedor' ? 'Revendedor' : 'Cliente directo' }}
+                                        {{ $pedido->tipo === 'revendedor' ? 'Cliente mayorista' : 'Cliente directo' }}
                                     </td>
                                     <td class="px-4 py-3">
                                         <x-ui.insignia-estado :estado="$pedido->estado" />

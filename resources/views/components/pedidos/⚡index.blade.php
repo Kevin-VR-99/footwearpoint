@@ -95,7 +95,7 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
                     <tr class="hover:bg-slate-50/80">
                         <td class="px-4 py-3 font-medium text-slate-900">{{ $p->folio }}</td>
                         <td class="px-4 py-3 text-slate-600">
-                            {{ $p->tipo === 'cliente_directo' ? 'Cliente' : 'Revendedor' }}
+                            {{ $p->tipo === 'cliente_directo' ? 'Cliente' : 'Cliente mayorista' }}
                         </td>
                         <td class="px-4 py-3 text-slate-600">
                             {{ $p->clienteDirecto?->nombre

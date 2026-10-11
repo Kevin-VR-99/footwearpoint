@@ -56,7 +56,7 @@ class CrearPedidoBorradorAction
             $afiliacion = RevendedorDistribuidora::where('id', $datos['propietario_id'])->first();
             if (! $afiliacion) {
                 throw ValidationException::withMessages([
-                    'propietario_id' => ['La afiliación de revendedor no existe en esta distribuidora.'],
+                    'propietario_id' => ['La afiliación de cliente mayorista no existe en esta distribuidora.'],
                 ]);
             }
             $revendedorAfiliacionId = $afiliacion->id;

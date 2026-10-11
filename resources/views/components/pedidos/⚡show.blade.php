@@ -195,7 +195,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             <div class="mt-2 flex flex-wrap items-center gap-2">
                 <x-ui.insignia-estado :estado="$this->pedido->estado" />
                 <span class="text-sm text-slate-500">
-                    {{ $this->pedido->tipo === 'cliente_directo' ? 'Cliente' : 'Revendedor' }}:
+                    {{ $this->pedido->tipo === 'cliente_directo' ? 'Cliente' : 'Cliente mayorista' }}:
                     {{ $this->pedido->clienteDirecto?->nombre ?? ($this->pedido->revendedorAfiliacion?->revendedor?->nombre ?? '—') }}
                 </span>
             </div>

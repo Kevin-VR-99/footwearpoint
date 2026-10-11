@@ -82,7 +82,7 @@ class AuthController extends Controller
         // quien se está rechazando.
         if ($this->esRolSoloWeb($sesion['rol'])) {
             throw ValidationException::withMessages([
-                'email' => ['Esta aplicación es solo para revendedores y clientes directos.'],
+                'email' => ['Esta aplicación es solo para clientes mayoristas y clientes directos.'],
             ]);
         }
 
@@ -146,7 +146,7 @@ class AuthController extends Controller
             $usuario->currentAccessToken()?->delete();
 
             return response()->json([
-                'message' => 'Esta aplicación es solo para revendedores y clientes directos.',
+                'message' => 'Esta aplicación es solo para clientes mayoristas y clientes directos.',
             ], 401);
         }
 

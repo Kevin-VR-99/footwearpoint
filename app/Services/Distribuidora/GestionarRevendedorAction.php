@@ -57,7 +57,7 @@ class GestionarRevendedorAction
 
             if (array_key_exists('email', $datosContacto) && $afiliacion->revendedor->usuario_id) {
                 throw new OperacionInvalidaException(
-                    'Este revendedor ya tiene cuenta en la app: su correo es el de acceso y no se cambia desde aqui.',
+                    'Este cliente mayorista ya tiene cuenta en la app: su correo es el de acceso y no se cambia desde aqui.',
                     422
                 );
             }
