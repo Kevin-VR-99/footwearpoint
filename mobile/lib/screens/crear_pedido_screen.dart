@@ -226,6 +226,17 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
   // Después de enviar: los números que calculó el servidor
   // ---------------------------------------------------------------------
 
+  /// Qué le toca pagar ahora. Si el anticipo ya se cubrió (por ejemplo al
+  /// regresar de pagarlo con Mercado Pago), ya no se le pide (TG-268).
+  String _notaDespuesDeEnviar(PedidoResumen pedido) {
+    if (pedido.saldo <= 0) return 'Tu pedido ya está pagado. Te avisaremos cuando llegue.';
+    if (_esRevendedor) return 'Paga con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.';
+    if (pedido.anticipoPendiente <= 0) {
+      return 'Anticipo pagado. El resto se paga cuando tu pedido llegue, con Mercado Pago o en mostrador.';
+    }
+    return 'Paga tu anticipo con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.';
+  }
+
   /// Después de pagar con Mercado Pago: los importes al día.
   Future<void> _recargarEnviado(int pedidoId) async {
     try {
@@ -286,9 +297,7 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
         const SizedBox(height: 16),
         _Nota(
           icono: Icons.storefront_outlined,
-          texto: _esRevendedor
-              ? 'Paga con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.'
-              : 'Paga tu anticipo con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.',
+          texto: _notaDespuesDeEnviar(pedido),
         ),
         // TG-118 / TG-268: pagar el anticipo (o el pedido) desde aquí mismo.
         if (pedido.pagoMercadoPagoDisponible != null) ...[

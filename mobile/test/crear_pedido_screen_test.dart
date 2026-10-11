@@ -41,23 +41,26 @@ http.Response _json(Object cuerpo, int codigo) => http.Response(
 /// El pedido como lo manda PedidoResource. Con [conVale], como queda después
 /// de aplicar un vale que cubre todo (TG-167: cuenta como pago y cubre el
 /// anticipo; "pagado" ya lo incluye).
-Map<String, dynamic> _pedido({bool conVale = false, bool mercadoPago = false}) => {
-  'puede_pagar_anticipo_mercado_pago': mercadoPago && !conVale,
+Map<String, dynamic> _pedido({bool conVale = false, bool mercadoPago = false, bool anticipoPagado = false}) => {
+  'puede_pagar_anticipo_mercado_pago': mercadoPago && !conVale && !anticipoPagado,
   'id': 55,
   'folio': 'PED-20260918-0007',
   'estado': 'colocado',
   'total': 1600.0,
-  'pagado': conVale ? 1600.0 : 0.0,
+  'pagado': conVale ? 1600.0 : (anticipoPagado ? 200.0 : 0.0),
   'pagado_con_vales': conVale ? 1600.0 : 0.0,
-  'saldo': conVale ? 0.0 : 1600.0,
+  'saldo': conVale ? 0.0 : (anticipoPagado ? 1400.0 : 1600.0),
   'anticipo_requerido': 200.0,
-  'anticipo_pagado': conVale ? 200.0 : 0.0,
-  'anticipo_pendiente': conVale ? 0.0 : 200.0,
+  'anticipo_pagado': conVale || anticipoPagado ? 200.0 : 0.0,
+  'anticipo_pendiente': conVale || anticipoPagado ? 0.0 : 200.0,
 };
 
 /// Un servidor falso que anota todo lo que se le pide.
 class _Servidor {
-  _Servidor({this.vales = const [], this.aplicarFalla = false, this.lineaFalla = false, this.mercadoPago = false});
+  _Servidor({this.vales = const [], this.aplicarFalla = false, this.lineaFalla = false, this.mercadoPago = false, this.anticipoPagado = false});
+
+  /// El anticipo ya quedó cubierto (como al regresar de pagarlo).
+  final bool anticipoPagado;
 
   /// TG-118: la distribuidora recibe pagos con Mercado Pago.
   final bool mercadoPago;
@@ -85,7 +88,7 @@ class _Servidor {
       }
       return _json({'data': _pedido()}, 201);
     }
-    if (ruta.endsWith('/pedidos/55/enviar')) return _json({'data': _pedido(mercadoPago: mercadoPago)}, 200);
+    if (ruta.endsWith('/pedidos/55/enviar')) return _json({'data': _pedido(mercadoPago: mercadoPago, anticipoPagado: anticipoPagado)}, 200);
     if (ruta.endsWith('/aplicar')) {
       if (aplicarFalla) {
         return _json({'message': 'El vale está vencido.', 'errors': {'vale': ['El vale está vencido.']}}, 422);
@@ -181,6 +184,15 @@ void main() {
 
     expect(find.text('Pagar anticipo con Mercado Pago'), findsOneWidget);
     expect(find.text('Paga tu anticipo con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.'), findsOneWidget);
+  });
+
+  testWidgets('TG-268: con el anticipo ya pagado, lo dice y no ofrece pagarlo otra vez', (tester) async {
+    await abrir(tester, _Servidor(mercadoPago: true, anticipoPagado: true));
+    await enviar(tester);
+
+    expect(find.text('Anticipo pagado. El resto se paga cuando tu pedido llegue, con Mercado Pago o en mostrador.'), findsOneWidget);
+    expect(find.textContaining('Paga tu anticipo'), findsNothing);
+    expect(find.text('Pagar anticipo con Mercado Pago'), findsNothing);
   });
 
   testWidgets('TG-118: si el servidor no lo permite, no ofrece Mercado Pago', (tester) async {
