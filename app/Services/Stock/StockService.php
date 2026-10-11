@@ -6,14 +6,17 @@ use App\Exceptions\OperacionInvalidaException;
 use App\Models\MovimientoStock;
 use App\Models\StockLocal;
 use App\Models\Variante;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Support\ContextoOperativo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class StockService
 {
-    public function __construct(private ContextoOperativo $contexto)
-    {
+    public function __construct(
+        private ContextoOperativo $contexto,
+        private RegistrarAuditoriaAction $auditoria,
+    ) {
     }
 
     /**
@@ -48,7 +51,10 @@ class StockService
 
             $this->guardarExistencia($stock, $posterior);
 
-            return $this->registrarMovimiento($stock, 'entrada', $cantidad, $anterior, $posterior, $motivo);
+            $movimiento = $this->registrarMovimiento($stock, 'entrada', $cantidad, $anterior, $posterior, $motivo);
+            $this->auditarMovimiento('stock.entrada', $stock, $movimiento);
+
+            return $movimiento;
         });
     }
 
@@ -79,8 +85,34 @@ class StockService
 
             $this->guardarExistencia($stock, $posterior);
 
-            return $this->registrarMovimiento($stock, $tipo, $cantidad, $anterior, $posterior, $motivo);
+            $movimiento = $this->registrarMovimiento($stock, $tipo, $cantidad, $anterior, $posterior, $motivo);
+            $this->auditarMovimiento('stock.ajuste', $stock, $movimiento);
+
+            return $movimiento;
         });
+    }
+
+    /**
+     * TG-267 (U7): la entrada o el ajuste también quedan en la auditoría, con
+     * la existencia antes y después. El descuento por venta de mostrador no
+     * pasa por aquí: lo cubre el registro de la venta.
+     */
+    private function auditarMovimiento(string $accion, StockLocal $stock, MovimientoStock $movimiento): void
+    {
+        $this->auditoria->ejecutar(
+            $accion,
+            'stock_local',
+            (int) $stock->id,
+            ['cantidad_disponible' => (int) $movimiento->existencia_anterior],
+            [
+                'cantidad_disponible' => (int) $movimiento->existencia_posterior,
+                'variante_id'         => (int) $stock->variante_id,
+                'tipo'                => $movimiento->tipo,
+                'cantidad'            => (int) $movimiento->cantidad,
+                'motivo'              => $movimiento->motivo,
+                'movimiento_id'       => (int) $movimiento->id,
+            ],
+        );
     }
 
     /**

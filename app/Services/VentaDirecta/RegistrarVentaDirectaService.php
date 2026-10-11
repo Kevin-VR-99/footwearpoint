@@ -10,6 +10,7 @@ use App\Models\Producto;
 use App\Models\ProductoCampana;
 use App\Models\Talla;
 use App\Models\Variante;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Models\VentaDirecta;
 use App\Models\VentaDirectaDetalle;
@@ -23,6 +24,7 @@ class RegistrarVentaDirectaService
         private ContextoOperativo $contexto,
         private DescuentoStockVentaDirectaService $descuentoStock,
         private PrecioEfectivo $precios,
+        private RegistrarAuditoriaAction $auditoria,
     ) {
     }
 
@@ -112,6 +114,25 @@ class RegistrarVentaDirectaService
 
             // 4) Cobro de contado, dentro de la misma transaccion.
             $pago = $this->registrarPago($venta, $metodoPago, $staffId, $distribuidoraId);
+
+            // TG-267 (U7): un solo registro por venta, con lo que se vendió.
+            // El descuento de stock no se audita aparte: ya va aquí.
+            $this->auditoria->ejecutar('venta_mostrador.registrada', 'venta_directa', (int) $venta->id, null, [
+                'folio'              => $venta->folio,
+                'total'              => (float) $venta->total,
+                'metodo_pago'        => $metodoPago,
+                'cliente_directo_id' => $clienteDirectoId,
+                'productos'          => array_map(fn (VentaDirectaDetalle $detalle) => [
+                    'variante_id'     => (int) $detalle->variante_id,
+                    'producto'        => $detalle->producto_nombre,
+                    'modelo'          => $detalle->modelo,
+                    'talla'           => $detalle->talla,
+                    'color'           => $detalle->color,
+                    'cantidad'        => (int) $detalle->cantidad,
+                    'precio_unitario' => (float) $detalle->precio_unitario,
+                    'subtotal'        => (float) $detalle->subtotal,
+                ], $detalles),
+            ]);
 
             return new ResultadoVentaDirecta($venta, $detalles, $pago);
         });

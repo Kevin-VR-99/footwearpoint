@@ -2,6 +2,7 @@
 
 namespace App\Services\Catalogo;
 
+use App\Services\Auditoria\AuditarCambios;
 use App\Models\ProductoCampana;
 use App\Models\ProductoImagen;
 use Illuminate\Http\UploadedFile;
@@ -10,6 +11,10 @@ use Illuminate\Support\Facades\Storage;
 
 class GestionarImagenProductoCampanaAction
 {
+    public function __construct(private AuditarCambios $auditar)
+    {
+    }
+
     /**
      * DECISIÓN PROVISIONAL MÍA: la tabla producto_imagenes no tiene
      * ninguna regla que impida 2 imágenes "es_principal=true" a la vez
@@ -34,12 +39,15 @@ class GestionarImagenProductoCampanaAction
                 $this->desmarcarPrincipales($productoCampana);
             }
 
-            return ProductoImagen::create([
+            $registro = ProductoImagen::create([
                 'producto_campana_id' => $productoCampana->id,
                 'url'                 => $url,
                 'orden'               => $siguienteOrden,
                 'es_principal'        => $esPrincipal || $esPrimera,
             ]);
+            $this->auditar->creado($registro, 'catalogo.imagen.agregada', 'producto_imagen');
+
+            return $registro;
         });
     }
 
@@ -49,7 +57,7 @@ class GestionarImagenProductoCampanaAction
             $this->desmarcarPrincipales($imagen->productoCampana);
 
             $imagen->es_principal = true;
-            $imagen->save();
+            $this->auditar->guardar($imagen, 'catalogo.imagen.principal', 'producto_imagen');
 
             return $imagen->fresh();
         });
@@ -62,7 +70,10 @@ class GestionarImagenProductoCampanaAction
      */
     public function eliminar(ProductoImagen $imagen): void
     {
-        $imagen->delete();
+        DB::transaction(function () use ($imagen) {
+            $imagen->delete();
+            $this->auditar->eliminado($imagen, 'catalogo.imagen.eliminada', 'producto_imagen');
+        });
     }
 
     private function desmarcarPrincipales(ProductoCampana $productoCampana): void
