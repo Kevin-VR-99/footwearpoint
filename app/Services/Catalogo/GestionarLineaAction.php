@@ -3,6 +3,8 @@
 namespace App\Services\Catalogo;
 
 use App\Services\Auditoria\AuditarCambios;
+use App\Exceptions\OperacionInvalidaException;
+use Illuminate\Support\Facades\DB;
 use App\Models\Linea;
 
 /**
@@ -17,7 +19,10 @@ use App\Models\Linea;
  */
 class GestionarLineaAction
 {
-    public function __construct(private AuditarCambios $auditar)
+    public function __construct(
+        private AuditarCambios $auditar,
+        private DependenciasCatalogo $dependencias,
+    )
     {
     }
 
@@ -53,6 +58,28 @@ class GestionarLineaAction
         }
 
         return $linea->fresh(['marcas', 'campanas']);
+    }
+
+    /**
+     * TG-247: borra la línea solo si no tiene temporadas, ninguna
+     * distribuidora la vende y no tiene importaciones de catálogo.
+     */
+    public function eliminar(Linea $linea): void
+    {
+        $dependencias = $this->dependencias->deLinea($linea);
+
+        if ($dependencias !== []) {
+            throw new OperacionInvalidaException(
+                'No se puede eliminar la línea: tiene ' . $this->dependencias->describir($dependencias)
+                . '. Desactívala en su lugar.'
+            );
+        }
+
+        DB::transaction(function () use ($linea) {
+            $this->auditar->eliminado($linea, 'catalogo.linea.eliminada', 'linea');
+            $linea->marcas()->detach();
+            $linea->delete();
+        });
     }
 
     /** Qué marcas maneja la línea. La tabla puente también es del catálogo. */

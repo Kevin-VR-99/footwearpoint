@@ -5,10 +5,14 @@ namespace App\Services\Catalogo;
 use App\Services\Auditoria\AuditarCambios;
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\Campana;
+use Illuminate\Support\Facades\DB;
 
 class GestionarCampanaAction
 {
-    public function __construct(private AuditarCambios $auditar)
+    public function __construct(
+        private AuditarCambios $auditar,
+        private DependenciasCatalogo $dependencias,
+    )
     {
     }
 
@@ -17,7 +21,7 @@ class GestionarCampanaAction
      * v3. Solo se permite avanzar UN paso a la vez en este orden — no
      * saltar estados ni retroceder.
      */
-    private const ORDEN_ESTADOS = [
+    public const ORDEN_ESTADOS = [
         'borrador',
         'en_importacion',
         'en_revision',
@@ -66,6 +70,28 @@ class GestionarCampanaAction
         $this->auditar->guardar($campana, 'catalogo.temporada.actualizada', 'campana');
 
         return $campana->fresh();
+    }
+
+    /**
+     * TG-247: borra la temporada solo si no tiene productos publicados ni
+     * importaciones. La temporada no tiene campo activo: la alternativa es
+     * avanzarla a finalizada o archivada.
+     */
+    public function eliminar(Campana $campana): void
+    {
+        $dependencias = $this->dependencias->deCampana($campana);
+
+        if ($dependencias !== []) {
+            throw new OperacionInvalidaException(
+                'No se puede eliminar la temporada: tiene ' . $this->dependencias->describir($dependencias)
+                . '. Quita primero sus productos o archívala.'
+            );
+        }
+
+        DB::transaction(function () use ($campana) {
+            $this->auditar->eliminado($campana, 'catalogo.temporada.eliminada', 'campana');
+            $campana->delete();
+        });
     }
 
     private function validarTransicion(string $actual, string $nuevo): void

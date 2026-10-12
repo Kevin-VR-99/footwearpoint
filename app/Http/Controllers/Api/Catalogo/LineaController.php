@@ -7,6 +7,7 @@ use App\Http\Requests\Catalogo\GuardarLineaRequest;
 use App\Http\Resources\Catalogo\LineaResource;
 use App\Models\Linea;
 use App\Services\Catalogo\GestionarLineaAction;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class LineaController extends Controller
@@ -44,5 +45,13 @@ class LineaController extends Controller
         );
 
         return new LineaResource($linea);
+    }
+
+    /** TG-247: si tiene datos que dependen de él responde 409 con el motivo. */
+    public function destroy(Linea $linea, GestionarLineaAction $accion): JsonResponse
+    {
+        $accion->eliminar($linea);
+
+        return response()->json(['data' => null, 'message' => 'Línea eliminada.']);
     }
 }

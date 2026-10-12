@@ -1051,16 +1051,30 @@ Existen en `/api` y están probados, pero los consume el panel web, no la app de
 
 | Ruta | Para qué |
 |---|---|
-| `GET` y `POST /api/lineas`, `PATCH` y `GET /api/lineas/{linea}` | Las líneas (las empresas del catálogo) |
-| `GET` y `POST /api/marcas`, `PATCH` y `GET /api/marcas/{marca}` | Las marcas, que viven dentro de cada línea |
+| `GET` y `POST /api/lineas`, `PATCH`, `GET` y `DELETE /api/lineas/{linea}` | Las líneas (las empresas del catálogo) |
+| `GET` y `POST /api/marcas`, `PATCH`, `GET` y `DELETE /api/marcas/{marca}` | Las marcas, que viven dentro de cada línea |
 | `GET` y `POST /api/categorias-producto`, `PATCH` y `GET /api/categorias-producto/{categoria}` | Las categorías de producto |
-| `GET` y `POST /api/productos`, `PATCH` y `GET /api/productos/{producto}` | Los productos |
+| `GET` y `POST /api/productos`, `PATCH`, `GET` y `DELETE /api/productos/{producto}` | Los productos |
 | `GET` y `POST /api/variantes`, `PATCH` y `GET /api/variantes/{variante}` | Las tallas y colores de cada producto |
-| `GET` y `POST /api/campanas`, `PATCH` y `GET /api/campanas/{campana}` | Las temporadas de cada línea |
+| `GET` y `POST /api/campanas`, `PATCH`, `GET` y `DELETE /api/campanas/{campana}` | Las temporadas de cada línea |
 | `GET` y `POST /api/producto-campana`, `PATCH` y `GET /api/producto-campana/{productoCampana}` | Qué producto se vende en qué temporada, con su precio |
 | `GET` y `POST /api/producto-campana/{productoCampana}/imagenes` | Sus fotos |
 | `DELETE /api/producto-campana/imagenes/{imagen}` y `PATCH /api/producto-campana/imagenes/{imagen}/principal` | Quitar una foto o volverla la principal |
 | `GET` y `POST /api/disponibilidad-variante-campana`, `PATCH` y `GET /api/disponibilidad-variante-campana/{disponibilidadVarianteCampana}` | Qué tallas da la fábrica en esa temporada |
+
+**Borrar del catálogo maestro (TG-247).** `DELETE /api/lineas/{linea}`, `DELETE /api/marcas/{marca}`, `DELETE /api/campanas/{campana}` y `DELETE /api/productos/{producto}`. Solo admin general (otro rol: 403). El borrado es definitivo (no hay papelera), por eso se bloquea si algo depende del registro:
+
+| Qué | Se bloquea si tiene |
+|---|---|
+| Línea | temporadas, distribuidoras que la venden o importaciones de catálogo |
+| Marca | productos |
+| Temporada | productos publicados o importaciones de catálogo |
+| Producto | stock, partidas de pedidos o de ventas de mostrador, precios propios o destacados de alguna distribuidora |
+
+- **Salida (200):** `{ "data": null, "message": "Marca eliminada." }`
+- **Bloqueado (409):** `{ "message": "No se puede eliminar la marca: tiene 12 productos. Desactívala o mueve sus productos a otra marca." }`
+- Al borrar un producto, la base borra con él sus variantes, publicaciones en temporadas, disponibilidad e imágenes (son del catálogo). Nunca se borran pedidos ni stock de distribuidoras.
+- Cada borrado queda en la auditoría (`catalogo.linea.eliminada`, `catalogo.marca.eliminada`, `catalogo.temporada.eliminada`, `catalogo.producto.eliminado`) con los datos que tenía.
 
 **Admin de distribuidora**
 
