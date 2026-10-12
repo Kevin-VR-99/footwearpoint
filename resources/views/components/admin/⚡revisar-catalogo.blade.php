@@ -371,7 +371,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         <form wire:submit="completarEnLote" class="flex flex-wrap items-end gap-3">
             <div>
                 <label class="mb-1 block text-sm font-medium">Campo</label>
-                <select wire:model="campoEnLote" class="rounded-lg border-slate-300 text-sm">
+                <select wire:model="campoEnLote" class="rounded-lg text-sm">
                     @foreach (\App\Services\Ia\CamposDelProductoImportado::RELLENABLES_EN_LOTE as $campo)
                         <option value="{{ $campo }}">{{ $nombresDeCampos[$campo] }}</option>
                     @endforeach
@@ -380,7 +380,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
             <div class="min-w-[14rem] flex-1">
                 <label class="mb-1 block text-sm font-medium">Valor</label>
                 <input type="text" wire:model="valorEnLote" placeholder="Por ejemplo: 8 Days"
-                    class="w-full rounded-lg border-slate-300 text-sm">
+                    class="w-full rounded-lg text-sm">
                 @error('valorEnLote') <p class="mt-1 text-xs text-fp-danger">{{ $message }}</p> @enderror
             </div>
             <x-panel.boton type="submit" tamano="md" wire:loading.attr="disabled">Completar</x-panel.boton>
@@ -404,7 +404,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                             {{ $info['productos'] }} {{ $info['productos'] === 1 ? 'producto' : 'productos' }}
                             · {{ $info['origen'] }}
                         </p>
-                        <select wire:model="coloresBase.{{ $comercial }}" class="w-full rounded-lg border-slate-300 text-sm">
+                        <select wire:model="coloresBase.{{ $comercial }}" class="w-full rounded-lg text-sm">
                             <option value="">Elige un color</option>
                             @foreach ($this->paleta as $color)
                                 <option value="{{ $color->id }}">{{ $color->nombre }}</option>
@@ -435,7 +435,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         <div class="grid gap-4 sm:grid-cols-3">
             <div>
                 <label class="mb-1 block text-sm font-medium">Temporada</label>
-                <select wire:model="campanaId" class="w-full rounded-lg border-slate-300 text-sm">
+                <select wire:model="campanaId" class="w-full rounded-lg text-sm">
                     <option value="">Elige la temporada</option>
                     @foreach ($this->temporadas as $temporada)
                         <option value="{{ $temporada->id }}">{{ $temporada->nombre }}</option>
@@ -446,7 +446,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
 
             <div>
                 <label class="mb-1 block text-sm font-medium">Categoría por omisión</label>
-                <select wire:model="categoriaPorOmision" class="w-full rounded-lg border-slate-300 text-sm">
+                <select wire:model="categoriaPorOmision" class="w-full rounded-lg text-sm">
                     <option value="">Elige la categoría</option>
                     @foreach ($this->categorias as $categoria)
                         <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
@@ -458,7 +458,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
 
             <div>
                 <label class="mb-1 block text-sm font-medium">Marca por omisión</label>
-                <select wire:model="marcaPorOmision" class="w-full rounded-lg border-slate-300 text-sm">
+                <select wire:model="marcaPorOmision" class="w-full rounded-lg text-sm">
                     <option value="">Elige la marca</option>
                     @foreach ($this->marcas as $marca)
                         <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
@@ -609,21 +609,21 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                                     </label>
 
                                     @if ($campo === 'categoria_id')
-                                        <select wire:model="campos.{{ $campo }}" class="w-full rounded-lg border-slate-300 text-sm">
+                                        <select wire:model="campos.{{ $campo }}" class="w-full rounded-lg text-sm">
                                             <option value="">La del lote</option>
                                             @foreach ($this->categorias as $categoria)
                                                 <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
                                             @endforeach
                                         </select>
                                     @elseif ($campo === 'medios_numeros')
-                                        <select wire:model="campos.{{ $campo }}" class="w-full rounded-lg border-slate-300 text-sm">
+                                        <select wire:model="campos.{{ $campo }}" class="w-full rounded-lg text-sm">
                                             <option value="">No se sabe</option>
                                             <option value="1">Sí, hay medias tallas</option>
                                             <option value="0">No, solo enteros</option>
                                         </select>
                                     @else
                                         <input type="text" wire:model="campos.{{ $campo }}"
-                                            class="w-full rounded-lg border-slate-300 text-sm">
+                                            class="w-full rounded-lg text-sm">
                                     @endif
 
                                     @error('campos.'.$campo) <p class="mt-1 text-xs text-fp-danger">{{ $message }}</p> @enderror

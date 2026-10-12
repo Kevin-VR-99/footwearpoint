@@ -321,28 +321,28 @@ new class extends Component {
             </h2>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                <input type="text" wire:model="cliente_nombre" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                <input type="text" wire:model="cliente_nombre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 @error('cliente_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                    <input type="text" wire:model="cliente_telefono" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                    <input type="text" wire:model="cliente_telefono" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
                     @if ($cliente_cuenta_email_actual !== null)
                         <input type="email" value="{{ $cliente_cuenta_email_actual }}" disabled
-                            class="w-full rounded-lg border-slate-200 bg-slate-100 text-sm text-slate-500 shadow-sm">
+                            class="w-full rounded-lg bg-slate-100 text-sm text-slate-500 shadow-sm">
                         <p class="mt-1 text-xs text-fp-text-muted">Es su correo para entrar a la app.</p>
                     @else
-                        <input type="email" wire:model="cliente_email" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                        <input type="email" wire:model="cliente_email" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                     @endif
                 </div>
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Dirección de contacto</label>
-                <input type="text" wire:model="cliente_direccion_contacto" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                <input type="text" wire:model="cliente_direccion_contacto" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
             {{-- E3-07 (TG-133): cuenta para entrar a la app móvil --}}
             <div class="border-t border-slate-200 pt-4">
@@ -358,17 +358,17 @@ new class extends Component {
                     <div class="grid grid-cols-2 gap-4">
                         <div class="col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Correo para entrar a la app</label>
-                            <input type="email" wire:model="cliente_acceso_email" autocomplete="off" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                            <input type="email" wire:model="cliente_acceso_email" autocomplete="off" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                             @error('cliente_acceso_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-                            <input type="password" wire:model="cliente_acceso_password" autocomplete="new-password" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                            <input type="password" wire:model="cliente_acceso_password" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                             @error('cliente_acceso_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-                            <input type="password" wire:model="cliente_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                            <input type="password" wire:model="cliente_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         </div>
                     </div>
                 @endif
@@ -376,7 +376,7 @@ new class extends Component {
             @if ($clienteEditandoId)
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
-                    <select wire:model="cliente_estado" class="w-full rounded-md border-slate-300 max-w-xs">
+                    <select wire:model="cliente_estado" class="w-full rounded-md max-w-xs">
                         <option value="activo">Activo</option>
                         <option value="inactivo">Inactivo</option>
                     </select>

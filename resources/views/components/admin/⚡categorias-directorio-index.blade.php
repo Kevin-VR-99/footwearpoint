@@ -160,11 +160,11 @@ new #[Layout('layouts.admin')] #[Title('Categorías del directorio — Admin')] 
                     <input id="nombre-categoria" type="text" wire:model="nombre"
                         maxlength="{{ \App\Models\CategoriaDirectorio::LARGO_MAXIMO_NOMBRE }}"
                         placeholder="Por ejemplo: Calzado infantil"
-                        class="w-full rounded-lg border-slate-300">
+                        class="w-full rounded-lg">
                     @error('nombre') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
                 <label class="flex items-center gap-2 text-sm">
-                    <input type="checkbox" wire:model="activa" class="rounded border-slate-300 text-fp-primary">
+                    <input type="checkbox" wire:model="activa" class="rounded text-fp-primary">
                     Activa (se muestra en el marketplace)
                 </label>
                 <div class="flex gap-2">

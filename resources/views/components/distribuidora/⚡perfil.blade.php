@@ -111,31 +111,31 @@ new class extends Component {
         class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 space-y-4 max-w-2xl">
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Nombre Comercial</label>
-            <input type="text" wire:model="nombre_comercial" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+            <input type="text" wire:model="nombre_comercial" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             @error('nombre_comercial') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
         </div>
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
-            <textarea wire:model="descripcion_publica" rows="3" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary"></textarea>
+            <textarea wire:model="descripcion_publica" rows="3" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary"></textarea>
         </div>
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Dirección</label>
-            <input type="text" wire:model="direccion_publica" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+            <input type="text" wire:model="direccion_publica" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             <p class="mt-1 text-xs text-slate-500">Escribe calle, número, colonia y ciudad: con ella se muestra el mapa de tu tienda.</p>
         </div>
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                <input type="text" wire:model="telefono_publico" placeholder="+52 55 1234 5678" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                <input type="text" wire:model="telefono_publico" placeholder="+52 55 1234 5678" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-                <input type="email" wire:model="email_publico" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                <input type="email" wire:model="email_publico" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
         </div>
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Horario</label>
-            <input type="text" wire:model="horario_publico" placeholder="Lunes a sábado, 9:00 a 19:00" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+            <input type="text" wire:model="horario_publico" placeholder="Lunes a sábado, 9:00 a 19:00" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
         </div>
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Logotipo</label>
@@ -171,7 +171,7 @@ new class extends Component {
             <label class="block text-sm font-medium text-slate-700 mb-1">Subdominio de tu tienda</label>
             <div class="flex items-center gap-2">
                 <input type="text" wire:model="subdominio" maxlength="63" autocomplete="off"
-                    class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                    class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 @if (DominioTienda::base())
                     <span class="shrink-0 text-sm text-fp-text-muted">.{{ DominioTienda::base() }}</span>
                 @endif

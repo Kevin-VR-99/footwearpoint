@@ -123,35 +123,35 @@ new #[Layout('layouts.guest')] #[Title('Registrar empleado — FootwearPoint')] 
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
             <input type="text" wire:model="nombre"
-                   class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600">
+                   class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600">
             @error('nombre') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
         </div>
 
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
             <input type="email" wire:model="email"
-                   class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600">
+                   class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600">
             @error('email') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
         </div>
 
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
             <input type="text" wire:model="telefono"
-                   class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600">
+                   class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600">
             @error('telefono') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
         </div>
 
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
             <input type="password" wire:model="password"
-                   class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600">
+                   class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600">
             @error('password') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
         </div>
 
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
             <input type="password" wire:model="password_confirmation"
-                   class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600">
+                   class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600">
         </div>
 
         <button type="submit"

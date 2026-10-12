@@ -85,7 +85,7 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
         <div class="rounded-lg border border-slate-200 overflow-hidden">
             <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer">
                 <input type="checkbox" wire:model="aviso"
-                       class="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-600">
+                       class="mt-1 rounded text-blue-600 focus:ring-blue-600">
                 <span class="text-sm text-slate-700">
                     Acepto el <strong>Aviso de privacidad</strong> (versión 1.0)
                 </span>
@@ -109,7 +109,7 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
         <div class="rounded-lg border border-slate-200 overflow-hidden">
             <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer">
                 <input type="checkbox" wire:model="terminos"
-                       class="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-600">
+                       class="mt-1 rounded text-blue-600 focus:ring-blue-600">
                 <span class="text-sm text-slate-700">
                     Acepto los <strong>Términos y condiciones</strong> (versión 1.0)
                 </span>

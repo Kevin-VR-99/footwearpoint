@@ -18,11 +18,11 @@
             <label class="mb-1 block text-xs text-fp-text-muted">Buscar</label>
             <input type="search" wire:model.live.debounce.300ms="buscar"
                 placeholder="Usuario, acción, IP…"
-                class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary" />
+                class="w-full rounded-lg text-sm focus:ring-fp-primary" />
         </div>
         <div>
             <label class="mb-1 block text-xs text-fp-text-muted">Área</label>
-            <select wire:model.live="filtro_area" class="rounded-lg border-slate-300 text-sm">
+            <select wire:model.live="filtro_area" class="rounded-lg text-sm">
                 <option value="">Todas</option>
                 @foreach ($areas as $area)
                     <option value="{{ $area }}">{{ $area }}</option>
@@ -31,7 +31,7 @@
         </div>
         <div>
             <label class="mb-1 block text-xs text-fp-text-muted">Acción</label>
-            <select wire:model.live="filtro_accion" class="rounded-lg border-slate-300 text-sm">
+            <select wire:model.live="filtro_accion" class="rounded-lg text-sm">
                 <option value="">Todas</option>
                 @foreach ($acciones as $accion)
                     <option value="{{ $accion }}">{{ EtiquetasAuditoria::etiqueta($accion) }}</option>
@@ -40,7 +40,7 @@
         </div>
         <div>
             <label class="mb-1 block text-xs text-fp-text-muted">Entidad</label>
-            <select wire:model.live="filtro_entidad" class="rounded-lg border-slate-300 text-sm">
+            <select wire:model.live="filtro_entidad" class="rounded-lg text-sm">
                 <option value="">Todas</option>
                 @foreach ($entidades as $entidad)
                     <option value="{{ $entidad }}">{{ $entidad }}</option>
@@ -49,7 +49,7 @@
         </div>
         <div>
             <label class="mb-1 block text-xs text-fp-text-muted">Usuario</label>
-            <select wire:model.live="filtro_usuario" class="rounded-lg border-slate-300 text-sm">
+            <select wire:model.live="filtro_usuario" class="rounded-lg text-sm">
                 <option value="">Todos</option>
                 @foreach ($usuarios as $usuario)
                     <option value="{{ $usuario->id }}">{{ $usuario->nombreVisible() ?: $usuario->email }}</option>
@@ -58,11 +58,11 @@
         </div>
         <div>
             <label class="mb-1 block text-xs text-fp-text-muted">Desde</label>
-            <input type="date" wire:model.live="filtro_desde" class="rounded-lg border-slate-300 text-sm" />
+            <input type="date" wire:model.live="filtro_desde" class="rounded-lg text-sm" />
         </div>
         <div>
             <label class="mb-1 block text-xs text-fp-text-muted">Hasta</label>
-            <input type="date" wire:model.live="filtro_hasta" class="rounded-lg border-slate-300 text-sm" />
+            <input type="date" wire:model.live="filtro_hasta" class="rounded-lg text-sm" />
         </div>
         <x-panel.boton variante="secundario" wire:click="limpiarFiltros">Limpiar</x-panel.boton>
     </div>

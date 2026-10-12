@@ -143,7 +143,7 @@ new class extends Component {
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Día de cierre</label>
-                    <select wire:model="ciclo_dia_cierre" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                    <select wire:model="ciclo_dia_cierre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @foreach ($diasSemanaNombres as $numero => $nombre)
                             <option value="{{ $numero }}">{{ $nombre }}</option>
                         @endforeach
@@ -151,11 +151,11 @@ new class extends Component {
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Hora de cierre</label>
-                    <input type="time" wire:model="ciclo_hora_cierre" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                    <input type="time" wire:model="ciclo_hora_cierre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Día de solicitud a fábrica</label>
-                    <select wire:model="ciclo_dia_solicitud_fabrica" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                    <select wire:model="ciclo_dia_solicitud_fabrica" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @foreach ($diasSemanaNombres as $numero => $nombre)
                             <option value="{{ $numero }}">{{ $nombre }}</option>
                         @endforeach
@@ -163,7 +163,7 @@ new class extends Component {
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Días estimados de llegada</label>
-                    <input type="number" wire:model="ciclo_dias_estimados_llegada" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                    <input type="number" wire:model="ciclo_dias_estimados_llegada" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 </div>
             </div>
             <div>
@@ -171,14 +171,14 @@ new class extends Component {
                 <div class="flex gap-3 flex-wrap">
                     @foreach ($diasSemanaNombres as $numero => $nombre)
                         <label class="flex items-center gap-1.5 text-sm">
-                            <input type="checkbox" wire:model="ciclo_dias_recepcion" value="{{ $numero }}" class="rounded border-slate-300">
+                            <input type="checkbox" wire:model="ciclo_dias_recepcion" value="{{ $numero }}" class="rounded">
                             {{ $nombre }}
                         </label>
                     @endforeach
                 </div>
             </div>
             <label class="flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" wire:model="ciclo_activa" class="rounded border-slate-300">
+                <input type="checkbox" wire:model="ciclo_activa" class="rounded">
                 Marcar como configuración activa
             </label>
             <div class="flex gap-2">

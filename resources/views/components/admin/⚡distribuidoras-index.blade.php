@@ -710,7 +710,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium mb-1">Nombre comercial *</label>
                     <input type="text" wire:model.live="nuevo_nombre_comercial"
-                        class="w-full rounded-lg border-slate-300 text-sm">
+                        class="w-full rounded-lg text-sm">
                     @error('nuevo_nombre_comercial')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
@@ -718,18 +718,18 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 <div>
                     <label class="block text-sm font-medium mb-1">Razón social</label>
                     <input type="text" wire:model="nuevo_razon_social"
-                        class="w-full rounded-lg border-slate-300 text-sm">
+                        class="w-full rounded-lg text-sm">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">RFC</label>
-                    <input type="text" wire:model="nuevo_rfc" class="w-full rounded-lg border-slate-300 text-sm">
+                    <input type="text" wire:model="nuevo_rfc" class="w-full rounded-lg text-sm">
                     @error('nuevo_rfc')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Slug * (URL interna)</label>
-                    <input type="text" wire:model="nuevo_slug" class="w-full rounded-lg border-slate-300 text-sm">
+                    <input type="text" wire:model="nuevo_slug" class="w-full rounded-lg text-sm">
                     @error('nuevo_slug')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
@@ -737,7 +737,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 <div>
                     <label class="block text-sm font-medium mb-1">Subdominio</label>
                     <input type="text" wire:model="nuevo_subdominio"
-                        class="w-full rounded-lg border-slate-300 text-sm" placeholder="calzados-ejemplo">
+                        class="w-full rounded-lg text-sm" placeholder="calzados-ejemplo">
                     @error('nuevo_subdominio')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
@@ -745,36 +745,36 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 <div>
                     <label class="block text-sm font-medium mb-1">Email público</label>
                     <input type="email" wire:model="nuevo_email_publico"
-                        class="w-full rounded-lg border-slate-300 text-sm">
+                        class="w-full rounded-lg text-sm">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Teléfono público</label>
                     <input type="text" wire:model="nuevo_telefono_publico"
-                        class="w-full rounded-lg border-slate-300 text-sm">
+                        class="w-full rounded-lg text-sm">
                 </div>
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium mb-1">Dirección pública</label>
                     <input type="text" wire:model="nuevo_direccion_publica"
-                        class="w-full rounded-lg border-slate-300 text-sm">
+                        class="w-full rounded-lg text-sm">
                 </div>
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium mb-1">Descripción pública</label>
-                    <textarea wire:model="nuevo_descripcion_publica" rows="2" class="w-full rounded-lg border-slate-300 text-sm"></textarea>
+                    <textarea wire:model="nuevo_descripcion_publica" rows="2" class="w-full rounded-lg text-sm"></textarea>
                 </div>
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium mb-1">Horario público</label>
                     <input type="text" wire:model="nuevo_horario_publico"
-                        class="w-full rounded-lg border-slate-300 text-sm" placeholder="Lunes a sábado 9:00–19:00">
+                        class="w-full rounded-lg text-sm" placeholder="Lunes a sábado 9:00–19:00">
                 </div>
             </div>
 
             <div class="flex flex-wrap gap-4 text-sm">
                 <label class="flex items-center gap-2">
-                    <input type="checkbox" wire:model="nuevo_activar_ya" class="rounded border-slate-300">
+                    <input type="checkbox" wire:model="nuevo_activar_ya" class="rounded">
                     Activar de inmediato (si no, queda pendiente)
                 </label>
                 <label class="flex items-center gap-2">
-                    <input type="checkbox" wire:model="nuevo_marketplace_visible" class="rounded border-slate-300">
+                    <input type="checkbox" wire:model="nuevo_marketplace_visible" class="rounded">
                     Visible en marketplace
                 </label>
             </div>
@@ -785,7 +785,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <div>
                         <label class="block text-sm font-medium mb-1">Nombre *</label>
                         <input type="text" wire:model="admin_nombre"
-                            class="w-full rounded-lg border-slate-300 text-sm">
+                            class="w-full rounded-lg text-sm">
                         @error('admin_nombre')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
@@ -793,7 +793,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <div>
                         <label class="block text-sm font-medium mb-1">Email login *</label>
                         <input type="email" wire:model="admin_email"
-                            class="w-full rounded-lg border-slate-300 text-sm">
+                            class="w-full rounded-lg text-sm">
                         @error('admin_email')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
@@ -801,7 +801,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <div>
                         <label class="block text-sm font-medium mb-1">Contraseña * (mínimo 8)</label>
                         <input type="password" wire:model="admin_password"
-                            class="w-full rounded-lg border-slate-300 text-sm">
+                            class="w-full rounded-lg text-sm">
                         @error('admin_password')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
@@ -828,7 +828,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             <form wire:submit="guardarSuscripcion" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Plan</label>
-                    <select wire:model="plan_id" class="w-full rounded-lg border-slate-300">
+                    <select wire:model="plan_id" class="w-full rounded-lg">
                         <option value="">Selecciona un plan</option>
                         @foreach ($this->planesActivos as $plan)
                             <option value="{{ $plan->id }}">
@@ -845,7 +845,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 <div>
                     <label class="block text-sm font-medium mb-1">Líneas extra</label>
                     <input type="number" min="0" wire:model="lineas_extra_contratadas"
-                        class="w-full rounded-lg border-slate-300">
+                        class="w-full rounded-lg">
                     @error('lineas_extra_contratadas')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
@@ -854,7 +854,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 <div>
                     <label class="block text-sm font-medium mb-1">Meses</label>
                     <input type="number" min="1" max="24" wire:model="meses"
-                        class="w-full rounded-lg border-slate-300">
+                        class="w-full rounded-lg">
                     @error('meses')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
@@ -862,7 +862,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
                 <div class="flex items-center gap-2 pt-6">
                     <input type="checkbox" wire:model="renovacion_automatica"
-                        class="rounded border-slate-300 text-fp-primary">
+                        class="rounded text-fp-primary">
                     <span class="text-sm">Renovación automática</span>
                 </div>
 
@@ -968,7 +968,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         @foreach ($this->categoriasDisponibles as $categoria)
                             <label class="flex items-center gap-2 text-sm">
                                 <input type="checkbox" wire:model="categoriasSeleccionadas" value="{{ $categoria->id }}"
-                                    class="rounded border-slate-300">
+                                    class="rounded">
                                 {{ $categoria->nombre }}
                             </label>
                         @endforeach
@@ -1018,70 +1018,70 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="md:col-span-2">
                         <label for="editar_nombre_comercial" class="block text-sm font-medium mb-1">Nombre comercial *</label>
-                        <input id="editar_nombre_comercial" type="text" wire:model="editar_nombre_comercial" class="w-full rounded-lg border-slate-300 text-sm">
+                        <input id="editar_nombre_comercial" type="text" wire:model="editar_nombre_comercial" class="w-full rounded-lg text-sm">
                         @error('editar_nombre_comercial')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
                         <label for="editar_razon_social" class="block text-sm font-medium mb-1">Razón social</label>
-                        <input id="editar_razon_social" type="text" wire:model="editar_razon_social" class="w-full rounded-lg border-slate-300 text-sm">
+                        <input id="editar_razon_social" type="text" wire:model="editar_razon_social" class="w-full rounded-lg text-sm">
                         @error('editar_razon_social')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
                         <label for="editar_rfc" class="block text-sm font-medium mb-1">RFC</label>
-                        <input id="editar_rfc" type="text" wire:model="editar_rfc" class="w-full rounded-lg border-slate-300 text-sm">
+                        <input id="editar_rfc" type="text" wire:model="editar_rfc" class="w-full rounded-lg text-sm">
                         @error('editar_rfc')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
                         <label for="editar_slug" class="block text-sm font-medium mb-1">Slug * (URL interna)</label>
-                        <input id="editar_slug" type="text" wire:model="editar_slug" class="w-full rounded-lg border-slate-300 text-sm">
+                        <input id="editar_slug" type="text" wire:model="editar_slug" class="w-full rounded-lg text-sm">
                         @error('editar_slug')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
                         <label for="editar_subdominio" class="block text-sm font-medium mb-1">Subdominio</label>
-                        <input id="editar_subdominio" type="text" wire:model="editar_subdominio" class="w-full rounded-lg border-slate-300 text-sm">
+                        <input id="editar_subdominio" type="text" wire:model="editar_subdominio" class="w-full rounded-lg text-sm">
                         @error('editar_subdominio')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
                         <label for="editar_email_publico" class="block text-sm font-medium mb-1">Email público</label>
-                        <input id="editar_email_publico" type="email" wire:model="editar_email_publico" class="w-full rounded-lg border-slate-300 text-sm">
+                        <input id="editar_email_publico" type="email" wire:model="editar_email_publico" class="w-full rounded-lg text-sm">
                         @error('editar_email_publico')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
                         <label for="editar_telefono_publico" class="block text-sm font-medium mb-1">Teléfono público</label>
-                        <input id="editar_telefono_publico" type="text" wire:model="editar_telefono_publico" class="w-full rounded-lg border-slate-300 text-sm">
+                        <input id="editar_telefono_publico" type="text" wire:model="editar_telefono_publico" class="w-full rounded-lg text-sm">
                         @error('editar_telefono_publico')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div class="md:col-span-2">
                         <label for="editar_direccion_publica" class="block text-sm font-medium mb-1">Dirección pública</label>
-                        <input id="editar_direccion_publica" type="text" wire:model="editar_direccion_publica" class="w-full rounded-lg border-slate-300 text-sm">
+                        <input id="editar_direccion_publica" type="text" wire:model="editar_direccion_publica" class="w-full rounded-lg text-sm">
                         @error('editar_direccion_publica')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div class="md:col-span-2">
                         <label for="editar_descripcion_publica" class="block text-sm font-medium mb-1">Descripción pública</label>
-                        <textarea id="editar_descripcion_publica" wire:model="editar_descripcion_publica" rows="2" class="w-full rounded-lg border-slate-300 text-sm"></textarea>
+                        <textarea id="editar_descripcion_publica" wire:model="editar_descripcion_publica" rows="2" class="w-full rounded-lg text-sm"></textarea>
                         @error('editar_descripcion_publica')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div class="md:col-span-2">
                         <label for="editar_horario_publico" class="block text-sm font-medium mb-1">Horario público</label>
-                        <input id="editar_horario_publico" type="text" wire:model="editar_horario_publico" class="w-full rounded-lg border-slate-300 text-sm">
+                        <input id="editar_horario_publico" type="text" wire:model="editar_horario_publico" class="w-full rounded-lg text-sm">
                         @error('editar_horario_publico')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
@@ -1094,28 +1094,28 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label for="editar_admin_nombre" class="block text-sm font-medium mb-1">Nombre *</label>
-                                <input id="editar_admin_nombre" type="text" wire:model="editar_admin_nombre" class="w-full rounded-lg border-slate-300 text-sm">
+                                <input id="editar_admin_nombre" type="text" wire:model="editar_admin_nombre" class="w-full rounded-lg text-sm">
                                 @error('editar_admin_nombre')
                                     <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
                             <div>
                                 <label for="editar_admin_email" class="block text-sm font-medium mb-1">Correo *</label>
-                                <input id="editar_admin_email" type="email" wire:model="editar_admin_email" class="w-full rounded-lg border-slate-300 text-sm">
+                                <input id="editar_admin_email" type="email" wire:model="editar_admin_email" class="w-full rounded-lg text-sm">
                                 @error('editar_admin_email')
                                     <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
                             <div>
                                 <label for="editar_admin_password" class="block text-sm font-medium mb-1">Nueva contraseña</label>
-                                <input id="editar_admin_password" type="password" wire:model="editar_admin_password" autocomplete="new-password" class="w-full rounded-lg border-slate-300 text-sm">
+                                <input id="editar_admin_password" type="password" wire:model="editar_admin_password" autocomplete="new-password" class="w-full rounded-lg text-sm">
                                 @error('editar_admin_password')
                                     <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
                             <div>
                                 <label for="editar_admin_password_confirmation" class="block text-sm font-medium mb-1">Confirmar nueva contraseña</label>
-                                <input id="editar_admin_password_confirmation" type="password" wire:model="editar_admin_password_confirmation" autocomplete="new-password" class="w-full rounded-lg border-slate-300 text-sm">
+                                <input id="editar_admin_password_confirmation" type="password" wire:model="editar_admin_password_confirmation" autocomplete="new-password" class="w-full rounded-lg text-sm">
                                 @error('editar_admin_password_confirmation')
                                     <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                                 @enderror
@@ -1156,7 +1156,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <textarea id="motivo_rechazo" wire:model="motivo_rechazo" rows="4"
                         maxlength="{{ \App\Services\Distribuidora\RechazarDistribuidoraAction::LARGO_MAXIMO_MOTIVO }}"
                         x-on:input="largo = $el.value.length"
-                        class="w-full rounded-lg border-slate-300 text-sm"
+                        class="w-full rounded-lg text-sm"
                         placeholder="Por ejemplo: el RFC no coincide con la razón social."></textarea>
                     <div class="flex justify-between mt-1">
                         <div>

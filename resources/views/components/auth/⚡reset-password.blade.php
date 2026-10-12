@@ -68,7 +68,7 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
             <input
                 type="email"
                 wire:model="email"
-                class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600"
+                class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600"
                 placeholder="correo@ejemplo.com"
             >
             @error('email')
@@ -81,7 +81,7 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
             <input
                 type="password"
                 wire:model="password"
-                class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600"
+                class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600"
                 placeholder="Mínimo 8 caracteres"
             >
             @error('password')
@@ -94,7 +94,7 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
             <input
                 type="password"
                 wire:model="password_confirmation"
-                class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600"
+                class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600"
                 placeholder="Repite la contraseña"
             >
         </div>

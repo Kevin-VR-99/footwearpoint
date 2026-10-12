@@ -164,7 +164,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Variante</label>
                     <select wire:model="entrada_variante_id"
-                            class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
+                            class="w-full rounded-lg text-sm focus:ring-fp-primary">
                         <option value="">— Seleccionar variante —</option>
                         @foreach ($this->variantes as $variante)
                             <option value="{{ $variante->id }}">{{ $variante->sku }}</option>
@@ -176,7 +176,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Cantidad</label>
                     <input type="number" min="1" step="1" wire:model="entrada_cantidad"
-                           class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
+                           class="w-full rounded-lg text-sm focus:ring-fp-primary"
                            placeholder="10">
                     @error('entrada_cantidad') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
@@ -184,7 +184,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional)</label>
                     <input type="text" maxlength="300" wire:model="entrada_motivo"
-                           class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
+                           class="w-full rounded-lg text-sm focus:ring-fp-primary"
                            placeholder="Ej. compra a fábrica">
                 </div>
 
@@ -203,7 +203,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Variante</label>
                     <select wire:model="ajuste_variante_id"
-                            class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
+                            class="w-full rounded-lg text-sm focus:ring-fp-primary">
                         <option value="">— Seleccionar variante —</option>
                         @foreach ($this->variantes as $variante)
                             <option value="{{ $variante->id }}">{{ $variante->sku }}</option>
@@ -216,7 +216,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Tipo</label>
                         <select wire:model="ajuste_tipo"
-                                class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
+                                class="w-full rounded-lg text-sm focus:ring-fp-primary">
                             <option value="ajuste_negativo">Descontar</option>
                             <option value="ajuste_positivo">Agregar</option>
                         </select>
@@ -224,7 +224,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Cantidad</label>
                         <input type="number" min="1" step="1" wire:model="ajuste_cantidad"
-                               class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
+                               class="w-full rounded-lg text-sm focus:ring-fp-primary"
                                placeholder="1">
                         @error('ajuste_cantidad') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                     </div>
@@ -233,7 +233,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Motivo</label>
                     <input type="text" maxlength="300" wire:model="ajuste_motivo"
-                           class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
+                           class="w-full rounded-lg text-sm focus:ring-fp-primary"
                            placeholder="Ej. merma, corrección de conteo">
                     @error('ajuste_motivo') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
@@ -251,7 +251,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Existencias</h3>
             <input type="search" wire:model.live.debounce.300ms="busqueda"
-                   class="rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
+                   class="rounded-lg text-sm focus:ring-fp-primary"
                    placeholder="Buscar por SKU…">
         </div>
 

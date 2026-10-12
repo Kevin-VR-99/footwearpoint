@@ -208,7 +208,7 @@ new class extends Component {
             </div>
             <input type="search" wire:model.live.debounce.400ms="busqueda" maxlength="100"
                 placeholder="Buscar por nombre, modelo, código o marca" aria-label="Buscar productos"
-                class="w-full md:w-80 rounded-lg border-slate-300 text-sm">
+                class="w-full md:w-80 rounded-lg text-sm">
         </div>
 
         @if ($lineas->count() > 1)
