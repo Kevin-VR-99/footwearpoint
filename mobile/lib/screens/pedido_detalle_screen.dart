@@ -5,6 +5,7 @@ import '../models/estado_pedido.dart';
 import '../models/pedido_resumen.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../services/cambio_service.dart';
 import '../services/pedido_service.dart';
 import '../tema/fp_colores.dart';
 import 'producto_detalle_screen.dart';
@@ -25,6 +26,7 @@ class PedidoDetalleScreen extends StatefulWidget {
 
 class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
   late final _pedidos = PedidoService(context.read<AuthProvider>().api);
+  late final _cambios = CambioService(context.read<AuthProvider>().api);
 
   PedidoResumen? _pedido;
   bool _cargando = true;
@@ -52,6 +54,25 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
         _error = e.codigoHttp == 404 ? 'No encontramos ese pedido.' : e.mensaje;
         _cargando = false;
       });
+    }
+  }
+
+  /// TG-254: pide el motivo y envía la solicitud de cambio de esa línea.
+  Future<void> _solicitarCambio(LineaPedido linea) async {
+    final motivo = await showDialog<String>(
+      context: context,
+      builder: (_) => _DialogoCambio(producto: linea.productoNombre),
+    );
+    if (motivo == null || !mounted) return;
+
+    try {
+      final mensaje = await _cambios.solicitar(pedidoDetalleId: linea.id!, motivo: motivo);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
+      await _cargar();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.mensaje)));
     }
   }
 
@@ -146,6 +167,32 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
               ),
             ),
           ),
+        // TG-254: cambio de producto dentro del plazo (lo decide el servidor).
+        if (pedido.lineas.any((l) => l.cambio != null && (l.cambio!.puedeSolicitar || l.cambio!.tieneSolicitud))) ...[
+          const SizedBox(height: 4),
+          const FpTituloSeccion('Cambios'),
+          for (final linea in pedido.lineas)
+            if (linea.cambio != null && linea.id != null && (linea.cambio!.puedeSolicitar || linea.cambio!.tieneSolicitud))
+              Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: const FpIconoCuadro(icono: Icons.swap_horiz, tamano: 36),
+                  title: Text(linea.productoNombre),
+                  subtitle: Text(
+                    linea.cambio!.tieneSolicitud
+                        ? linea.cambio!.estadoParaMostrar
+                        : 'Puedes pedir cambio hasta el ${linea.cambio!.fechaLimiteTexto ?? ''}',
+                  ),
+                  trailing: linea.cambio!.puedeSolicitar
+                      ? TextButton(onPressed: () => _solicitarCambio(linea), child: const Text('Solicitar cambio'))
+                      : null,
+                ),
+              ),
+          Text(
+            'El cambio se entrega como vale; no hay devoluciones en efectivo.',
+            style: tema.textTheme.bodySmall?.copyWith(color: FpColores.textoTenue),
+          ),
+        ],
         const SizedBox(height: 12),
 
         // Pagos
@@ -254,6 +301,64 @@ class _Fila extends StatelessWidget {
           Text(valor, style: estilo),
         ],
       ),
+    );
+  }
+}
+
+
+/// TG-254: pide el motivo del cambio (obligatorio, hasta 300 caracteres).
+class _DialogoCambio extends StatefulWidget {
+  const _DialogoCambio({required this.producto});
+
+  final String producto;
+
+  @override
+  State<_DialogoCambio> createState() => _DialogoCambioState();
+}
+
+class _DialogoCambioState extends State<_DialogoCambio> {
+  final _motivo = TextEditingController();
+  String? _error;
+
+  @override
+  void dispose() {
+    _motivo.dispose();
+    super.dispose();
+  }
+
+  void _enviar() {
+    final texto = _motivo.text.trim();
+    if (texto.isEmpty) {
+      setState(() => _error = 'Escribe el motivo del cambio.');
+      return;
+    }
+    Navigator.of(context).pop(texto);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Solicitar cambio'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.producto, style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('motivo_cambio'),
+            controller: _motivo,
+            maxLength: 300,
+            maxLines: 3,
+            decoration: InputDecoration(labelText: 'Motivo', errorText: _error),
+          ),
+          const Text('Si se autoriza, recibirás un vale. No hay devoluciones en efectivo.'),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
+        FilledButton(onPressed: _enviar, child: const Text('Enviar')),
+      ],
     );
   }
 }
