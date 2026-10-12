@@ -51,12 +51,18 @@ class SolicitarAltaTest extends TestCase
     }
 
     /**
-     * El formulario lleno y listo para enviar. El tiempo de llenado se finge
-     * hacia atrás, porque una prueba llena todo al instante.
+     * El formulario lleno y listo para enviar.
+     *
+     * El reloj se adelanta después de montarlo, porque una prueba lo llena al
+     * instante y el formulario pide un tiempo mínimo de llenado. No se puede
+     * poner 'iniciado_en' a mano: es #[Locked], justo para que el navegador
+     * tampoco pueda.
      */
-    private function formulario(array $cambios = [])
+    private function formulario(array $cambios = [], int $segundosLlenando = 30)
     {
         $componente = Livewire::test('publico.solicitar-alta');
+
+        $this->travel($segundosLlenando)->seconds();
 
         $valores = array_merge([
             'nombre_comercial' => self::NOMBRE,
@@ -71,7 +77,6 @@ class SolicitarAltaTest extends TestCase
             'admin_password' => 'clave-segura-1',
             'admin_password_confirmation' => 'clave-segura-1',
             'acepta_legales' => true,
-            'iniciado_en' => now()->timestamp - 30,
         ], $cambios);
 
         foreach ($valores as $campo => $valor) {
@@ -107,9 +112,10 @@ class SolicitarAltaTest extends TestCase
 
     public function test_sin_datos_no_crea_nada_y_pide_lo_obligatorio(): void
     {
-        Livewire::test('publico.solicitar-alta')
-            ->set('iniciado_en', now()->timestamp - 30)
-            ->call('enviar')
+        $componente = Livewire::test('publico.solicitar-alta');
+        $this->travel(30)->seconds();
+
+        $componente->call('enviar')
             ->assertHasErrors(['nombre_comercial', 'plan_id', 'admin_nombre', 'admin_email', 'admin_password', 'acepta_legales']);
 
         $this->assertNull($this->distribuidoraCreada());
@@ -281,7 +287,7 @@ class SolicitarAltaTest extends TestCase
 
     public function test_llenarlo_demasiado_rapido_no_crea_nada(): void
     {
-        $this->formulario(['iniciado_en' => now()->timestamp])
+        $this->formulario(segundosLlenando: 0)
             ->call('enviar')
             ->assertHasNoErrors()
             ->assertSet('enviada', true);
@@ -311,5 +317,80 @@ class SolicitarAltaTest extends TestCase
         config(['footwearpoint.solicitudes_alta.por_hora_por_ip' => 9]);
 
         $this->assertSame(9, app(LimiteSolicitudesAlta::class)->tope());
+    }
+
+    /**
+     * El primer límite solo cuenta lo que se guardó, así que sin este segundo
+     * se podrían probar correos sin tope para ver quién ya está registrado:
+     * la validación dice "Ese correo ya tiene una cuenta en FootwearPoint".
+     */
+    public function test_los_intentos_fallidos_tambien_cuentan_para_el_limite(): void
+    {
+        config(['footwearpoint.solicitudes_alta.intentos_por_ip' => 3]);
+
+        // Tres intentos que NO guardan nada: el correo ya existe.
+        for ($i = 0; $i < 3; $i++) {
+            $this->formulario(['admin_email' => 'admin@calzadosramirez.test'])
+                ->call('enviar')
+                ->assertHasErrors('admin_email');
+        }
+
+        $this->assertNull($this->distribuidoraCreada());
+
+        // El cuarto ya no llega ni a validar: mismo mensaje neutro.
+        $this->formulario()
+            ->call('enviar')
+            ->assertHasNoErrors()
+            ->assertSet('enviada', false)
+            ->assertSee('Ya recibimos varias solicitudes desde aquí');
+
+        $this->assertNull($this->distribuidoraCreada());
+    }
+
+    public function test_el_tope_de_intentos_es_configurable(): void
+    {
+        config(['footwearpoint.solicitudes_alta.intentos_por_ip' => 25]);
+
+        $this->assertSame(25, app(LimiteSolicitudesAlta::class)->topeDeIntentos());
+    }
+
+    // ------------------------------------------------------------------
+    // 5. Lo que no se queda en el estado del componente
+    // ------------------------------------------------------------------
+
+    public function test_la_contrasena_no_se_queda_al_guardar(): void
+    {
+        $this->formulario()
+            ->call('enviar')
+            ->assertHasNoErrors()
+            ->assertSet('admin_password', '')
+            ->assertSet('admin_password_confirmation', '');
+
+        $this->assertNotNull($this->distribuidoraCreada());
+    }
+
+    public function test_la_contrasena_tampoco_se_queda_cuando_falla(): void
+    {
+        $this->formulario(['admin_email' => 'admin@calzadosramirez.test'])
+            ->call('enviar')
+            ->assertHasErrors('admin_email')
+            ->assertSet('admin_password', '')
+            ->assertSet('admin_password_confirmation', '');
+    }
+
+    public function test_el_navegador_no_puede_cambiar_el_tiempo_de_llenado(): void
+    {
+        // iniciado_en es #[Locked]: Livewire rechaza el intento. Sin eso, un
+        // cliente se saltaría el tiempo mínimo mandándolo hacia atrás.
+        $this->expectException(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+
+        Livewire::test('publico.solicitar-alta')->set('iniciado_en', now()->timestamp - 9999);
+    }
+
+    public function test_el_navegador_no_puede_ponerse_la_pantalla_de_confirmacion(): void
+    {
+        $this->expectException(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+
+        Livewire::test('publico.solicitar-alta')->set('enviada', true);
     }
 }

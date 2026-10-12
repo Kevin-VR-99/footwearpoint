@@ -11,6 +11,7 @@ use App\Support\MensajeError;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -57,10 +58,23 @@ class extends Component
     /** Campo trampa: una persona no lo ve, un robot lo llena. */
     public string $sitio_web = '';
 
-    /** Cuando se abrio el formulario, para medir el tiempo de llenado. */
+    /**
+     * Cuando se abrio el formulario, para medir el tiempo de llenado.
+     *
+     * Locked: la pone el servidor en mount(). Sin esto, el navegador la puede
+     * mandar con cualquier valor en la peticion de Livewire y saltarse el
+     * tiempo minimo, que es justo la defensa que mide.
+     */
+    #[Locked]
     public int $iniciado_en = 0;
 
-    /** Ya se envio: se muestra la pantalla de confirmacion. */
+    /**
+     * Ya se envio: se muestra la pantalla de confirmacion.
+     *
+     * Locked: solo la cambia el servidor al terminar. Nadie deberia poder
+     * ponerse la pantalla de "recibimos tu solicitud" desde el navegador.
+     */
+    #[Locked]
     public bool $enviada = false;
 
     public string $avisoLimite = '';
@@ -87,10 +101,26 @@ class extends Component
 
         if ($limite->bloqueado($ip)) {
             $this->avisoLimite = $limite->mensaje($limite->minutosRestantes($ip));
+            $this->olvidarPassword();
 
             return;
         }
 
+        // Este SÍ cuenta aunque el envío termine mal: es lo que impide probar
+        // correos uno por uno para averiguar quién ya está registrado.
+        $limite->registrarIntento($ip);
+
+        // Pase lo que pase, la contraseña no se queda en el estado del
+        // componente, que viaja al navegador en cada ida y vuelta.
+        try {
+            $this->procesar($limite, $ip);
+        } finally {
+            $this->olvidarPassword();
+        }
+    }
+
+    private function procesar(LimiteSolicitudesAlta $limite, ?string $ip): void
+    {
         // El RFC se normaliza antes de validar, para revisar formato y
         // unicidad sobre lo mismo que se va a guardar.
         $this->rfc = CrearDistribuidoraAction::normalizarRfc($this->rfc) ?? '';
@@ -118,6 +148,12 @@ class extends Component
 
         $limite->registrar($ip);
         $this->enviada = true;
+    }
+
+    private function olvidarPassword(): void
+    {
+        $this->admin_password = '';
+        $this->admin_password_confirmation = '';
     }
 
     private function guardar(array $datos, ?string $ip): void
