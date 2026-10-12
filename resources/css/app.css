@@ -30,3 +30,21 @@
     --color-fp-badge-danger-bg: #FEE2E2;
     --color-fp-badge-danger-fg: #991B1B;
 }
+/* TG-234: entrada al hacer scroll en la página de inicio. */
+[data-revelar] {
+    opacity: 0;
+    transform: translateY(1.25rem);
+    transition: opacity .6s ease-out, transform .6s ease-out;
+    transition-delay: var(--retraso, 0ms);
+}
+[data-revelar].revelado {
+    opacity: 1;
+    transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+    [data-revelar] {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
