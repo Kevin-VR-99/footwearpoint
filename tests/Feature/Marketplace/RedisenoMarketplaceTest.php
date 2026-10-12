@@ -59,6 +59,22 @@ class RedisenoMarketplaceTest extends TestCase
         $this->assertStringContainsString('Marketplace público', $menu);
     }
 
+    public function test_auditoria_aparece_solo_en_el_menu_de_usuario_del_admin(): void
+    {
+        $admin = Usuario::where('email', AdminGeneralSeeder::EMAIL)->firstOrFail();
+
+        $html = $this->actingAs($admin)->get(route('admin.dashboard'))->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, 'Auditoría'));
+        $inicio = strpos($html, 'data-admin-sidebar');
+        $nav = substr($html, $inicio, strpos($html, '</aside>') - $inicio);
+        $this->assertStringNotContainsString('Auditoría', $nav);
+        $this->assertStringNotContainsString(route('admin.auditoria'), $nav);
+        $menu = substr($html, strpos($html, 'data-menu-usuario'));
+        $this->assertStringContainsString('data-menu-auditoria', $menu);
+        $this->assertStringContainsString('href="'.route('admin.auditoria').'"', $menu);
+    }
+
     public function test_el_admin_general_tiene_barra_lateral_plegable(): void
     {
         $admin = Usuario::where('email', AdminGeneralSeeder::EMAIL)->firstOrFail();
@@ -74,7 +90,7 @@ class RedisenoMarketplaceTest extends TestCase
             ->assertSee('aria-label="Cerrar menú"', false);
 
         $html = $this->get(route('admin.dashboard'))->getContent();
-        $this->assertSame(6, substr_count($html, 'data-enlace-lateral'));
+        $this->assertSame(5, substr_count($html, 'data-enlace-lateral'));
         $this->assertStringContainsString('aria-current="page"', $html);
         $this->assertStringContainsString('group-hover:bg-white/15', $html);
     }

@@ -52,8 +52,6 @@
                     icono="M7 7h.01M3 12l9-9h7a2 2 0 012 2v7l-9 9-9-9z">Categorías del directorio</x-panel.enlace-lateral>
                 <x-panel.enlace-lateral :href="route('admin.catalogos')" :activo="request()->routeIs('admin.catalogos')"
                     icono="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16">Catálogos para importar</x-panel.enlace-lateral>
-                <x-panel.enlace-lateral :href="route('admin.auditoria')" :activo="request()->routeIs('admin.auditoria')"
-                    icono="M9 12l2 2 4-4M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z">Auditoría</x-panel.enlace-lateral>
             </nav>
 
             <div class="border-t border-white/10 px-4 py-3">
@@ -90,6 +88,16 @@
                         <a href="{{ route('marketplace') }}" target="_blank" rel="noopener"
                             class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-fp-page"
                             role="menuitem">Marketplace público</a>
+                        <a href="{{ route('admin.auditoria') }}"
+                            class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium transition hover:bg-fp-page {{ request()->routeIs('admin.auditoria') ? 'bg-fp-page text-fp-primary' : 'text-slate-700' }}"
+                            role="menuitem" data-menu-auditoria @if (request()->routeIs('admin.auditoria')) aria-current="page" @endif>
+                            <svg class="h-4 w-4 text-fp-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="1.8" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 12l2 2 4-4M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z" />
+                            </svg>
+                            Auditoría
+                        </a>
                     </x-panel.menu-usuario>
                 </div>
             </header>
