@@ -110,6 +110,39 @@
         box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-fp-danger) 25%, transparent);
     }
 
+    /* Archivos: caja con borde punteado y botón con la paleta. */
+    :where(input[type='file']) {
+        display: block;
+        width: 100%;
+        max-width: 28rem;
+        border: 1px dashed var(--color-slate-300);
+        border-radius: var(--radius-lg);
+        background-color: #fff;
+        padding: 0.375rem;
+        font-size: 0.875rem;
+        color: var(--color-fp-text-muted);
+        cursor: pointer;
+        transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    :where(input[type='file']):hover {
+        border-color: color-mix(in oklab, var(--color-fp-primary) 60%, white);
+    }
+    :where(input[type='file']):focus-visible {
+        outline: none;
+        border-color: var(--color-fp-primary);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-fp-primary) 25%, transparent);
+    }
+    :where(input[type='file'])::file-selector-button {
+        margin-right: 0.75rem;
+        border: 0;
+        border-radius: var(--radius-md);
+        background-color: color-mix(in oklab, var(--color-fp-primary) 12%, white);
+        padding: 0.375rem 0.75rem;
+        font-weight: 600;
+        color: var(--color-fp-primary);
+        cursor: pointer;
+    }
+
     /* Buscador (x-ui.buscador). */
     .fp-buscador {
         position: relative;

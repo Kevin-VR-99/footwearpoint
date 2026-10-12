@@ -121,8 +121,8 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         <p class="text-sm font-medium text-slate-800">Cambio de una venta de mostrador</p>
         <p class="text-xs text-slate-500">Los cambios de pedidos se piden desde el detalle del pedido o desde la app del cliente.</p>
         <form wire:submit="buscarVenta" class="mt-3 flex gap-2">
-            <input type="text" wire:model="folioVenta" placeholder="Folio de la venta (VD-...)" class="w-64 rounded-lg text-sm">
-            <button type="submit" class="rounded-lg border border-fp-primary px-3 text-sm text-fp-primary">Buscar</button>
+            <x-ui.buscador wire:model="folioVenta" placeholder="Buscar por folio de la venta (VD-…)" etiqueta="Buscar venta por folio" class="w-full sm:w-80" />
+            <button type="submit" class="rounded-xl bg-fp-primary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-fp-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40">Buscar</button>
         </form>
 
         @if ($this->venta)
