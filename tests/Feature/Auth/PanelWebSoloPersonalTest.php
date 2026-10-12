@@ -207,4 +207,64 @@ class PanelWebSoloPersonalTest extends TestCase
 
         $this->assertGuest();
     }
+
+    // ---------------------------------------------------------------
+    // TG-243: al empleado desactivado se le dice que su cuenta esta
+    // desactivada, no que entre por la app como si fuera cliente.
+    // ---------------------------------------------------------------
+
+    private function desactivarEmpleadoDemo(): Usuario
+    {
+        $usuario = Usuario::where('email', 'empleado@calzadosramirez.test')->firstOrFail();
+
+        Tenant::forzar($this->distribuidora()->id, fn () => \App\Models\DistribuidoraStaff::query()
+            ->where('usuario_id', $usuario->id)
+            ->update(['estado' => 'inactivo']));
+
+        return $usuario;
+    }
+
+    public function test_el_empleado_desactivado_ve_que_su_cuenta_esta_desactivada_al_iniciar_sesion(): void
+    {
+        $this->desactivarEmpleadoDemo();
+
+        $errores = Livewire::test('auth.login')
+            ->set('email', 'empleado@calzadosramirez.test')
+            ->set('password', 'password')
+            ->call('login')
+            ->errors()
+            ->get('email');
+
+        $this->assertContains(AccesoPanelWebService::MENSAJE_CUENTA_DESACTIVADA, $errores);
+        $this->assertNotContains(AccesoPanelWebService::MENSAJE_SOLO_PERSONAL, $errores);
+        $this->assertStringContainsString('desactivada', AccesoPanelWebService::MENSAJE_CUENTA_DESACTIVADA);
+        $this->assertStringContainsString('administrador de tu distribuidora', AccesoPanelWebService::MENSAJE_CUENTA_DESACTIVADA);
+        $this->assertGuest();
+    }
+
+    public function test_al_empleado_desactivado_con_sesion_abierta_se_le_saca_con_el_mensaje_de_cuenta_desactivada(): void
+    {
+        $usuario = $this->desactivarEmpleadoDemo();
+
+        $this->actingAs($usuario)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('aviso_acceso', AccesoPanelWebService::MENSAJE_CUENTA_DESACTIVADA);
+
+        $this->assertGuest();
+
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee(AccesoPanelWebService::MENSAJE_CUENTA_DESACTIVADA)
+            ->assertDontSee(AccesoPanelWebService::MENSAJE_SOLO_PERSONAL);
+    }
+
+    public function test_el_revendedor_expulsado_sigue_viendo_que_entre_por_la_app(): void
+    {
+        $usuario = $this->crearRevendedor();
+
+        $this->actingAs($usuario)
+            ->get(route('dashboard'))
+            ->assertSessionHas('aviso_acceso', AccesoPanelWebService::MENSAJE_SOLO_PERSONAL);
+    }
 }
