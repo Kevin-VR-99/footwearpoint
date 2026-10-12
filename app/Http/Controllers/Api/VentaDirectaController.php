@@ -24,6 +24,7 @@ class VentaDirectaController extends Controller
             $request->input('lineas'),
             $request->string('metodo_pago')->toString(),
             $request->filled('cliente_directo_id') ? $request->integer('cliente_directo_id') : null,
+            $request->filled('vale_folio') ? $request->string('vale_folio')->toString() : null,
         );
 
         return (new VentaDirectaResource($resultado))
