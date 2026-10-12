@@ -12,6 +12,8 @@ use App\Models\Talla;
 use App\Models\Variante;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Catalogo\PrecioEfectivo;
+use App\Services\Vale\AplicarValeAction;
+use App\Services\Vale\BuscarValeParaAplicarAction;
 use App\Models\VentaDirecta;
 use App\Models\VentaDirectaDetalle;
 use App\Support\ContextoOperativo;
@@ -25,22 +27,42 @@ class RegistrarVentaDirectaService
         private DescuentoStockVentaDirectaService $descuentoStock,
         private PrecioEfectivo $precios,
         private RegistrarAuditoriaAction $auditoria,
+        private BuscarValeParaAplicarAction $buscarVale,
+        private AplicarValeAction $aplicarVale,
     ) {
     }
 
     /**
      * @param array<int, array{variante_id:int, producto_campana_id:int, cantidad:int}> $lineas
      * @param string $metodoPago valor del enum pagos.metodo
+     * @param string|null $valeFolio TG-250: folio de un vale de cliente directo para descontar del total
      */
-    public function registrar(array $lineas, string $metodoPago, ?int $clienteDirectoId = null): ResultadoVentaDirecta
+    public function registrar(array $lineas, string $metodoPago, ?int $clienteDirectoId = null, ?string $valeFolio = null): ResultadoVentaDirecta
     {
-        return DB::transaction(function () use ($lineas, $metodoPago, $clienteDirectoId) {
+        return DB::transaction(function () use ($lineas, $metodoPago, $clienteDirectoId, $valeFolio) {
             $distribuidoraId = $this->contexto->distribuidoraId();
             $sucursalId = (int) $this->contexto->sucursalPrincipal()->id;
             $staffId = (int) $this->contexto->staff()->id;
 
             if ($clienteDirectoId !== null) {
                 $this->verificarClienteDelTenant($clienteDirectoId, $distribuidoraId);
+            }
+
+            // TG-250: el vale se busca (y bloquea) antes de escribir nada.
+            // Solo vales de clientes directos; si la venta va sin cliente,
+            // queda a nombre del dueño del vale (decisión del PO).
+            $vale = null;
+            if ($valeFolio !== null && trim($valeFolio) !== '') {
+                $vale = $this->buscarVale->ejecutar($valeFolio, bloquear: true);
+
+                if ($clienteDirectoId === null) {
+                    $clienteDirectoId = (int) $vale->cliente_directo_id;
+                } elseif ((int) $vale->cliente_directo_id !== $clienteDirectoId) {
+                    throw new OperacionInvalidaException(
+                        'El vale '.$vale->folio.' es de otro cliente. Elige a su dueño o quita el vale.',
+                        422
+                    );
+                }
             }
 
             // 1) Resolver precios y BLOQUEAR todo el stock antes de escribir nada.
@@ -112,16 +134,36 @@ class RegistrarVentaDirectaService
                 $detalles[] = $detalle;
             }
 
-            // 4) Cobro de contado, dentro de la misma transaccion.
-            $pago = $this->registrarPago($venta, $metodoPago, $staffId, $distribuidoraId);
+            // 4) TG-250: el vale cubre hasta donde alcance su saldo; lo que
+            //    sobra se queda en el vale (AplicarValeAction).
+            $montoVale = 0.0;
+            if ($vale !== null) {
+                $montoVale = round(min((float) $vale->saldo_actual, $total), 2);
+                $saldoAntes = (float) $vale->saldo_actual;
+                $vale = $this->aplicarVale->ejecutar($vale, [
+                    'monto' => $montoVale,
+                    'venta_directa_id' => $venta->id,
+                ]);
+                $montoVale = round($saldoAntes - (float) $vale->saldo_actual, 2);
+            }
+
+            // 5) Cobro de contado de lo que falta, dentro de la misma transaccion.
+            //    Si el vale cubrió todo, no hay pago (pagos.monto debe ser > 0).
+            $porCobrar = round($total - $montoVale, 2);
+            $pago = $porCobrar > 0
+                ? $this->registrarPago($venta, $metodoPago, $staffId, $distribuidoraId, $porCobrar)
+                : null;
 
             // TG-267 (U7): un solo registro por venta, con lo que se vendió.
             // El descuento de stock no se audita aparte: ya va aquí.
             $this->auditoria->ejecutar('venta_mostrador.registrada', 'venta_directa', (int) $venta->id, null, [
                 'folio'              => $venta->folio,
                 'total'              => (float) $venta->total,
-                'metodo_pago'        => $metodoPago,
+                'metodo_pago'        => $pago !== null ? $metodoPago : null,
                 'cliente_directo_id' => $clienteDirectoId,
+                'vale_folio'         => $vale?->folio,
+                'monto_vale'         => $montoVale,
+                'monto_cobrado'      => $porCobrar,
                 'productos'          => array_map(fn (VentaDirectaDetalle $detalle) => [
                     'variante_id'     => (int) $detalle->variante_id,
                     'producto'        => $detalle->producto_nombre,
@@ -134,7 +176,7 @@ class RegistrarVentaDirectaService
                 ], $detalles),
             ]);
 
-            return new ResultadoVentaDirecta($venta, $detalles, $pago);
+            return new ResultadoVentaDirecta($venta, $detalles, $pago, $vale, $montoVale);
         });
     }
 
@@ -147,7 +189,8 @@ class RegistrarVentaDirectaService
         VentaDirecta $venta,
         string $metodoPago,
         int $staffId,
-        int $distribuidoraId
+        int $distribuidoraId,
+        float $monto
     ): Pago {
         $pago = new Pago();
         $pago->timestamps = false; // la tabla no tiene updated_at
@@ -159,7 +202,7 @@ class RegistrarVentaDirectaService
             'tipo' => 'venta_directa',
             'direccion' => 'entrada',
             'metodo' => $metodoPago,
-            'monto' => (float) $venta->total,
+            'monto' => $monto, // TG-250: total menos lo que cubrió el vale
             'fecha_pago' => now(),
             'referencia' => null,          // pendiente: el empleado captura referencia?
             'proveedor_pago' => null,      // solo aplicaria con Mercado Pago real (fuera de alcance)

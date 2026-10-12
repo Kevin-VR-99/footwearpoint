@@ -50,7 +50,18 @@ class VentaDirectaResource extends JsonResource
                 'iva' => round($total - $baseGravable, 2),
             ],
 
-            'pago' => [
+            // TG-250: lo que cubrió el vale y lo que se cobró con dinero.
+            'vale' => $this->vale !== null ? [
+                'id' => $this->vale->id,
+                'folio' => $this->vale->folio,
+                'monto_aplicado' => (float) $this->montoVale,
+                'saldo_restante' => (float) $this->vale->saldo_actual,
+                'estado' => $this->vale->estado,
+            ] : null,
+            'por_cobrar' => $this->porCobrar(),
+
+            // null cuando el vale cubrió todo el total.
+            'pago' => $pago === null ? null : [
                 'id' => $pago->id,
                 'folio' => $pago->folio,
                 'tipo' => $pago->tipo,

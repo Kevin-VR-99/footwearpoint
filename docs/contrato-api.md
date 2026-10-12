@@ -541,6 +541,56 @@ Si el monto pedido es mayor al saldo, se aplica el saldo disponible, no truena.
 **Errores (422):** el vale no está activo, no tiene saldo, está vencido, o no pertenece al mismo dueño que el pedido.
 **Error (404):** el vale es de otra persona.
 
+### POST `/api/ventas-directas` — venta de mostrador, con vale opcional (TG-250)
+
+Roles: `admin_distribuidora`, `empleado`. La venta es de contado y descuenta la existencia de inmediato.
+
+**Entrada**
+
+```json
+{
+  "metodo_pago": "efectivo",
+  "cliente_directo_id": 12,
+  "vale_folio": "VAL-0005",
+  "lineas": [
+    { "variante_id": 40, "producto_campana_id": 7, "cantidad": 1 }
+  ]
+}
+```
+
+- `metodo_pago`: `efectivo`, `transferencia`, `tarjeta`, `mercado_pago` u `otro`. Se pide siempre, aunque el vale cubra todo (en ese caso no se usa).
+- `cliente_directo_id` (opcional).
+- `vale_folio` (opcional, TG-250): folio de un vale **de cliente directo** de la misma distribuidora (sin distinguir mayúsculas).
+  - Se descuenta hasta donde alcance su saldo. Si la compra cuesta más, se cobra la diferencia con `metodo_pago`; si cuesta menos, el saldo restante se queda en el mismo vale.
+  - Si no se manda `cliente_directo_id`, la venta queda a nombre del dueño del vale.
+  - Todo es una sola operación: si algo falla (existencia, vale), no se guarda la venta ni se toca el vale.
+
+**Salida (201)**
+
+```json
+{
+  "data": {
+    "id": 31, "folio": "VD-2026-000031", "cliente_directo_id": 12,
+    "subtotal": 899.0, "descuento": 0.0, "total": 899.0,
+    "desglose_iva": { "base_gravable": 775.0, "iva": 124.0, "etiqueta_base": "Base gravable", "etiqueta_iva": "IVA (16%)" },
+    "vale": { "id": 5, "folio": "VAL-0005", "monto_aplicado": 300.0, "saldo_restante": 0.0, "estado": "agotado" },
+    "por_cobrar": 599.0,
+    "pago": { "id": 80, "folio": "PG-2026-000080", "metodo": "efectivo", "monto": 599.0, "estado": "aplicado" },
+    "lineas": [ ]
+  },
+  "message": "Venta directa registrada."
+}
+```
+
+- `vale` es `null` si no se mandó vale.
+- `pago` es `null` cuando el vale cubrió todo el total (`por_cobrar` = 0).
+
+**Errores (422)** con `message` listo para mostrar:
+- `No existe un vale con el folio X.` (tampoco si es de otra distribuidora)
+- `El vale X está vencido.` · `El vale X ya no tiene saldo.` · `El vale X no está activo.`
+- `El vale X es de un cliente mayorista; en el punto de venta solo se aceptan vales de clientes directos.`
+- `El vale X es de otro cliente. Elige a su dueño o quita el vale.`
+
 ---
 
 ## 6. Notificaciones (bandeja dentro de la app)

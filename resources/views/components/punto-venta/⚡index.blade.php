@@ -1,6 +1,5 @@
 <?php
 
-use App\Exceptions\OperacionInvalidaException;
 use App\Models\ClienteDirecto;
 use App\Models\Color;
 use App\Models\ProductoCampana;
@@ -8,7 +7,9 @@ use App\Services\Catalogo\CatalogoVisible;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Models\StockLocal;
 use App\Models\Talla;
+use App\Services\Vale\BuscarValeParaAplicarAction;
 use App\Services\VentaDirecta\RegistrarVentaDirectaService;
+use App\Support\MensajeError;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -23,6 +24,10 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
     public string $busqueda = '';
     public string $cliente_directo_id = '';
     public string $metodo_pago = 'efectivo';
+
+    /** TG-250: folio que escribe el empleado y vale ya validado (solo para mostrar). */
+    public string $valeFolio = '';
+    public ?array $vale = null;
 
     /**
      * Carrito en memoria. El precio se guarda solo para mostrarlo: el que se
@@ -151,6 +156,53 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
         return round(collect($this->lineas)->sum(fn ($l) => $l['precio'] * $l['cantidad']), 2);
     }
 
+    /** TG-250: lo que cubre el vale (hasta su saldo). Solo para mostrar. */
+    public function getMontoValeProperty(): float
+    {
+        return $this->vale === null ? 0.0 : round(min((float) $this->vale['saldo'], $this->total), 2);
+    }
+
+    public function getPorCobrarProperty(): float
+    {
+        return round($this->total - $this->montoVale, 2);
+    }
+
+    public function aplicarVale(BuscarValeParaAplicarAction $buscar): void
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $vale = $buscar->ejecutar($this->valeFolio);
+
+            if ($this->cliente_directo_id !== '' && (int) $this->cliente_directo_id !== (int) $vale->cliente_directo_id) {
+                $this->errorMsg = 'El vale '.$vale->folio.' es de otro cliente. Elige a su dueño o quita el vale.';
+
+                return;
+            }
+
+            $this->vale = [
+                'folio' => (string) $vale->folio,
+                'saldo' => (float) $vale->saldo_actual,
+                'vence' => $vale->fecha_vencimiento?->format('d/m/Y'),
+                'cliente' => (string) ($vale->clienteDirecto?->nombre ?? ''),
+            ];
+            $this->valeFolio = (string) $vale->folio;
+            // La venta queda a nombre del dueño del vale (decisión del PO).
+            $this->cliente_directo_id = (string) $vale->cliente_directo_id;
+        } catch (\Throwable $e) {
+            $this->vale = null;
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo revisar el vale.');
+        }
+    }
+
+    public function quitarVale(): void
+    {
+        $this->vale = null;
+        $this->valeFolio = '';
+        $this->errorMsg = '';
+    }
+
     /**
      * Desglose SOLO para mostrar. No corresponde a ninguna columna:
      * ventas_directas.subtotal ya incluye IVA.
@@ -246,6 +298,8 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
         $this->lineas = [];
         $this->cliente_directo_id = '';
         $this->metodo_pago = 'efectivo';
+        $this->vale = null;
+        $this->valeFolio = '';
         $this->mensaje = '';
         $this->aviso = '';
         $this->errorMsg = '';
@@ -306,22 +360,29 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                 $lineasParaServicio,
                 $this->metodo_pago,
                 $this->cliente_directo_id !== '' ? (int) $this->cliente_directo_id : null,
+                $this->vale['folio'] ?? null,
             );
 
             // Se arma el mensaje ANTES de limpiar y se reasigna después:
             // limpiar() borra mensaje, aviso y errorMsg.
             $confirmacion = 'Venta ' . $resultado->venta->folio . ' registrada por $'
-                . number_format((float) $resultado->venta->total, 2)
-                . '. Pago ' . $resultado->pago->folio . ' (' . $resultado->pago->metodo . ').';
+                . number_format((float) $resultado->venta->total, 2) . '.';
+
+            if ($resultado->vale !== null) {
+                $confirmacion .= ' Vale ' . $resultado->vale->folio . ': -$' . number_format($resultado->montoVale, 2)
+                    . ' (le quedan $' . number_format((float) $resultado->vale->saldo_actual, 2) . ').';
+            }
+
+            $confirmacion .= $resultado->pago !== null
+                ? ' Pago ' . $resultado->pago->folio . ' (' . $resultado->pago->metodo . ') por $' . number_format((float) $resultado->pago->monto, 2) . '.'
+                : ' Pagado con vale.';
 
             $this->limpiar();
             $this->mensaje = $confirmacion;
             $this->ultimaVentaId = (int) $resultado->venta->id;
-        } catch (OperacionInvalidaException $e) {
-            $this->errorMsg = $e->getMessage();
         } catch (\Throwable $e) {
-            report($e); // TG-224 (G3): el detalle va al log.
-            $this->errorMsg = 'No se pudo registrar la venta. Revisa las existencias e intenta de nuevo.';
+            // TG-224 (G3): MensajeError deja el detalle técnico en el log.
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar la venta. Revisa las existencias e intenta de nuevo.');
         }
     }
 };
@@ -481,9 +542,41 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                         <span>Total</span>
                         <span>${{ number_format($this->total, 2) }}</span>
                     </div>
+                    @if ($vale)
+                        <div class="flex justify-between text-emerald-700">
+                            <span>Vale {{ $vale['folio'] }}</span>
+                            <span>&minus;${{ number_format($this->montoVale, 2) }}</span>
+                        </div>
+                        <div class="flex justify-between text-base font-bold text-slate-900">
+                            <span>Por cobrar</span>
+                            <span>${{ number_format($this->porCobrar, 2) }}</span>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="mt-5 space-y-4">
+                    {{-- TG-250: vale de cliente directo por folio. --}}
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Vale (opcional)</label>
+                        @if ($vale)
+                            <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+                                <p class="font-medium">{{ $vale['folio'] }} · saldo ${{ number_format($vale['saldo'], 2) }}</p>
+                                <p class="text-xs">{{ $vale['cliente'] }}@if ($vale['vence']) · vence {{ $vale['vence'] }}@endif</p>
+                                @if ($vale['saldo'] > $this->total)
+                                    <p class="text-xs">Le quedarán ${{ number_format($vale['saldo'] - $this->montoVale, 2) }} en el vale.</p>
+                                @endif
+                                <button type="button" wire:click="quitarVale" class="mt-1 text-xs text-slate-600 underline">Quitar vale</button>
+                            </div>
+                        @else
+                            <div class="flex gap-2">
+                                <input type="text" wire:model="valeFolio" wire:keydown.enter="aplicarVale" placeholder="Folio del vale"
+                                       class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
+                                <button type="button" wire:click="aplicarVale" class="rounded-lg border border-fp-primary px-3 text-sm text-fp-primary">Aplicar</button>
+                            </div>
+                        @endif
+                    </div>
+
+                    @if ($this->porCobrar > 0)
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Método de pago</label>
                         <select wire:model="metodo_pago"
@@ -495,10 +588,11 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                         </select>
                         @error('metodo_pago') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
+                    @endif
 
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Cliente (opcional)</label>
-                        <select wire:model="cliente_directo_id"
+                        <select wire:model="cliente_directo_id" @disabled($vale)
                                 class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
                             <option value="">— Venta de mostrador —</option>
                             @foreach ($this->clientes as $cliente)
@@ -510,7 +604,11 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     <button type="button" wire:click="cobrar" wire:loading.attr="disabled"
                             class="w-full rounded-lg bg-fp-primary text-white px-4 py-2.5 text-sm font-medium hover:bg-fp-primary/90 disabled:opacity-50">
                         <span wire:loading.remove wire:target="cobrar">
-                            Cobrar ${{ number_format($this->total, 2) }}
+                            @if ($this->porCobrar > 0)
+                                Cobrar ${{ number_format($this->porCobrar, 2) }}
+                            @else
+                                Registrar venta pagada con vale
+                            @endif
                         </span>
                         <span wire:loading wire:target="cobrar">Registrando…</span>
                     </button>
