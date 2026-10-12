@@ -9,6 +9,9 @@
     <p>
         El catálogo (líneas, marcas, temporadas, productos y precios de catálogo) lo administra FootwearPoint
         y es el mismo para todas las distribuidoras. Aquí lo puedes consultar.
-        Lo tuyo —qué líneas vendes, tu precio de mayoreo y qué productos ocultas— se configura en tus propias pantallas.
+        Lo tuyo —qué líneas vendes, tu precio de mayoreo y qué productos ocultas— se configura en tus propias pantallas:
+        @if (Route::has('catalogo.precios') && auth()->user()?->hasRole('admin_distribuidora'))
+            <a href="{{ route('catalogo.precios') }}" class="font-medium underline">Precios y publicación</a>.
+        @endif
     </p>
 </x-panel.alerta>

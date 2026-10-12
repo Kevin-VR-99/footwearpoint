@@ -27,15 +27,25 @@ class CatalogoVisible
     /** La consulta base de productos de temporada que esta distribuidora vende. */
     public function consulta(): Builder
     {
+        return $this->consultaIncluyendoOcultos()
+            ->whereNotIn(
+                'producto_campana.id',
+                OfertaDistribuidora::query()->where('publicado', false)->select('producto_campana_id')
+            );
+    }
+
+    /**
+     * TG-249: lo mismo, pero sin quitar lo que la distribuidora ocultó. Solo
+     * para sus propias pantallas de configuración, donde tiene que poder ver
+     * lo oculto para volver a mostrarlo. Nunca para lo que ven sus clientes.
+     */
+    public function consultaIncluyendoOcultos(): Builder
+    {
         return ProductoCampana::query()
             ->where('activo', true)
             ->whereHas('campana', fn (Builder $campana) => $campana
                 ->where('estado', 'activa')
                 ->whereIn('linea_id', DistribuidoraLinea::query()->vigentes()->select('linea_id'))
-            )
-            ->whereNotIn(
-                'producto_campana.id',
-                OfertaDistribuidora::query()->where('publicado', false)->select('producto_campana_id')
             );
     }
 

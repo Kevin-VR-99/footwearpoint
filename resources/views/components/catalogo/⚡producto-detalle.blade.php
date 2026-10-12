@@ -168,6 +168,9 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
                 Tu distribuidora no vende este producto porque no está en una temporada activa.
             @else
                 Tu distribuidora no vende este producto porque lo tiene oculto.
+                @if (auth()->user()?->hasRole('admin_distribuidora'))
+                    <a href="{{ route('catalogo.precios', ['filtro' => 'ocultos']) }}" class="font-medium underline">Vuelve a mostrarlo en Precios y publicación</a>.
+                @endif
             @endif
         </x-panel.alerta>
 
