@@ -231,7 +231,7 @@ class PreciosYPublicacionPantallaTest extends TestCase
 
     public function test_el_catalogo_maestro_del_admin_general_conserva_sus_botones(): void
     {
-        $this->actingAs(Usuario::where('email', 'admin.general@footwearpoint.test')->firstOrFail());
+        $this->actingAs(Usuario::where('email', \Database\Seeders\AdminGeneralSeeder::EMAIL)->firstOrFail());
         Tenant::olvidarCache();
 
         $this->get(route('admin.catalogo'))

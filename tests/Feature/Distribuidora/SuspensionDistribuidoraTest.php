@@ -321,7 +321,7 @@ class SuspensionDistribuidoraTest extends TestCase
         $this->suspender();
 
         Livewire::test('auth.login')
-            ->set('email', 'admin.general@footwearpoint.test')
+            ->set('email', \Database\Seeders\AdminGeneralSeeder::EMAIL)
             ->set('password', 'password')
             ->call('login')
             ->assertHasNoErrors();

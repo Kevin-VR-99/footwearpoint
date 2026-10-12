@@ -160,7 +160,7 @@ class PaginaDeInicioTest extends TestCase
 
     public function test_con_sesion_del_admin_general_el_boton_va_a_su_panel(): void
     {
-        $this->actingAs(Usuario::where('email', 'admin.general@footwearpoint.test')->firstOrFail());
+        $this->actingAs(Usuario::where('email', \Database\Seeders\AdminGeneralSeeder::EMAIL)->firstOrFail());
 
         $this->get('/')
             ->assertOk()

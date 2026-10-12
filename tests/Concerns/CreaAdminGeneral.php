@@ -30,7 +30,7 @@ trait CreaAdminGeneral
         ]);
 
         $usuario = Usuario::firstOrCreate(
-            ['email' => 'admin.general@footwearpoint.test'],
+            ['email' => \Database\Seeders\AdminGeneralSeeder::EMAIL],
             [
                 'nombre' => 'Admin General',
                 'password' => Hash::make('password'),

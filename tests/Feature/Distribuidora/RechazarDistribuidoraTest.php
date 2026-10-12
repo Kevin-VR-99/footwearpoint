@@ -48,7 +48,7 @@ class RechazarDistribuidoraTest extends TestCase
 
         // Desde TG-186 el admin general ya viene del seeder: aqui solo se usa.
         $this->adminGeneral = Usuario::firstOrCreate(
-            ['email' => 'admin.general@footwearpoint.test'],
+            ['email' => \Database\Seeders\AdminGeneralSeeder::EMAIL],
             [
                 'nombre'   => 'Admin General',
                 'password' => Hash::make('password'),
