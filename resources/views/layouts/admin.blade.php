@@ -17,13 +17,28 @@
     </style>
 </head>
 
-<body class="min-h-screen bg-fp-page text-slate-800 antialiased">
+<body class="min-h-screen bg-fp-page text-slate-800 antialiased" x-data="{ sidebarOpen: false }"
+    @keydown.escape.window="sidebarOpen = false">
     <div class="min-h-screen flex">
-        <aside class="w-64 shrink-0 bg-gradient-to-b from-fp-sidebar via-fp-sidebar to-fp-accent text-white flex flex-col shadow-xl shadow-fp-sidebar/30">
+        {{-- TG-234: barra lateral plegable con el mismo patrón que layouts/panel (Alpine sidebarOpen). --}}
+        <aside
+            class="sticky top-0 z-40 flex h-screen shrink-0 flex-col overflow-hidden bg-gradient-to-b from-fp-sidebar via-fp-sidebar to-fp-accent text-white shadow-xl shadow-fp-sidebar/30 transition-[width] duration-200 ease-out"
+            :class="sidebarOpen ? 'w-64' : 'w-0'" :aria-hidden="(!sidebarOpen).toString()" data-admin-sidebar>
+            <div class="flex h-full w-64 flex-col">
             <div class="h-0.5 w-full bg-gradient-to-r from-fp-primary via-white/40 to-fp-danger"></div>
-            <div class="px-5 py-4 border-b border-white/10">
-                <h1 class="flex items-center gap-2.5 text-lg font-bold tracking-tight"><img src="{{ asset('brand/logo-mark-white-40.png') }}" alt="" class="h-9 w-9 rounded-full bg-white/10 object-cover ring-2 ring-fp-primary/35" width="36" height="36">FootwearPoint</h1>
-                <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-white/45">Administración general</p>
+            <div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4">
+                <div class="min-w-0">
+                    <h1 class="flex items-center gap-2.5 text-lg font-bold tracking-tight"><img src="{{ asset('brand/logo-mark-white-40.png') }}" alt="" class="h-9 w-9 rounded-full bg-white/10 object-cover ring-2 ring-fp-primary/35" width="36" height="36">FootwearPoint</h1>
+                    <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-white/45">Administración general</p>
+                </div>
+                <button type="button"
+                    class="rounded-lg p-1.5 text-white/60 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/50"
+                    @click="sidebarOpen = false" aria-label="Cerrar menú">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
 
             <nav class="flex-1 p-3 space-y-1">
@@ -61,14 +76,31 @@
                 <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-white/35">Footwear Point</p>
                 <p class="mt-0.5 text-[11px] text-white/50">Administración general</p>
             </div>
+            </div>
         </aside>
 
-        <div class="flex min-w-0 flex-1 flex-col">
+        <div class="flex min-w-0 flex-1 flex-col transition-[margin] duration-200 ease-out">
             {{-- TG-234: mismo encabezado y menú de usuario que el panel de distribuidora. --}}
             <header
                 class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
                 <div class="h-0.5 w-full bg-gradient-to-r from-fp-primary via-fp-sidebar to-fp-danger"></div>
                 <div class="flex items-center gap-3 px-4 py-2.5 sm:px-5">
+                    <button x-show="!sidebarOpen" x-cloak x-transition.opacity type="button"
+                        class="group flex items-center gap-2.5 rounded-xl py-1 pr-2.5 pl-1 text-left transition hover:bg-fp-page focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40"
+                        @click="sidebarOpen = !sidebarOpen" :aria-expanded="sidebarOpen.toString()"
+                        aria-label="Abrir o cerrar menú">
+                        <span
+                            class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fp-sidebar shadow-sm ring-2 ring-fp-primary/20 transition group-hover:ring-fp-primary/40">
+                            <img src="{{ asset('brand/logo-mark-white-40.png') }}" alt=""
+                                class="h-8 w-8 rounded-full object-cover" width="32" height="32">
+                        </span>
+                        <span class="min-w-0">
+                            <span class="block truncate text-sm font-semibold tracking-tight text-fp-sidebar">Footwear
+                                Point</span>
+                            <span
+                                class="hidden text-[10px] font-medium uppercase tracking-[0.14em] text-fp-text-muted sm:block">Admin</span>
+                        </span>
+                    </button>
                     <div class="flex-1"></div>
                     <x-panel.menu-usuario subtitulo="Administración general">
                         <a href="{{ route('marketplace') }}" target="_blank" rel="noopener"

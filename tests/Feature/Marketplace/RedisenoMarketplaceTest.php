@@ -46,6 +46,21 @@ class RedisenoMarketplaceTest extends TestCase
             ->assertSee('Marketplace público');
     }
 
+    public function test_el_admin_general_tiene_barra_lateral_plegable(): void
+    {
+        $admin = Usuario::where('email', AdminGeneralSeeder::EMAIL)->firstOrFail();
+
+        $this->actingAs($admin)->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('sidebarOpen: false', false)
+            ->assertSee('@keydown.escape.window="sidebarOpen = false"', false)
+            ->assertSee('data-admin-sidebar', false)
+            ->assertSee("sidebarOpen ? 'w-64' : 'w-0'", false)
+            ->assertSee('transition-[width] duration-200 ease-out', false)
+            ->assertSee('aria-label="Abrir o cerrar menú"', false)
+            ->assertSee('aria-label="Cerrar menú"', false);
+    }
+
     public function test_la_campana_del_panel_muestra_los_grupos(): void
     {
         $admin = Usuario::where('email', DemoDistribuidoraSeeder::ADMIN)->firstOrFail();
