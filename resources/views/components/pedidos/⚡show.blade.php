@@ -291,8 +291,23 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             @else
                 No hay saldo pendiente.
             @endif
-            @if ($this->pedido->estado === 'listo_entrega' && $this->pedido->fecha_limite_recoleccion)
-                Tiene hasta el {{ $this->pedido->fecha_limite_recoleccion->format('d/m/Y') }} para recogerlo.
+        </x-panel.alerta>
+    @endif
+
+    {{-- TG-52 / TG-244 (E13-02): alerta del plazo de recolección (dias_maximos_recoleccion). --}}
+    @if ($this->pedido->estado === 'listo_entrega' && $this->pedido->fecha_limite_recoleccion)
+        @php
+            $limite = $this->pedido->fecha_limite_recoleccion->copy()->timezone('America/Mexico_City');
+            $vencido = now()->greaterThan($limite);
+            $porVencer = ! $vencido && now()->diffInHours($limite, false) <= 48;
+        @endphp
+        <x-panel.alerta :tipo="$vencido ? 'error' : ($porVencer ? 'aviso' : 'info')" class="mb-4">
+            @if ($vencido)
+                El plazo de recolección venció el {{ $limite->format('d/m/Y H:i') }}.
+            @elseif ($porVencer)
+                El plazo de recolección está por vencer: el cliente tiene hasta el {{ $limite->format('d/m/Y H:i') }}.
+            @else
+                Tiene hasta el {{ $limite->format('d/m/Y H:i') }} para recogerlo.
             @endif
         </x-panel.alerta>
     @endif
