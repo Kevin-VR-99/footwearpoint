@@ -77,4 +77,17 @@ class RedisenoInicioTest extends TestCase
         $this->assertNotEmpty($youtube);
         $this->assertSame($youtube[1], $correo[1]);
     }
+
+    public function test_el_correo_no_se_repite_como_texto_si_ya_es_icono(): void
+    {
+        config([
+            'footwearpoint.contacto.email' => 'mvpla.footwearpoint@gmail.com',
+            'footwearpoint.redes.correo' => 'mvpla.footwearpoint@gmail.com',
+        ]);
+
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, 'href="mailto:mvpla.footwearpoint@gmail.com"'));
+        $this->assertStringContainsString('data-red="correo"', $html);
+    }
 }

@@ -203,6 +203,8 @@ class PaginaDeInicioTest extends TestCase
         config([
             'footwearpoint.contacto.email' => null,
             'footwearpoint.contacto.telefono' => null,
+            // TG-234: sin esto el icono de correo toma MAIL_FROM_ADDRESS.
+            'footwearpoint.redes.correo' => null,
         ]);
 
         $this->get('/')

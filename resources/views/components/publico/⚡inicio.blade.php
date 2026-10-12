@@ -41,7 +41,10 @@ class extends Component
             'alta' => $alta,
             'panel' => Auth::check() ? PanelDelUsuario::para(Auth::user()) : null,
             'contacto' => array_filter([
-                'email' => config('footwearpoint.contacto.email'),
+                // TG-234: si el correo ya sale como icono de sobre, no se repite como texto.
+                'email' => config('footwearpoint.contacto.email') !== config('footwearpoint.redes.correo')
+                    ? config('footwearpoint.contacto.email')
+                    : null,
                 'telefono' => config('footwearpoint.contacto.telefono'),
             ]),
             // TG-234: icono oculto si la URL está vacía.
