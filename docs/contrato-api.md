@@ -931,3 +931,53 @@ Para verificar o actualizar este documento:
 | Quién entra a qué | `routes/api.php` y `routes/api/*.php` |
 | Filtro por dueño | `app/Support/PropietarioActual.php` |
 | Filtro por distribuidora | `app/Support/Tenant.php`, `app/Models/Scopes/TenantScope.php` |
+
+## Solicitudes de cambio de producto (TG-254, E12-01)
+
+Roles: `admin_distribuidora`, `empleado`, `revendedor`, `cliente_directo`. Cada cliente solo ve y pide lo suyo (lo ajeno responde 404); el personal ve todo lo de su distribuidora.
+
+Reglas: el plazo es `configuracion_distribuidora.dias_solicitud_cambio` (por defecto 12), igual para clientes directos y mayoristas, en días naturales desde la entrega del pedido (`fecha_entrega`) o la venta de mostrador (`fecha_venta`); el último día cuenta completo (hasta 23:59:59, hora de México). Una solicitud cubre la línea completa y solo puede haber una abierta por línea (una `rechazada` o `cerrada` ya no bloquea). Queda en `solicitada`; autorizar, rechazar y emitir el vale es de otra tarea. No hay devoluciones en efectivo.
+
+### `POST /api/solicitudes-cambio`
+
+```json
+{ "pedido_detalle_id": 123, "motivo": "No me quedó la talla" }
+```
+
+Exactamente uno de `pedido_detalle_id` (pedido entregado) o `venta_detalle_id` (venta de mostrador completada y con cliente; solo personal). `motivo` obligatorio, máximo 300.
+
+`201`:
+
+```json
+{
+  "data": {
+    "id": 1, "estado": "solicitada", "origen": "pedido",
+    "pedido_detalle_id": 123, "venta_detalle_id": null, "pedido_id": 45,
+    "producto": { "nombre": "Bota", "modelo": "BC-1", "talla": "25", "color": "Café", "cantidad": 2 },
+    "propietario": { "tipo": "cliente_directo", "id": 9 },
+    "motivo": "No me quedó la talla", "resolucion": null,
+    "fecha_entrega_original": "2026-10-01T10:00:00-06:00",
+    "fecha_solicitud": "2026-10-05T12:00:00-06:00",
+    "fecha_limite_solicitud": "2026-10-13T23:59:59-06:00",
+    "dias_solicitud_aplicados": 12, "vale_generado_id": null
+  },
+  "message": "Solicitud de cambio enviada. Si se autoriza, recibirás un vale; no hay devoluciones en efectivo."
+}
+```
+
+Errores (`{"message": ...}`): `404` línea inexistente o ajena; `409` ya hay una solicitud abierta; `422` validación, pedido no entregado, venta sin cliente o plazo vencido ("El plazo para pedir cambio terminó el 13/10/2026 (12 días desde la entrega).").
+
+### `GET /api/solicitudes-cambio`
+
+`{"data": [ ...mismo objeto... ]}`, las más recientes primero (máximo 200).
+
+### Cambios en `GET /api/pedidos` y `GET /api/pedidos/{id}`
+
+- `fecha_entrega` (ISO 8601 o `null`).
+- Cada elemento de `lineas` trae `cambio`:
+
+```json
+{ "puede_solicitar": true, "fecha_limite": "2026-10-13T23:59:59-06:00", "solicitud": null }
+```
+
+`fecha_limite` es `null` si el pedido no está entregado; `solicitud` es `{ "id", "estado" }` de la abierta, si la hay. Campos nuevos y opcionales: no rompen a clientes anteriores.

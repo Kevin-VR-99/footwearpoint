@@ -177,6 +177,8 @@
                                 class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('pedidos.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Pedidos</a>
                             <a href="{{ route('vales.index') }}" wire:navigate
                                 class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('vales.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Vales</a>
+                            <a href="{{ route('cambios.index') }}" wire:navigate
+                                class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('cambios.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Cambios</a>
                         </div>
                     </div>
 

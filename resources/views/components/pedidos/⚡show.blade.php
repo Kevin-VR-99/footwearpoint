@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Pedido;
+use App\Services\Cambio\PlazoCambio;
+use App\Services\Cambio\SolicitarCambioAction;
 use App\Services\Pedido\EntregaPedidoAction;
 use App\Services\Pedido\EnviarPedidoAction;
 use App\Services\Pago\VerificarPagoMercadoPagoAction;
@@ -25,6 +27,10 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
 
     // TG-226 (bugfix): número de pago de Mercado Pago (opcional) para verificar.
     public string $pagoMpId = '';
+
+    // TG-254: solicitud de cambio de una línea (el personal la pide por el cliente).
+    public ?int $cambioLineaId = null;
+    public string $cambioMotivo = '';
 
     public function mount(int $id)
     {
@@ -185,6 +191,44 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo registrar el pago.';
         } catch (\Throwable $e) {
             $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar el pago. Intenta de nuevo.');
+        }
+    }
+
+    /** TG-254: si cada línea puede pedir cambio y hasta cuándo. */
+    public function getCambiosProperty(): array
+    {
+        $plazo = app(PlazoCambio::class);
+
+        return $this->pedido->detalle
+            ->mapWithKeys(fn ($l) => [$l->id => $plazo->estado($l->setRelation('pedido', $this->pedido))])
+            ->all();
+    }
+
+    public function abrirCambio(int $lineaId): void
+    {
+        $this->cambioLineaId = $lineaId;
+        $this->cambioMotivo = '';
+        $this->mensaje = '';
+        $this->errorMsg = '';
+    }
+
+    public function cancelarCambio(): void
+    {
+        $this->cambioLineaId = null;
+        $this->cambioMotivo = '';
+    }
+
+    public function solicitarCambio(SolicitarCambioAction $accion): void
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $accion->ejecutar(['pedido_detalle_id' => $this->cambioLineaId, 'motivo' => $this->cambioMotivo]);
+            $this->cancelarCambio();
+            $this->mensaje = 'Solicitud de cambio registrada. Si se autoriza, el cliente recibe un vale (no hay devoluciones en efectivo).';
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar la solicitud de cambio.');
         }
     }
 };
@@ -395,6 +439,9 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     <th class="px-4 py-2 font-medium text-right">Cant.</th>
                     <th class="px-4 py-2 font-medium text-right">P. unit.</th>
                     <th class="px-4 py-2 font-medium text-right">Subtotal</th>
+                    @if ($this->pedido->estado === 'entregado')
+                        <th class="px-4 py-2 font-medium">Cambio</th>
+                    @endif
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -409,6 +456,30 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                         <td class="px-4 py-3 text-right">{{ $l->cantidad }}</td>
                         <td class="px-4 py-3 text-right tabular-nums">${{ number_format((float) $l->precio_unitario, 2) }}</td>
                         <td class="px-4 py-3 text-right tabular-nums">${{ number_format((float) $l->subtotal, 2) }}</td>
+                        @if ($this->pedido->estado === 'entregado')
+                            @php($cambio = $this->cambios[$l->id] ?? null)
+                            <td class="px-4 py-3">
+                                @if ($cambio && $cambio['solicitud'])
+                                    <span class="text-xs text-slate-600">Solicitud {{ str_replace('_', ' ', $cambio['solicitud']['estado']) }}</span>
+                                @elseif ($cambio && $cambio['puede_solicitar'])
+                                    @if ($cambioLineaId === $l->id)
+                                        <div class="space-y-2">
+                                            <textarea wire:model="cambioMotivo" rows="2" maxlength="300" placeholder="Motivo del cambio"
+                                                class="w-full rounded-lg border-slate-300 text-sm"></textarea>
+                                            <div class="flex gap-2">
+                                                <button type="button" wire:click="solicitarCambio" class="rounded-lg bg-fp-primary px-3 py-1.5 text-xs text-white">Enviar solicitud</button>
+                                                <button type="button" wire:click="cancelarCambio" class="text-xs text-slate-600">Cancelar</button>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <button type="button" wire:click="abrirCambio({{ $l->id }})" class="text-sm font-medium text-fp-primary">Solicitar cambio</button>
+                                        <span class="block text-xs text-slate-500">Hasta {{ \Illuminate\Support\Carbon::parse($cambio['fecha_limite'])->format('d/m/Y') }}</span>
+                                    @endif
+                                @else
+                                    <span class="text-xs text-slate-400">Fuera de plazo</span>
+                                @endif
+                            </td>
+                        @endif
                     </tr>
                 @empty
                     <tr>

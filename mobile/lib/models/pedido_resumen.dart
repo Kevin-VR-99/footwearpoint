@@ -17,6 +17,7 @@ class PedidoResumen {
     required this.anticipoPendiente,
     this.tipo,
     this.fecha,
+    this.fechaEntrega,
     this.lineas = const [],
     this.pagos = const [],
     this.puedePagarAnticipoMercadoPago = false,
@@ -35,6 +36,9 @@ class PedidoResumen {
 
   /// Cuándo se envió (fecha_colocacion); si no hay, cuándo se creó.
   final DateTime? fecha;
+
+  /// TG-254: cuándo se entregó; desde ahí corre el plazo para pedir cambio.
+  final DateTime? fechaEntrega;
 
   final double total;
 
@@ -96,6 +100,7 @@ class PedidoResumen {
       estado: json['estado'] as String? ?? '',
       tipo: json['tipo'] as String?,
       fecha: _fecha(json['fecha_colocacion']) ?? _fecha(json['created_at']),
+      fechaEntrega: _fecha(json['fecha_entrega']),
       total: numero('total'),
       pagado: numero('pagado'),
       pagadoConVales: numero('pagado_con_vales'),
@@ -143,6 +148,7 @@ enum TipoPagoMercadoPago {
 
 class LineaPedido {
   const LineaPedido({
+    this.id,
     required this.productoNombre,
     required this.modelo,
     required this.talla,
@@ -150,7 +156,11 @@ class LineaPedido {
     required this.cantidad,
     required this.precioUnitario,
     required this.subtotal,
+    this.cambio,
   });
+
+  /// pedido_detalle.id; hace falta para pedir un cambio (TG-254).
+  final int? id;
 
   final String productoNombre;
   final String modelo;
@@ -160,8 +170,15 @@ class LineaPedido {
   final double precioUnitario;
   final double subtotal;
 
+  /// TG-254: si se puede pedir cambio y hasta cuándo. Null si el servidor no
+  /// lo manda (versiones anteriores o la lista de pedidos).
+  final CambioLinea? cambio;
+
   factory LineaPedido.desdeJson(Map<String, dynamic> json) {
+    final cambio = json['cambio'];
     return LineaPedido(
+      id: json['id'] as int?,
+      cambio: cambio is Map<String, dynamic> ? CambioLinea.desdeJson(cambio) : null,
       productoNombre: json['producto_nombre'] as String? ?? '',
       modelo: json['modelo'] as String? ?? '',
       talla: json['talla']?.toString() ?? '',
@@ -226,4 +243,60 @@ String formatoFecha(DateTime fecha, {bool conHora = true}) {
   String dos(int n) => n.toString().padLeft(2, '0');
   final dia = '${dos(fecha.day)}/${dos(fecha.month)}/${fecha.year}';
   return conHora ? '$dia ${dos(fecha.hour)}:${dos(fecha.minute)}' : dia;
+}
+
+
+/// TG-254 (E12-01): el cambio de producto de una línea, tal como lo decide el
+/// servidor (plazo configurable por distribuidora). La app no calcula plazos.
+class CambioLinea {
+  const CambioLinea({
+    required this.puedeSolicitar,
+    this.fechaLimite,
+    this.solicitudId,
+    this.solicitudEstado,
+  });
+
+  final bool puedeSolicitar;
+
+  /// Último día para pedirlo, tal como lo manda el servidor (su zona horaria).
+  final DateTime? fechaLimite;
+
+  final int? solicitudId;
+
+  /// 'solicitada', 'autorizada', 'rechazada', ...
+  final String? solicitudEstado;
+
+  bool get tieneSolicitud => solicitudId != null;
+
+  /// dd/mm/aaaa del último día, sin pasarlo a la hora del teléfono: el plazo
+  /// es por día de la distribuidora.
+  String? get fechaLimiteTexto {
+    final f = fechaLimite;
+    if (f == null) return null;
+    String dos(int n) => n.toString().padLeft(2, '0');
+    return '${dos(f.day)}/${dos(f.month)}/${f.year}';
+  }
+
+  String get estadoParaMostrar => switch (solicitudEstado) {
+    'solicitada' => 'Cambio solicitado',
+    'autorizada' => 'Cambio autorizado',
+    'rechazada' => 'Cambio rechazado',
+    'enviada_fabrica' => 'Cambio en revisión con fábrica',
+    'aceptada_fabrica' => 'Cambio aceptado por fábrica',
+    'vale_emitido' => 'Vale emitido',
+    'cerrada' => 'Cambio cerrado',
+    _ => 'Cambio solicitado',
+  };
+
+  factory CambioLinea.desdeJson(Map<String, dynamic> json) {
+    final solicitud = json['solicitud'];
+    final limite = json['fecha_limite'];
+    return CambioLinea(
+      puedeSolicitar: json['puede_solicitar'] == true,
+      // Solo la parte de la fecha: es el día límite en la zona del servidor.
+      fechaLimite: limite is String && limite.length >= 10 ? DateTime.tryParse(limite.substring(0, 10)) : null,
+      solicitudId: solicitud is Map<String, dynamic> ? solicitud['id'] as int? : null,
+      solicitudEstado: solicitud is Map<String, dynamic> ? solicitud['estado'] as String? : null,
+    );
+  }
 }
