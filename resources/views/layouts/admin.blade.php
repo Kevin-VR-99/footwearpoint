@@ -66,10 +66,6 @@
                     class="block rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('admin.auditoria') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
                     Auditoría
                 </a>
-                <a href="{{ route('marketplace') }}"
-                    class="block rounded-xl px-3 py-2.5 text-sm text-white/70 transition hover:bg-white/10 hover:text-white" target="_blank">
-                    Marketplace público
-                </a>
             </nav>
 
             <div class="border-t border-white/10 px-4 py-3">

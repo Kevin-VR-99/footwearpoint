@@ -46,6 +46,19 @@ class RedisenoMarketplaceTest extends TestCase
             ->assertSee('Marketplace público');
     }
 
+    public function test_marketplace_publico_aparece_solo_en_el_menu_de_usuario_del_admin(): void
+    {
+        $admin = Usuario::where('email', AdminGeneralSeeder::EMAIL)->firstOrFail();
+
+        $html = $this->actingAs($admin)->get(route('admin.dashboard'))->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, 'Marketplace público'));
+        $nav = substr($html, strpos($html, 'data-admin-sidebar'), strpos($html, '</aside>') - strpos($html, 'data-admin-sidebar'));
+        $this->assertStringNotContainsString('Marketplace público', $nav);
+        $menu = substr($html, strpos($html, 'data-menu-usuario'));
+        $this->assertStringContainsString('Marketplace público', $menu);
+    }
+
     public function test_el_admin_general_tiene_barra_lateral_plegable(): void
     {
         $admin = Usuario::where('email', AdminGeneralSeeder::EMAIL)->firstOrFail();
