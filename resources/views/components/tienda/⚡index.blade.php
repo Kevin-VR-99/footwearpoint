@@ -206,9 +206,9 @@ new class extends Component {
                 <h2 id="titulo-catalogo" class="text-xl font-bold text-slate-900">Catálogo</h2>
                 <p class="text-sm text-slate-500 mt-1">Lo que puedes pedir en {{ $distribuidora->nombre_comercial }}.</p>
             </div>
-            <input type="search" wire:model.live.debounce.400ms="busqueda" maxlength="100"
-                placeholder="Buscar por nombre, modelo, código o marca" aria-label="Buscar productos"
-                class="w-full md:w-80 rounded-lg text-sm">
+            <x-ui.buscador wire:model.live.debounce.400ms="busqueda" maxlength="100"
+                placeholder="Buscar por nombre, modelo, código o marca" etiqueta="Buscar productos"
+                class="w-full md:w-96" />
         </div>
 
         @if ($lineas->count() > 1)

@@ -250,9 +250,8 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Existencias</h3>
-            <input type="search" wire:model.live.debounce.300ms="busqueda"
-                   class="rounded-lg text-sm focus:ring-fp-primary"
-                   placeholder="Buscar por SKU…">
+            <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
+                   placeholder="Buscar por SKU…" etiqueta="Buscar existencias por SKU" class="w-full sm:w-80" />
         </div>
 
         <div class="overflow-x-auto">

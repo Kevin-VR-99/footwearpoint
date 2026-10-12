@@ -420,9 +420,8 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
         {{-- Buscador de productos --}}
         <div class="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-5 py-3 border-b border-slate-100">
-                <input type="search" wire:model.live.debounce.300ms="busqueda"
-                       class="w-full rounded-lg text-sm focus:ring-fp-primary"
-                       placeholder="Buscar por SKU, código de catálogo, modelo, talla o color…">
+                <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
+                       placeholder="Buscar por SKU, código de catálogo, modelo, talla o color…" etiqueta="Buscar productos" />
             </div>
 
             <div class="overflow-x-auto max-h-[28rem] overflow-y-auto">

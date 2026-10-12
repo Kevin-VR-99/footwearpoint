@@ -161,9 +161,8 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
     </div>
 
     <div class="flex flex-wrap gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-        <input type="search" wire:model.live.debounce.400ms="busqueda"
-            placeholder="Buscar por nombre, modelo, código o marca"
-            class="min-w-64 flex-1 rounded-lg text-sm">
+        <x-ui.buscador wire:model.live.debounce.400ms="busqueda"
+            placeholder="Buscar por nombre, modelo, código o marca" etiqueta="Buscar productos" class="min-w-64 flex-1" />
         <select wire:model.live="filtro" class="rounded-lg text-sm">
             <option value="todos">Todos</option>
             <option value="ocultos">Solo ocultos</option>

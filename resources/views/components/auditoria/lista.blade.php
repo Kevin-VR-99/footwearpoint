@@ -16,9 +16,8 @@
     <div class="flex flex-wrap items-end gap-3">
         <div class="min-w-[10rem] flex-1">
             <label class="mb-1 block text-xs text-fp-text-muted">Buscar</label>
-            <input type="search" wire:model.live.debounce.300ms="buscar"
-                placeholder="Usuario, acción, IP…"
-                class="w-full rounded-lg text-sm focus:ring-fp-primary" />
+            <x-ui.buscador wire:model.live.debounce.300ms="buscar"
+                placeholder="Buscar por usuario, acción o IP…" etiqueta="Buscar en la auditoría" />
         </div>
         <div>
             <label class="mb-1 block text-xs text-fp-text-muted">Área</label>
