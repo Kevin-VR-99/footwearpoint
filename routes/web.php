@@ -199,6 +199,11 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
     Route::livewire('/vales', 'vales.index')
         ->name('vales.index');
 
+    // TG-254 — solicitudes de cambio de producto (solo personal).
+    Route::livewire('/cambios', 'cambios.index')
+        ->name('cambios.index')
+        ->middleware(['tenant.team', 'role:admin_distribuidora|empleado']);
+
     Route::livewire('/notificaciones', 'notificaciones.index')
         ->name('notificaciones.index');
 
