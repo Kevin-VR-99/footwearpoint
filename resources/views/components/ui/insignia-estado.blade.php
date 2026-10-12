@@ -19,7 +19,7 @@
         'recibido_distribuidora' => ['info', 'Recibido'],
         'parcialmente_disponible' => ['warning', 'Parc. disponible'],
         'listo_entrega' => ['warning', 'Listo entrega'],
-        'vencido_recoleccion' => ['warning', 'Vencido recolección'],
+        'vencido_recoleccion' => ['danger', 'Recolección vencida'],
         'no_surtido' => ['warning', 'No surtido'],
         'entregado' => ['success', 'Entregado'],
         'rechazado' => ['danger', 'Rechazado'],

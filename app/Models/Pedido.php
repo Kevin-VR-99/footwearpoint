@@ -96,4 +96,24 @@ class Pedido extends Model
     {
         return $this->hasMany(ValeMovimiento::class, 'pedido_id')->where('tipo', 'aplicacion');
     }
+
+    /**
+     * TG-125: cómo va el plazo de recolección de un pedido listo.
+     *
+     * 'vencida' si ya pasó la fecha límite (el comando diario lo pasará a
+     * vencido_recoleccion), 'por_vencer' si faltan 48 horas o menos (igual
+     * que la alerta del detalle, TG-244), null en cualquier otro caso.
+     */
+    public function alertaRecoleccion(): ?string
+    {
+        if ($this->estado !== 'listo_entrega' || ! $this->fecha_limite_recoleccion) {
+            return null;
+        }
+
+        if (now()->greaterThan($this->fecha_limite_recoleccion)) {
+            return 'vencida';
+        }
+
+        return now()->diffInHours($this->fecha_limite_recoleccion, false) <= 48 ? 'por_vencer' : null;
+    }
 }

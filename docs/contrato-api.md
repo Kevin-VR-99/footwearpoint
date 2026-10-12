@@ -384,6 +384,7 @@ Un revendedor o cliente directo solo ve y toca **sus** pedidos. El empleado ve t
     "ciclo_compra_id": null,
     "fecha_colocacion": null,
     "fecha_entrega": null,
+    "fecha_limite_recoleccion": null,
     "observaciones": null,
     "capturado_por_staff_id": null,
     "lineas": [
@@ -410,6 +411,8 @@ Un revendedor o cliente directo solo ve y toca **sus** pedidos. El empleado ve t
 ```
 
 **`bajo_pedido` en cada línea** (TG-266): `true` si esa talla está **hoy** «bajo pedido» en su temporada (la misma `disponibilidad` del catálogo, sección 3). Es el estado actual, no el que tenía al pedirse: si la fábrica la cambia, cambia aquí también. La app lo usa para marcar la línea («Bajo pedido: se encarga a la fábrica y tarda más en llegar»); no cambia montos ni lo que se puede hacer con el pedido.
+
+**`fecha_limite_recoleccion`** (TG-125): hasta cuándo puede recogerse el pedido (ISO 8601 con zona). Se llena al marcarlo «listo para entrega» con los `dias_maximos_recoleccion` de la distribuidora; antes es `null`. Si pasa la fecha y nadie lo recoge, un proceso diario lo pasa a `vencido_recoleccion` (ver `docs/vencer-recoleccion.md`). La app lo muestra como «Recoge antes del dd/mm/aaaa».
 
 **Los montos del pedido** (y por qué el anticipo puede no ser lo que se espera):
 

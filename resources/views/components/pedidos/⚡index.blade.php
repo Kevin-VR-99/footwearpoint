@@ -65,7 +65,7 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
             <option value="recibido_distribuidora">Recibido</option>
             <option value="parcialmente_disponible">Parc. disponible</option>
             <option value="listo_entrega">Listo entrega</option>
-            <option value="vencido_recoleccion">Vencido recolección</option>
+            <option value="vencido_recoleccion">Recolección vencida</option>
             <option value="no_surtido">No surtido</option>
             <option value="entregado">Entregado</option>
             <option value="rechazado">Rechazado</option>
@@ -104,6 +104,15 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
                         </td>
                         <td class="px-4 py-3">
                             <x-ui.insignia-estado :estado="$p->estado" />
+                            {{-- TG-125: plazo de recolección de un pedido listo. --}}
+                            @switch($p->alertaRecoleccion())
+                                @case('vencida')
+                                    <x-ui.insignia-estado variante="danger" texto="Recolección vencida" class="ml-1" />
+                                    @break
+                                @case('por_vencer')
+                                    <x-ui.insignia-estado variante="warning" texto="Por vencer" class="ml-1" />
+                                    @break
+                            @endswitch
                         </td>
                         <td class="px-4 py-3 text-right tabular-nums">
                             ${{ number_format((float) $p->total, 2) }}

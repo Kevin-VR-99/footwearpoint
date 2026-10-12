@@ -18,6 +18,7 @@ class PedidoResumen {
     this.tipo,
     this.fecha,
     this.fechaEntrega,
+    this.fechaLimiteRecoleccion,
     this.lineas = const [],
     this.pagos = const [],
     this.puedePagarAnticipoMercadoPago = false,
@@ -39,6 +40,16 @@ class PedidoResumen {
 
   /// TG-254: cuándo se entregó; desde ahí corre el plazo para pedir cambio.
   final DateTime? fechaEntrega;
+
+  /// TG-125: hasta cuándo puede recogerlo, cuando ya está listo.
+  final DateTime? fechaLimiteRecoleccion;
+
+  /// «Recoge antes del 15/10/2026» mientras esté listo para entrega.
+  String? get avisoRecoleccion {
+    final limite = fechaLimiteRecoleccion;
+    if (estado != 'listo_entrega' || limite == null) return null;
+    return 'Recoge antes del ${formatoFecha(limite, conHora: false)}';
+  }
 
   final double total;
 
@@ -101,6 +112,7 @@ class PedidoResumen {
       tipo: json['tipo'] as String?,
       fecha: _fecha(json['fecha_colocacion']) ?? _fecha(json['created_at']),
       fechaEntrega: _fecha(json['fecha_entrega']),
+      fechaLimiteRecoleccion: _fecha(json['fecha_limite_recoleccion']),
       total: numero('total'),
       pagado: numero('pagado'),
       pagadoConVales: numero('pagado_con_vales'),
