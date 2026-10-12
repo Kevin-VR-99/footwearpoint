@@ -38,6 +38,8 @@ class PedidoResource extends JsonResource
             'fecha_colocacion' => optional($this->fecha_colocacion)->toIso8601String(),
             // TG-254: desde aquí corre el plazo para pedir cambio.
             'fecha_entrega'    => optional($this->fecha_entrega)->toIso8601String(),
+            // TG-125: hasta cuándo puede recogerlo (solo cuando ya está listo).
+            'fecha_limite_recoleccion' => optional($this->fecha_limite_recoleccion)->toIso8601String(),
             'observaciones'    => $this->observaciones,
             'capturado_por_staff_id' => $this->capturado_por_staff_id,
             'lineas' => $this->whenLoaded('detalle', function () {

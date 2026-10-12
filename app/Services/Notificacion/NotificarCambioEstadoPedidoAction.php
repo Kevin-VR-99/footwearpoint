@@ -31,6 +31,14 @@ class NotificarCambioEstadoPedidoAction
             $estadoNuevo
         );
 
+        // TG-125: el personal tiene que decidir qué hacer con él.
+        if ($estadoNuevo === 'vencido_recoleccion') {
+            $titulo = 'Pedido '.$pedido->folio.': venció el plazo de recolección';
+            $mensaje = 'El cliente no recogió el pedido '.$pedido->folio
+                .($pedido->fecha_limite_recoleccion ? ' antes del '.self::fecha($pedido->fecha_limite_recoleccion) : '')
+                .'. Decide si se sustituye o se reembolsa el anticipo.';
+        }
+
         // TG-224: sin scope a propósito; filtra por la distribuidora del pedido y puede correr sin sesión de usuario (p. ej. aviso de Mercado Pago).
         $staffs = DistribuidoraStaff::withoutGlobalScopes()
             ->where('distribuidora_id', $pedido->distribuidora_id)
@@ -72,7 +80,10 @@ class NotificarCambioEstadoPedidoAction
 
         $titulo = 'Tu pedido '.$pedido->folio.' ya está en sucursal';
         $mensaje = $estadoNuevo === 'listo_entrega'
-            ? 'Ya puedes pasar a recoger y liquidar el saldo pendiente.'
+            // TG-125: con la fecha límite, para que no se le pase.
+            ? ($pedido->fecha_limite_recoleccion
+                ? 'Ya puedes pasar a recoger y liquidar el saldo pendiente. Recógelo antes del '.self::fecha($pedido->fecha_limite_recoleccion).'.'
+                : 'Ya puedes pasar a recoger y liquidar el saldo pendiente.')
             : 'La mercancía de tu pedido llegó a la distribuidora. Te avisaremos cuando esté listo para entrega.';
 
         $this->crear(
@@ -137,6 +148,12 @@ class NotificarCambioEstadoPedidoAction
                 ]);
             }
         });
+    }
+
+    /** Fecha corta en hora de México: 15/10/2026. */
+    public static function fecha(\DateTimeInterface $fecha): string
+    {
+        return \Illuminate\Support\Carbon::instance($fecha)->timezone('America/Mexico_City')->format('d/m/Y');
     }
 
     protected function crear(
