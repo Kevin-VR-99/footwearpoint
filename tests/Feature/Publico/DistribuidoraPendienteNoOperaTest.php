@@ -76,7 +76,7 @@ class DistribuidoraPendienteNoOperaTest extends TestCase
 
     private function adminGeneral(): Usuario
     {
-        return Usuario::where('email', 'admin.general@footwearpoint.test')->firstOrFail();
+        return Usuario::where('email', \Database\Seeders\AdminGeneralSeeder::EMAIL)->firstOrFail();
     }
 
     // ------------------------------------------------------------------

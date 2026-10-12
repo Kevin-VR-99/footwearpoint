@@ -254,7 +254,7 @@ class SolicitarAltaTest extends TestCase
         $this->formulario()->call('enviar')->assertHasNoErrors();
 
         Mail::assertSent(SolicitudAltaDistribuidoraMail::class, function ($correo) {
-            return $correo->hasTo('admin.general@footwearpoint.test')
+            return $correo->hasTo(\Database\Seeders\AdminGeneralSeeder::EMAIL)
                 && $correo->nombreDistribuidora === self::NOMBRE
                 && $correo->emailAdministrador === self::EMAIL_ADMIN;
         });

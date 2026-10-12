@@ -36,7 +36,7 @@ class ArchivoIaDeLaImportacionTest extends TestCase
 
     private function importacion(array $extra = []): ImportacionCatalogo
     {
-        $admin = Usuario::where('email', 'admin.general@footwearpoint.test')->firstOrFail();
+        $admin = Usuario::where('email', \Database\Seeders\AdminGeneralSeeder::EMAIL)->firstOrFail();
 
         return ImportacionCatalogo::create($extra + [
             'linea_id' => 1,

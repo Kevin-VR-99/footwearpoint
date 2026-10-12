@@ -82,7 +82,7 @@ class SeedersDePruebaTest extends TestCase
     public function test_el_personal_entra_al_panel(): void
     {
         $delPanel = [
-            'admin.general@footwearpoint.test',
+            \Database\Seeders\AdminGeneralSeeder::EMAIL,
             DemoDistribuidoraSeeder::ADMIN,
             DemoDistribuidoraSeeder::EMPLEADO,
             DemoDistribuidoraSeeder::SEGUNDA_ADMIN,

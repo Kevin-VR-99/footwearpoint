@@ -18,7 +18,8 @@ use Spatie\Permission\PermissionRegistrar;
  */
 class AdminGeneralSeeder extends Seeder
 {
-    public const EMAIL = 'admin.general@footwearpoint.test';
+    /** El mismo correo que ya tiene el usuario id 1 en producción (TG-280). */
+    public const EMAIL = 'mvpla.footwearpoint@gmail.com';
 
     public function run(): void
     {
@@ -31,15 +32,22 @@ class AdminGeneralSeeder extends Seeder
             'team_id' => 0,
         ]);
 
-        $usuario = Usuario::firstOrCreate(
-            ['email' => self::EMAIL],
-            [
+        // Idempotente: si la cuenta ya existe (en producción es el usuario
+        // id 1) no se toca su contraseña; solo se crea cuando falta, y la
+        // contraseña sale de SEED_PASSWORD, nunca del código.
+        $usuario = Usuario::where('email', self::EMAIL)->first();
+
+        if ($usuario === null) {
+            $usuario = Usuario::create([
+                'email' => self::EMAIL,
                 'nombre' => 'Admin General',
                 'password' => Hash::make(PasswordDePrueba::obtener()),
                 'estado' => 'activo',
                 'email_verified_at' => now(),
-            ]
-        );
+            ]);
+        } elseif ($usuario->email_verified_at === null) {
+            $usuario->forceFill(['email_verified_at' => now()])->save();
+        }
 
         if (! $usuario->hasRole($rol)) {
             $usuario->assignRole($rol);
