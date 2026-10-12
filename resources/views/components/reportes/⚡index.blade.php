@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\CicloCompra;
+use App\Services\Auth\PermisoModuloService;
 use App\Services\Reporte\ResumenOperativoAction;
+use App\Support\MensajeError;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -22,6 +24,12 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
 
         if (Tenant::id() === null) {
             abort(403, 'No se pudo determinar la distribuidora.');
+        }
+
+        // TG-246: los montos son de 'reportes.ver_financieros'. Antes solo se
+        // ocultaba el enlace del menú y por URL cualquier empleado los veía.
+        if (! app(PermisoModuloService::class)->puede(Auth::user(), PermisoModuloService::REPORTES_FINANCIEROS)) {
+            abort(403, MensajeError::SIN_PERMISO);
         }
     }
 
