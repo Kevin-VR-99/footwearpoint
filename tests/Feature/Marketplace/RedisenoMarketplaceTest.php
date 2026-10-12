@@ -57,6 +57,8 @@ class RedisenoMarketplaceTest extends TestCase
         $this->assertStringNotContainsString('Marketplace público', $nav);
         $menu = substr($html, strpos($html, 'data-menu-usuario'));
         $this->assertStringContainsString('Marketplace público', $menu);
+        $enlace = substr($menu, strpos($menu, 'data-menu-marketplace'), 600);
+        $this->assertStringContainsString('<svg class="h-4 w-4 text-fp-text-muted"', $enlace);
     }
 
     public function test_auditoria_aparece_solo_en_el_menu_de_usuario_del_admin(): void

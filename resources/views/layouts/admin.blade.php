@@ -87,7 +87,14 @@
                     <x-panel.menu-usuario subtitulo="Administración general">
                         <a href="{{ route('marketplace') }}" target="_blank" rel="noopener"
                             class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-fp-page"
-                            role="menuitem">Marketplace público</a>
+                            role="menuitem" data-menu-marketplace>
+                            <svg class="h-4 w-4 text-fp-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="1.8" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 016 0v2" />
+                            </svg>
+                            Marketplace público
+                        </a>
                         <a href="{{ route('admin.auditoria') }}"
                             class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium transition hover:bg-fp-page {{ request()->routeIs('admin.auditoria') ? 'bg-fp-page text-fp-primary' : 'text-slate-700' }}"
                             role="menuitem" data-menu-auditoria @if (request()->routeIs('admin.auditoria')) aria-current="page" @endif>
