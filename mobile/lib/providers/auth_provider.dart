@@ -272,6 +272,11 @@ class AuthProvider extends ChangeNotifier {
   /// Pide el token a Firebase y lo registra en Laravel (TG-96).
   void _registrarDispositivoFCM() async {
     try {
+      // 0. TG-183: desde Android 13 hay que pedir permiso para mostrar
+      // notificaciones; sin esto el push llega pero el celular no lo enseña.
+      // Si la persona ya contestó, no vuelve a preguntar.
+      await FirebaseMessaging.instance.requestPermission();
+
       // 1. Pedimos el token de este celular a Firebase
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) {
