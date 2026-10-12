@@ -32,6 +32,8 @@ final class EtiquetasAuditoria
         'linea_extra.activada'            => 'Línea activada',
         'linea_extra.desactivada'         => 'Línea desactivada',
         'distribuidora.subdominio_actualizado' => 'Subdominio de la tienda actualizado',
+        'distribuidora.datos_actualizados' => 'Datos de la distribuidora modificados',
+        'distribuidora.admin_actualizado' => 'Administrador de la distribuidora modificado',
         // Seguridad
         'password.enlace_restablecimiento' => 'Enlace para restablecer contraseña enviado',
         'password.temporal_generada'      => 'Contraseña temporal generada',

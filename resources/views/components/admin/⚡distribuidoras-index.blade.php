@@ -7,6 +7,8 @@ use App\Models\PlanSuscripcion;
 use App\Rules\SubdominioValido;
 use App\Services\Distribuidora\AprobacionDistribuidoraException;
 use App\Services\Directorio\AsignarCategoriasDirectorioAction;
+use App\Services\Distribuidora\ActualizarAdminDistribuidoraAction;
+use App\Services\Distribuidora\ActualizarDistribuidoraAction;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
 use App\Services\Distribuidora\CambiarVisibilidadMarketplaceAction;
 use App\Services\Distribuidora\CambioEstadoDistribuidora;
@@ -78,6 +80,25 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public ?int $distribuidoraRechazoId = null;
     public string $distribuidoraRechazoNombre = '';
     public string $motivo_rechazo = '';
+
+    // Editar distribuidora y su administrador (TG-194)
+    public ?int $distribuidoraEdicionId = null;
+    public string $distribuidoraEdicionNombre = '';
+    public string $editar_nombre_comercial = '';
+    public string $editar_razon_social = '';
+    public string $editar_rfc = '';
+    public string $editar_slug = '';
+    public string $editar_subdominio = '';
+    public string $editar_email_publico = '';
+    public string $editar_telefono_publico = '';
+    public string $editar_direccion_publica = '';
+    public string $editar_descripcion_publica = '';
+    public string $editar_horario_publico = '';
+    public bool $editarTieneAdmin = false;
+    public string $editar_admin_nombre = '';
+    public string $editar_admin_email = '';
+    public string $editar_admin_password = '';
+    public string $editar_admin_password_confirmation = '';
 
     public function mount()
     {
@@ -341,6 +362,128 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         $distribuidora = Distribuidora::find($this->distribuidoraDetalleId);
 
         return $distribuidora ? app(DatosSolicitudDistribuidoraAction::class)->ejecutar($distribuidora) : null;
+    }
+
+    /** Solo el admin general edita distribuidoras (también en cada acción, no solo al montar). */
+    private function exigirAdminGeneral(): void
+    {
+        setPermissionsTeamId(0);
+
+        if (! Auth::check() || ! Auth::user()->hasRole('admin_general')) {
+            abort(403, 'Solo admin general.');
+        }
+    }
+
+    /** TG-194: abre el formulario para editar la distribuidora y su administrador. */
+    public function abrirEdicion(int $id): void
+    {
+        $this->exigirAdminGeneral();
+
+        $distribuidora = Distribuidora::findOrFail($id);
+        $admin = app(ActualizarAdminDistribuidoraAction::class)->administradorDe($distribuidora);
+
+        $this->resetValidation();
+        $this->mensaje = '';
+        $this->mostrarSuscripcion = false;
+        $this->mostrandoFormularioCrear = false;
+
+        $this->distribuidoraEdicionId = $distribuidora->id;
+        $this->distribuidoraEdicionNombre = $distribuidora->nombre_comercial;
+        $this->editar_nombre_comercial = (string) $distribuidora->nombre_comercial;
+        $this->editar_razon_social = (string) $distribuidora->razon_social;
+        $this->editar_rfc = (string) $distribuidora->rfc;
+        $this->editar_slug = (string) $distribuidora->slug;
+        $this->editar_subdominio = (string) $distribuidora->subdominio;
+        $this->editar_email_publico = (string) $distribuidora->email_publico;
+        $this->editar_telefono_publico = (string) $distribuidora->telefono_publico;
+        $this->editar_direccion_publica = (string) $distribuidora->direccion_publica;
+        $this->editar_descripcion_publica = (string) $distribuidora->descripcion_publica;
+        $this->editar_horario_publico = (string) $distribuidora->horario_publico;
+
+        $this->editarTieneAdmin = $admin !== null;
+        $this->editar_admin_nombre = (string) $admin?->nombre;
+        $this->editar_admin_email = (string) $admin?->email;
+        $this->editar_admin_password = '';
+        $this->editar_admin_password_confirmation = '';
+    }
+
+    public function cancelarEdicion(): void
+    {
+        $this->resetValidation();
+        $this->distribuidoraEdicionId = null;
+        $this->distribuidoraEdicionNombre = '';
+        $this->editar_admin_password = '';
+        $this->editar_admin_password_confirmation = '';
+    }
+
+    /** TG-194: guarda los datos de la distribuidora y, si tiene, de su administrador. */
+    public function guardarEdicion(): void
+    {
+        $this->exigirAdminGeneral();
+        $this->mensaje = '';
+        $this->resetValidation();
+
+        if ($this->distribuidoraEdicionId === null) {
+            return;
+        }
+
+        try {
+            $distribuidora = Distribuidora::findOrFail($this->distribuidoraEdicionId);
+
+            $distribuidora = app(ActualizarDistribuidoraAction::class)->ejecutar($distribuidora, [
+                'nombre_comercial' => $this->editar_nombre_comercial,
+                'razon_social' => $this->editar_razon_social,
+                'rfc' => $this->editar_rfc,
+                'slug' => $this->editar_slug,
+                'subdominio' => $this->editar_subdominio,
+                'email_publico' => $this->editar_email_publico,
+                'telefono_publico' => $this->editar_telefono_publico,
+                'direccion_publica' => $this->editar_direccion_publica,
+                'descripcion_publica' => $this->editar_descripcion_publica,
+                'horario_publico' => $this->editar_horario_publico,
+            ]);
+        } catch (ValidationException $e) {
+            $this->erroresAlCampo($e, 'editar_', 'editar_nombre_comercial');
+            return;
+        } catch (\Throwable $e) {
+            // TG-224 (G3): el detalle técnico va al log, nunca a la pantalla.
+            $this->addError('editar_nombre_comercial', MensajeError::paraUsuario($e, 'No se pudo guardar la distribuidora. Intenta de nuevo.'));
+            return;
+        }
+
+        if ($this->editarTieneAdmin) {
+            try {
+                app(ActualizarAdminDistribuidoraAction::class)->ejecutar($distribuidora, [
+                    'nombre' => $this->editar_admin_nombre,
+                    'email' => $this->editar_admin_email,
+                    'password' => $this->editar_admin_password,
+                    'password_confirmation' => $this->editar_admin_password_confirmation,
+                ]);
+            } catch (ValidationException $e) {
+                $this->editar_admin_password = '';
+                $this->editar_admin_password_confirmation = '';
+                $this->erroresAlCampo($e, 'editar_admin_', 'editar_admin_email');
+                $this->mensaje = 'Los datos de la distribuidora se guardaron; revisa los de su administrador.';
+                return;
+            } catch (\Throwable $e) {
+                $this->editar_admin_password = '';
+                $this->editar_admin_password_confirmation = '';
+                $this->addError('editar_admin_email', MensajeError::paraUsuario($e, 'No se pudo guardar el administrador. Intenta de nuevo.'));
+                return;
+            }
+        }
+
+        $this->cancelarEdicion();
+        $this->mensaje = "Distribuidora «{$distribuidora->nombre_comercial}» actualizada.";
+    }
+
+    /** Pone cada error de la acción en su campo del formulario (con prefijo). */
+    private function erroresAlCampo(ValidationException $e, string $prefijo, string $porDefecto): void
+    {
+        foreach ($e->errors() as $campo => $mensajes) {
+            $propiedad = $prefijo . $campo;
+            $this->addError(property_exists($this, $propiedad) ? $propiedad : $porDefecto, $mensajes[0]);
+        }
     }
 
     /** TG-195: abre la ventana para escribir el motivo del rechazo. */
@@ -863,6 +1006,142 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         </div>
     @endif
 
+    {{-- TG-194: editar distribuidora y su administrador --}}
+    @if ($distribuidoraEdicionId)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <form wire:submit="guardarEdicion" class="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 p-6 space-y-4">
+                <div>
+                    <h3 class="font-semibold text-slate-900">Editar distribuidora</h3>
+                    <p class="text-sm text-slate-500 mt-1">«{{ $distribuidoraEdicionNombre }}»</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label for="editar_nombre_comercial" class="block text-sm font-medium mb-1">Nombre comercial *</label>
+                        <input id="editar_nombre_comercial" type="text" wire:model="editar_nombre_comercial" class="w-full rounded-lg border-slate-300 text-sm">
+                        @error('editar_nombre_comercial')
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="editar_razon_social" class="block text-sm font-medium mb-1">Razón social</label>
+                        <input id="editar_razon_social" type="text" wire:model="editar_razon_social" class="w-full rounded-lg border-slate-300 text-sm">
+                        @error('editar_razon_social')
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="editar_rfc" class="block text-sm font-medium mb-1">RFC</label>
+                        <input id="editar_rfc" type="text" wire:model="editar_rfc" class="w-full rounded-lg border-slate-300 text-sm">
+                        @error('editar_rfc')
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="editar_slug" class="block text-sm font-medium mb-1">Slug * (URL interna)</label>
+                        <input id="editar_slug" type="text" wire:model="editar_slug" class="w-full rounded-lg border-slate-300 text-sm">
+                        @error('editar_slug')
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="editar_subdominio" class="block text-sm font-medium mb-1">Subdominio</label>
+                        <input id="editar_subdominio" type="text" wire:model="editar_subdominio" class="w-full rounded-lg border-slate-300 text-sm">
+                        @error('editar_subdominio')
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="editar_email_publico" class="block text-sm font-medium mb-1">Email público</label>
+                        <input id="editar_email_publico" type="email" wire:model="editar_email_publico" class="w-full rounded-lg border-slate-300 text-sm">
+                        @error('editar_email_publico')
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="editar_telefono_publico" class="block text-sm font-medium mb-1">Teléfono público</label>
+                        <input id="editar_telefono_publico" type="text" wire:model="editar_telefono_publico" class="w-full rounded-lg border-slate-300 text-sm">
+                        @error('editar_telefono_publico')
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="editar_direccion_publica" class="block text-sm font-medium mb-1">Dirección pública</label>
+                        <input id="editar_direccion_publica" type="text" wire:model="editar_direccion_publica" class="w-full rounded-lg border-slate-300 text-sm">
+                        @error('editar_direccion_publica')
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="editar_descripcion_publica" class="block text-sm font-medium mb-1">Descripción pública</label>
+                        <textarea id="editar_descripcion_publica" wire:model="editar_descripcion_publica" rows="2" class="w-full rounded-lg border-slate-300 text-sm"></textarea>
+                        @error('editar_descripcion_publica')
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="editar_horario_publico" class="block text-sm font-medium mb-1">Horario público</label>
+                        <input id="editar_horario_publico" type="text" wire:model="editar_horario_publico" class="w-full rounded-lg border-slate-300 text-sm">
+                        @error('editar_horario_publico')
+                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-4">
+                    <h4 class="font-semibold text-slate-800 text-sm">Administrador de la distribuidora</h4>
+                    @if ($editarTieneAdmin)
+                        <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="editar_admin_nombre" class="block text-sm font-medium mb-1">Nombre *</label>
+                                <input id="editar_admin_nombre" type="text" wire:model="editar_admin_nombre" class="w-full rounded-lg border-slate-300 text-sm">
+                                @error('editar_admin_nombre')
+                                    <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="editar_admin_email" class="block text-sm font-medium mb-1">Correo *</label>
+                                <input id="editar_admin_email" type="email" wire:model="editar_admin_email" class="w-full rounded-lg border-slate-300 text-sm">
+                                @error('editar_admin_email')
+                                    <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="editar_admin_password" class="block text-sm font-medium mb-1">Nueva contraseña</label>
+                                <input id="editar_admin_password" type="password" wire:model="editar_admin_password" autocomplete="new-password" class="w-full rounded-lg border-slate-300 text-sm">
+                                @error('editar_admin_password')
+                                    <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="editar_admin_password_confirmation" class="block text-sm font-medium mb-1">Confirmar nueva contraseña</label>
+                                <input id="editar_admin_password_confirmation" type="password" wire:model="editar_admin_password_confirmation" autocomplete="new-password" class="w-full rounded-lg border-slate-300 text-sm">
+                                @error('editar_admin_password_confirmation')
+                                    <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-2">Deja la contraseña vacía para no cambiarla. Si la cambias, mínimo 8 caracteres.</p>
+                    @else
+                        <x-panel.alerta tipo="aviso" class="mt-3">
+                            {{ \App\Services\Distribuidora\ActualizarAdminDistribuidoraAction::MENSAJE_SIN_ADMIN }}
+                        </x-panel.alerta>
+                    @endif
+                </div>
+
+                <div class="flex justify-end gap-2">
+                    <button type="button" wire:click="cancelarEdicion"
+                        class="rounded-lg border border-slate-200 text-sm px-4 py-2">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
+                        Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    @endif
+
     {{-- TG-195: rechazar con motivo --}}
     @if ($distribuidoraRechazoId)
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -966,6 +1245,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         <td class="px-4 py-3 space-x-2">
                             <button wire:click="verDatos({{ $d->id }})"
                                 class="text-xs text-slate-700 hover:underline">Ver datos</button>
+                            <button wire:click="abrirEdicion({{ $d->id }})"
+                                class="text-xs text-fp-primary hover:underline">Editar</button>
                             @if ($d->estado === 'pendiente')
                                 <button wire:click="aprobar({{ $d->id }})"
                                     class="text-xs text-fp-badge-success-fg hover:underline">Aprobar</button>
