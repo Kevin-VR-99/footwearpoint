@@ -7,6 +7,7 @@ use App\Http\Requests\Catalogo\GuardarProductoRequest;
 use App\Http\Resources\Catalogo\ProductoResource;
 use App\Models\Producto;
 use App\Services\Catalogo\GestionarProductoAction;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ProductoController extends Controller
@@ -33,5 +34,13 @@ class ProductoController extends Controller
         $producto = $accion->actualizar($producto, $request->validated());
 
         return new ProductoResource($producto);
+    }
+
+    /** TG-247: si tiene datos que dependen de él responde 409 con el motivo. */
+    public function destroy(Producto $producto, GestionarProductoAction $accion): JsonResponse
+    {
+        $accion->eliminar($producto);
+
+        return response()->json(['data' => null, 'message' => 'Producto eliminado.']);
     }
 }

@@ -33,18 +33,22 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_general'])->group(function () {
     Route::post('marcas', [MarcaController::class, 'store']);
     Route::patch('marcas/{marca}', [MarcaController::class, 'update']);
+    Route::delete('marcas/{marca}', [MarcaController::class, 'destroy']);
 
     Route::post('categorias-producto', [CategoriaProductoController::class, 'store']);
     Route::patch('categorias-producto/{categoria}', [CategoriaProductoController::class, 'update']);
 
     Route::post('lineas', [LineaController::class, 'store']);
     Route::patch('lineas/{linea}', [LineaController::class, 'update']);
+    Route::delete('lineas/{linea}', [LineaController::class, 'destroy']);
 
     Route::post('campanas', [CampanaController::class, 'store']);
     Route::patch('campanas/{campana}', [CampanaController::class, 'update']);
+    Route::delete('campanas/{campana}', [CampanaController::class, 'destroy']);
 
     Route::post('productos', [ProductoController::class, 'store']);
     Route::patch('productos/{producto}', [ProductoController::class, 'update']);
+    Route::delete('productos/{producto}', [ProductoController::class, 'destroy']);
 
     Route::post('producto-campana', [ProductoCampanaController::class, 'store']);
     Route::patch('producto-campana/{productoCampana}', [ProductoCampanaController::class, 'update']);

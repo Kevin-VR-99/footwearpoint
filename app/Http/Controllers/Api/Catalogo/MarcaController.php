@@ -7,6 +7,7 @@ use App\Http\Requests\Catalogo\GuardarMarcaRequest;
 use App\Http\Resources\Catalogo\MarcaResource;
 use App\Models\Marca;
 use App\Services\Catalogo\GestionarMarcaAction;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class MarcaController extends Controller
@@ -40,5 +41,13 @@ class MarcaController extends Controller
         );
 
         return new MarcaResource($marca);
+    }
+
+    /** TG-247: si tiene datos que dependen de él responde 409 con el motivo. */
+    public function destroy(Marca $marca, GestionarMarcaAction $accion): JsonResponse
+    {
+        $accion->eliminar($marca);
+
+        return response()->json(['data' => null, 'message' => 'Marca eliminada.']);
     }
 }

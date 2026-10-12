@@ -7,6 +7,7 @@ use App\Http\Requests\Catalogo\GuardarCampanaRequest;
 use App\Http\Resources\Catalogo\CampanaResource;
 use App\Models\Campana;
 use App\Services\Catalogo\GestionarCampanaAction;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class CampanaController extends Controller
@@ -35,5 +36,13 @@ class CampanaController extends Controller
         $campana = $accion->actualizar($campana, $request->validated());
 
         return new CampanaResource($campana);
+    }
+
+    /** TG-247: si tiene datos que dependen de él responde 409 con el motivo. */
+    public function destroy(Campana $campana, GestionarCampanaAction $accion): JsonResponse
+    {
+        $accion->eliminar($campana);
+
+        return response()->json(['data' => null, 'message' => 'Temporada eliminada.']);
     }
 }
