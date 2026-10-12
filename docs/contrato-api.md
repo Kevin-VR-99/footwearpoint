@@ -824,6 +824,52 @@ Roles: `admin_distribuidora`, y `empleado` **solo con el permiso `reportes.ver_f
 
 **Errores (422):** fechas con otro formato, o `hasta` anterior a `desde` (`La fecha "hasta" no puede ser anterior a "desde".`).
 
+### GET `/api/reportes/montos-pendientes` (TG-252)
+
+Cuánto falta por cobrar **al día de hoy**, por cliente directo y por cliente mayorista (en el código, *revendedor*), y los vales vigentes.
+
+Roles: `admin_distribuidora`, y `empleado` **solo con el permiso `reportes.ver_financieros`** (TG-246). Sin el permiso responde **403**.
+
+**Parámetro opcional (query):** `ciclo_id`, para ver solo los pedidos de ese ciclo de compra. No hay filtro de fechas: es una foto del momento.
+
+**Qué pedidos cuentan:** los colocados o entregados que todavía tienen saldo mayor a 0. No cuentan los borradores ni los pedidos `rechazado`, `descartado`, `no_surtido` o `vencido_recoleccion`.
+
+**Salida (200)**
+
+```json
+{
+  "data": {
+    "filtros": { "ciclo_id": null },
+    "clientes_directos": {
+      "filas": [
+        { "id": 12, "nombre": "Ana Pérez", "pedidos": 2, "monto": 1800.0, "pagado": 500.0, "anticipo_pendiente": 100.0, "pendiente": 1300.0 }
+      ],
+      "totales": { "clientes": 1, "pedidos": 2, "monto": 1800.0, "pagado": 500.0, "pendiente": 1300.0, "anticipo_pendiente": 100.0 }
+    },
+    "revendedores": {
+      "filas": [
+        { "id": 3, "nombre": "María López", "pedidos": 1, "monto": 5200.0, "pagado": 3000.0, "pendiente": 2200.0 }
+      ],
+      "totales": { "clientes": 1, "pedidos": 1, "monto": 5200.0, "pagado": 3000.0, "pendiente": 2200.0 }
+    },
+    "vales_vigentes": {
+      "filas": [
+        { "id": 5, "folio": "VAL-0005", "propietario": { "tipo": "cliente_directo", "nombre": "Ana Pérez" }, "saldo": 300.0, "fecha_vencimiento": "2026-11-30" }
+      ],
+      "totales": { "vales": 1, "saldo": 300.0 }
+    }
+  }
+}
+```
+
+- En `clientes_directos`, `id` es el del cliente directo; en `revendedores`, `id` es la afiliación (`revendedor_distribuidora_id`).
+- Las filas vienen ordenadas de mayor a menor `pendiente`.
+- `pagado`: pagos de entrada aplicados más vales aplicados. `pendiente`: lo que falta de cada pedido, sumado.
+- `anticipo_pendiente` solo viene en clientes directos: la parte del anticipo que todavía no se cubre.
+- Vales vigentes: activos, con saldo y sin vencer, del más próximo a vencer al más lejano. `propietario.tipo` es `cliente_directo` o `revendedor`.
+
+**Error (422):** `ciclo_id` que no es un número entero positivo.
+
 ---
 
 ## 9. De dónde salió cada cosa
