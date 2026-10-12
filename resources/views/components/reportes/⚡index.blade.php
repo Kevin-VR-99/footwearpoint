@@ -2,6 +2,7 @@
 
 use App\Models\CicloCompra;
 use App\Services\Auth\PermisoModuloService;
+use App\Services\Reporte\MontosPendientesAction;
 use App\Services\Reporte\PedidosPorRevendedorAction;
 use App\Services\Reporte\ResumenOperativoAction;
 use App\Support\MensajeError;
@@ -19,6 +20,9 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
 
     /** TG-251: error legible del reporte por cliente mayorista. */
     public string $errorMayoristas = '';
+
+    /** TG-252: error legible del reporte de montos pendientes. */
+    public string $errorPendientes = '';
 
     public function mount()
     {
@@ -70,6 +74,24 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             $this->errorMayoristas = MensajeError::paraUsuario($e, 'No se pudo calcular el reporte por cliente mayorista.');
 
             return ['filas' => [], 'totales' => ['clientes' => 0, 'pedidos' => 0, 'monto' => 0, 'pagado' => 0, 'pendiente' => 0]];
+        }
+    }
+
+    /**
+     * TG-252 (E14-03): lo que falta por cobrar al día de hoy y los vales
+     * vigentes. Solo usa el filtro de ciclo (no fechas ni estado).
+     */
+    public function getMontosPendientesProperty(): array
+    {
+        $this->errorPendientes = '';
+
+        try {
+            return app(MontosPendientesAction::class)->ejecutar($this->cicloId !== '' ? (int) $this->cicloId : null);
+        } catch (\Throwable $e) {
+            $this->errorPendientes = MensajeError::paraUsuario($e, 'No se pudieron calcular los montos pendientes.');
+            $vacio = ['filas' => [], 'totales' => ['clientes' => 0, 'pedidos' => 0, 'monto' => 0, 'pagado' => 0, 'pendiente' => 0, 'anticipo_pendiente' => 0]];
+
+            return ['clientes_directos' => $vacio, 'revendedores' => $vacio, 'vales_vigentes' => ['filas' => [], 'totales' => ['vales' => 0, 'saldo' => 0]]];
         }
     }
 };
@@ -228,6 +250,138 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                         </tr>
                     </tfoot>
                 @endif
+            </table>
+        </div>
+    </div>
+
+    {{-- TG-252 (E14-03): cuánto falta por cobrar y vales vigentes. --}}
+    @php($pendientes = $this->montosPendientes)
+    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+        <div class="px-4 py-3 font-medium text-slate-800">
+            Montos pendientes
+            <span class="block text-xs font-normal text-slate-500">
+                Al día de hoy: pedidos colocados o entregados que todavía tienen saldo (sin borradores ni pedidos rechazados, descartados, no surtidos o vencidos). Solo usa el filtro de ciclo.
+            </span>
+        </div>
+        @if ($errorPendientes)
+            <x-panel.alerta tipo="error" class="m-4">{{ $errorPendientes }}</x-panel.alerta>
+        @endif
+        <div class="overflow-x-auto border-t border-slate-100">
+            <p class="px-4 pt-3 text-sm font-medium text-slate-700">Clientes</p>
+            <table class="min-w-full text-sm">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                    <tr>
+                        <th class="px-4 py-2">Cliente</th>
+                        <th class="px-4 py-2 text-right">Pedidos con saldo</th>
+                        <th class="px-4 py-2 text-right">Monto</th>
+                        <th class="px-4 py-2 text-right">Pagado</th>
+                        <th class="px-4 py-2 text-right">Anticipo pendiente</th>
+                        <th class="px-4 py-2 text-right">Pendiente</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse ($pendientes['clientes_directos']['filas'] as $fila)
+                        <tr wire:key="pend-clientes_directos-{{ $fila['id'] }}">
+                            <td class="px-4 py-3">{{ $fila['nombre'] }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">{{ $fila['pedidos'] }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['pagado'], 2) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['anticipo_pendiente'], 2) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums font-semibold">${{ number_format($fila['pendiente'], 2) }}</td>
+                        </tr>
+                    @empty
+                        <x-panel.vacio colspan="6" mensaje="Ningún cliente tiene saldo pendiente" />
+                    @endforelse
+                </tbody>
+                @if ($pendientes['clientes_directos']['filas'] !== [])
+                    <tfoot class="bg-fp-page font-semibold">
+                        <tr>
+                            <td class="px-4 py-3">Total ({{ $pendientes['clientes_directos']['totales']['clientes'] }})</td>
+                            <td class="px-4 py-3 text-right tabular-nums">{{ $pendientes['clientes_directos']['totales']['pedidos'] }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($pendientes['clientes_directos']['totales']['monto'], 2) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($pendientes['clientes_directos']['totales']['pagado'], 2) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($pendientes['clientes_directos']['totales']['anticipo_pendiente'], 2) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($pendientes['clientes_directos']['totales']['pendiente'], 2) }}</td>
+                        </tr>
+                    </tfoot>
+                @endif
+            </table>
+        </div>
+        <div class="overflow-x-auto border-t border-slate-100">
+            <p class="px-4 pt-3 text-sm font-medium text-slate-700">Clientes mayoristas</p>
+            <table class="min-w-full text-sm">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                    <tr>
+                        <th class="px-4 py-2">Cliente mayorista</th>
+                        <th class="px-4 py-2 text-right">Pedidos con saldo</th>
+                        <th class="px-4 py-2 text-right">Monto</th>
+                        <th class="px-4 py-2 text-right">Pagado</th>
+                        
+                        <th class="px-4 py-2 text-right">Pendiente</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse ($pendientes['revendedores']['filas'] as $fila)
+                        <tr wire:key="pend-revendedores-{{ $fila['id'] }}">
+                            <td class="px-4 py-3">{{ $fila['nombre'] }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">{{ $fila['pedidos'] }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['pagado'], 2) }}</td>
+                            
+                            <td class="px-4 py-3 text-right tabular-nums font-semibold">${{ number_format($fila['pendiente'], 2) }}</td>
+                        </tr>
+                    @empty
+                        <x-panel.vacio colspan="5" mensaje="Ningún cliente mayorista tiene saldo pendiente" />
+                    @endforelse
+                </tbody>
+                @if ($pendientes['revendedores']['filas'] !== [])
+                    <tfoot class="bg-fp-page font-semibold">
+                        <tr>
+                            <td class="px-4 py-3">Total ({{ $pendientes['revendedores']['totales']['clientes'] }})</td>
+                            <td class="px-4 py-3 text-right tabular-nums">{{ $pendientes['revendedores']['totales']['pedidos'] }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($pendientes['revendedores']['totales']['monto'], 2) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($pendientes['revendedores']['totales']['pagado'], 2) }}</td>
+                            
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($pendientes['revendedores']['totales']['pendiente'], 2) }}</td>
+                        </tr>
+                    </tfoot>
+                @endif
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+        <div class="px-4 py-3 border-b font-medium text-slate-800">
+            Vales vigentes
+            <span class="text-xs font-normal text-slate-500">
+                ({{ $pendientes['vales_vigentes']['totales']['vales'] }} · saldo disponible ${{ number_format($pendientes['vales_vigentes']['totales']['saldo'], 2) }})
+            </span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                    <tr>
+                        <th class="px-4 py-2">Folio</th>
+                        <th class="px-4 py-2">Dueño</th>
+                        <th class="px-4 py-2">Vence</th>
+                        <th class="px-4 py-2 text-right">Saldo disponible</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse ($pendientes['vales_vigentes']['filas'] as $vale)
+                        <tr wire:key="vale-vig-{{ $vale['id'] }}">
+                            <td class="px-4 py-3 font-mono text-xs">{{ $vale['folio'] }}</td>
+                            <td class="px-4 py-3">
+                                {{ $vale['propietario']['nombre'] }}
+                                <span class="block text-xs text-slate-500">{{ $vale['propietario']['tipo'] === 'revendedor' ? 'Cliente mayorista' : 'Cliente' }}</span>
+                            </td>
+                            <td class="px-4 py-3">{{ $vale['fecha_vencimiento'] ? \Illuminate\Support\Carbon::parse($vale['fecha_vencimiento'])->format('d/m/Y') : '—' }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($vale['saldo'], 2) }}</td>
+                        </tr>
+                    @empty
+                        <x-panel.vacio colspan="4" mensaje="No hay vales vigentes" />
+                    @endforelse
+                </tbody>
             </table>
         </div>
     </div>
