@@ -132,6 +132,10 @@
                                     class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('catalogo.mis-lineas') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
                                     Mis líneas
                                 </a>
+                                <a href="{{ route('catalogo.precios') }}" wire:navigate
+                                    class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('catalogo.precios') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
+                                    Precios y publicación
+                                </a>
                             </div>
                         </div>
                     @endif

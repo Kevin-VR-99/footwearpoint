@@ -25,6 +25,10 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_distribuidora'])->group(fu
         
     Route::livewire('/catalogo/mis-lineas', 'catalogo.mis-lineas')
     ->name('catalogo.mis-lineas');
+
+    // TG-249 (E4-14): precio de mayoreo y ocultar/mostrar productos.
+    Route::livewire('/catalogo/precios', 'catalogo.precios')
+        ->name('catalogo.precios');
 });
 
 // TG-265 (U5): el personal también consulta el detalle del producto (solo lectura).
