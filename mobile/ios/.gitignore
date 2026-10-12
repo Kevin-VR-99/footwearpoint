@@ -32,3 +32,6 @@ Runner/GeneratedPluginRegistrant.*
 !default.mode2v3
 !default.pbxuser
 !default.perspectivev3
+
+# TG-183: configuración de Firebase de cada quien; no se sube (ver mobile/docs/ios.md).
+Runner/GoogleService-Info.plist
