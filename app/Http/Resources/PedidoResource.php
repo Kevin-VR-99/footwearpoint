@@ -36,9 +36,13 @@ class PedidoResource extends JsonResource
             ],
             'ciclo_compra_id' => $this->ciclo_compra_id,
             'fecha_colocacion' => optional($this->fecha_colocacion)->toIso8601String(),
+            // TG-254: desde aquí corre el plazo para pedir cambio.
+            'fecha_entrega'    => optional($this->fecha_entrega)->toIso8601String(),
             'observaciones'    => $this->observaciones,
             'capturado_por_staff_id' => $this->capturado_por_staff_id,
             'lineas' => $this->whenLoaded('detalle', function () {
+                $plazo = app(\App\Services\Cambio\PlazoCambio::class);
+
                 return $this->detalle->map(fn ($l) => [
                     'id'               => $l->id,
                     'producto_nombre'  => $l->producto_nombre,
@@ -52,6 +56,8 @@ class PedidoResource extends JsonResource
                     'estado_surtido'   => $l->estado_surtido,
                     'variante_id'      => $l->variante_id,
                     'producto_campana_id' => $l->producto_campana_id,
+                    // TG-254: si todavía se puede pedir cambio y hasta cuándo.
+                    'cambio' => $plazo->estado($l->setRelation('pedido', $this->resource)),
                 ]);
             }),
             'pagos' => $this->whenLoaded('pagos', function () {

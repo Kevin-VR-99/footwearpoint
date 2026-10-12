@@ -115,6 +115,7 @@ require __DIR__.'/api/pedidos.php';
 // Paquete E — marketplace, vales, notificaciones
 require __DIR__.'/api/marketplace.php';
 require __DIR__.'/api/vales.php';
+require __DIR__.'/api/cambios.php'; // TG-254
 require __DIR__.'/api/notificaciones.php';
 require __DIR__.'/api/dispositivos-fcm.php';
 
