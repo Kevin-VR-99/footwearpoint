@@ -2,6 +2,7 @@
 
 use App\Models\CicloCompra;
 use App\Services\Auth\PermisoModuloService;
+use App\Services\Reporte\PedidosPorRevendedorAction;
 use App\Services\Reporte\ResumenOperativoAction;
 use App\Support\MensajeError;
 use App\Support\Tenant;
@@ -15,6 +16,9 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     public string $hasta = '';
     public string $estado = '';
     public string $cicloId = '';
+
+    /** TG-251: error legible del reporte por cliente mayorista. */
+    public string $errorMayoristas = '';
 
     public function mount()
     {
@@ -46,6 +50,27 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             $this->estado !== '' ? $this->estado : null,
             $this->cicloId !== '' ? (int) $this->cicloId : null,
         );
+    }
+
+    /**
+     * TG-251 (E14-05): pedidos y montos por cliente mayorista. Usa las fechas
+     * (por fecha de colocación) y el ciclo de la pantalla; el estado no aplica.
+     */
+    public function getPorClienteMayoristaProperty(): array
+    {
+        $this->errorMayoristas = '';
+
+        try {
+            return app(PedidosPorRevendedorAction::class)->ejecutar(
+                $this->desde !== '' ? $this->desde : null,
+                $this->hasta !== '' ? $this->hasta : null,
+                $this->cicloId !== '' ? (int) $this->cicloId : null,
+            );
+        } catch (\Throwable $e) {
+            $this->errorMayoristas = MensajeError::paraUsuario($e, 'No se pudo calcular el reporte por cliente mayorista.');
+
+            return ['filas' => [], 'totales' => ['clientes' => 0, 'pedidos' => 0, 'monto' => 0, 'pagado' => 0, 'pendiente' => 0]];
+        }
     }
 };
 ?>
@@ -154,6 +179,57 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                 @endforelse
             </tbody>
         </table>
+    </div>
+
+    {{-- TG-251 (E14-05): quiénes compran más. --}}
+    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+        @php($mayoristas = $this->porClienteMayorista)
+        <div class="px-4 py-3 border-b font-medium text-slate-800">
+            Pedidos por cliente mayorista
+            <span class="block text-xs font-normal text-slate-500">
+                Pedidos colocados en el periodo (por fecha de colocación), sin borradores ni pedidos rechazados, descartados, no surtidos o vencidos. No usa el filtro de estado.
+            </span>
+        </div>
+        @if ($errorMayoristas)
+            <x-panel.alerta tipo="error" class="m-4">{{ $errorMayoristas }}</x-panel.alerta>
+        @endif
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                    <tr>
+                        <th class="px-4 py-2">Cliente mayorista</th>
+                        <th class="px-4 py-2 text-right">Pedidos</th>
+                        <th class="px-4 py-2 text-right">Monto</th>
+                        <th class="px-4 py-2 text-right">Pagado</th>
+                        <th class="px-4 py-2 text-right">Pendiente</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse ($mayoristas['filas'] as $fila)
+                        <tr wire:key="may-{{ $fila['revendedor_distribuidora_id'] }}">
+                            <td class="px-4 py-3">{{ $fila['nombre'] }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">{{ $fila['pedidos'] }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['pagado'], 2) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['pendiente'], 2) }}</td>
+                        </tr>
+                    @empty
+                        <x-panel.vacio colspan="5" mensaje="Sin pedidos de clientes mayoristas en el periodo" />
+                    @endforelse
+                </tbody>
+                @if ($mayoristas['filas'] !== [])
+                    <tfoot class="bg-fp-page font-semibold">
+                        <tr>
+                            <td class="px-4 py-3">Total ({{ $mayoristas['totales']['clientes'] }} clientes)</td>
+                            <td class="px-4 py-3 text-right tabular-nums">{{ $mayoristas['totales']['pedidos'] }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($mayoristas['totales']['monto'], 2) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($mayoristas['totales']['pagado'], 2) }}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($mayoristas['totales']['pendiente'], 2) }}</td>
+                        </tr>
+                    </tfoot>
+                @endif
+            </table>
+        </div>
     </div>
 
     <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
