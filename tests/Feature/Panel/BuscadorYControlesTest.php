@@ -28,7 +28,7 @@ class BuscadorYControlesTest extends TestCase
     {
         $vistas = [
             'tienda/⚡index', 'punto-venta/⚡index', 'auditoria/lista',
-            'catalogo/⚡productos', 'catalogo/⚡precios', 'stock/⚡index',
+            'catalogo/⚡productos', 'catalogo/⚡precios', 'stock/⚡index', 'cambios/⚡index',
         ];
 
         foreach ($vistas as $vista) {
@@ -36,6 +36,27 @@ class BuscadorYControlesTest extends TestCase
             $this->assertStringContainsString('<x-ui.buscador', $contenido, $vista);
             $this->assertStringNotContainsString('<input type="search"', $contenido, $vista);
         }
+    }
+
+    public function test_ningun_buscador_del_sitio_queda_sin_el_componente(): void
+    {
+        $sinComponente = [];
+        $vistas = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(resource_path('views')));
+
+        foreach ($vistas as $archivo) {
+            if (! str_ends_with($archivo->getFilename(), '.blade.php')
+                || str_ends_with($archivo->getPathname(), 'ui'.DIRECTORY_SEPARATOR.'buscador.blade.php')) {
+                continue;
+            }
+            preg_match_all('/<input\b[^>]*>/is', file_get_contents($archivo->getPathname()), $inputs);
+            foreach ($inputs[0] as $input) {
+                if (preg_match('/type="search"|placeholder="\s*Buscar/i', $input)) {
+                    $sinComponente[] = str_replace(resource_path('views'), '', $archivo->getPathname());
+                }
+            }
+        }
+
+        $this->assertSame([], $sinComponente, 'Buscadores sin <x-ui.buscador>: '.implode(', ', $sinComponente));
     }
 
     public function test_app_css_define_estilos_base_de_controles_y_error(): void
@@ -47,5 +68,6 @@ class BuscadorYControlesTest extends TestCase
         $this->assertStringContainsString('var(--color-fp-danger)', $css);
         $this->assertStringContainsString("[aria-invalid='true']", $css);
         $this->assertStringContainsString('.fp-buscador', $css);
+        $this->assertStringContainsString('::file-selector-button', $css);
     }
 }
