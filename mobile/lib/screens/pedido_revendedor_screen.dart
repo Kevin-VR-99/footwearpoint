@@ -10,6 +10,8 @@ import '../widgets/botones_pago_mercado_pago.dart';
 import '../widgets/selector_vale.dart';
 import 'login_screen.dart';
 import '../tema/fp_colores.dart';
+import '../models/producto_catalogo.dart';
+import '../widgets/bajo_pedido.dart';
 import '../widgets/fp_componentes.dart';
 
 /// El pedido acumulado del revendedor (E9-01 / E9-03). Lee el carrito de
@@ -151,6 +153,11 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                                       'Color: ${item.variante.colorParaMostrar} | Talla: ${item.variante.talla}',
                                       style: const TextStyle(color: FpColores.textoTenue, fontSize: 13),
                                     ),
+                                    // TG-266
+                                    if (item.variante.disponibilidad == Disponibilidad.bajoPedido) ...[
+                                      const SizedBox(height: 4),
+                                      const InsigniaBajoPedido(),
+                                    ],
                                     const SizedBox(height: 2),
                                     Text(
                                       'Precio mayorista: ${formatoPrecio(precioUnitario)}',
@@ -203,6 +210,12 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // TG-266: una sola nota si algo del pedido va bajo pedido.
+                        if (items.any((i) => i.variante.disponibilidad == Disponibilidad.bajoPedido))
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 8),
+                            child: AvisoBajoPedido(texto: textoTallasBajoPedido),
+                          ),
                         Container(
                           padding: const EdgeInsets.all(10),
                           margin: const EdgeInsets.only(bottom: 12),

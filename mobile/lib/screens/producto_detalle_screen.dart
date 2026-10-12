@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/producto_catalogo.dart';
 import '../providers/carrito_revendedor_provider.dart';
+import '../widgets/bajo_pedido.dart';
 import '../tema/fp_colores.dart';
 import '../widgets/fp_componentes.dart';
 import 'crear_pedido_screen.dart';
@@ -210,6 +211,14 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                               varianteSeleccionada: _varianteSeleccionada,
                               onSeleccionar: _seleccionarVariante,
                             ),
+                        // TG-266: al elegir una talla bajo pedido se dice claro.
+                        if (_varianteSeleccionada?.disponibilidad == Disponibilidad.bajoPedido) ...[
+                          const SizedBox(height: 8),
+                          AvisoBajoPedido(
+                            texto: 'Talla ${_varianteSeleccionada!.talla} bajo pedido: '
+                                'se encarga a la fábrica y tarda más en llegar.',
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -392,14 +401,29 @@ class _Talla extends StatelessWidget {
             ),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Text(
-            variante.talla,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: seleccionada ? tema.colorScheme.onPrimaryContainer : estilo.texto,
-              fontWeight: FontWeight.w600,
-              decoration: noDisponible ? TextDecoration.lineThrough : null,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // TG-266: el relojito marca bajo pedido sin depender del color.
+              if (variante.disponibilidad == Disponibilidad.bajoPedido) ...[
+                Icon(
+                  Icons.schedule,
+                  size: 14,
+                  color: seleccionada ? tema.colorScheme.onPrimaryContainer : estilo.texto,
+                ),
+                const SizedBox(width: 3),
+              ],
+              Text(
+                variante.talla,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: seleccionada ? tema.colorScheme.onPrimaryContainer : estilo.texto,
+                  fontWeight: FontWeight.w600,
+                  decoration: noDisponible ? TextDecoration.lineThrough : null,
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -42,6 +42,7 @@ class PedidoResource extends JsonResource
             'capturado_por_staff_id' => $this->capturado_por_staff_id,
             'lineas' => $this->whenLoaded('detalle', function () {
                 $plazo = app(\App\Services\Cambio\PlazoCambio::class);
+                $bajoPedido = \App\Models\DisponibilidadVarianteCampana::bajoPedidoPorLinea($this->detalle);
 
                 return $this->detalle->map(fn ($l) => [
                     'id'               => $l->id,
@@ -56,6 +57,8 @@ class PedidoResource extends JsonResource
                     'estado_surtido'   => $l->estado_surtido,
                     'variante_id'      => $l->variante_id,
                     'producto_campana_id' => $l->producto_campana_id,
+                    // TG-266: la talla está "bajo pedido" (estado actual): tarda más.
+                    'bajo_pedido' => $bajoPedido[$l->id] ?? false,
                     // TG-254: si todavía se puede pedir cambio y hasta cuándo.
                     'cambio' => $plazo->estado($l->setRelation('pedido', $this->resource)),
                 ]);

@@ -58,6 +58,33 @@ class DisponibilidadVarianteCampana extends Model
         };
     }
 
+    /**
+     * TG-266: qué líneas de pedido son "bajo pedido" HOY, en una sola consulta.
+     *
+     * Es el estado actual de la talla en esa temporada, no el que tenía al
+     * pedirse (pedido_detalle no lo guarda). Devuelve [id de la línea => bool].
+     *
+     * @param  iterable<\App\Models\PedidoDetalle>  $lineas
+     * @return array<int, bool>
+     */
+    public static function bajoPedidoPorLinea(iterable $lineas): array
+    {
+        $lineas = collect($lineas);
+        $productos = $lineas->pluck('producto_campana_id')->filter()->unique()->values();
+
+        $bajoPedido = $productos->isEmpty() ? collect() : static::query()
+            ->whereIn('producto_campana_id', $productos)
+            ->whereIn('variante_id', $lineas->pluck('variante_id')->filter()->unique()->values())
+            ->where('estado', 'bajo_pedido')
+            ->get(['producto_campana_id', 'variante_id'])
+            ->map(fn ($d) => $d->producto_campana_id.':'.$d->variante_id)
+            ->flip();
+
+        return $lineas->mapWithKeys(fn ($l) => [
+            (int) $l->id => $bajoPedido->has($l->producto_campana_id.':'.$l->variante_id),
+        ])->all();
+    }
+
     public function productoCampana()
     {
         return $this->belongsTo(ProductoCampana::class, 'producto_campana_id');

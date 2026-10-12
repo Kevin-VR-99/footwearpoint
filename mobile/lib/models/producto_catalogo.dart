@@ -182,6 +182,9 @@ class ProductoCatalogo {
     });
   }
 
+  /// TG-266: si alguna de sus tallas está bajo pedido.
+  bool get hayBajoPedido => variantes.any((v) => v.disponibilidad == Disponibilidad.bajoPedido);
+
   /// La mejor disponibilidad entre sus variantes, para un resumen rápido en
   /// la lista. Null si no tiene variantes cargadas.
   Disponibilidad? get mejorDisponibilidad {

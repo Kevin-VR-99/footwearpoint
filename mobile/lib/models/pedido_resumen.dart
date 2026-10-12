@@ -157,6 +157,7 @@ class LineaPedido {
     required this.precioUnitario,
     required this.subtotal,
     this.cambio,
+    this.bajoPedido = false,
   });
 
   /// pedido_detalle.id; hace falta para pedir un cambio (TG-254).
@@ -174,6 +175,9 @@ class LineaPedido {
   /// lo manda (versiones anteriores o la lista de pedidos).
   final CambioLinea? cambio;
 
+  /// TG-266: la talla está bajo pedido hoy (tarda más en llegar).
+  final bool bajoPedido;
+
   factory LineaPedido.desdeJson(Map<String, dynamic> json) {
     final cambio = json['cambio'];
     return LineaPedido(
@@ -186,6 +190,7 @@ class LineaPedido {
       cantidad: json['cantidad'] as int? ?? 0,
       precioUnitario: (json['precio_unitario'] as num?)?.toDouble() ?? 0,
       subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0,
+      bajoPedido: json['bajo_pedido'] == true,
     );
   }
 }
