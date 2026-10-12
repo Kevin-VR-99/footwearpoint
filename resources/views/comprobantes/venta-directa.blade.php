@@ -226,6 +226,17 @@
         </td></tr>
     </table>
 
+    @if (! empty($c['vale']))
+        {{-- TG-250: vale aplicado en el punto de venta. --}}
+        <table class="datos" style="margin-top: 12px;">
+            <tr><td class="clave">Vale</td><td>{{ $c['vale']['folio'] }} &middot; &minus;{{ $dinero($c['vale']['monto']) }}</td></tr>
+            <tr><td class="clave">Saldo del vale</td><td>{{ $dinero($c['vale']['saldo_restante']) }}</td></tr>
+            @unless ($c['pago'])
+                <tr><td class="clave">Pago</td><td>Pagado con vale</td></tr>
+            @endunless
+        </table>
+    @endif
+
     @if ($c['pago'])
         <table class="datos" style="margin-top: 12px;">
             <tr><td class="clave">Pago</td><td>{{ \App\Models\Pago::etiquetaMetodo($c['pago']['metodo']) }} &middot; {{ $dinero($c['pago']['monto']) }}</td></tr>
