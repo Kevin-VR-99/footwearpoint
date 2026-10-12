@@ -137,6 +137,25 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
                 const SizedBox(height: 8),
                 Text(estado.descripcion!, style: tema.textTheme.bodyLarge),
               ],
+              // TG-125: la fecha límite para recogerlo.
+              if (pedido.avisoRecoleccion != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.event_outlined, size: 18, color: FpColores.insigniaAvisoTexto),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        pedido.avisoRecoleccion!,
+                        style: tema.textTheme.bodyLarge?.copyWith(
+                          color: FpColores.insigniaAvisoTexto,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (pedido.fecha != null) ...[
                 const SizedBox(height: 8),
                 Text(

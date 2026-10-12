@@ -27,7 +27,12 @@ class EstadoPedido {
     'recibido_distribuidora': EstadoPedido._('Recibido', TonoEstado.info, 'Tu pedido ya llegó a la distribuidora.'),
     'parcialmente_disponible': EstadoPedido._('Parc. disponible', TonoEstado.advertencia),
     'listo_entrega': EstadoPedido._('Listo entrega', TonoEstado.advertencia, 'Tu pedido está listo para que pases por él.'),
-    'vencido_recoleccion': EstadoPedido._('Vencido recolección', TonoEstado.advertencia),
+    // TG-125: lo marca solo el sistema cuando pasa la fecha límite.
+    'vencido_recoleccion': EstadoPedido._(
+      'Recolección vencida',
+      TonoEstado.peligro,
+      'Venció el plazo para recoger tu pedido. Comunícate con tu distribuidora.',
+    ),
     'no_surtido': EstadoPedido._('No surtido', TonoEstado.advertencia),
     'entregado': EstadoPedido._('Entregado', TonoEstado.exito, 'Pedido entregado.'),
     'rechazado': EstadoPedido._('Rechazado', TonoEstado.peligro),
