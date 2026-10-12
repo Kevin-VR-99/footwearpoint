@@ -100,7 +100,7 @@ new class extends Component {
 
 <div class="space-y-8">
     {{-- Datos de la distribuidora --}}
-    <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col md:flex-row gap-6">
+    <section class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col md:flex-row gap-6">
         <div class="flex-1">
             <h2 class="text-2xl font-bold text-slate-900">{{ $distribuidora->nombre_comercial }}</h2>
             @if ($distribuidora->descripcion_publica)
@@ -146,7 +146,7 @@ new class extends Component {
 
     {{-- TG-269 (U9): mapa con la ubicación, buscado por la dirección (sin llave). --}}
     @if ($direccionMapa)
-        <section aria-labelledby="titulo-ubicacion" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section aria-labelledby="titulo-ubicacion" class="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h2 id="titulo-ubicacion" class="text-xl font-bold text-fp-sidebar">Ubicación</h2>
@@ -186,12 +186,12 @@ new class extends Component {
             <h2 id="titulo-marcas" class="text-xl font-bold text-slate-900 mb-4">Marcas</h2>
             <div class="flex flex-wrap gap-2" aria-label="Filtrar por marca">
                 <button type="button" wire:click="filtrarMarca"
-                    class="px-3 py-1.5 rounded-full text-sm {{ $marcaId === null ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+                    class="px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $marcaId === null ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
                     Todas
                 </button>
                 @foreach ($marcas as $marca)
                     <button type="button" wire:click="filtrarMarca({{ $marca['id'] }})"
-                        class="px-3 py-1.5 rounded-full text-sm {{ $marcaId === $marca['id'] ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+                        class="px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $marcaId === $marca['id'] ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
                         {{ $marca['nombre'] }}
                     </button>
                 @endforeach
@@ -214,12 +214,12 @@ new class extends Component {
         @if ($lineas->count() > 1)
             <div class="mb-6 flex flex-wrap gap-2" aria-label="Filtrar por línea">
                 <button type="button" wire:click="filtrarLinea"
-                    class="px-3 py-1.5 rounded-full text-sm {{ $lineaId === null ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+                    class="px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $lineaId === null ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
                     Todas las líneas
                 </button>
                 @foreach ($lineas as $linea)
                     <button type="button" wire:click="filtrarLinea({{ $linea['id'] }})"
-                        class="px-3 py-1.5 rounded-full text-sm {{ $lineaId === $linea['id'] ? 'bg-[#111E38] text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+                        class="px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $lineaId === $linea['id'] ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
                         {{ $linea['nombre'] }}
                     </button>
                 @endforeach
@@ -227,10 +227,10 @@ new class extends Component {
         @endif
 
         @if ($productos->isEmpty())
-            <div class="bg-white rounded-xl border border-slate-200 p-10 text-center text-slate-500">
+            <div class="bg-white rounded-2xl border border-slate-200/80 p-10 text-center text-slate-500">
                 @if ($filtrando)
                     No encontramos productos con esos filtros.
-                    <button type="button" wire:click="limpiarFiltros" class="block mx-auto mt-3 text-sm text-[#2563EB] hover:underline">
+                    <button type="button" wire:click="limpiarFiltros" class="block mx-auto mt-3 text-sm text-fp-primary hover:underline">
                         Ver todo el catálogo
                     </button>
                 @else

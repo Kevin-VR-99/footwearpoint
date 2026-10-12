@@ -6,7 +6,7 @@
 @endphp
 
 <a href="{{ app(\App\Services\Tienda\EnlaceTienda::class)->producto($distribuidora, (int) $producto['id']) }}"
-   class="group h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition">
+   class="group h-full bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-fp-sidebar/10 hover:border-fp-primary/30">
     <div class="aspect-square bg-slate-100 flex items-center justify-center overflow-hidden">
         @if ($producto['imagen'])
             <img src="{{ $producto['imagen'] }}" alt="{{ $producto['nombre'] }}" loading="lazy"
@@ -18,7 +18,7 @@
 
     <div class="p-4 flex-1 flex flex-col">
         @if ($producto['marca'])
-            <p class="text-xs font-semibold uppercase tracking-wide text-[#2563EB]">{{ $producto['marca'] }}</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-fp-primary">{{ $producto['marca'] }}</p>
         @endif
         <h3 class="mt-1 text-sm font-semibold text-slate-900 line-clamp-2">{{ $producto['nombre'] }}</h3>
         @if ($producto['colores'])
