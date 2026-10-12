@@ -137,7 +137,8 @@ class ApiService {
         'Revisa que Laravel esté corriendo con:\n'
         'php artisan serve --host=0.0.0.0\n\n'
         'Y que la dirección en lib/config.dart sea la correcta '
-        '(10.0.2.2 para emulador, la IP de tu computadora para celular físico).',
+        '(10.0.2.2 en el emulador de Android, 127.0.0.1 en el simulador de iOS, '
+        'la IP de tu computadora para celular físico).',
       );
     } on TimeoutException {
       throw ApiException('El servidor tardó demasiado en responder.');

@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import '../models/usuario.dart';
 import '../services/api_service.dart';
+import '../config.dart';
 
 /// Guarda quién inició sesión y avisa a las pantallas cuando eso cambia.
 ///
@@ -272,7 +273,7 @@ class AuthProvider extends ChangeNotifier {
   /// Pide el token a Firebase y lo registra en Laravel (TG-96).
   void _registrarDispositivoFCM() async {
     try {
-      // 0. TG-183: desde Android 13 hay que pedir permiso para mostrar
+      // 0. TG-183: en iOS y desde Android 13 hay que pedir permiso para mostrar
       // notificaciones; sin esto el push llega pero el celular no lo enseña.
       // Si la persona ya contestó, no vuelve a preguntar.
       await FirebaseMessaging.instance.requestPermission();
@@ -282,7 +283,7 @@ class AuthProvider extends ChangeNotifier {
       if (token != null) {
         await api.post(
           'dispositivos-fcm', 
-          cuerpo: {'token': token, 'plataforma': 'android'},
+          cuerpo: {'token': token, 'plataforma': Config.plataformaFcm},
         );
       }
 
@@ -294,7 +295,7 @@ class AuthProvider extends ChangeNotifier {
         if (haySesion) {
           await api.post(
             'dispositivos-fcm',
-            cuerpo: {'token': nuevoToken, 'plataforma': 'android'},
+            cuerpo: {'token': nuevoToken, 'plataforma': Config.plataformaFcm},
           );
         }
       });
