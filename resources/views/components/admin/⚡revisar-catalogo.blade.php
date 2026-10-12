@@ -329,10 +329,11 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
             · {{ $this->importacion->paginas }} páginas
         </p>
         <x-slot:acciones>
-            <x-panel.boton variante="secundario" tamano="sm"
-                :href="route('admin.catalogos.archivo', $this->importacion->id)">
+            <x-panel.boton variante="secundario" tamano="sm" type="button" data-ver-archivo
+                x-on:click="$dispatch('abrir-visor', {{ \Illuminate\Support\Js::from(['url' => route('admin.catalogos.archivo', $this->importacion->id), 'tipo' => $this->importacion->tipo_archivo, 'nombre' => 'Catálogo #'.$this->importacion->id]) }})">
                 Ver el catálogo
             </x-panel.boton>
+            <x-ui.visor-archivo />
         </x-slot:acciones>
     </x-panel.encabezado>
 
