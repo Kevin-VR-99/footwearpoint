@@ -162,13 +162,19 @@ class TiendaPorSubdominioTest extends TestCase
     {
         $this->distribuidora(self::BOUTIQUE)->forceFill(['estado' => 'suspendida'])->save();
 
-        foreach (['no-existe', self::BOUTIQUE, 'www', 'admin', 'api', 'a', '-raro-', 'con_guion_bajo'] as $etiqueta) {
+        foreach (['no-existe', self::BOUTIQUE, 'admin', 'api', 'a', '-raro-', 'con_guion_bajo'] as $etiqueta) {
             $this->get($this->url($etiqueta))
                 ->assertNotFound()
                 ->assertSee('Tienda no encontrada')
                 ->assertSee(self::PRINCIPAL.'/marketplace', false)
                 ->assertDontSee('Boutique del Calzado');
         }
+    }
+
+    public function test_www_redirige_al_dominio_principal(): void
+    {
+        $this->get('http://www.'.self::BASE.'/')->assertRedirect(self::PRINCIPAL.'/')->assertStatus(301);
+        $this->get('http://www.'.self::BASE.'/marketplace?q=1')->assertRedirect(self::PRINCIPAL.'/marketplace?q=1');
     }
 
     // ---------------------------------------------------------------
