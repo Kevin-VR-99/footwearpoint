@@ -15,7 +15,7 @@ class BuscadorYControlesTest extends TestCase
         $html = Blade::render('<x-ui.buscador wire:model.live="busqueda" placeholder="Buscar productos" class="w-80" />');
 
         $this->assertStringContainsString('data-buscador', $html);
-        $this->assertStringContainsString('fp-buscador w-80', $html);
+        $this->assertMatchesRegularExpression('/<label class="[^"]*\bfp-buscador\b[^"]*\bw-80\b|<label class="[^"]*\bw-80\b[^"]*\bfp-buscador\b/', $html);
         $this->assertStringContainsString('<svg', $html);
         $this->assertStringContainsString('type="search"', $html);
         $this->assertStringContainsString('wire:model.live="busqueda"', $html);
