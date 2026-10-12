@@ -26,8 +26,15 @@ class SepararTiendaDelPanel
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (DominioTienda::etiquetaDelHost($request->getHost()) === null) {
+        $etiqueta = DominioTienda::etiquetaDelHost($request->getHost());
+
+        if ($etiqueta === null) {
             return $next($request);
+        }
+
+        // TG-232: www.{dominio} es el sitio principal, no una tienda.
+        if ($etiqueta === 'www') {
+            return redirect()->away(DominioTienda::principal().$request->getRequestUri(), 301);
         }
 
         if ($request->is('api', 'api/*')) {
