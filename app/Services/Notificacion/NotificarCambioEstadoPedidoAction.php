@@ -31,6 +31,7 @@ class NotificarCambioEstadoPedidoAction
             $estadoNuevo
         );
 
+        // TG-224: sin scope a propósito; filtra por la distribuidora del pedido y puede correr sin sesión de usuario (p. ej. aviso de Mercado Pago).
         $staffs = DistribuidoraStaff::withoutGlobalScopes()
             ->where('distribuidora_id', $pedido->distribuidora_id)
             ->where('estado', 'activo')

@@ -35,6 +35,14 @@ class AuthProvider extends ChangeNotifier {
   Usuario? _usuario;
   String? _rol;
   int? _distribuidoraId;
+
+  /// E1-04: aceptó el aviso de privacidad y los términos. Mientras no, la
+  /// app solo le muestra el aviso (ver _Raiz en main.dart).
+  bool _legalesAceptados = false;
+
+  /// TG-193: la distribuidora le puso una contraseña temporal y tiene que
+  /// cambiarla antes de poder usar la app.
+  bool _debeCambiarPassword = false;
   bool _iniciando = true;
   bool _sinConexion = false;
   bool _ocupado = false;
@@ -43,6 +51,8 @@ class AuthProvider extends ChangeNotifier {
   Usuario? get usuario => _usuario;
   String? get rol => _rol;
   int? get distribuidoraId => _distribuidoraId;
+  bool get legalesAceptados => _legalesAceptados;
+  bool get debeCambiarPassword => _debeCambiarPassword;
   bool get ocupado => _ocupado;
   String? get error => _error;
   bool get haySesion => _usuario != null;
@@ -208,17 +218,42 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Misma forma en el login y en auth/me: { usuario, rol, distribuidora_id }.
+  /// Misma forma en el login y en auth/me: { usuario, rol, distribuidora_id,
+  /// legales_aceptados, debe_cambiar_password }.
   void _llenarSesion(Map<String, dynamic> datos) {
     // Se lee todo antes de asignar, para no quedar con media sesión si algún
     // campo no viene como se esperaba.
     final usuario = Usuario.desdeJson(datos['usuario'] as Map<String, dynamic>);
     final rol = datos['rol'] as String?;
     final distribuidoraId = datos['distribuidora_id'] as int?;
+    // E1-04: si el servidor no manda la llave, se asume que no los aceptó.
+    final legalesAceptados = datos['legales_aceptados'] as bool? ?? false;
+    // Si el servidor no manda la llave (versión vieja), se asume que no.
+    final debeCambiar = datos['debe_cambiar_password'] as bool? ?? false;
 
     _usuario = usuario;
     _rol = rol;
     _distribuidoraId = distribuidoraId;
+    _legalesAceptados = legalesAceptados;
+    _debeCambiarPassword = debeCambiar;
+  }
+
+  /// TG-193: la acaba de cambiar desde la pantalla obligatoria, así que ya
+  /// puede usar la app sin tener que volver a preguntarle al servidor.
+  void confirmarPasswordCambiada() {
+    if (!_debeCambiarPassword) return;
+
+    _debeCambiarPassword = false;
+    notifyListeners();
+  }
+
+  /// E1-04: el servidor ya registró la aceptación (auth/aceptar-legales),
+  /// así que la app pasa sola al inicio sin volver a preguntarle.
+  void confirmarLegalesAceptados() {
+    if (_legalesAceptados) return;
+
+    _legalesAceptados = true;
+    notifyListeners();
   }
 
   /// Borra la sesión de memoria y el token del teléfono.
@@ -228,6 +263,8 @@ class AuthProvider extends ChangeNotifier {
     _usuario = null;
     _rol = null;
     _distribuidoraId = null;
+    _legalesAceptados = false;
+    _debeCambiarPassword = false;
 
     await api.borrarToken();
   }
@@ -235,6 +272,11 @@ class AuthProvider extends ChangeNotifier {
   /// Pide el token a Firebase y lo registra en Laravel (TG-96).
   void _registrarDispositivoFCM() async {
     try {
+      // 0. TG-183: desde Android 13 hay que pedir permiso para mostrar
+      // notificaciones; sin esto el push llega pero el celular no lo enseña.
+      // Si la persona ya contestó, no vuelve a preguntar.
+      await FirebaseMessaging.instance.requestPermission();
+
       // 1. Pedimos el token de este celular a Firebase
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) {

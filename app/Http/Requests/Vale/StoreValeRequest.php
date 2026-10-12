@@ -26,8 +26,8 @@ class StoreValeRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'propietario_tipo.required' => 'Indica si el propietario es cliente_directo o revendedor.',
-            'propietario_tipo.in'       => 'propietario_tipo debe ser cliente_directo o revendedor.',
+            'propietario_tipo.required' => 'Indica si el propietario es cliente directo (cliente_directo) o cliente mayorista (revendedor).',
+            'propietario_tipo.in'       => 'El propietario debe ser cliente directo (cliente_directo) o cliente mayorista (revendedor).',
             'propietario_id.required'   => 'El id del propietario es obligatorio.',
             'monto_original.required'   => 'El monto es obligatorio.',
             'monto_original.min'        => 'El monto debe ser mayor a cero.',

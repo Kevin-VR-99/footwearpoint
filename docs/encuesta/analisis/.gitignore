@@ -1,0 +1,5 @@
+# Salidas del script y respuestas reales: no se suben al repo.
+salida/
+datos/
+*.png
+__pycache__/

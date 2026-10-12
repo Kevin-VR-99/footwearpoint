@@ -155,7 +155,7 @@ class SuspensionDistribuidoraTest extends TestCase
         $this->actingAs($this->adminGeneral);
 
         Livewire::test('admin.distribuidoras-index')
-            ->assertSeeHtml('wire:confirm="Su personal, revendedores y clientes no podrán usar FootwearPoint hasta reactivarla.');
+            ->assertSeeHtml('wire:confirm="Su personal, clientes mayoristas y clientes no podrán usar FootwearPoint hasta reactivarla.');
     }
 
     public function test_solo_se_suspende_una_activa_y_solo_se_reactiva_una_suspendida(): void

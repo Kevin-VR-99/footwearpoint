@@ -2,6 +2,7 @@
 
 namespace App\Services\Catalogo;
 
+use App\Services\Auditoria\AuditarCambios;
 use App\Models\Color;
 use App\Models\Producto;
 use App\Models\Talla;
@@ -9,6 +10,10 @@ use App\Models\Variante;
 
 class GestionarVarianteAction
 {
+    public function __construct(private AuditarCambios $auditar)
+    {
+    }
+
     /**
      * DECISIÓN PROVISIONAL MÍA: ningún documento especifica un formato
      * exacto de SKU, solo dice "generar sku automático". Uso
@@ -25,7 +30,7 @@ class GestionarVarianteAction
 
         $sku = $this->generarSkuUnico($producto, $talla, $color);
 
-        return Variante::create([
+        $variante = Variante::create([
             'producto_id'             => $producto->id,
             'talla_id'                => $talla->id,
             'color_id'                => $color->id,
@@ -33,6 +38,9 @@ class GestionarVarianteAction
             'sku'                     => $sku,
             'activa'                  => $datos['activa'] ?? true,
         ]);
+        $this->auditar->creado($variante, 'catalogo.variante.creada', 'variante');
+
+        return $variante;
     }
 
     public function actualizar(Variante $variante, array $datos): Variante
@@ -40,7 +48,7 @@ class GestionarVarianteAction
         // producto_id/talla_id/color_id/sku nunca llegan aquí (el Form
         // Request no los permite en edición).
         $variante->fill($datos);
-        $variante->save();
+        $this->auditar->guardar($variante, 'catalogo.variante.actualizada', 'variante');
 
         return $variante->fresh();
     }

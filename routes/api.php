@@ -27,7 +27,11 @@ Route::get('/ping', function () {
 */
 
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
+    // TG-185: segunda capa. El límite fino (5 intentos por correo + IP) vive
+    // en LimiteIntentosLogin; este tope por IP evita que alguien pruebe
+    // muchas cuentas distintas desde la misma máquina.
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:20,1');
     Route::post('/logout', [AuthController::class, 'logout'])
         ->middleware('auth:sanctum');
 
@@ -42,6 +46,11 @@ Route::prefix('auth')->group(function () {
 
     Route::post('/aceptar-legales', [AuthController::class, 'aceptarLegales'])
         ->middleware('auth:sanctum');
+
+    // TG-189 (A11): el boton "no me llego" de la app. Con limite, porque cada
+    // llamada manda un correo.
+    Route::post('/reenviar-verificacion', [AuthController::class, 'reenviarVerificacion'])
+        ->middleware(['auth:sanctum', 'throttle:4,10']);
 
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
@@ -106,6 +115,7 @@ require __DIR__.'/api/pedidos.php';
 // Paquete E — marketplace, vales, notificaciones
 require __DIR__.'/api/marketplace.php';
 require __DIR__.'/api/vales.php';
+require __DIR__.'/api/cambios.php'; // TG-254
 require __DIR__.'/api/notificaciones.php';
 require __DIR__.'/api/dispositivos-fcm.php';
 

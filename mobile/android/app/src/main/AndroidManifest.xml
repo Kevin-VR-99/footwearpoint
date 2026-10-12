@@ -3,11 +3,21 @@
          en Railway. Antes solo estaba en los manifiestos de debug y profile,
          por eso con "flutter run" sí funcionaba. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- TG-183: avisos push en Android 13+ (la app lo pide al iniciar sesión). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
-        android:label="footwearpoint"
+        android:label="Footwear Point"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- TG-183: icono y color de los avisos push de Firebase (sin esto
+             Android muestra un cuadro gris o el icono de Flutter). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_notificacion" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/fp_azul" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -42,6 +52,11 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <!-- TG-268: para abrir el pago de Mercado Pago en el navegador (Android 11+). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

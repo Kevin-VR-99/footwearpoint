@@ -19,6 +19,7 @@ use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Services\Auth\RestablecerPasswordAction;
 use App\Services\Auth\EnviarEnlaceRecuperacionAction;
+use App\Services\Auth\LimiteIntentosLogin;
 
 class AuthController extends Controller
 {
@@ -31,15 +32,28 @@ class AuthController extends Controller
      */
     private const ROLES_SOLO_WEB = ['admin_general', 'admin_distribuidora', 'empleado'];
 
-    public function login(LoginRequest $request)
+    public function login(LoginRequest $request, LimiteIntentosLogin $limite)
     {
+        // TG-185 (A2): mismo limite que el panel web. Se revisa ANTES de mirar
+        // la contrasena, para que agotar los intentos sirva de freno real.
+        if ($limite->bloqueado($request->email, $request->ip())) {
+            return response()->json([
+                'message' => $limite->mensaje($limite->segundosRestantes($request->email, $request->ip())),
+            ], 429);
+        }
+
         $usuario = Usuario::where('email', $request->email)->first();
 
         if (!$usuario || !Hash::check($request->password, $usuario->password)) {
+            $limite->registrarFallo($request->email, $request->ip());
+
             throw ValidationException::withMessages([
                 'email' => ['Las credenciales son incorrectas.'],
             ]);
         }
+
+        // Entro bien: los fallos anteriores ya no cuentan.
+        $limite->limpiar($request->email, $request->ip());
 
         if ($usuario->estado !== 'activo') {
             throw ValidationException::withMessages([
@@ -47,7 +61,8 @@ class AuthController extends Controller
             ]);
         }
 
-        // TG-196 (G5): si su distribuidora está suspendida o rechazada no
+        // TG-196 (G5) / TG-220: si su distribuidora está pendiente, suspendida
+        // o rechazada no
         // puede operar. Se revisa ANTES de la regla del personal (TG-93):
         // sin distribuidora, el rol del personal saldría en null y esa regla
         // ya no lo detendría. Tampoco se crea token.
@@ -68,7 +83,7 @@ class AuthController extends Controller
         // quien se está rechazando.
         if ($this->esRolSoloWeb($sesion['rol'])) {
             throw ValidationException::withMessages([
-                'email' => ['Esta aplicación es solo para revendedores y clientes directos.'],
+                'email' => ['Esta aplicación es solo para clientes mayoristas y clientes directos.'],
             ]);
         }
 
@@ -132,7 +147,7 @@ class AuthController extends Controller
             $usuario->currentAccessToken()?->delete();
 
             return response()->json([
-                'message' => 'Esta aplicación es solo para revendedores y clientes directos.',
+                'message' => 'Esta aplicación es solo para clientes mayoristas y clientes directos.',
             ], 401);
         }
 
@@ -176,6 +191,17 @@ class AuthController extends Controller
             $rol = $usuario->getRoleNames()->first();
         }
 
+        // Validación robusta y flexible de aceptación de legales vigentes (basta con que existan)
+        $avisoAceptado = AceptacionLegal::where('usuario_id', $usuario->id)
+            ->where('tipo_documento', 'aviso_privacidad')
+            ->exists();
+
+        $terminosAceptados = AceptacionLegal::where('usuario_id', $usuario->id)
+            ->where('tipo_documento', 'terminos_condiciones')
+            ->exists();
+
+        $legalesAceptados = $avisoAceptado && $terminosAceptados;
+
         return [
             'usuario' => [
                 'id'       => $usuario->id,
@@ -186,6 +212,14 @@ class AuthController extends Controller
             ],
             'rol'              => $rol,
             'distribuidora_id' => $distribuidoraId,
+            'legales_aceptados' => $legalesAceptados,
+            // TG-193: si es true, la app debe mandarla a cambiar su
+            // contraseña antes de dejarla usar lo demás.
+            'debe_cambiar_password' => (bool) $usuario->debe_cambiar_password,
+            // TG-189 (A11): si es false, la app muestra el aviso y el botón
+            // para reenviar el enlace. No la saca de la app: solo enviar un
+            // pedido pide el correo confirmado.
+            'email_verificado' => $usuario->hasVerifiedEmail(),
         ];
     }
 
@@ -221,7 +255,7 @@ class AuthController extends Controller
         try {
             $admin = $request->user();
 
-            // Sin Global Scope para evitar el crash
+            // TG-224: sin scope a propósito, esta consulta RESUELVE la distribuidora del usuario (ver Tenant::desdeStaff).
             $staffAdmin = \App\Models\DistribuidoraStaff::withoutGlobalScopes()
                 ->where('usuario_id', $admin->id)
                 ->first();
@@ -242,13 +276,13 @@ class AuthController extends Controller
                 'estado'   => 'activo',
             ]);
 
-            \App\Models\DistribuidoraStaff::withoutGlobalScopes()->create([
+            Tenant::forzar($distribuidoraId, fn () => \App\Models\DistribuidoraStaff::create([
                 'distribuidora_id' => $distribuidoraId,
                 'usuario_id'       => $usuario->id,
                 'tipo'             => 'empleado',
                 'estado'           => 'activo',
                 'fecha_alta'       => now(),
-            ]);
+            ]));
 
             setPermissionsTeamId($distribuidoraId);
             $usuario->assignRole('empleado');
@@ -276,21 +310,31 @@ class AuthController extends Controller
         }
     }
 
-    public function aceptarLegales(AceptarLegalesRequest $request)
+    public function aceptarLegales(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info('Llegó petición de legales:', $request->all());
         $usuario = $request->user();
         $ip = $request->ip();
 
+        // Acepta de forma flexible cualquier estructura que mande la app
+        $documentos = $request->input('documentos', [
+            ['tipo_documento' => 'aviso_privacidad', 'version' => '1.0'],
+            ['tipo_documento' => 'terminos_condiciones', 'version' => '1.0'],
+        ]);
+
         $aceptadas = [];
 
-        foreach ($request->documentos as $doc) {
-            $aceptacion = AceptacionLegal::firstOrCreate(
+        foreach ($documentos as $doc) {
+            $tipo = is_array($doc) ? ($doc['tipo_documento'] ?? 'aviso_privacidad') : 'aviso_privacidad';
+            $version = is_array($doc) ? ($doc['version'] ?? '1.0') : '1.0';
+
+            $aceptacion = AceptacionLegal::updateOrCreate(
                 [
                     'usuario_id'     => $usuario->id,
-                    'tipo_documento' => $doc['tipo_documento'],
-                    'version'        => $doc['version'],
+                    'tipo_documento' => $tipo,
                 ],
                 [
+                    'version'          => $version,
                     'fecha_aceptacion' => now(),
                     'ip_origen'        => $ip,
                 ]
@@ -318,6 +362,26 @@ class AuthController extends Controller
     {
         return response()->json([
             'message' => $accion->ejecutar($request->validated('email')),
+        ]);
+    }
+
+    /**
+     * POST /api/auth/reenviar-verificacion (TG-189 / A11).
+     *
+     * El botón "no me llegó" de la app. Siempre responde lo mismo, haya o no
+     * haya algo que mandar: así nadie puede usarlo para averiguar si una
+     * cuenta ya confirmó o no.
+     */
+    public function reenviarVerificacion(Request $request)
+    {
+        $usuario = $request->user();
+
+        if ($usuario !== null && ! $usuario->hasVerifiedEmail()) {
+            $usuario->sendEmailVerificationNotification();
+        }
+
+        return response()->json([
+            'message' => 'Si tu correo está sin confirmar, te mandamos un enlace nuevo. Revisa tu bandeja y la carpeta de spam.',
         ]);
     }
 

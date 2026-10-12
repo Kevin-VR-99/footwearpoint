@@ -7,6 +7,7 @@ use App\Models\ClienteDirecto;
 use App\Models\Distribuidora;
 use App\Models\DistribuidoraStaff;
 use App\Models\Pago;
+use App\Models\ValeMovimiento;
 use App\Models\Sucursal;
 use App\Models\VentaDirecta;
 use App\Models\VentaDirectaDetalle;
@@ -36,6 +37,7 @@ class DatosComprobanteVentaAction
      *     atendio: ?string,
      *     lineas: list<array{producto: string, modelo: string, talla: string, color: string, cantidad: int, precio_unitario: float, subtotal: float}>,
      *     subtotal: float, descuento: float, total: float, base_gravable: float, iva: float,
+     *     vale: ?array{folio: string, monto: float, saldo_restante: float},
      *     pago: ?array{folio: string, metodo: string, monto: float}
      * }
      */
@@ -71,6 +73,14 @@ class DatosComprobanteVentaAction
         $pago = Pago::query()
             ->where('venta_directa_id', $venta->id)
             ->where('direccion', 'entrada')
+            ->orderBy('id')
+            ->first();
+
+        // TG-250: vale aplicado en esta venta (movimiento de aplicación).
+        $movimientoVale = ValeMovimiento::query()
+            ->with('vale')
+            ->where('venta_directa_id', $venta->id)
+            ->where('tipo', 'aplicacion')
             ->orderBy('id')
             ->first();
 
@@ -113,6 +123,14 @@ class DatosComprobanteVentaAction
             'total'         => $total,
             'base_gravable' => $baseGravable,
             'iva'           => round($total - $baseGravable, 2),
+
+            'vale' => $movimientoVale !== null
+                ? [
+                    'folio'          => (string) $movimientoVale->vale?->folio,
+                    'monto'          => (float) $movimientoVale->monto,
+                    'saldo_restante' => (float) $movimientoVale->saldo_posterior,
+                ]
+                : null,
 
             'pago' => $pago !== null
                 ? ['folio' => (string) $pago->folio, 'metodo' => (string) $pago->metodo, 'monto' => (float) $pago->monto]

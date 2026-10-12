@@ -177,4 +177,35 @@ class PedidoShowPagoLivewireTest extends TestCase
 
         $this->assertSame(0, Pago::withoutGlobalScopes()->where('pedido_id', $pedidoId)->count());
     }
+
+    /** TG-263: el detalle del pedido mostraba el valor interno "total_revendedor" en la columna Tipo. */
+    public function test_el_detalle_muestra_etiquetas_legibles_del_pago(): void
+    {
+        $pedidoId = $this->pedidoEnviadoDeMaria();
+        $total = (float) Pedido::withoutGlobalScopes()->findOrFail($pedidoId)->total;
+
+        $this->comoPanel(self::EMPLEADO);
+
+        Livewire::test('pedidos.show', ['id' => $pedidoId])
+            ->set('pagoMetodo', 'transferencia')
+            ->set('pagoMonto', (string) $total)
+            ->call('registrarPago')
+            ->assertSet('errorMsg', '');
+
+        // En produccion este tipo llega por el pago mayorista de Mercado Pago.
+        Pago::withoutGlobalScopes()->where('pedido_id', $pedidoId)->update(['tipo' => 'total_revendedor']);
+
+        Livewire::test('pedidos.show', ['id' => $pedidoId])
+            ->assertSeeText('Total mayorista')
+            ->assertSeeText('Transferencia')
+            ->assertDontSeeText('total_revendedor');
+    }
+
+    public function test_etiquetas_de_tipo_y_metodo_de_pago(): void
+    {
+        $this->assertSame('Saldo', Pago::etiquetaTipo('saldo_pedido'));
+        $this->assertSame('Mercado Pago', Pago::etiquetaMetodo('mercado_pago'));
+        $this->assertSame('Valor nuevo', Pago::etiquetaTipo('valor_nuevo'));
+        $this->assertSame('-', Pago::etiquetaMetodo(null));
+    }
 }

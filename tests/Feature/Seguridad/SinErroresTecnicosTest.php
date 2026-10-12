@@ -262,7 +262,7 @@ class SinErroresTecnicosTest extends TestCase
         Exceptions::fake();
         $this->comoPanel(self::EMPLEADO);
 
-        $stock = Mockery::mock(StockService::class, [app(ContextoOperativo::class)])->makePartial();
+        $stock = Mockery::mock(StockService::class, [app(ContextoOperativo::class), app(RegistrarAuditoriaAction::class)])->makePartial();
         $stock->shouldReceive('registrarEntrada')->once()->andThrow($this->errorDeBaseDeDatos());
         $this->instance(StockService::class, $stock);
 
@@ -378,7 +378,7 @@ class SinErroresTecnicosTest extends TestCase
         $this->get('/esta-pagina-no-existe')
             ->assertNotFound()
             ->assertSee('Página no encontrada')
-            ->assertSee('Ir al inicio');
+            ->assertSee('Volver al inicio');
     }
 
     public function test_pagina_403_por_rol_en_espanol(): void

@@ -40,6 +40,8 @@ class DatosSolicitudDistribuidoraAction
             'horario_publico'     => $distribuidora->horario_publico,
             'marketplace_visible' => (bool) $distribuidora->marketplace_visible,
             'estado'              => $distribuidora->estado,
+            // TG-220: qué plan pidió, para revisarlo antes de aprobar.
+            'plan_solicitado'     => $distribuidora->planSolicitado?->nombre,
             'fecha_solicitud'     => $distribuidora->fecha_solicitud?->toIso8601String(),
             'fecha_aprobacion'    => $distribuidora->fecha_aprobacion?->toIso8601String(),
             'motivo_rechazo'      => $distribuidora->motivo_rechazo,
@@ -47,6 +49,9 @@ class DatosSolicitudDistribuidoraAction
                 'nombre' => $staff->usuario?->nombre,
                 'email'  => $staff->usuario?->email,
                 'estado' => $staff->estado,
+                // TG-220 (A11): si no confirmó su correo, el admin general
+                // tiene que verlo antes de aprobar. No lo bloquea.
+                'correo_confirmado' => $staff->usuario?->hasVerifiedEmail() ?? false,
             ])->values()->all(),
             // TG-197 (G16): categorías del directorio, activas e inactivas.
             'categorias_directorio' => $distribuidora->categoriasDirectorio()

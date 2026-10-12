@@ -42,6 +42,7 @@ http.Response _json(Object cuerpo, int codigo) => http.Response(
 Map<String, dynamic> _sesion(int id, String nombre, String email) => {
   'usuario': {'id': id, 'nombre': nombre, 'email': email, 'telefono': null, 'estado': 'activo'},
   'rol': 'revendedor',
+  'legales_aceptados': true,
   'distribuidora_id': 1,
 };
 
@@ -227,7 +228,7 @@ void main() {
     await tester.tap(find.text('Mi pedido acumulado (3)'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Pedido Acumulado de Revendedor'), findsOneWidget);
+    expect(find.text('Pedido acumulado de cliente mayorista'), findsOneWidget);
     expect(find.text('Botín casual'), findsNWidgets(2));
     expect(find.text(r'$1,500.00'), findsOneWidget);
   });

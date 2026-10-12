@@ -114,4 +114,28 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Verificacion de correo (TG-189 / A11)
+    |--------------------------------------------------------------------------
+    |
+    | 'expire': minutos que dura el enlace del correo (lo usa Laravel).
+    |
+    | 'obligatoria': si esta en true, un cliente mayorista o un cliente no
+    | puede enviar un pedido ni pagarlo mientras no confirme su correo (es el
+    | criterio de E1-03). El personal de mostrador NUNCA se bloquea: a ellos
+    | los dio de alta la distribuidora en persona, y si se frenaran se frena
+    | el negocio.
+    |
+    | Encendida desde TG-278: las cuentas de la demostracion ya nacen con el
+    | correo confirmado (sus correos son inventados y nadie podria abrir el
+    | enlace). Se deja apagable por si hiciera falta en una emergencia.
+    |
+    */
+
+    'verification' => [
+        'expire' => (int) env('AUTH_VERIFICACION_MINUTOS', 60),
+        'obligatoria' => env('AUTH_VERIFICACION_OBLIGATORIA', true),
+    ],
+
 ];

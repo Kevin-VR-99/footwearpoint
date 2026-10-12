@@ -101,6 +101,7 @@ void main() {
               'estado': 'activo',
             },
             'rol': rol,
+            'legales_aceptados': true,
             'distribuidora_id': 1,
           },
         }, 200);

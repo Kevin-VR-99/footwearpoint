@@ -29,10 +29,14 @@
     @keydown.escape.window="sidebarOpen = false; userMenuOpen = false">
     @php
         $esAdminDistribuidora = false;
+        $puedeConfiguracion = false;
+        $puedeReportesFinancieros = false;
         $logotipoDistribuidora = null;
         if (auth()->check()) {
             app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId(\App\Support\Tenant::id() ?? 0);
             $esAdminDistribuidora = auth()->user()->hasRole('admin_distribuidora');
+            $puedeConfiguracion = $esAdminDistribuidora || auth()->user()->can('configuracion.administrar');
+            $puedeReportesFinancieros = $esAdminDistribuidora || auth()->user()->can('reportes.ver_financieros');
             $tenantId = \App\Support\Tenant::id();
             if ($tenantId) {
                 $logotipoDistribuidora = \App\Models\Distribuidora::query()->whereKey($tenantId)->value('logotipo_url');
@@ -50,14 +54,12 @@
     @endphp
 
     <div class="min-h-screen flex">
-        {{-- Sidebar deslizable (drawer en todos los anchos) --}}
         <aside
             class="sticky top-0 z-40 flex h-screen shrink-0 flex-col overflow-hidden bg-gradient-to-b from-fp-sidebar via-fp-sidebar to-fp-accent text-white shadow-xl shadow-fp-sidebar/30 transition-[width] duration-200 ease-out"
             :class="sidebarOpen ? 'w-64' : 'w-0'" :aria-hidden="(!sidebarOpen).toString()">
             <div class="flex h-full w-64 flex-col">
                 <div class="h-0.5 w-full bg-gradient-to-r from-fp-primary via-white/40 to-fp-danger"></div>
 
-                {{-- Brand + cerrar --}}
                 <div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4">
                     <a href="{{ route('dashboard') }}" wire:navigate class="group flex min-w-0 items-center gap-2.5">
                         <span
@@ -83,7 +85,6 @@
                 </div>
 
                 <nav class="flex-1 space-y-1 overflow-y-auto p-3">
-                    {{-- Inicio --}}
                     <a href="{{ route('dashboard') }}" wire:navigate
                         class="group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('dashboard') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
                         <span
@@ -97,7 +98,6 @@
                         Inicio
                     </a>
 
-                    {{-- Catálogo (admin) --}}
                     @if ($esAdminDistribuidora)
                         <div class="pt-2">
                             <p class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
@@ -128,11 +128,18 @@
                                     class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
                                     Temporadas y productos
                                 </a>
+                                <a href="{{ route('catalogo.mis-lineas') }}" wire:navigate
+                                    class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('catalogo.mis-lineas') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
+                                    Mis líneas
+                                </a>
+                                <a href="{{ route('catalogo.precios') }}" wire:navigate
+                                    class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('catalogo.precios') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
+                                    Precios y publicación
+                                </a>
                             </div>
                         </div>
                     @endif
 
-                    {{-- Operación --}}
                     <div class="pt-2">
                         <p class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
                             Operación</p>
@@ -170,10 +177,11 @@
                                 class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('pedidos.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Pedidos</a>
                             <a href="{{ route('vales.index') }}" wire:navigate
                                 class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('vales.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Vales</a>
+                            <a href="{{ route('cambios.index') }}" wire:navigate
+                                class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('cambios.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Cambios</a>
                         </div>
                     </div>
 
-                    {{-- Más --}}
                     <div class="pt-2">
                         <p class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">Más
                         </p>
@@ -196,8 +204,10 @@
                             </svg>
                         </button>
                         <div x-show="openMas" x-cloak class="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
-                            <a href="{{ route('reportes.index') }}" wire:navigate
-                                class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('reportes.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Reportes</a>
+                            @if ($puedeReportesFinancieros)
+                                <a href="{{ route('reportes.index') }}" wire:navigate
+                                    class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('reportes.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Reportes</a>
+                            @endif
                             @if ($esAdminDistribuidora)
                                 <a href="{{ route('auditoria.index') }}" wire:navigate
                                     class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('auditoria.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Auditoría</a>
@@ -205,8 +215,7 @@
                         </div>
                     </div>
 
-                    {{-- Sistema (admin) --}}
-                    @if ($esAdminDistribuidora)
+                    @if ($puedeConfiguracion)
                         <div class="pt-2">
                             <p class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
                                 Sistema</p>
@@ -254,7 +263,6 @@
         </aside>
 
         <div class="flex min-w-0 flex-1 flex-col transition-[margin] duration-200 ease-out">
-            {{-- Top bar: logo+nombre (abre sidebar) + usuario --}}
             <header
                 class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
                 <div class="h-0.5 w-full bg-gradient-to-r from-fp-primary via-fp-sidebar to-fp-danger"></div>
@@ -281,7 +289,6 @@
                     <div class="flex items-center gap-1.5 sm:gap-2">
                         <livewire:notificaciones.nav-badge />
 
-                        {{-- Menú usuario --}}
                         <div class="relative" @click.outside="userMenuOpen = false">
                             <button type="button"
                                 class="flex items-center gap-2 rounded-full border border-slate-200/90 bg-white py-1 pl-1 pr-2.5 text-left shadow-sm transition hover:border-fp-primary/30 hover:bg-fp-page focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40"

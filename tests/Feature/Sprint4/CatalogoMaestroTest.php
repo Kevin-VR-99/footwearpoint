@@ -81,10 +81,12 @@ class CatalogoMaestroTest extends TestCase
 
     public function test_no_puede_haber_dos_lineas_con_el_mismo_nombre(): void
     {
-        $this->nuevaLinea('Impuls');
+        // Un nombre que no esta en el catalogo demo, para que choque solo
+        // consigo mismo (TG-279: "Impuls" ya es una linea del catalogo).
+        $this->nuevaLinea('Linea Repetida');
 
         $this->expectException(QueryException::class);
-        $this->nuevaLinea('Impuls');
+        $this->nuevaLinea('Linea Repetida');
     }
 
     public function test_no_puede_haber_dos_marcas_ni_dos_categorias_con_el_mismo_nombre(): void

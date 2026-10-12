@@ -2,6 +2,7 @@
 
 namespace App\Services\Reporte;
 
+use App\Models\CicloCompra;
 use App\Models\Pedido;
 use App\Models\Vale;
 use App\Models\VentaDirecta;
@@ -9,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 
 class ResumenOperativoAction
 {
-    public function ejecutar(?string $desde = null, ?string $hasta = null): array
+    public function ejecutar(?string $desde = null, ?string $hasta = null, ?string $estado = null, ?int $cicloId = null): array
     {
         $pedidos = Pedido::query();
         if ($desde) {
@@ -18,16 +19,41 @@ class ResumenOperativoAction
         if ($hasta) {
             $pedidos->whereDate('created_at', '<=', $hasta);
         }
+        if ($estado) {
+            $pedidos->where('estado', $estado);
+        }
+        if ($cicloId) {
+            $pedidos->where('ciclo_compra_id', $cicloId);
+        }
 
         $porEstado = (clone $pedidos)
             ->selectRaw('estado, COUNT(*) as cantidad, COALESCE(SUM(total), 0) as monto')
             ->groupBy('estado')
             ->get()
             ->map(fn ($r) => [
-                'estado'   => $r->estado,
+                'estado' => $r->estado,
                 'cantidad' => (int) $r->cantidad,
-                'monto'    => (float) $r->monto,
+                'monto' => (float) $r->monto,
             ])
+            ->values()
+            ->all();
+
+        $porCiclo = (clone $pedidos)
+            ->selectRaw('ciclo_compra_id, COUNT(*) as cantidad, COALESCE(SUM(total), 0) as monto')
+            ->groupBy('ciclo_compra_id')
+            ->get()
+            ->map(function ($r) {
+                $ciclo = $r->ciclo_compra_id
+                    ? CicloCompra::query()->find($r->ciclo_compra_id)
+                    : null;
+
+                return [
+                    'ciclo_id' => $r->ciclo_compra_id,
+                    'ciclo' => $ciclo?->nombre ?? 'Sin ciclo',
+                    'cantidad' => (int) $r->cantidad,
+                    'monto' => (float) $r->monto,
+                ];
+            })
             ->values()
             ->all();
 
@@ -65,15 +91,15 @@ class ResumenOperativoAction
                 }
 
                 return [
-                    'id'            => $p->id,
-                    'folio'         => $p->folio,
-                    'estado'        => $p->estado,
-                    'quien'         => $quien,
-                    'tipo'          => $p->cliente_directo_id ? 'Cliente' : ($p->revendedor_distribuidora_id ? 'Revendedor' : '—'),
+                    'id' => $p->id,
+                    'folio' => $p->folio,
+                    'estado' => $p->estado,
+                    'quien' => $quien,
+                    'tipo' => $p->cliente_directo_id ? 'Cliente' : ($p->revendedor_distribuidora_id ? 'Revendedor' : '—'),
                     'capturado_por' => $capturadoPor,
-                    'fecha'         => optional($p->fecha_colocacion ?? $p->created_at)?->format('d/m/Y H:i'),
-                    'total'         => (float) $p->total,
-                    'descripcion'   => $descripcion !== '' ? $descripcion : 'Sin líneas',
+                    'fecha' => optional($p->fecha_colocacion ?? $p->created_at)?->format('d/m/Y H:i'),
+                    'total' => (float) $p->total,
+                    'descripcion' => $descripcion !== '' ? $descripcion : 'Sin líneas',
                 ];
             })
             ->values()
@@ -119,15 +145,15 @@ class ResumenOperativoAction
                         ->implode('; ');
 
                     return [
-                        'id'            => $v->id,
-                        'folio'         => $v->folio,
-                        'quien'         => $v->clienteDirecto?->nombre ?? 'Público general',
+                        'id' => $v->id,
+                        'folio' => $v->folio,
+                        'quien' => $v->clienteDirecto?->nombre ?? 'Público general',
                         'capturado_por' => $v->registradaPor?->usuario?->nombreVisible(),
-                        'sucursal'      => $v->sucursal?->nombre,
-                        'fecha'         => optional($v->fecha_venta)?->format('d/m/Y H:i'),
-                        'estado'        => $v->estado,
-                        'total'         => (float) $v->total,
-                        'descripcion'   => $descripcion !== '' ? $descripcion : 'Sin líneas',
+                        'sucursal' => $v->sucursal?->nombre,
+                        'fecha' => optional($v->fecha_venta)?->format('d/m/Y H:i'),
+                        'estado' => $v->estado,
+                        'total' => (float) $v->total,
+                        'descripcion' => $descripcion !== '' ? $descripcion : 'Sin líneas',
                     ];
                 })
                 ->values()
@@ -138,21 +164,24 @@ class ResumenOperativoAction
             'filtros' => [
                 'desde' => $desde,
                 'hasta' => $hasta,
+                'estado' => $estado,
+                'ciclo_id' => $cicloId,
             ],
             'pedidos' => [
-                'total'       => $totalPedidos,
+                'total' => $totalPedidos,
                 'monto_total' => $montoPedidos,
-                'por_estado'  => $porEstado,
-                'lista'       => $listaPedidos,
+                'por_estado' => $porEstado,
+                'por_ciclo' => $porCiclo,
+                'lista' => $listaPedidos,
             ],
             'vales' => [
-                'activos'      => $valesActivos,
+                'activos' => $valesActivos,
                 'saldo_activo' => $saldoVales,
             ],
             'ventas_directas' => [
-                'total'       => $ventasDirectas,
+                'total' => $ventasDirectas,
                 'monto_total' => $montoVentas,
-                'lista'       => $listaVentas,
+                'lista' => $listaVentas,
             ],
         ];
     }

@@ -133,7 +133,7 @@ class LoginMultiRolTest extends TestCase
             'password' => $password,
         ])
             ->assertStatus(422)
-            ->assertJsonPath('errors.email.0', 'Esta aplicación es solo para revendedores y clientes directos.')
+            ->assertJsonPath('errors.email.0', 'Esta aplicación es solo para clientes mayoristas y clientes directos.')
             ->assertJsonMissingPath('data.token');
 
         // Se rechaza antes de crear el token: no le queda ninguno válido.

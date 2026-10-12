@@ -17,6 +17,9 @@ class StoreVentaDirectaRequest extends FormRequest
         return [
             'cliente_directo_id' => ['nullable', 'integer', 'min:1'],
 
+            // TG-250: folio de un vale de cliente directo para descontar del total.
+            'vale_folio' => ['nullable', 'string', 'max:50'],
+
             // Valores del enum real de pagos.metodo.
             'metodo_pago' => ['required', Rule::in([
                 'efectivo', 'transferencia', 'tarjeta', 'mercado_pago', 'otro',

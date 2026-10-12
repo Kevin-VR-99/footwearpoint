@@ -46,7 +46,7 @@ class RegistrarPagoPedidoAction
 
         if ($tipo === 'anticipo' && $pedido->tipo !== 'cliente_directo') {
             throw ValidationException::withMessages([
-                'tipo' => ['El anticipo de E8-02 aplica a pedidos de cliente directo. El revendedor usa cobro de saldo o total mayorista.'],
+                'tipo' => ['El anticipo aplica a pedidos de cliente directo. El cliente mayorista usa cobro de saldo o total mayorista.'],
             ]);
         }
 

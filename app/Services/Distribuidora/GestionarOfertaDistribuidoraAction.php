@@ -6,6 +6,7 @@ use App\Exceptions\OperacionInvalidaException;
 use App\Models\DistribuidoraLinea;
 use App\Models\OfertaDistribuidora;
 use App\Models\ProductoCampana;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Support\Tenant;
 
 /**
@@ -23,6 +24,10 @@ use App\Support\Tenant;
  */
 class GestionarOfertaDistribuidoraAction
 {
+    public function __construct(private RegistrarAuditoriaAction $auditoria)
+    {
+    }
+
     public function ponerPrecioMayorista(int $productoCampanaId, float $precio): OfertaDistribuidora
     {
         $productoCampana = $this->productoQuePuedeTocar($productoCampanaId);
@@ -41,7 +46,7 @@ class GestionarOfertaDistribuidoraAction
             );
         }
 
-        return $this->guardar($productoCampana->id, ['precio_mayorista' => $precio]);
+        return $this->guardarYAuditar($productoCampana->id, ['precio_mayorista' => $precio], 'oferta.precio_mayorista_actualizado');
     }
 
     /** Vuelve a usar el descuento general de la distribuidora. */
@@ -49,21 +54,49 @@ class GestionarOfertaDistribuidoraAction
     {
         $productoCampana = $this->productoQuePuedeTocar($productoCampanaId);
 
-        return $this->guardar($productoCampana->id, ['precio_mayorista' => null]);
+        return $this->guardarYAuditar($productoCampana->id, ['precio_mayorista' => null], 'oferta.precio_mayorista_restablecido');
     }
 
     public function ocultar(int $productoCampanaId): OfertaDistribuidora
     {
         $productoCampana = $this->productoQuePuedeTocar($productoCampanaId);
 
-        return $this->guardar($productoCampana->id, ['publicado' => false]);
+        return $this->guardarYAuditar($productoCampana->id, ['publicado' => false], 'oferta.producto_ocultado');
     }
 
     public function mostrar(int $productoCampanaId): ?OfertaDistribuidora
     {
         $productoCampana = $this->productoQuePuedeTocar($productoCampanaId);
 
-        return $this->guardar($productoCampana->id, ['publicado' => true]);
+        return $this->guardarYAuditar($productoCampana->id, ['publicado' => true], 'oferta.producto_mostrado');
+    }
+
+    /**
+     * TG-267 (U7): guarda y deja en la auditoría el antes y el después, solo
+     * si de verdad cambió algo (volver a poner el mismo precio no cuenta).
+     */
+    private function guardarYAuditar(int $productoCampanaId, array $cambios, string $accion): ?OfertaDistribuidora
+    {
+        $antes = $this->estado($productoCampanaId);
+        $oferta = $this->guardar($productoCampanaId, $cambios);
+        $despues = $this->estado($productoCampanaId);
+
+        if ($antes != $despues) {
+            $this->auditoria->ejecutar($accion, 'producto_campana', $productoCampanaId, $antes, $despues);
+        }
+
+        return $oferta;
+    }
+
+    /** Cómo vende hoy la distribuidora ese producto: sin fila es lo normal. */
+    private function estado(int $productoCampanaId): array
+    {
+        $oferta = OfertaDistribuidora::query()->where('producto_campana_id', $productoCampanaId)->first();
+
+        return [
+            'precio_mayorista' => $oferta?->precio_mayorista !== null ? (float) $oferta->precio_mayorista : null,
+            'publicado'        => $oferta ? (bool) $oferta->publicado : true,
+        ];
     }
 
     /**

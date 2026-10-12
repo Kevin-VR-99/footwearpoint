@@ -56,6 +56,42 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | TG-232 (G12/G13) — Dominio base de las tiendas
+    |--------------------------------------------------------------------------
+    |
+    | Con FOOTWEARPOINT_DOMINIO (p. ej. footwearpoint.app) cada tienda pública
+    | se sirve en {subdominio}.footwearpoint.app. Vacío: todo sigue en
+    | /tienda/{slug}, como antes (local, pruebas y la dirección de Railway).
+    |
+    | El panel, la API y Mercado Pago siempre van en APP_URL.
+    |
+    */
+
+    'dominio_base' => strtolower(trim((string) env('FOOTWEARPOINT_DOMINIO', ''), " .\t\n\r\0\x0B")) ?: null,
+
+    // Dirección pública de Railway (la pone Railway sola, sin esquema). La
+    // APK y webhooks viejos la siguen usando: se acepta como host de confianza.
+    'railway_dominio' => strtolower(trim((string) env('RAILWAY_PUBLIC_DOMAIN', ''), " .\t\n\r\0\x0B")) ?: null,
+
+    // Otros hosts aceptados, separados por coma (sin esquema). Railway pone
+    // RAILWAY_PUBLIC_DOMAIN en el dominio propio en cuanto existe, así que la
+    // dirección *.up.railway.app (APK, webhooks viejos) va aquí.
+    'hosts_extra' => array_values(array_filter(array_map(
+        fn ($h) => strtolower(trim($h, " .\t\n\r\0\x0B")),
+        explode(',', (string) env('FOOTWEARPOINT_HOSTS_EXTRA', ''))
+    ))),
+
+    // Nombres que ninguna distribuidora puede usar como subdominio.
+    'subdominios_reservados' => [
+        'www', 'api', 'admin', 'panel', 'app', 'mail', 'correo', 'smtp', 'imap', 'pop', 'ftp',
+        'static', 'assets', 'cdn', 'storage', 'media', 'img', 'status', 'docs', 'blog',
+        'soporte', 'ayuda', 'help', 'login', 'cuenta', 'tienda', 'tiendas', 'marketplace',
+        'footwearpoint', 'mercadopago', 'mercado-pago', 'pago', 'pagos', 'webhook', 'webhooks',
+        'dev', 'staging', 'test', 'demo', 'localhost', 'livewire',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

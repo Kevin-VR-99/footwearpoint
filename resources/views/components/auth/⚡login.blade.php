@@ -2,6 +2,7 @@
 
 use App\Models\Usuario;
 use App\Services\Auth\AccesoPanelWebService;
+use App\Services\Auth\LimiteIntentosLogin;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Layout;
@@ -80,12 +81,28 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
     {
         $this->validate();
 
+        $limite = app(LimiteIntentosLogin::class);
+        $ip = request()->ip();
+
+        // TG-185: sin esto se podian probar contrasenas sin limite. Se revisa
+        // antes de mirar la contrasena, para que el bloqueo frene de verdad.
+        if ($limite->bloqueado($this->email, $ip)) {
+            $this->addError('email', $limite->mensaje($limite->segundosRestantes($this->email, $ip)));
+
+            return;
+        }
+
         $usuario = Usuario::where('email', $this->email)->first();
 
         if (!$usuario || !Hash::check($this->password, $usuario->password)) {
+            $limite->registrarFallo($this->email, $ip);
+
             $this->addError('email', 'Las credenciales son incorrectas.');
             return;
         }
+
+        // Entro bien: los fallos anteriores ya no cuentan.
+        $limite->limpiar($this->email, $ip);
 
         if ($usuario->estado !== 'activo') {
             $this->addError('email', 'Tu cuenta no está activa.');

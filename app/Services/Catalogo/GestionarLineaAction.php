@@ -2,6 +2,7 @@
 
 namespace App\Services\Catalogo;
 
+use App\Services\Auditoria\AuditarCambios;
 use App\Models\Linea;
 
 /**
@@ -16,6 +17,10 @@ use App\Models\Linea;
  */
 class GestionarLineaAction
 {
+    public function __construct(private AuditarCambios $auditar)
+    {
+    }
+
     public function crear(array $datos, array $marcaIds = []): Linea
     {
         $linea = Linea::create([
@@ -24,6 +29,7 @@ class GestionarLineaAction
             'logotipo_url' => $datos['logotipo_url'] ?? null,
             'activa'       => true,
         ]);
+        $this->auditar->creado($linea, 'catalogo.linea.creada', 'linea');
 
         if (! empty($marcaIds)) {
             $this->sincronizarMarcas($linea, $marcaIds);
@@ -40,7 +46,7 @@ class GestionarLineaAction
             'logotipo_url' => array_key_exists('logotipo_url', $datos) ? $datos['logotipo_url'] : $linea->logotipo_url,
             'activa'       => array_key_exists('activa', $datos) ? $datos['activa'] : $linea->activa,
         ]);
-        $linea->save();
+        $this->auditar->guardar($linea, 'catalogo.linea.actualizada', 'linea');
 
         if (is_array($marcaIds)) {
             $this->sincronizarMarcas($linea, $marcaIds);

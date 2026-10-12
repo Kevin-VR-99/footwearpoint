@@ -17,8 +17,14 @@ class PedidoResumen {
     required this.anticipoPendiente,
     this.tipo,
     this.fecha,
+    this.fechaEntrega,
     this.lineas = const [],
     this.pagos = const [],
+    this.puedePagarAnticipoMercadoPago = false,
+    this.puedePagarSaldoMercadoPago = false,
+    this.puedePagarTotalMercadoPago = false,
+    this.pagoMercadoPagoPendiente = false,
+    this.pagoMercadoPagoPendienteTipo,
   });
 
   final int id;
@@ -30,6 +36,9 @@ class PedidoResumen {
 
   /// Cuándo se envió (fecha_colocacion); si no hay, cuándo se creó.
   final DateTime? fecha;
+
+  /// TG-254: cuándo se entregó; desde ahí corre el plazo para pedir cambio.
+  final DateTime? fechaEntrega;
 
   final double total;
 
@@ -52,7 +61,35 @@ class PedidoResumen {
   final List<LineaPedido> lineas;
   final List<PagoPedido> pagos;
 
+  /// TG-268: qué puede pagar ya con Mercado Pago (lo decide el servidor).
+  final bool puedePagarAnticipoMercadoPago;
+  final bool puedePagarSaldoMercadoPago;
+  final bool puedePagarTotalMercadoPago;
+
+  /// Hay un pago con Mercado Pago esperando confirmación (solo en el detalle).
+  final bool pagoMercadoPagoPendiente;
+
+  /// 'anticipo', 'saldo_pedido' o 'total_revendedor'.
+  final String? pagoMercadoPagoPendienteTipo;
+
   bool get esRevendedor => tipo == 'revendedor';
+
+  /// Lo que se puede pagar ahora con Mercado Pago, o null si nada.
+  TipoPagoMercadoPago? get pagoMercadoPagoDisponible {
+    if (puedePagarAnticipoMercadoPago) return TipoPagoMercadoPago.anticipo;
+    if (puedePagarTotalMercadoPago) return TipoPagoMercadoPago.total;
+    if (puedePagarSaldoMercadoPago) return TipoPagoMercadoPago.saldo;
+    return null;
+  }
+
+  /// El pago con Mercado Pago que falta confirmar, o null si no hay.
+  TipoPagoMercadoPago? get pagoMercadoPagoPorVerificar =>
+      pagoMercadoPagoPendiente ? TipoPagoMercadoPago.desdeTipoPago(pagoMercadoPagoPendienteTipo) : null;
+
+  /// Cuánto se cobraría con Mercado Pago por ese concepto.
+  double montoMercadoPago(TipoPagoMercadoPago tipoPago) => tipoPago == TipoPagoMercadoPago.anticipo
+      ? (anticipoPendiente < saldo ? anticipoPendiente : saldo)
+      : saldo;
 
   factory PedidoResumen.desdeJson(Map<String, dynamic> json) {
     double numero(String llave) => (json[llave] as num?)?.toDouble() ?? 0;
@@ -63,6 +100,7 @@ class PedidoResumen {
       estado: json['estado'] as String? ?? '',
       tipo: json['tipo'] as String?,
       fecha: _fecha(json['fecha_colocacion']) ?? _fecha(json['created_at']),
+      fechaEntrega: _fecha(json['fecha_entrega']),
       total: numero('total'),
       pagado: numero('pagado'),
       pagadoConVales: numero('pagado_con_vales'),
@@ -77,12 +115,40 @@ class PedidoResumen {
         for (final p in json['pagos'] as List<dynamic>? ?? const [])
           PagoPedido.desdeJson(p as Map<String, dynamic>),
       ],
+      puedePagarAnticipoMercadoPago: json['puede_pagar_anticipo_mercado_pago'] == true,
+      puedePagarSaldoMercadoPago: json['puede_pagar_saldo_mercado_pago'] == true,
+      puedePagarTotalMercadoPago: json['puede_pagar_total_mercado_pago'] == true,
+      pagoMercadoPagoPendiente: json['pago_mercado_pago_pendiente'] == true,
+      pagoMercadoPagoPendienteTipo: json['pago_mercado_pago_pendiente_tipo'] as String?,
     );
   }
 }
 
+/// TG-268: los tres pagos con Mercado Pago que acepta el servidor. [ruta] es
+/// el tramo de la URL: /pedidos/{id}/{ruta}/mercado-pago.
+enum TipoPagoMercadoPago {
+  anticipo('anticipo', 'Anticipo', 'Pagar anticipo con Mercado Pago'),
+  saldo('saldo', 'Saldo del pedido', 'Pagar saldo con Mercado Pago'),
+  total('total', 'Total del pedido', 'Pagar con Mercado Pago');
+
+  const TipoPagoMercadoPago(this.ruta, this.concepto, this.textoBoton);
+
+  final String ruta;
+  final String concepto;
+  final String textoBoton;
+
+  /// Desde pagos.tipo del servidor.
+  static TipoPagoMercadoPago? desdeTipoPago(String? tipo) => switch (tipo) {
+    'anticipo' => TipoPagoMercadoPago.anticipo,
+    'saldo_pedido' => TipoPagoMercadoPago.saldo,
+    'total_revendedor' => TipoPagoMercadoPago.total,
+    _ => null,
+  };
+}
+
 class LineaPedido {
   const LineaPedido({
+    this.id,
     required this.productoNombre,
     required this.modelo,
     required this.talla,
@@ -90,7 +156,11 @@ class LineaPedido {
     required this.cantidad,
     required this.precioUnitario,
     required this.subtotal,
+    this.cambio,
   });
+
+  /// pedido_detalle.id; hace falta para pedir un cambio (TG-254).
+  final int? id;
 
   final String productoNombre;
   final String modelo;
@@ -100,8 +170,15 @@ class LineaPedido {
   final double precioUnitario;
   final double subtotal;
 
+  /// TG-254: si se puede pedir cambio y hasta cuándo. Null si el servidor no
+  /// lo manda (versiones anteriores o la lista de pedidos).
+  final CambioLinea? cambio;
+
   factory LineaPedido.desdeJson(Map<String, dynamic> json) {
+    final cambio = json['cambio'];
     return LineaPedido(
+      id: json['id'] as int?,
+      cambio: cambio is Map<String, dynamic> ? CambioLinea.desdeJson(cambio) : null,
       productoNombre: json['producto_nombre'] as String? ?? '',
       modelo: json['modelo'] as String? ?? '',
       talla: json['talla']?.toString() ?? '',
@@ -121,8 +198,12 @@ class PagoPedido {
     required this.tipo,
     required this.metodo,
     required this.monto,
+    this.estado = '',
     this.fecha,
   });
+
+  /// 'aplicado', 'pendiente'... Un pago pendiente todavía no cuenta.
+  final String estado;
 
   final String folio;
   final String tipo;
@@ -136,9 +217,19 @@ class PagoPedido {
       tipo: json['tipo'] as String? ?? '',
       metodo: json['metodo'] as String? ?? '',
       monto: (json['monto'] as num?)?.toDouble() ?? 0,
+      estado: json['estado'] as String? ?? '',
       fecha: _fecha(json['fecha_pago']),
     );
   }
+
+  bool get esPendiente => estado == 'pendiente';
+
+  /// "mercado_pago" -> "Mercado Pago"; "efectivo" -> "Efectivo".
+  String get metodoParaMostrar => switch (metodo) {
+    'mercado_pago' => 'Mercado Pago',
+    '' => '',
+    _ => '${metodo[0].toUpperCase()}${metodo.substring(1).replaceAll('_', ' ')}',
+  };
 
   /// "saldo_pedido" -> "Saldo pedido".
   String get tipoParaMostrar =>
@@ -152,4 +243,60 @@ String formatoFecha(DateTime fecha, {bool conHora = true}) {
   String dos(int n) => n.toString().padLeft(2, '0');
   final dia = '${dos(fecha.day)}/${dos(fecha.month)}/${fecha.year}';
   return conHora ? '$dia ${dos(fecha.hour)}:${dos(fecha.minute)}' : dia;
+}
+
+
+/// TG-254 (E12-01): el cambio de producto de una línea, tal como lo decide el
+/// servidor (plazo configurable por distribuidora). La app no calcula plazos.
+class CambioLinea {
+  const CambioLinea({
+    required this.puedeSolicitar,
+    this.fechaLimite,
+    this.solicitudId,
+    this.solicitudEstado,
+  });
+
+  final bool puedeSolicitar;
+
+  /// Último día para pedirlo, tal como lo manda el servidor (su zona horaria).
+  final DateTime? fechaLimite;
+
+  final int? solicitudId;
+
+  /// 'solicitada', 'autorizada', 'rechazada', ...
+  final String? solicitudEstado;
+
+  bool get tieneSolicitud => solicitudId != null;
+
+  /// dd/mm/aaaa del último día, sin pasarlo a la hora del teléfono: el plazo
+  /// es por día de la distribuidora.
+  String? get fechaLimiteTexto {
+    final f = fechaLimite;
+    if (f == null) return null;
+    String dos(int n) => n.toString().padLeft(2, '0');
+    return '${dos(f.day)}/${dos(f.month)}/${f.year}';
+  }
+
+  String get estadoParaMostrar => switch (solicitudEstado) {
+    'solicitada' => 'Cambio solicitado',
+    'autorizada' => 'Cambio autorizado',
+    'rechazada' => 'Cambio rechazado',
+    'enviada_fabrica' => 'Cambio en revisión con fábrica',
+    'aceptada_fabrica' => 'Cambio aceptado por fábrica',
+    'vale_emitido' => 'Vale emitido',
+    'cerrada' => 'Cambio cerrado',
+    _ => 'Cambio solicitado',
+  };
+
+  factory CambioLinea.desdeJson(Map<String, dynamic> json) {
+    final solicitud = json['solicitud'];
+    final limite = json['fecha_limite'];
+    return CambioLinea(
+      puedeSolicitar: json['puede_solicitar'] == true,
+      // Solo la parte de la fecha: es el día límite en la zona del servidor.
+      fechaLimite: limite is String && limite.length >= 10 ? DateTime.tryParse(limite.substring(0, 10)) : null,
+      solicitudId: solicitud is Map<String, dynamic> ? solicitud['id'] as int? : null,
+      solicitudEstado: solicitud is Map<String, dynamic> ? solicitud['estado'] as String? : null,
+    );
+  }
 }

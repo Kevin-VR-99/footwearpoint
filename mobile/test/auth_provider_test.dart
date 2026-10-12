@@ -19,6 +19,7 @@ const _sesion = {
     'estado': 'activo',
   },
   'rol': 'revendedor',
+  'legales_aceptados': true,
   'distribuidora_id': 1,
 };
 
@@ -33,6 +34,7 @@ const _sesionSinDistribuidora = {
     'estado': 'activo',
   },
   'rol': null,
+  'legales_aceptados': true,
   'distribuidora_id': null,
 };
 

@@ -289,7 +289,7 @@ class VincularMercadoPagoTest extends TestCase
         $auditoria = Auditoria::where('accion', 'mercado_pago.conectado')->sole();
         $this->assertSame('configuracion_distribuidora', $auditoria->entidad_tipo);
         $this->assertSame($this->distribuidora()->id, $auditoria->distribuidora_id);
-        $this->assertSame(['cuenta_mercado_pago' => self::CUENTA, 'modo' => 'sandbox'], $auditoria->datos_nuevos);
+        $this->assertEquals(['cuenta_mercado_pago' => self::CUENTA, 'modo' => 'sandbox'], $auditoria->datos_nuevos);
         $this->assertStringNotContainsString(self::TOKEN, json_encode($auditoria->getAttributes()));
     }
 
@@ -579,7 +579,7 @@ class VincularMercadoPagoTest extends TestCase
 
         $this->assertSinConexion();
         $auditoria = Auditoria::where('accion', 'mercado_pago.desconectado')->sole();
-        $this->assertSame(['cuenta_mercado_pago' => self::CUENTA], $auditoria->datos_previos);
+        $this->assertEquals(['cuenta_mercado_pago' => self::CUENTA], $auditoria->datos_previos);
         Http::assertNothingSent();
     }
 

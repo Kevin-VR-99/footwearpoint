@@ -7,6 +7,7 @@ import '../models/vale.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/pedido_service.dart';
+import '../widgets/botones_pago_mercado_pago.dart';
 import '../widgets/selector_vale.dart';
 import 'login_screen.dart';
 import 'producto_detalle_screen.dart';
@@ -201,8 +202,8 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
         _Nota(
           icono: Icons.storefront_outlined,
           texto: _esRevendedor
-              ? 'Los pagos se registran en mostrador. Al enviar tu pedido te diremos cuánto queda pendiente.'
-              : 'El anticipo se paga en mostrador. Al enviar tu pedido te diremos cuánto es.',
+              ? 'Paga con Mercado Pago o en mostrador. Al enviar tu pedido te diremos cuánto queda pendiente.'
+              : 'El anticipo se paga con Mercado Pago o en mostrador. Al enviar tu pedido te diremos cuánto es.',
         ),
         if (_error != null) ...[
           const SizedBox(height: 16),
@@ -224,6 +225,27 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
   // ---------------------------------------------------------------------
   // Después de enviar: los números que calculó el servidor
   // ---------------------------------------------------------------------
+
+  /// Qué le toca pagar ahora. Si el anticipo ya se cubrió (por ejemplo al
+  /// regresar de pagarlo con Mercado Pago), ya no se le pide (TG-268).
+  String _notaDespuesDeEnviar(PedidoResumen pedido) {
+    if (pedido.saldo <= 0) return 'Tu pedido ya está pagado. Te avisaremos cuando llegue.';
+    if (_esRevendedor) return 'Paga con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.';
+    if (pedido.anticipoPendiente <= 0) {
+      return 'Anticipo pagado. El resto se paga cuando tu pedido llegue, con Mercado Pago o en mostrador.';
+    }
+    return 'Paga tu anticipo con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.';
+  }
+
+  /// Después de pagar con Mercado Pago: los importes al día.
+  Future<void> _recargarEnviado(int pedidoId) async {
+    try {
+      final pedido = await _pedidos.ver(pedidoId);
+      if (mounted) setState(() => _pedido = pedido);
+    } on ApiException {
+      // Se queda con lo que ya mostraba; el detalle del pedido lo tendrá al día.
+    }
+  }
 
   Widget _enviado(BuildContext context, PedidoResumen pedido) {
     final tema = Theme.of(context);
@@ -262,7 +284,7 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
                   _Fila(etiqueta: 'Pendiente por pagar', valor: formatoPrecio(pedido.saldo), destacado: true)
                 else ...[
                   _Fila(
-                    etiqueta: 'Anticipo a pagar en mostrador',
+                    etiqueta: 'Anticipo a pagar',
                     valor: formatoPrecio(pedido.anticipoPendiente),
                     destacado: true,
                   ),
@@ -275,10 +297,13 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
         const SizedBox(height: 16),
         _Nota(
           icono: Icons.storefront_outlined,
-          texto: _esRevendedor
-              ? 'Paga en mostrador; ahí registran tu pago. Te avisaremos cuando tu pedido llegue.'
-              : 'Paga tu anticipo en mostrador; ahí lo registran. Te avisaremos cuando tu pedido llegue.',
+          texto: _notaDespuesDeEnviar(pedido),
         ),
+        // TG-118 / TG-268: pagar el anticipo (o el pedido) desde aquí mismo.
+        if (pedido.pagoMercadoPagoDisponible != null) ...[
+          const SizedBox(height: 16),
+          BotonesPagoMercadoPago(pedido: pedido, alTerminar: () => _recargarEnviado(pedido.id)),
+        ],
         if (_avisoVale != null) ...[
           const SizedBox(height: 12),
           AvisoError(mensaje: 'Tu pedido sí se envió, pero no se pudo aplicar el vale: $_avisoVale'),

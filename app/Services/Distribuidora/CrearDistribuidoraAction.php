@@ -9,6 +9,7 @@ use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * TG-194 (G2) — Alta de una distribuidora por el admin general, junto con su
@@ -32,7 +33,7 @@ class CrearDistribuidoraAction
      * @param  array  $datos  nombre_comercial, slug y opcionales: razon_social, rfc,
      *                        subdominio, descripcion_publica, direccion_publica,
      *                        telefono_publico, email_publico, horario_publico,
-     *                        marketplace_visible.
+     *                        marketplace_visible, plan_solicitado_id (TG-220).
      * @param  array  $administrador  nombre, email, password.
      * @param  bool  $activar  true: queda activa; false: queda pendiente de aprobar.
      */
@@ -68,6 +69,9 @@ class CrearDistribuidoraAction
                 // Solo una distribuidora activa puede verse en el marketplace.
                 'marketplace_visible' => ! empty($datos['marketplace_visible']) && $estado === 'activa',
                 'estado'              => $estado,
+                // TG-220: lo elige quien pide su alta en el formulario
+                // público; AprobarDistribuidoraAction lo usa al aprobar.
+                'plan_solicitado_id'  => $datos['plan_solicitado_id'] ?? null,
                 'fecha_solicitud'     => now(),
                 'fecha_aprobacion'    => $estado === 'activa' ? now() : null,
             ]);
@@ -97,6 +101,23 @@ class CrearDistribuidoraAction
 
             $this->roles->ejecutar($distribuidora);
             $this->roles->asignarAdministrador($usuario, $distribuidora);
+
+            // TG-220 (A11): el correo para confirmar que la cuenta es suya,
+            // igual que en ActivarCuentaAccesoAction. Va después de la
+            // transacción para no mandarlo si algo falla y la distribuidora
+            // termina no existiendo. No bloquea nada: la solicitud se revisa
+            // igual, y el admin general ve si el correo está confirmado.
+            //
+            // Si el correo falla, el alta NO se deshace: para entonces ya está
+            // guardada, y quien pidió su alta no tiene por qué ver un error de
+            // nuestro servidor de correo. Queda en el log.
+            DB::afterCommit(function () use ($usuario) {
+                try {
+                    $usuario->sendEmailVerificationNotification();
+                } catch (Throwable $e) {
+                    report($e);
+                }
+            });
 
             return $distribuidora;
         });

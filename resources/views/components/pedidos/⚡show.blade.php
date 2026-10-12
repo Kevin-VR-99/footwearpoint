@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Pedido;
+use App\Services\Cambio\PlazoCambio;
+use App\Services\Cambio\SolicitarCambioAction;
 use App\Services\Pedido\EntregaPedidoAction;
 use App\Services\Pedido\EnviarPedidoAction;
 use App\Services\Pago\VerificarPagoMercadoPagoAction;
@@ -25,6 +27,10 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
 
     // TG-226 (bugfix): número de pago de Mercado Pago (opcional) para verificar.
     public string $pagoMpId = '';
+
+    // TG-254: solicitud de cambio de una línea (el personal la pide por el cliente).
+    public ?int $cambioLineaId = null;
+    public string $cambioMotivo = '';
 
     public function mount(int $id)
     {
@@ -187,26 +193,61 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar el pago. Intenta de nuevo.');
         }
     }
+
+    /** TG-254: si cada línea puede pedir cambio y hasta cuándo. */
+    public function getCambiosProperty(): array
+    {
+        $plazo = app(PlazoCambio::class);
+
+        return $this->pedido->detalle
+            ->mapWithKeys(fn ($l) => [$l->id => $plazo->estado($l->setRelation('pedido', $this->pedido))])
+            ->all();
+    }
+
+    public function abrirCambio(int $lineaId): void
+    {
+        $this->cambioLineaId = $lineaId;
+        $this->cambioMotivo = '';
+        $this->mensaje = '';
+        $this->errorMsg = '';
+    }
+
+    public function cancelarCambio(): void
+    {
+        $this->cambioLineaId = null;
+        $this->cambioMotivo = '';
+    }
+
+    public function solicitarCambio(SolicitarCambioAction $accion): void
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $accion->ejecutar(['pedido_detalle_id' => $this->cambioLineaId, 'motivo' => $this->cambioMotivo]);
+            $this->cancelarCambio();
+            $this->mensaje = 'Solicitud de cambio registrada. Si se autoriza, el cliente recibe un vale (no hay devoluciones en efectivo).';
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar la solicitud de cambio.');
+        }
+    }
 };
 ?>
 
 <div>
-    <div class="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div>
-            <a href="{{ route('pedidos.index') }}" class="text-sm text-[#2563EB] hover:underline">← Pedidos</a>
-            <h2 class="text-2xl font-bold text-slate-900 mt-1">{{ $this->pedido->folio }}</h2>
+    <x-panel.encabezado :titulo="$this->pedido->folio" :volver="route('pedidos.index')" volver-texto="← Pedidos" class="mb-6">
             <div class="mt-2 flex flex-wrap items-center gap-2">
                 <x-ui.insignia-estado :estado="$this->pedido->estado" />
                 <span class="text-sm text-slate-500">
-                    {{ $this->pedido->tipo === 'cliente_directo' ? 'Cliente' : 'Revendedor' }}:
+                    {{ $this->pedido->tipo === 'cliente_directo' ? 'Cliente' : 'Cliente mayorista' }}:
                     {{ $this->pedido->clienteDirecto?->nombre ?? ($this->pedido->revendedorAfiliacion?->revendedor?->nombre ?? '—') }}
                 </span>
             </div>
-        </div>
 
+        <x-slot:acciones>
         @if ($this->pedido->estado === 'borrador')
             <button type="button" wire:click="enviar"
-                class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB]">
+                class="rounded-lg bg-fp-accent px-4 py-2 text-sm font-medium text-white hover:bg-fp-primary">
                 Enviar pedido
             </button>
         @endif
@@ -216,7 +257,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 @if ($this->pedido->estado === 'recibido_distribuidora')
                     <button type="button" wire:click="marcarListo"
                         wire:confirm="¿Marcar listo para entrega? Se le avisará al cliente para que pase a recoger."
-                        class="rounded-lg border border-[#1E2F52] px-4 py-2 text-sm font-medium text-[#1E2F52] hover:bg-slate-50">
+                        class="rounded-lg border border-fp-accent px-4 py-2 text-sm font-medium text-fp-accent hover:bg-slate-50">
                         Marcar listo para entrega
                     </button>
                 @endif
@@ -224,23 +265,24 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     wire:confirm="¿Confirmar que el cliente se llevó su pedido?"
                     @disabled($this->resumen['saldo'] > 0)
                     @if ($this->resumen['saldo'] > 0) title="Cobra el saldo antes de entregar" @endif
-                    class="rounded-lg bg-[#1E2F52] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB] disabled:cursor-not-allowed disabled:opacity-50">
+                    class="rounded-lg bg-fp-accent px-4 py-2 text-sm font-medium text-white hover:bg-fp-primary disabled:cursor-not-allowed disabled:opacity-50">
                     Marcar entregado
                 </button>
             </div>
         @endif
-    </div>
+        </x-slot:acciones>
+    </x-panel.encabezado>
 
     @if ($this->pedido->estado === 'borrador')
-        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <x-panel.alerta tipo="aviso" class="mb-4">
             Este pedido sigue en borrador.
             <a href="{{ route('pedidos.create') }}?continuar={{ $this->pedido->id }}"
-                class="font-medium text-[#2563EB] hover:underline">Continuar editando</a>
-        </div>
+                class="font-medium text-fp-primary hover:underline">Continuar editando</a>
+        </x-panel.alerta>
     @endif
 
     @if (in_array($this->pedido->estado, ['recibido_distribuidora', 'listo_entrega'], true))
-        <div class="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <x-panel.alerta tipo="info" class="mb-4">
             La mercancía ya está en sucursal.
             @if ($this->resumen['saldo'] > 0)
                 Saldo pendiente:
@@ -252,19 +294,19 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             @if ($this->pedido->estado === 'listo_entrega' && $this->pedido->fecha_limite_recoleccion)
                 Tiene hasta el {{ $this->pedido->fecha_limite_recoleccion->format('d/m/Y') }} para recogerlo.
             @endif
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="exito" class="mb-4">
             {{ $mensaje }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($errorMsg)
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="error" class="mb-4">
             {{ $errorMsg }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     <div class="grid gap-4 sm:grid-cols-2 {{ $this->pedido->tipo === 'cliente_directo' ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} mb-6">
@@ -325,7 +367,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 </label>
                 <div class="sm:col-span-2 lg:col-span-4">
                     <button type="submit"
-                        class="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1E2F52]">
+                        class="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-fp-accent">
                         Registrar pago
                     </button>
                 </div>
@@ -351,8 +393,8 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     @foreach ($this->pedido->pagos as $p)
                         <tr>
                             <td class="px-4 py-2">{{ $p->folio }}</td>
-                            <td class="px-4 py-2">{{ $p->tipo }}</td>
-                            <td class="px-4 py-2">{{ $p->metodo === 'mercado_pago' ? 'Mercado Pago' : $p->metodo }}</td>
+                            <td class="px-4 py-2">{{ \App\Models\Pago::etiquetaTipo($p->tipo) }}</td>
+                            <td class="px-4 py-2">{{ \App\Models\Pago::etiquetaMetodo($p->metodo) }}</td>
                             <td class="px-4 py-2 text-right tabular-nums">${{ number_format((float) $p->monto, 2) }}</td>
                             <td class="px-4 py-2">{{ optional($p->fecha_pago)->format('d/m/Y H:i') }}</td>
                             <td class="px-4 py-2">
@@ -397,6 +439,9 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     <th class="px-4 py-2 font-medium text-right">Cant.</th>
                     <th class="px-4 py-2 font-medium text-right">P. unit.</th>
                     <th class="px-4 py-2 font-medium text-right">Subtotal</th>
+                    @if ($this->pedido->estado === 'entregado')
+                        <th class="px-4 py-2 font-medium">Cambio</th>
+                    @endif
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -411,6 +456,30 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                         <td class="px-4 py-3 text-right">{{ $l->cantidad }}</td>
                         <td class="px-4 py-3 text-right tabular-nums">${{ number_format((float) $l->precio_unitario, 2) }}</td>
                         <td class="px-4 py-3 text-right tabular-nums">${{ number_format((float) $l->subtotal, 2) }}</td>
+                        @if ($this->pedido->estado === 'entregado')
+                            @php($cambio = $this->cambios[$l->id] ?? null)
+                            <td class="px-4 py-3">
+                                @if ($cambio && $cambio['solicitud'])
+                                    <span class="text-xs text-slate-600">Solicitud {{ str_replace('_', ' ', $cambio['solicitud']['estado']) }}</span>
+                                @elseif ($cambio && $cambio['puede_solicitar'])
+                                    @if ($cambioLineaId === $l->id)
+                                        <div class="space-y-2">
+                                            <textarea wire:model="cambioMotivo" rows="2" maxlength="300" placeholder="Motivo del cambio"
+                                                class="w-full rounded-lg border-slate-300 text-sm"></textarea>
+                                            <div class="flex gap-2">
+                                                <button type="button" wire:click="solicitarCambio" class="rounded-lg bg-fp-primary px-3 py-1.5 text-xs text-white">Enviar solicitud</button>
+                                                <button type="button" wire:click="cancelarCambio" class="text-xs text-slate-600">Cancelar</button>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <button type="button" wire:click="abrirCambio({{ $l->id }})" class="text-sm font-medium text-fp-primary">Solicitar cambio</button>
+                                        <span class="block text-xs text-slate-500">Hasta {{ \Illuminate\Support\Carbon::parse($cambio['fecha_limite'])->format('d/m/Y') }}</span>
+                                    @endif
+                                @else
+                                    <span class="text-xs text-slate-400">Fuera de plazo</span>
+                                @endif
+                            </td>
+                        @endif
                     </tr>
                 @empty
                     <tr>

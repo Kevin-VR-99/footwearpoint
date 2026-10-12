@@ -14,7 +14,8 @@ class ActualizarPerfilDistribuidoraRequest extends FormRequest
     /**
      * Solo los campos de E3-01 (datos comerciales). NO incluye:
      * - razon_social, rfc, slug: no forman parte del criterio de aceptación de E3-01.
-     * - subdominio: E3-02, fuera de alcance este sprint.
+     * - subdominio: E3-02 (TG-232) se edita desde el perfil del panel web con
+     *   CambiarSubdominioAction, no por esta API.
      * - marketplace_visible: la controla admin_general vía Paquete A (E2-05),
      *   no el propio administrador de la distribuidora.
      */

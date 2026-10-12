@@ -139,29 +139,25 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 ?>
 
 <div>
-    <div class="mb-6">
-        <h2 class="text-2xl font-bold text-slate-900">Stock local</h2>
-        <p class="text-sm text-slate-500 mt-1">
-            Entradas de mercancía, existencias por variante y ajustes manuales de la sucursal principal.
-        </p>
-    </div>
+    <x-panel.encabezado titulo="Stock local"
+        subtitulo="Entradas de mercancía, existencias por variante y ajustes manuales de la sucursal principal." class="mb-6" />
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="exito" class="mb-4">
             {{ $mensaje }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     @if ($errorMsg)
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+        <x-panel.alerta tipo="error" class="mb-4">
             {{ $errorMsg }}
-        </div>
+        </x-panel.alerta>
     @endif
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
         {{-- Entrada de mercancía --}}
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5">
             <h3 class="text-sm font-semibold text-slate-800 mb-4">Registrar entrada</h3>
 
             <form wire:submit="registrarEntrada" class="space-y-4">
@@ -174,7 +170,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                             <option value="{{ $variante->id }}">{{ $variante->sku }}</option>
                         @endforeach
                     </select>
-                    @error('entrada_variante_id') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    @error('entrada_variante_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
@@ -182,7 +178,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                     <input type="number" min="1" step="1" wire:model="entrada_cantidad"
                            class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
                            placeholder="10">
-                    @error('entrada_cantidad') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    @error('entrada_cantidad') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
@@ -193,14 +189,14 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 </div>
 
                 <button type="submit"
-                        class="rounded-lg bg-fp-primary text-white px-4 py-2 text-sm font-medium hover:bg-blue-700">
+                        class="rounded-lg bg-fp-primary text-white px-4 py-2 text-sm font-medium hover:bg-fp-primary/90">
                     Registrar entrada
                 </button>
             </form>
         </div>
 
         {{-- Ajuste manual --}}
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5">
             <h3 class="text-sm font-semibold text-slate-800 mb-4">Ajuste manual</h3>
 
             <form wire:submit="registrarAjuste" class="space-y-4">
@@ -213,7 +209,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                             <option value="{{ $variante->id }}">{{ $variante->sku }}</option>
                         @endforeach
                     </select>
-                    @error('ajuste_variante_id') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    @error('ajuste_variante_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
@@ -230,7 +226,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                         <input type="number" min="1" step="1" wire:model="ajuste_cantidad"
                                class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
                                placeholder="1">
-                        @error('ajuste_cantidad') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                        @error('ajuste_cantidad') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                     </div>
                 </div>
 
@@ -239,7 +235,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                     <input type="text" maxlength="300" wire:model="ajuste_motivo"
                            class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
                            placeholder="Ej. merma, corrección de conteo">
-                    @error('ajuste_motivo') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                    @error('ajuste_motivo') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <button type="submit"
@@ -251,7 +247,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     </div>
 
     {{-- Existencias --}}
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Existencias</h3>
             <input type="search" wire:model.live.debounce.300ms="busqueda"
@@ -261,7 +257,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
-                <thead class="bg-slate-50 text-slate-600">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="text-left font-medium px-4 py-3">SKU</th>
                         <th class="text-left font-medium px-4 py-3">Producto</th>
@@ -280,7 +276,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                                 {{ $existencia->variante?->producto?->nombre ?? '—' }}
                             </td>
                             <td class="px-4 py-3 text-right font-medium
-                                {{ (int) $existencia->cantidad_disponible === 0 ? 'text-red-600' : 'text-slate-900' }}">
+                                {{ (int) $existencia->cantidad_disponible === 0 ? 'text-fp-danger' : 'text-slate-900' }}">
                                 {{ (int) $existencia->cantidad_disponible }}
                             </td>
                             <td class="px-4 py-3 text-right text-slate-500">
@@ -291,11 +287,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="5" class="px-4 py-8 text-center text-slate-500">
-                                No hay existencias registradas todavía.
-                            </td>
-                        </tr>
+                        <x-panel.vacio colspan="5" mensaje="No hay existencias registradas todavía." />
                     @endforelse
                 </tbody>
             </table>

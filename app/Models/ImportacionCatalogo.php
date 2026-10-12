@@ -19,6 +19,7 @@ class ImportacionCatalogo extends Model
         'linea_id',
         'campana_id',
         'archivo_url',
+        'archivo_ia_id',
         'tipo_archivo',
         'proveedor_ia',
         'modelo_ia',

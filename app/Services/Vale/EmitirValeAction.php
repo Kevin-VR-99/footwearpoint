@@ -38,7 +38,7 @@ class EmitirValeAction
             $afiliacion = RevendedorDistribuidora::where('id', $datos['propietario_id'])->first();
             if (! $afiliacion) {
                 throw ValidationException::withMessages([
-                    'propietario_id' => ['La afiliación de revendedor no existe en esta distribuidora.'],
+                    'propietario_id' => ['La afiliación de cliente mayorista no existe en esta distribuidora.'],
                 ]);
             }
             $revendedorAfiliacionId = $afiliacion->id;
@@ -100,6 +100,7 @@ class EmitirValeAction
     {
         $prefijo = 'VAL-' . now()->format('Ymd') . '-';
 
+        // TG-224: sin scope a propósito; filtra distribuidora_id a mano y debe funcionar sin sesión (folio único por distribuidora).
         $ultimo = Vale::withoutGlobalScopes()
             ->where('distribuidora_id', $distribuidoraId)
             ->where('folio', 'like', $prefijo . '%')

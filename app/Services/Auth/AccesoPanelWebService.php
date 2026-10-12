@@ -4,6 +4,8 @@ namespace App\Services\Auth;
 
 use App\Models\DistribuidoraStaff;
 use App\Models\Usuario;
+use App\Support\Tenant;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
@@ -27,6 +29,14 @@ class AccesoPanelWebService
     public const MENSAJE_SOLO_PERSONAL = 'Este panel es solo para el personal de la distribuidora. '
         .'Si eres cliente o cliente mayorista, entra desde la app FootwearPoint.';
 
+    /**
+     * TG-243: lo que ve un empleado al que su distribuidora desactivo, en el
+     * login y al sacarlo de una sesion abierta. Antes veia MENSAJE_SOLO_PERSONAL,
+     * que le decia que entrara por la app como si fuera cliente.
+     */
+    public const MENSAJE_CUENTA_DESACTIVADA = 'Tu cuenta de personal está desactivada, así que no puedes entrar al panel. '
+        .'Comunícate con el administrador de tu distribuidora para que la reactive.';
+
     /** TG-196 (G5): lo que ve el personal de una distribuidora suspendida. */
     public const MENSAJE_DISTRIBUIDORA_SUSPENDIDA = 'Tu distribuidora está suspendida, así que por ahora no puede usar '
         .'FootwearPoint. Tu información se conserva. Comunícate con FootwearPoint para reactivarla.';
@@ -35,32 +45,47 @@ class AccesoPanelWebService
     public const MENSAJE_DISTRIBUIDORA_RECHAZADA = 'La solicitud de tu distribuidora fue rechazada, '
         .'así que no puede usar FootwearPoint.';
 
+    /** TG-220 (E2-08): lo que ve el personal de una distribuidora pendiente. */
+    public const MENSAJE_DISTRIBUIDORA_PENDIENTE = 'Tu solicitud está en revisión. '
+        .'Te avisaremos por correo cuando sea aprobada.';
+
     /**
      * TG-195 (G4) — Por qué esta persona no puede entrar al panel, o null si
      * sí puede. Lo usan el login web y el middleware SoloPersonalPanel.
      *
+     *  - Es personal, pero desactivado         -> MENSAJE_CUENTA_DESACTIVADA (TG-243).
      *  - No es personal (revendedor, cliente)  -> MENSAJE_SOLO_PERSONAL.
      *  - Su distribuidora fue rechazada        -> mensaje con el motivo, para
      *    que sepa qué le faltó (E2-01: una rechazada no puede operar).
      *  - Su distribuidora está suspendida      -> MENSAJE_DISTRIBUIDORA_SUSPENDIDA
      *    (TG-196, E2-02: no puede operar, pero conserva su información).
-     *
-     * Las pendientes siguen entrando como hasta ahora.
+     *  - Su distribuidora está pendiente       -> MENSAJE_DISTRIBUIDORA_PENDIENTE
+     *    (TG-220, E2-08). Antes sí entraba, porque solo el admin general podía
+     *    crearla y ya la había revisado. Con el formulario público eso dejaría
+     *    entrar a cualquiera sin aprobación.
      */
     public function motivoSinAcceso(Usuario $usuario): ?string
     {
         $staff = $this->staffActivo($usuario);
 
         if ($staff === null) {
-            return $this->esAdminGeneral($usuario) ? null : self::MENSAJE_SOLO_PERSONAL;
+            if ($this->esAdminGeneral($usuario)) {
+                return null;
+            }
+
+            return $this->esPersonalDesactivado($usuario)
+                ? self::MENSAJE_CUENTA_DESACTIVADA
+                : self::MENSAJE_SOLO_PERSONAL;
         }
 
         $distribuidora = $staff->distribuidora;
 
         if ($distribuidora !== null && ! $distribuidora->puedeOperar()) {
-            return $distribuidora->estado === 'rechazada'
-                ? self::mensajeDistribuidoraRechazada($distribuidora->motivo_rechazo)
-                : self::MENSAJE_DISTRIBUIDORA_SUSPENDIDA;
+            return match ($distribuidora->estado) {
+                'rechazada' => self::mensajeDistribuidoraRechazada($distribuidora->motivo_rechazo),
+                'pendiente' => self::MENSAJE_DISTRIBUIDORA_PENDIENTE,
+                default => self::MENSAJE_DISTRIBUIDORA_SUSPENDIDA,
+            };
         }
 
         return null;
@@ -96,6 +121,37 @@ class AccesoPanelWebService
             ->where('usuario_id', $usuario->id)
             ->where('estado', 'activo')
             ->first();
+    }
+
+    /**
+     * TG-243 — True si la persona fue personal de una distribuidora y la
+     * desactivaron (tiene registro de staff, pero ninguno activo).
+     *
+     * Aqui no hay distribuidora resuelta (en el login no hay sesion, y al
+     * expulsarlo Tenant::id() ya no la encuentra), asi que el TenantScope
+     * devolveria cero filas. Primero se ubica de que distribuidora era con
+     * una consulta a la tabla, y luego se confirma con el modelo dentro de
+     * Tenant::forzar, sin quitar los scopes globales.
+     */
+    public function esPersonalDesactivado(Usuario $usuario): bool
+    {
+        $distribuidoraIds = DB::table('distribuidora_staff')
+            ->where('usuario_id', $usuario->id)
+            ->where('estado', '!=', 'activo')
+            ->pluck('distribuidora_id');
+
+        foreach ($distribuidoraIds as $distribuidoraId) {
+            $desactivado = Tenant::forzar((int) $distribuidoraId, fn () => DistribuidoraStaff::query()
+                ->where('usuario_id', $usuario->id)
+                ->where('estado', '!=', 'activo')
+                ->exists());
+
+            if ($desactivado) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** El admin general no es staff de ninguna distribuidora: su rol vive en el equipo 0. */

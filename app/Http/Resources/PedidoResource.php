@@ -36,9 +36,13 @@ class PedidoResource extends JsonResource
             ],
             'ciclo_compra_id' => $this->ciclo_compra_id,
             'fecha_colocacion' => optional($this->fecha_colocacion)->toIso8601String(),
+            // TG-254: desde aquí corre el plazo para pedir cambio.
+            'fecha_entrega'    => optional($this->fecha_entrega)->toIso8601String(),
             'observaciones'    => $this->observaciones,
             'capturado_por_staff_id' => $this->capturado_por_staff_id,
             'lineas' => $this->whenLoaded('detalle', function () {
+                $plazo = app(\App\Services\Cambio\PlazoCambio::class);
+
                 return $this->detalle->map(fn ($l) => [
                     'id'               => $l->id,
                     'producto_nombre'  => $l->producto_nombre,
@@ -52,6 +56,8 @@ class PedidoResource extends JsonResource
                     'estado_surtido'   => $l->estado_surtido,
                     'variante_id'      => $l->variante_id,
                     'producto_campana_id' => $l->producto_campana_id,
+                    // TG-254: si todavía se puede pedir cambio y hasta cuándo.
+                    'cambio' => $plazo->estado($l->setRelation('pedido', $this->resource)),
                 ]);
             }),
             'pagos' => $this->whenLoaded('pagos', function () {
@@ -82,6 +88,9 @@ class PedidoResource extends JsonResource
                 ->filter(fn ($p) => $p->metodo === 'mercado_pago' && $p->estado === 'pendiente')
                 ->sortByDesc('id')
                 ->first()?->tipo),
+            // TG-268: el cliente directo ya puede pagar su anticipo con
+            // Mercado Pago (pedido enviado, sin cerrar y con anticipo pendiente).
+            'puede_pagar_anticipo_mercado_pago' => CrearPagoPedidoMercadoPagoAction::puedePagarAnticipo($this->resource, $resumen),
             // TG-227 (G8): el dueño ya puede pagar el saldo con Mercado Pago
             // (cliente directo, anticipo cubierto, saldo > 0 y el pedido ya
             // llegó a la distribuidora). No revisa si la distribuidora tiene

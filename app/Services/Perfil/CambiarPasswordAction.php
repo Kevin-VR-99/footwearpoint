@@ -34,6 +34,8 @@ class CambiarPasswordAction
         DB::transaction(function () use ($usuario, $passwordNueva, $tokenActual) {
             $usuario->forceFill([
                 'password' => Hash::make($passwordNueva),
+                // TG-193: ya puso una suya, deja de ser temporal.
+                'debe_cambiar_password' => false,
             ])->setRememberToken(Str::random(60));
 
             $usuario->save();

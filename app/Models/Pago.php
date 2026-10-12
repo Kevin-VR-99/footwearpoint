@@ -45,6 +45,46 @@ class Pago extends Model
      */
     public const HORAS_VIGENCIA_MERCADO_PAGO = 24;
 
+    /** TG-263: nombre que ve el usuario para cada tipo de pago (el valor interno no cambia). */
+    public const ETIQUETAS_TIPO = [
+        'anticipo' => 'Anticipo',
+        'saldo_pedido' => 'Saldo',
+        'total_revendedor' => 'Total mayorista',
+        'venta_directa' => 'Venta directa',
+        'reembolso_anticipo' => 'Reembolso de anticipo',
+        'suscripcion' => 'Suscripción',
+    ];
+
+    /** TG-263: nombre que ve el usuario para cada método de pago. */
+    public const ETIQUETAS_METODO = [
+        'efectivo' => 'Efectivo',
+        'transferencia' => 'Transferencia',
+        'tarjeta' => 'Tarjeta',
+        'mercado_pago' => 'Mercado Pago',
+        'otro' => 'Otro',
+    ];
+
+    public static function etiquetaTipo(?string $tipo): string
+    {
+        return self::etiqueta(self::ETIQUETAS_TIPO, $tipo);
+    }
+
+    public static function etiquetaMetodo(?string $metodo): string
+    {
+        return self::etiqueta(self::ETIQUETAS_METODO, $metodo);
+    }
+
+    /** Si llega un valor nuevo sin etiqueta: "valor_nuevo" -> "Valor nuevo". */
+    private static function etiqueta(array $etiquetas, ?string $valor): string
+    {
+        if ($valor === null || $valor === '') {
+            return '-';
+        }
+
+        return $etiquetas[$valor] ?? ucfirst(str_replace('_', ' ', $valor));
+    }
+
+
     /**
      * TG-226 (G7): referencia con la que Mercado Pago identifica este pago
      * (external_reference). Máximo 64 caracteres, solo letras, números y

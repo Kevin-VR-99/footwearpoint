@@ -34,7 +34,10 @@ class AprobarDistribuidoraAction
             throw AprobacionDistribuidoraException::noPendiente();
         }
 
-        $plan = $this->preparar->planPorDefecto();
+        // TG-220: si pidió un plan en el formulario público, se respeta; si
+        // no (alta hecha por el admin general, o solicitud vieja), el de
+        // siempre.
+        $plan = $distribuidora->planSolicitado ?? $this->preparar->planPorDefecto();
 
         if (! $plan) {
             throw AprobacionDistribuidoraException::sinPlan();
@@ -49,7 +52,7 @@ class AprobarDistribuidoraAction
             $this->preparar->datosIniciales($distribuidora);
 
             // Igual que antes de TG-194: aprobar siempre abre una suscripción
-            // nueva con el plan por defecto.
+            // nueva. Con el plan que pidió, si pidió uno (TG-220).
             $this->preparar->suscripcionInicial($distribuidora, $plan);
 
             $this->roles->ejecutar($distribuidora);

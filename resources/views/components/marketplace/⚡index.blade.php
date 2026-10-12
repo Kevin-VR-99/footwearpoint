@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\Directorio\DirectorioPublico;
+use App\Services\Tienda\EnlaceTienda;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -30,6 +31,8 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
             'distribuidoras' => $directorio->distribuidoras($categoriaId),
             'categorias'     => $directorio->categorias(),
             'categoriaId'    => $categoriaId,
+            // TG-234 (G15): enlace a la tienda pública de cada distribuidora.
+            'enlaceTienda'   => app(EnlaceTienda::class),
         ]);
     }
 };
@@ -73,8 +76,10 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
     @else
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             @foreach ($distribuidoras as $d)
+                @php($urlTienda = $enlaceTienda->url($d))
                 <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                    <div class="h-28 bg-[#1E2F52] flex items-center justify-center">
+                    <{{ $urlTienda ? 'a' : 'div' }} @if ($urlTienda) href="{{ $urlTienda }}" aria-label="Ver la tienda de {{ $d->nombre_comercial }}" @endif
+                        class="h-28 bg-[#1E2F52] flex items-center justify-center">
                         @if ($d->logotipo_url)
                             <img src="{{ $d->logotipo_url }}"
                                  alt="Logo {{ $d->nombre_comercial }}"
@@ -84,11 +89,15 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                                 {{ $d->nombre_comercial }}
                             </span>
                         @endif
-                    </div>
+                    </{{ $urlTienda ? 'a' : 'div' }}>
 
                     <div class="p-5 flex-1 flex flex-col">
                         <h3 class="text-lg font-semibold text-slate-900">
-                            {{ $d->nombre_comercial }}
+                            @if ($urlTienda)
+                                <a href="{{ $urlTienda }}" class="hover:underline">{{ $d->nombre_comercial }}</a>
+                            @else
+                                {{ $d->nombre_comercial }}
+                            @endif
                         </h3>
 
                         @if ($d->categoriasDirectorio->isNotEmpty())
@@ -106,12 +115,17 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                         @endif
 
                         <ul class="mt-4 space-y-1.5 text-sm text-slate-600">
-                            @if ($d->direccion_publica)
+                            @php($direccionMapa = \App\Support\MapaUbicacion::direccion($d))
+                            @if ($direccionMapa)
                                 <li class="flex gap-2">
                                     <span class="text-slate-400 shrink-0">📍</span>
-                                    <span>{{ $d->direccion_publica }}</span>
+                                    <span>
+                                        {{ $direccionMapa }}
+                                        <a href="{{ \App\Support\MapaUbicacion::urlVerEnMapa($d) }}" target="_blank" rel="noopener" class="ml-1 whitespace-nowrap text-fp-primary hover:underline">Ver en mapa</a>
+                                    </span>
                                 </li>
                             @endif
+
                             @if ($d->telefono_publico)
                                 <li class="flex gap-2">
                                     <span class="text-slate-400 shrink-0">📞</span>
@@ -135,6 +149,16 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                                 </li>
                             @endif
                         </ul>
+
+                        @if ($urlTienda)
+                            <div class="mt-auto pt-5">
+                                <a href="{{ $urlTienda }}"
+                                   aria-label="Ver la tienda de {{ $d->nombre_comercial }}"
+                                   class="inline-flex w-full items-center justify-center rounded-lg bg-[#111E38] px-4 py-2 text-sm font-medium text-white hover:bg-[#1E2F52]">
+                                    Ver tienda
+                                </a>
+                            </div>
+                        @endif
                     </div>
                 </article>
             @endforeach

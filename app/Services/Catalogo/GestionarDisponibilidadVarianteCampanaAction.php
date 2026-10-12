@@ -2,6 +2,7 @@
 
 namespace App\Services\Catalogo;
 
+use App\Services\Auditoria\AuditarCambios;
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\DisponibilidadVarianteCampana;
 use App\Models\ProductoCampana;
@@ -9,6 +10,10 @@ use App\Models\Variante;
 
 class GestionarDisponibilidadVarianteCampanaAction
 {
+    public function __construct(private AuditarCambios $auditar)
+    {
+    }
+
     /**
      * DECISIÓN PROVISIONAL MÍA: valido que la variante pertenezca al mismo
      * producto que la publicación (producto_campana) — no tendría sentido
@@ -28,19 +33,22 @@ class GestionarDisponibilidadVarianteCampanaAction
             );
         }
 
-        return DisponibilidadVarianteCampana::create([
+        $disponibilidad = DisponibilidadVarianteCampana::create([
             'producto_campana_id' => $productoCampana->id,
             'variante_id'         => $variante->id,
             'estado'              => $datos['estado'],
             'fecha_verificacion'  => now(),
         ]);
+        $this->auditar->creado($disponibilidad, 'catalogo.disponibilidad.creada', 'disponibilidad_variante_campana');
+
+        return $disponibilidad;
     }
 
     public function actualizar(DisponibilidadVarianteCampana $disponibilidad, array $datos): DisponibilidadVarianteCampana
     {
         $disponibilidad->estado = $datos['estado'];
         $disponibilidad->fecha_verificacion = now();
-        $disponibilidad->save();
+        $this->auditar->guardar($disponibilidad, 'catalogo.disponibilidad.actualizada', 'disponibilidad_variante_campana');
 
         return $disponibilidad->fresh();
     }
