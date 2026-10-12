@@ -26,6 +26,9 @@ return [
         'instagram' => env('REDES_INSTAGRAM_URL'),
         'facebook' => env('REDES_FACEBOOK_URL'),
         'youtube' => env('REDES_YOUTUBE_URL'),
+        // Icono de correo (mailto:). Si falta REDES_CORREO usa el correo de
+        // contacto y, al final, el remitente de la app (MAIL_FROM_ADDRESS).
+        'correo' => env('REDES_CORREO') ?: env('FOOTWEARPOINT_CONTACTO_EMAIL') ?: env('MAIL_FROM_ADDRESS'),
     ],
 
     /*

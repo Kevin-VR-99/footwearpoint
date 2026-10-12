@@ -24,7 +24,7 @@ class RedisenoInicioTest extends TestCase
 
     public function test_la_landing_carga_con_logo_contenido_y_anio(): void
     {
-        config(['footwearpoint.redes' => ['instagram' => null, 'facebook' => null, 'youtube' => null]]);
+        config(['footwearpoint.redes' => ['instagram' => null, 'facebook' => null, 'youtube' => null, 'correo' => null]]);
 
         $this->get('/')
             ->assertOk()
@@ -44,6 +44,7 @@ class RedisenoInicioTest extends TestCase
             'instagram' => 'https://instagram.com/footwearpoint',
             'facebook' => 'https://facebook.com/footwearpoint',
             'youtube' => null,
+            'correo' => null,
         ]]);
 
         $this->get('/')
@@ -54,5 +55,26 @@ class RedisenoInicioTest extends TestCase
             ->assertSee('aria-label="FootwearPoint en Instagram"', false)
             ->assertSee('rel="noopener"', false)
             ->assertDontSee('data-red="youtube"', false);
+    }
+
+    public function test_el_correo_aparece_como_icono_redondo_con_mailto(): void
+    {
+        config(['footwearpoint.redes' => [
+            'instagram' => null, 'facebook' => null,
+            'youtube' => 'https://youtube.com/@footwearpoint',
+            'correo' => 'mvpla.footwearpoint@gmail.com',
+        ]]);
+
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-red="correo"', $html);
+        $this->assertStringContainsString('href="mailto:mvpla.footwearpoint@gmail.com"', $html);
+        $this->assertStringContainsString('aria-label="Escríbenos a mvpla.footwearpoint@gmail.com"', $html);
+
+        // Mismo estilo y hover que el icono de YouTube.
+        preg_match('/<a [^>]*data-red="youtube"[^>]*class="([^"]+)"/s', $html, $youtube);
+        preg_match('/<a [^>]*data-red="correo"[^>]*class="([^"]+)"/s', $html, $correo);
+        $this->assertNotEmpty($youtube);
+        $this->assertSame($youtube[1], $correo[1]);
     }
 }

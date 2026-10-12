@@ -229,6 +229,18 @@ class extends Component
                         </li>
                     @endisset
                 @endforeach
+                {{-- TG-234: correo como icono redondo, mismo estilo que las redes. --}}
+                @isset($redes['correo'])
+                    <li>
+                        <a href="mailto:{{ $redes['correo'] }}" aria-label="Escríbenos a {{ $redes['correo'] }}" title="{{ $redes['correo'] }}" data-red="correo"
+                            class="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-fp-sidebar hover:shadow-lg">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 6.75A1.75 1.75 0 014.75 5h14.5A1.75 1.75 0 0121 6.75v10.5A1.75 1.75 0 0119.25 19H4.75A1.75 1.75 0 013 17.25V6.75z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.5 7l8.5 6 8.5-6" />
+                            </svg>
+                        </a>
+                    </li>
+                @endisset
             </ul>
         @endif
 
