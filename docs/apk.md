@@ -5,12 +5,12 @@ Cómo generar el APK que apunta al servidor en producción (Railway) y cómo com
 ## Qué necesita
 
 - Flutter estable (probado con 3.47.7) y Android SDK.
-- `mobile/android/app/google-services.json` del proyecto de Firebase `footwearpoint`, registrado para el paquete `com.footwearpoint.app`. Ya está en el repositorio: es configuración del cliente, no un secreto.
+- `mobile/android/app/google-services.json` del proyecto de Firebase `footwearpoint`, registrado para el paquete `com.footwearpoint.app`. **Ya no está en el repositorio** (TG-183): cada quien lo pone a mano; ver `mobile/docs/android.md`.
 - El servidor necesita `FIREBASE_CREDENTIALS` (la llave de la cuenta de servicio). Vive solo en Railway; **nunca** se sube al repositorio.
 
 ## Dirección del servidor
 
-La app toma la dirección de la API de `--dart-define=API_URL=...` (ver `mobile/lib/config.dart`). Sin ese parámetro usa `http://10.0.2.2:8000/api`, que es para el emulador con Laravel local.
+La app toma la dirección de la API de `--dart-define=API_URL=...` (ver `mobile/lib/config.dart`). Sin ese parámetro usa `http://10.0.2.2:8000/api` en Android (emulador con Laravel local) y `http://127.0.0.1:8000/api` en iOS.
 
 Para producción:
 

@@ -12,3 +12,6 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# TG-183: configuración de Firebase; no se sube (ver mobile/docs/android.md).
+app/google-services.json
