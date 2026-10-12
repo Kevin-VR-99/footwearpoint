@@ -34,6 +34,38 @@ con la distribuidora de su vale, así que nadie ve nada de otra.
 
 ---
 
+## Y la distribuidora (TG-122)
+
+El mismo comando, después de avisar a cada cliente, deja **un resumen diario** en la campana del
+panel de **todo el personal activo** de cada distribuidora que tenga vales por vencer:
+
+> **3 vales vencen en los próximos 7 días**
+> 2 clientes sin app (llámalos): V-00012 Ana Ruiz, V-00015 Luis Paz.
+
+- Cuenta **todos** los vales por vencer de esa distribuidora (activos, con saldo, sin vencer y
+  dentro del margen), aunque al cliente ya se le haya avisado otro día: es el panorama de hoy.
+- Nombra (folio y nombre) a los clientes **sin cuenta en la app**, que son los que no reciben el
+  aviso y hay que llamar. Nombra hasta 10; del resto dice «y N más». Si todos tienen la app, lo dice.
+- **Solo si hay al menos un vale por vencer.**
+- **Una vez al día por distribuidora:** si hoy ya hay un resumen suyo (tipo
+  `vales_por_vencer_resumen`), no se repite aunque el comando corra dos veces. No hizo falta
+  columna nueva.
+
+Además, con el **mismo margen**:
+
+- **Panel → Vales:** insignia «Por vencer» junto a la fecha y un filtro «Por vencer» (del más
+  urgente al menos).
+- **App → Mis vales:** «Vence pronto» resaltado. La API manda `por_vencer` en cada vale (ver
+  `contrato-api.md`), así el margen se cambia en un solo lugar.
+
+La salida del comando agrega una línea:
+
+```
+Resumen al personal: 1 distribuidoras, 2 avisos.
+```
+
+---
+
 ## El margen de días
 
 ```

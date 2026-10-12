@@ -75,8 +75,17 @@ class _ValesScreenState extends State<ValesScreen> {
                   final bool estaVencido =
                       vale.fechaVencimiento != null && vale.fechaVencimiento!.isBefore(DateTime.now());
 
+                  // TG-122: resaltado si vence pronto (el margen lo pone el servidor).
+                  final bool vencePronto = vale.porVencer && !estaVencido;
+
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
+                    shape: vencePronto
+                        ? RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: const BorderSide(color: Color(0xFFFDBA74), width: 1.5), // orange-300
+                          )
+                        : null,
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       leading: const FpIconoCuadro(
@@ -104,6 +113,31 @@ class _ValesScreenState extends State<ValesScreen> {
                                 fontWeight: estaVencido ? FontWeight.bold : FontWeight.normal,
                               ),
                             ),
+                          if (vencePronto) ...[
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: FpColores.insigniaAvisoFondo,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.schedule, size: 13, color: FpColores.insigniaAvisoTexto),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Vence pronto',
+                                    style: TextStyle(
+                                      color: FpColores.insigniaAvisoTexto,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

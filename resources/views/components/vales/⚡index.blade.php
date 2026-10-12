@@ -41,6 +41,9 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
             $query->whereNotNull('cliente_directo_id');
         } elseif ($this->filtro_tipo === 'revendedor') {
             $query->whereNotNull('revendedor_distribuidora_id');
+        } elseif ($this->filtro_tipo === 'por_vencer') {
+            // TG-122: los que vencen pronto, primero el más urgente.
+            $query->porVencer()->reorder('fecha_vencimiento');
         }
 
         return $query->get();
@@ -186,6 +189,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 <option value="">Todos</option>
                 <option value="cliente_directo">Solo clientes</option>
                 <option value="revendedor">Solo clientes mayoristas</option>
+                <option value="por_vencer">Por vencer ({{ \App\Models\Vale::diasAvisoVencimiento() }} días o menos)</option>
             </select>
         </div>
 
@@ -219,6 +223,10 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                             <td class="px-4 py-3 text-right font-medium">${{ number_format($vale->saldo_actual, 2) }}</td>
                             <td class="px-4 py-3 text-slate-600">
                                 {{ optional($vale->fecha_vencimiento)->format('d/m/Y') }}
+                                {{-- TG-122 --}}
+                                @if ($vale->estaPorVencer())
+                                    <x-ui.insignia-estado variante="warning" texto="Por vencer" class="ml-1" />
+                                @endif
                             </td>
                             <td class="px-4 py-3">
                                 @php

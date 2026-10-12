@@ -17,6 +17,8 @@ class ValeResource extends JsonResource
             'fecha_emision'  => optional($this->fecha_emision)->toIso8601String(),
             'fecha_vencimiento' => optional($this->fecha_vencimiento)->toIso8601String(),
             'estado'         => $this->estado,
+            // TG-122: vence dentro del margen de aviso (VALES_DIAS_AVISO_VENCIMIENTO).
+            'por_vencer'     => $this->estaPorVencer(),
             'motivo'         => $this->motivo,
             'propietario'    => [
                 'tipo'   => $this->cliente_directo_id ? 'cliente_directo' : 'revendedor',

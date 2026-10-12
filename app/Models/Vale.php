@@ -56,4 +56,41 @@ class Vale extends Model
     {
         return $this->hasMany(ValeMovimiento::class, 'vale_id');
     }
+
+    /**
+     * TG-122: días de anticipación del aviso de vencimiento
+     * (VALES_DIAS_AVISO_VENCIMIENTO, el mismo margen del aviso de TG-242).
+     */
+    public static function diasAvisoVencimiento(): int
+    {
+        return max(0, (int) config('vales.dias_aviso_vencimiento'));
+    }
+
+    /**
+     * TG-122: vales que vencen pronto y todavía sirven: activos, con saldo,
+     * aún no vencidos y con vencimiento dentro del margen.
+     */
+    public function scopePorVencer($consulta, ?int $dias = null)
+    {
+        $dias = $dias ?? static::diasAvisoVencimiento();
+
+        return $consulta
+            ->where('estado', 'activo')
+            ->where('saldo_actual', '>', 0)
+            ->whereNotNull('fecha_vencimiento')
+            ->where('fecha_vencimiento', '>=', now())
+            ->where('fecha_vencimiento', '<=', now()->addDays(max(0, $dias))->endOfDay());
+    }
+
+    /** TG-122: lo mismo que [scopePorVencer], para un vale ya cargado. */
+    public function estaPorVencer(?int $dias = null): bool
+    {
+        $dias = $dias ?? static::diasAvisoVencimiento();
+
+        return $this->estado === 'activo'
+            && (float) $this->saldo_actual > 0
+            && $this->fecha_vencimiento !== null
+            && $this->fecha_vencimiento->greaterThanOrEqualTo(now())
+            && $this->fecha_vencimiento->lessThanOrEqualTo(now()->addDays(max(0, $dias))->endOfDay());
+    }
 }

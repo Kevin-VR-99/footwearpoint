@@ -6,6 +6,9 @@ class Vale {
   final DateTime? fechaVencimiento;
   final String estado;
 
+  /// TG-122: vence dentro del margen de aviso; lo decide el servidor.
+  final bool porVencer;
+
   Vale({
     required this.id,
     required this.folio,
@@ -13,6 +16,7 @@ class Vale {
     required this.saldoActual,
     this.fechaVencimiento,
     required this.estado,
+    this.porVencer = false,
   });
 
   factory Vale.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,7 @@ class Vale {
       saldoActual: json['saldo_actual'] != null ? double.parse(json['saldo_actual'].toString()) : 0.0,
       fechaVencimiento: json['fecha_vencimiento'] != null ? DateTime.parse(json['fecha_vencimiento']) : null,
       estado: json['estado'] ?? 'activo',
+      porVencer: json['por_vencer'] == true,
     );
   }
 }
