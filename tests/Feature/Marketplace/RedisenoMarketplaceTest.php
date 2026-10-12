@@ -72,6 +72,11 @@ class RedisenoMarketplaceTest extends TestCase
             ->assertSee('transition-[width] duration-200 ease-out', false)
             ->assertSee('aria-label="Abrir o cerrar menú"', false)
             ->assertSee('aria-label="Cerrar menú"', false);
+
+        $html = $this->get(route('admin.dashboard'))->getContent();
+        $this->assertSame(6, substr_count($html, 'data-enlace-lateral'));
+        $this->assertStringContainsString('aria-current="page"', $html);
+        $this->assertStringContainsString('group-hover:bg-white/15', $html);
     }
 
     public function test_la_campana_del_panel_muestra_los_grupos(): void

@@ -41,31 +41,19 @@
                 </button>
             </div>
 
-            <nav class="flex-1 p-3 space-y-1">
-                <a href="{{ route('admin.dashboard') }}"
-                    class="block rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('admin.dashboard') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
-                    Distribuidoras
-                </a>
-                <a href="{{ route('admin.planes') }}"
-                    class="block rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('admin.planes') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
-                    Planes
-                </a>
-                <a href="{{ route('admin.catalogo') }}"
-                    class="block rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('admin.catalogo') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
-                    Catálogo maestro
-                </a>
-                <a href="{{ route('admin.categorias-directorio') }}"
-                    class="block rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('admin.categorias-directorio') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
-                    Categorías del directorio
-                </a>
-                <a href="{{ route('admin.catalogos') }}"
-                    class="block rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('admin.catalogos') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
-                    Catálogos para importar
-                </a>
-                <a href="{{ route('admin.auditoria') }}"
-                    class="block rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('admin.auditoria') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
-                    Auditoría
-                </a>
+            <nav class="flex-1 space-y-1 overflow-y-auto p-3">
+                <x-panel.enlace-lateral :href="route('admin.dashboard')" :activo="request()->routeIs('admin.dashboard')"
+                    icono="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6">Distribuidoras</x-panel.enlace-lateral>
+                <x-panel.enlace-lateral :href="route('admin.planes')" :activo="request()->routeIs('admin.planes')"
+                    icono="M3 7h18v10H3zM3 11h18">Planes</x-panel.enlace-lateral>
+                <x-panel.enlace-lateral :href="route('admin.catalogo')" :activo="request()->routeIs('admin.catalogo')"
+                    icono="M4 6h16M4 12h16M4 18h10">Catálogo maestro</x-panel.enlace-lateral>
+                <x-panel.enlace-lateral :href="route('admin.categorias-directorio')" :activo="request()->routeIs('admin.categorias-directorio')"
+                    icono="M7 7h.01M3 12l9-9h7a2 2 0 012 2v7l-9 9-9-9z">Categorías del directorio</x-panel.enlace-lateral>
+                <x-panel.enlace-lateral :href="route('admin.catalogos')" :activo="request()->routeIs('admin.catalogos')"
+                    icono="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16">Catálogos para importar</x-panel.enlace-lateral>
+                <x-panel.enlace-lateral :href="route('admin.auditoria')" :activo="request()->routeIs('admin.auditoria')"
+                    icono="M9 12l2 2 4-4M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z">Auditoría</x-panel.enlace-lateral>
             </nav>
 
             <div class="border-t border-white/10 px-4 py-3">
