@@ -2,10 +2,8 @@
 
 namespace App\Services\Reporte;
 
-use App\Models\Pago;
 use App\Models\Pedido;
 use App\Models\RevendedorDistribuidora;
-use App\Models\ValeMovimiento;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
 
 /**
@@ -54,20 +52,7 @@ class PedidosPorRevendedorAction
         $pedidos = $consulta->get(['id', 'revendedor_distribuidora_id', 'total']);
         $ids = $pedidos->pluck('id')->all();
 
-        $pagos = $ids === [] ? collect() : Pago::query()
-            ->whereIn('pedido_id', $ids)
-            ->where('estado', 'aplicado')
-            ->where('direccion', 'entrada')
-            ->selectRaw('pedido_id, SUM(monto) as suma')
-            ->groupBy('pedido_id')
-            ->pluck('suma', 'pedido_id');
-
-        $vales = $ids === [] ? collect() : ValeMovimiento::query()
-            ->whereIn('pedido_id', $ids)
-            ->where('tipo', 'aplicacion')
-            ->selectRaw('pedido_id, SUM(monto) as suma')
-            ->groupBy('pedido_id')
-            ->pluck('suma', 'pedido_id');
+        $pagadoPorPedido = app(PagosDePedidos::class)->pagadoPorPedido($ids);
 
         $nombres = RevendedorDistribuidora::query()
             ->with('revendedor:id,nombre')
@@ -77,14 +62,14 @@ class PedidosPorRevendedorAction
 
         $filas = $pedidos
             ->groupBy('revendedor_distribuidora_id')
-            ->map(function ($delCliente, $afiliacionId) use ($pagos, $vales, $nombres) {
+            ->map(function ($delCliente, $afiliacionId) use ($pagadoPorPedido, $nombres) {
                 $monto = 0.0;
                 $pagado = 0.0;
                 $pendiente = 0.0;
 
                 foreach ($delCliente as $pedido) {
                     $total = round((float) $pedido->total, 2);
-                    $pagadoPedido = round((float) ($pagos[$pedido->id] ?? 0) + (float) ($vales[$pedido->id] ?? 0), 2);
+                    $pagadoPedido = $pagadoPorPedido[$pedido->id] ?? 0.0;
 
                     $monto += $total;
                     $pagado += $pagadoPedido;
