@@ -188,4 +188,49 @@ class PedirBajoPedidoTest extends TestCase
 
         $this->assertNotContains($noDisponible->variante_id, $ofrecidas);
     }
+
+    // ------------------------------------------------------------------
+    // TG-266: el pedido dice qué líneas son bajo pedido
+    // ------------------------------------------------------------------
+
+    public function test_el_pedido_marca_las_lineas_bajo_pedido(): void
+    {
+        $bajoPedido = $this->conEstado('bajo_pedido');
+        $disponible = DisponibilidadVarianteCampana::query()
+            ->where('id', '!=', $bajoPedido->id)
+            ->where('producto_campana_id', $bajoPedido->producto_campana_id)
+            ->orderBy('id')->firstOrFail();
+        $disponible->update(['estado' => 'disponible']);
+
+        $pedidoId = $this->pedidoDeMaria();
+        $this->agregar($pedidoId, $bajoPedido)->assertSuccessful();
+        $this->agregar($pedidoId, $disponible)->assertSuccessful();
+
+        $lineas = collect($this->getJson("/api/pedidos/{$pedidoId}")->assertOk()->json('data.lineas'));
+
+        $this->assertTrue($lineas->firstWhere('variante_id', $bajoPedido->variante_id)['bajo_pedido']);
+        $this->assertFalse($lineas->firstWhere('variante_id', $disponible->variante_id)['bajo_pedido']);
+
+        // Es el estado de hoy: si la fábrica ya la tiene, deja de marcarse.
+        $bajoPedido->update(['estado' => 'disponible']);
+        $lineas = collect($this->getJson("/api/pedidos/{$pedidoId}")->json('data.lineas'));
+        $this->assertFalse($lineas->firstWhere('variante_id', $bajoPedido->variante_id)['bajo_pedido']);
+    }
+
+    public function test_el_detalle_del_pedido_en_el_panel_marca_bajo_pedido(): void
+    {
+        $bajoPedido = $this->conEstado('bajo_pedido');
+        $pedidoId = $this->pedidoDeMaria();
+        $this->agregar($pedidoId, $bajoPedido)->assertSuccessful();
+
+        $this->app['auth']->forgetGuards();
+        $this->actingAs(Usuario::where('email', 'admin@calzadosramirez.test')->firstOrFail());
+        Tenant::olvidarCache();
+        PropietarioActual::olvidarCache();
+
+        Livewire::test('pedidos.show', ['id' => $pedidoId])->assertSee('Bajo pedido');
+
+        $bajoPedido->update(['estado' => 'disponible']);
+        Livewire::test('pedidos.show', ['id' => $pedidoId])->assertDontSee('Bajo pedido');
+    }
 }

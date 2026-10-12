@@ -194,6 +194,12 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         }
     }
 
+    /** TG-266: qué líneas están "bajo pedido" (estado actual de la talla). */
+    public function getBajoPedidoProperty(): array
+    {
+        return \App\Models\DisponibilidadVarianteCampana::bajoPedidoPorLinea($this->pedido->detalle);
+    }
+
     /** TG-254: si cada línea puede pedir cambio y hasta cuándo. */
     public function getCambiosProperty(): array
     {
@@ -466,7 +472,12 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                             <div class="font-medium text-slate-900">{{ $l->producto_nombre }}</div>
                             <div class="text-xs text-slate-500">{{ $l->modelo }}</div>
                         </td>
-                        <td class="px-4 py-3">{{ $l->talla }}</td>
+                        <td class="px-4 py-3">
+                            {{ $l->talla }}
+                            @if ($this->bajoPedido[$l->id] ?? false)
+                                <x-ui.insignia-estado variante="warning" texto="Bajo pedido" class="ml-1" />
+                            @endif
+                        </td>
                         <td class="px-4 py-3">{{ $l->color }}</td>
                         <td class="px-4 py-3 text-right">{{ $l->cantidad }}</td>
                         <td class="px-4 py-3 text-right tabular-nums">${{ number_format((float) $l->precio_unitario, 2) }}</td>

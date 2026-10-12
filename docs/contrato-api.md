@@ -400,6 +400,7 @@ Un revendedor o cliente directo solo ve y toca **sus** pedidos. El empleado ve t
         "estado_surtido": "pendiente",
         "variante_id": 9,
         "producto_campana_id": 12,
+        "bajo_pedido": false,
         "cambio": { "puede_solicitar": false, "vence_el": null, "motivo": "El pedido todavía no se entrega." }
       }
     ],
@@ -407,6 +408,8 @@ Un revendedor o cliente directo solo ve y toca **sus** pedidos. El empleado ve t
   }
 }
 ```
+
+**`bajo_pedido` en cada línea** (TG-266): `true` si esa talla está **hoy** «bajo pedido» en su temporada (la misma `disponibilidad` del catálogo, sección 3). Es el estado actual, no el que tenía al pedirse: si la fábrica la cambia, cambia aquí también. La app lo usa para marcar la línea («Bajo pedido: se encarga a la fábrica y tarda más en llegar»); no cambia montos ni lo que se puede hacer con el pedido.
 
 **Los montos del pedido** (y por qué el anticipo puede no ser lo que se espera):
 
