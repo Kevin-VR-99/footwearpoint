@@ -153,7 +153,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
         <form wire:submit="guardarDescuento" class="flex flex-wrap items-end gap-3">
             <label class="text-sm">
                 <span class="block font-medium text-slate-700">Descuento general de mayoreo (%)</span>
-                <input type="text" inputmode="decimal" wire:model="descuento" class="mt-1 w-32 rounded-lg border-slate-300 text-sm">
+                <input type="text" inputmode="decimal" wire:model="descuento" class="mt-1 w-32 rounded-lg text-sm">
             </label>
             <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Guardar descuento</button>
             <p class="text-xs text-fp-text-muted">Se aplica al precio de catálogo de los productos que no tienen precio propio.</p>
@@ -161,10 +161,9 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
     </div>
 
     <div class="flex flex-wrap gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-        <input type="search" wire:model.live.debounce.400ms="busqueda"
-            placeholder="Buscar por nombre, modelo, código o marca"
-            class="min-w-64 flex-1 rounded-lg border-slate-300 text-sm">
-        <select wire:model.live="filtro" class="rounded-lg border-slate-300 text-sm">
+        <x-ui.buscador wire:model.live.debounce.400ms="busqueda"
+            placeholder="Buscar por nombre, modelo, código o marca" etiqueta="Buscar productos" class="min-w-64 flex-1" />
+        <select wire:model.live="filtro" class="rounded-lg text-sm">
             <option value="todos">Todos</option>
             <option value="ocultos">Solo ocultos</option>
             <option value="precio_propio">Solo con precio propio</option>
@@ -205,7 +204,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
                             <div class="flex items-center gap-2">
                                 <input type="text" inputmode="decimal" wire:model="preciosPropios.{{ $pc->id }}"
                                     placeholder="{{ $propio !== null ? number_format((float) $propio, 2, '.', '') : 'Ej. 650' }}"
-                                    class="w-24 rounded-lg border-slate-300 text-sm">
+                                    class="w-24 rounded-lg text-sm">
                                 <button type="button" wire:click="guardarPrecio({{ $pc->id }})" class="text-sm font-medium text-fp-primary">Guardar</button>
                                 @if ($propio !== null)
                                     <button type="button" wire:click="quitarPrecio({{ $pc->id }})" class="text-sm text-slate-600">Quitar</button>

@@ -199,7 +199,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         <div class="w-full sm:w-72">
             <label class="block text-sm font-medium text-slate-700 mb-1">Ciclo</label>
             <select wire:model.live="cicloId"
-                    class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
+                    class="w-full rounded-lg text-sm focus:ring-fp-primary">
                 @foreach ($this->ciclos as $opcion)
                     <option value="{{ $opcion->id }}">{{ $opcion->nombre }} — {{ $opcion->estado }}</option>
                 @endforeach

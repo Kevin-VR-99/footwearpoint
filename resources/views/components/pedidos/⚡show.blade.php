@@ -360,7 +360,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             <form wire:submit="registrarPago" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-end">
                 <label class="text-sm">
                     <span class="block text-slate-500 mb-1">Tipo</span>
-                    <select wire:model="pagoTipo" class="w-full rounded-lg border-slate-300 text-sm">
+                    <select wire:model="pagoTipo" class="w-full rounded-lg text-sm">
                         @if ($this->pedido->tipo === 'cliente_directo' && $this->resumen['anticipo_pendiente'] > 0)
                             <option value="anticipo">Anticipo</option>
                         @endif
@@ -369,7 +369,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 </label>
                 <label class="text-sm">
                     <span class="block text-slate-500 mb-1">Método</span>
-                    <select wire:model="pagoMetodo" class="w-full rounded-lg border-slate-300 text-sm">
+                    <select wire:model="pagoMetodo" class="w-full rounded-lg text-sm">
                         <option value="efectivo">Efectivo</option>
                         <option value="transferencia">Transferencia</option>
                         <option value="tarjeta">Tarjeta</option>
@@ -379,12 +379,12 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 <label class="text-sm">
                     <span class="block text-slate-500 mb-1">Monto</span>
                     <input type="number" step="0.01" min="0.01" wire:model="pagoMonto"
-                        class="w-full rounded-lg border-slate-300 text-sm" placeholder="0.00">
+                        class="w-full rounded-lg text-sm" placeholder="0.00">
                 </label>
                 <label class="text-sm">
                     <span class="block text-slate-500 mb-1">Referencia</span>
                     <input type="text" wire:model="pagoReferencia"
-                        class="w-full rounded-lg border-slate-300 text-sm" maxlength="190">
+                        class="w-full rounded-lg text-sm" maxlength="190">
                 </label>
                 <div class="sm:col-span-2 lg:col-span-4">
                     <button type="submit"
@@ -434,7 +434,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                                         {{-- Opcional: el número de pago que el cliente ve en su comprobante de Mercado Pago. --}}
                                         <input type="text" inputmode="numeric" wire:model="pagoMpId" maxlength="20"
                                             placeholder="N.º de pago (opcional)" aria-label="Número de pago de Mercado Pago (opcional)"
-                                            class="w-40 rounded-lg border-slate-300 px-2 py-1 text-xs" />
+                                            class="w-40 rounded-lg px-2 py-1 text-xs" />
                                         <button type="button" wire:click="verificarMercadoPago" wire:loading.attr="disabled"
                                             class="text-xs font-medium text-fp-primary hover:underline">
                                             Verificar con Mercado Pago
@@ -491,7 +491,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                                     @if ($cambioLineaId === $l->id)
                                         <div class="space-y-2">
                                             <textarea wire:model="cambioMotivo" rows="2" maxlength="300" placeholder="Motivo del cambio"
-                                                class="w-full rounded-lg border-slate-300 text-sm"></textarea>
+                                                class="w-full rounded-lg text-sm"></textarea>
                                             <div class="flex gap-2">
                                                 <button type="button" wire:click="solicitarCambio" class="rounded-lg bg-fp-primary px-3 py-1.5 text-xs text-white">Enviar solicitud</button>
                                                 <button type="button" wire:click="cancelarCambio" class="text-xs text-slate-600">Cancelar</button>

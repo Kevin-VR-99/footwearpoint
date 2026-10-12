@@ -142,15 +142,15 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     <div class="mb-6 flex flex-wrap gap-3 items-end">
         <div>
             <label class="block text-xs text-slate-500 mb-1">Desde</label>
-            <input type="date" wire:model.live="desde" class="rounded-lg border-slate-300 text-sm" />
+            <input type="date" wire:model.live="desde" class="rounded-lg text-sm" />
         </div>
         <div>
             <label class="block text-xs text-slate-500 mb-1">Hasta</label>
-            <input type="date" wire:model.live="hasta" class="rounded-lg border-slate-300 text-sm" />
+            <input type="date" wire:model.live="hasta" class="rounded-lg text-sm" />
         </div>
         <div>
             <label class="block text-xs text-slate-500 mb-1">Ciclo</label>
-            <select wire:model.live="cicloId" class="rounded-lg border-slate-300 text-sm">
+            <select wire:model.live="cicloId" class="rounded-lg text-sm">
                 <option value="">Todos</option>
                 @foreach ($this->ciclos as $ciclo)
                     <option value="{{ $ciclo->id }}">{{ $ciclo->nombre }}</option>
@@ -159,7 +159,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
         <div>
             <label class="block text-xs text-slate-500 mb-1">Estado del pedido</label>
-            <select wire:model.live="estado" class="rounded-lg border-slate-300 text-sm">
+            <select wire:model.live="estado" class="rounded-lg text-sm">
                 <option value="">Todos</option>
                 <option value="borrador">Borrador</option>
                 <option value="colocado">Colocado</option>
@@ -437,7 +437,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         <div class="flex flex-wrap gap-3 px-4 pb-3">
             <div>
                 <label class="block text-xs text-slate-500 mb-1">Temporada</label>
-                <select wire:model.live="demandaCampanaId" class="rounded-lg border-slate-300 text-sm">
+                <select wire:model.live="demandaCampanaId" class="rounded-lg text-sm">
                     <option value="">Todas</option>
                     @foreach ($this->temporadasDemanda as $temporada)
                         <option value="{{ $temporada->id }}">{{ $temporada->nombre }} · {{ $temporada->linea?->nombre }}</option>
@@ -446,7 +446,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             </div>
             <div>
                 <label class="block text-xs text-slate-500 mb-1">Marca</label>
-                <select wire:model.live="demandaMarcaId" class="rounded-lg border-slate-300 text-sm">
+                <select wire:model.live="demandaMarcaId" class="rounded-lg text-sm">
                     <option value="">Todas</option>
                     @foreach ($this->marcasDemanda as $marca)
                         <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>

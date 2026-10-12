@@ -24,11 +24,14 @@ class ArchivoCatalogoImportacionController extends Controller
 
         abort_unless($disco->exists($importacion->archivo_url), 404, 'Ese archivo ya no está.');
 
-        // Inline: un PDF se abre en el navegador en vez de descargarse.
-        return $disco->response(
-            $importacion->archivo_url,
-            'catalogo-'.$importacion->id.'.'.pathinfo($importacion->archivo_url, PATHINFO_EXTENSION),
-            ['Content-Disposition' => 'inline'],
-        );
+        $nombre = 'catalogo-'.$importacion->id.'.'.pathinfo($importacion->archivo_url, PATHINFO_EXTENSION);
+
+        // Inline: el PDF o la imagen se ven dentro del visor (modal con iframe)
+        // de la misma página; SAMEORIGIN deja enmarcarlo solo desde este sitio.
+        return $disco->response($importacion->archivo_url, $nombre, [
+            'Content-Disposition' => 'inline; filename="'.$nombre.'"',
+            'X-Frame-Options' => 'SAMEORIGIN',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 }

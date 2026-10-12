@@ -125,7 +125,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de propietario</label>
                 <select wire:model.live="propietario_tipo"
-                        class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
+                        class="w-full rounded-lg text-sm focus:ring-fp-primary">
                     <option value="cliente_directo">Cliente directo</option>
                     <option value="revendedor">Cliente mayorista</option>
                 </select>
@@ -135,7 +135,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 <label class="block text-sm font-medium text-slate-700 mb-1">Propietario</label>
                 @if ($propietario_tipo === 'cliente_directo')
                     <select wire:model="propietario_id"
-                            class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
+                            class="w-full rounded-lg text-sm focus:ring-fp-primary">
                         <option value="">— Seleccionar cliente —</option>
                         @foreach ($this->clientes as $c)
                             <option value="{{ $c->id }}">{{ $c->nombre }}</option>
@@ -143,7 +143,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                     </select>
                 @else
                     <select wire:model="propietario_id"
-                            class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
+                            class="w-full rounded-lg text-sm focus:ring-fp-primary">
                         <option value="">— Seleccionar cliente mayorista —</option>
                         @foreach ($this->revendedores as $r)
                             <option value="{{ $r->id }}">
@@ -159,7 +159,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Monto (MXN)</label>
                 <input type="number" step="0.01" min="0.01" wire:model="monto_original"
-                       class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
+                       class="w-full rounded-lg text-sm focus:ring-fp-primary"
                        placeholder="500.00">
                 @error('monto_original') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
             </div>
@@ -167,7 +167,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional)</label>
                 <input type="text" wire:model="motivo" maxlength="300"
-                       class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
+                       class="w-full rounded-lg text-sm focus:ring-fp-primary"
                        placeholder="Ej. compensación, promoción…">
             </div>
 
@@ -185,7 +185,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Vales emitidos</h3>
             <select wire:model.live="filtro_tipo"
-                    class="rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
+                    class="rounded-lg text-sm focus:ring-fp-primary">
                 <option value="">Todos</option>
                 <option value="cliente_directo">Solo clientes</option>
                 <option value="revendedor">Solo clientes mayoristas</option>

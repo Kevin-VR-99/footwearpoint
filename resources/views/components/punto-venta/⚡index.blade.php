@@ -420,9 +420,8 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
         {{-- Buscador de productos --}}
         <div class="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-5 py-3 border-b border-slate-100">
-                <input type="search" wire:model.live.debounce.300ms="busqueda"
-                       class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary"
-                       placeholder="Buscar por SKU, código de catálogo, modelo, talla o color…">
+                <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
+                       placeholder="Buscar por SKU, código de catálogo, modelo, talla o color…" etiqueta="Buscar productos" />
             </div>
 
             <div class="overflow-x-auto max-h-[28rem] overflow-y-auto">
@@ -510,7 +509,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                             {{-- wire:model.live: lo que el servidor corrija se ve aquí de inmediato. --}}
                             <input type="number" min="1" max="{{ $linea['disponible'] }}"
                                    wire:model.live="lineas.{{ $clave }}.cantidad"
-                                   class="w-16 rounded-lg border-slate-300 text-sm text-center focus:border-fp-primary focus:ring-fp-primary">
+                                   class="w-16 rounded-lg text-sm text-center focus:ring-fp-primary">
 
                             <div class="text-right w-20">
                                 <p class="text-sm font-medium text-slate-900">
@@ -570,7 +569,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                         @else
                             <div class="flex gap-2">
                                 <input type="text" wire:model="valeFolio" wire:keydown.enter="aplicarVale" placeholder="Folio del vale"
-                                       class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
+                                       class="w-full rounded-lg text-sm focus:ring-fp-primary">
                                 <button type="button" wire:click="aplicarVale" class="rounded-lg border border-fp-primary px-3 text-sm text-fp-primary">Aplicar</button>
                             </div>
                         @endif
@@ -580,7 +579,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Método de pago</label>
                         <select wire:model="metodo_pago"
-                                class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
+                                class="w-full rounded-lg text-sm focus:ring-fp-primary">
                             <option value="efectivo">Efectivo</option>
                             <option value="transferencia">Transferencia</option>
                             <option value="tarjeta">Tarjeta</option>
@@ -593,7 +592,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Cliente (opcional)</label>
                         <select wire:model="cliente_directo_id" @disabled($vale)
-                                class="w-full rounded-lg border-slate-300 text-sm focus:border-fp-primary focus:ring-fp-primary">
+                                class="w-full rounded-lg text-sm focus:ring-fp-primary">
                             <option value="">— Venta de mostrador —</option>
                             @foreach ($this->clientes as $cliente)
                                 <option value="{{ $cliente->id }}">{{ $cliente->nombre }}</option>

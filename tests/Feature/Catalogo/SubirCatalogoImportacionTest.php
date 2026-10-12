@@ -280,4 +280,31 @@ class SubirCatalogoImportacionTest extends TestCase
         $this->actingAs($this->adminGeneral())->get($direccion)->assertOk();
         $this->actingAs($this->adminDeDistribuidora())->get($direccion)->assertForbidden();
     }
+
+    public function test_ver_archivo_abre_un_visor_en_la_misma_pagina(): void
+    {
+        $this->actingAs($this->adminGeneral());
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->set('linea_id', 1)
+            ->set('archivo', $this->pdfDePrueba())
+            ->call('subir');
+
+        $importacion = ImportacionCatalogo::latest('id')->firstOrFail();
+        $direccion = route('admin.catalogos.archivo', $importacion->id);
+
+        $html = Livewire::test('admin.catalogos-importaciones')->html();
+        $this->assertStringContainsString('data-visor-archivo', $html);
+        $this->assertStringContainsString('data-ver-archivo', $html);
+        $this->assertStringContainsString("abrir-visor", $html);
+        $this->assertStringContainsString('<iframe', $html);
+        $this->assertStringContainsString('x-on:keydown.escape.window="abierto = false"', $html);
+        $this->assertStringContainsString('x-on:click.self="abierto = false"', $html);
+        // Ya no es un enlace que abre otra página.
+        $this->assertStringNotContainsString('href="'.$direccion.'"', $html);
+
+        $respuesta = $this->get($direccion)->assertOk();
+        $this->assertStringStartsWith('inline', $respuesta->headers->get('Content-Disposition'));
+        $this->assertSame('SAMEORIGIN', $respuesta->headers->get('X-Frame-Options'));
+    }
 }

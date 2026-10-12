@@ -167,7 +167,7 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
             <input type="email" wire:model="email"
-                class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600"
+                class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600"
                 placeholder="correo@ejemplo.com" autofocus>
             @error('email')
                 <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
@@ -177,7 +177,7 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
             <input type="password" wire:model="password"
-                class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600"
+                class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600"
                 placeholder="••••••••">
             @error('password')
                 <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
@@ -187,7 +187,7 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         <div class="flex items-center justify-between">
             <label class="flex items-center gap-2 text-sm text-slate-600">
                 <input type="checkbox" wire:model="remember"
-                    class="rounded border-slate-300 text-blue-600 focus:ring-blue-600">
+                    class="rounded text-blue-600 focus:ring-blue-600">
                 Recordarme
             </label>
 

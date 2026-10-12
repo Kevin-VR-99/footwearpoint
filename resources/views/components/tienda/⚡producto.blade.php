@@ -47,11 +47,11 @@ new class extends Component {
 ?>
 
 <div class="space-y-6">
-    <a href="{{ app(\App\Services\Tienda\EnlaceTienda::class)->url($distribuidora) }}" class="text-sm text-[#2563EB] hover:underline">
+    <a href="{{ app(\App\Services\Tienda\EnlaceTienda::class)->url($distribuidora) }}" class="text-sm text-fp-primary hover:underline">
         ← Volver a la tienda
     </a>
 
-    <article class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden grid md:grid-cols-2">
+    <article class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden grid md:grid-cols-2">
         <div class="bg-slate-100">
             @if ($producto['imagen'])
                 <img src="{{ $producto['imagen'] }}" alt="{{ $producto['nombre'] }}" class="w-full aspect-square object-cover">
@@ -73,7 +73,7 @@ new class extends Component {
         <div class="p-6 flex flex-col gap-4">
             <div>
                 @if ($producto['marca'])
-                    <p class="text-xs font-semibold uppercase tracking-wide text-[#2563EB]">{{ $producto['marca'] }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-fp-primary">{{ $producto['marca'] }}</p>
                 @endif
                 <h2 class="mt-1 text-2xl font-bold text-slate-900">{{ $producto['nombre'] }}</h2>
                 <p class="text-sm text-slate-500 mt-1">
@@ -119,7 +119,7 @@ new class extends Component {
                 <p class="text-sm text-slate-600">{{ $producto['descripcion'] }}</p>
             @endif
 
-            <div class="mt-auto rounded-lg bg-[#EEF2FF] p-4 text-sm text-[#1E2F52]">
+            <div class="mt-auto rounded-lg bg-fp-badge-info-bg p-4 text-sm text-fp-badge-info-fg">
                 ¿Te interesa? Pídelo en mostrador o desde la app de FootwearPoint.
                 @if ($distribuidora->telefono_publico)
                     También puedes llamar al

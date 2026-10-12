@@ -145,30 +145,30 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
             <form wire:submit="guardar" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Nombre</label>
-                    <input type="text" wire:model="nombre" class="w-full rounded-lg border-slate-300">
+                    <input type="text" wire:model="nombre" class="w-full rounded-lg">
                     @error('nombre') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Líneas incluidas</label>
-                    <input type="number" wire:model="lineas_incluidas" class="w-full rounded-lg border-slate-300">
+                    <input type="number" wire:model="lineas_incluidas" class="w-full rounded-lg">
                     @error('lineas_incluidas') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Precio base mensual</label>
-                    <input type="number" step="0.01" wire:model="precio_base_mensual" class="w-full rounded-lg border-slate-300">
+                    <input type="number" step="0.01" wire:model="precio_base_mensual" class="w-full rounded-lg">
                     @error('precio_base_mensual') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Precio línea extra</label>
-                    <input type="number" step="0.01" wire:model="precio_linea_extra" class="w-full rounded-lg border-slate-300">
+                    <input type="number" step="0.01" wire:model="precio_linea_extra" class="w-full rounded-lg">
                     @error('precio_linea_extra') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium mb-1">Descripción</label>
-                    <textarea wire:model="descripcion" rows="2" class="w-full rounded-lg border-slate-300"></textarea>
+                    <textarea wire:model="descripcion" rows="2" class="w-full rounded-lg"></textarea>
                 </div>
                 <div class="md:col-span-2 flex items-center gap-2">
-                    <input type="checkbox" wire:model="activo" class="rounded border-slate-300 text-fp-primary">
+                    <input type="checkbox" wire:model="activo" class="rounded text-fp-primary">
                     <span class="text-sm">Plan activo</span>
                 </div>
                 <div class="md:col-span-2 flex gap-2">

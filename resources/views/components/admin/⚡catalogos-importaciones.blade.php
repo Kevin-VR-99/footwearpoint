@@ -187,7 +187,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         <div class="grid gap-4 sm:grid-cols-2">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Línea</label>
-                <select wire:model.live="linea_id" class="w-full rounded-lg border-slate-300 text-sm">
+                <select wire:model.live="linea_id" class="w-full rounded-lg text-sm">
                     <option value="">Elige la línea</option>
                     @foreach ($this->lineas as $linea)
                         <option value="{{ $linea->id }}">{{ $linea->nombre }}</option>
@@ -200,7 +200,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                 <label class="block text-sm font-medium text-slate-700 mb-1">
                     Temporada <span class="text-slate-400 font-normal">(opcional)</span>
                 </label>
-                <select wire:model="campana_id" class="w-full rounded-lg border-slate-300 text-sm" @disabled(! $linea_id)>
+                <select wire:model="campana_id" class="w-full rounded-lg text-sm" @disabled(! $linea_id)>
                     <option value="">Se decide al aprobar</option>
                     @foreach ($this->temporadas as $temporada)
                         <option value="{{ $temporada->id }}">{{ $temporada->nombre }}</option>
@@ -289,8 +289,9 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                                     <a href="{{ route('admin.catalogos.revisar', $importacion->id) }}"
                                         class="text-fp-primary text-xs font-semibold mr-3">Revisar</a>
                                 @endif
-                                <a href="{{ route('admin.catalogos.archivo', $importacion->id) }}"
-                                    class="text-fp-primary text-xs font-medium mr-3">Ver archivo</a>
+                                <button type="button" data-ver-archivo
+                                    x-on:click="$dispatch('abrir-visor', @js(['url' => route('admin.catalogos.archivo', $importacion->id), 'tipo' => $importacion->tipo_archivo, 'nombre' => 'Catálogo #'.$importacion->id]))"
+                                    class="text-fp-primary text-xs font-medium mr-3 hover:underline">Ver archivo</button>
                                 @if (in_array($importacion->estado, ['cargado', 'error'], true))
                                     <button type="button" wire:click="eliminar({{ $importacion->id }})"
                                         wire:confirm="¿Quitar este catálogo? Se borra el archivo."
@@ -303,4 +304,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
             </table>
         @endif
     </div>
+
+    <x-ui.visor-archivo />
 </div>

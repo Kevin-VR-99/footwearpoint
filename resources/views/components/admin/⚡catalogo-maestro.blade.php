@@ -406,19 +406,19 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         @endphp
         <form wire:submit="guardarEdicion" class="grid max-w-xl grid-cols-1 gap-3 rounded-2xl border border-fp-primary/40 bg-white p-4">
             <h2 class="text-sm font-semibold text-fp-sidebar">{{ $titulos[$editando_tipo] ?? 'Editar' }}</h2>
-            <input type="text" wire:model="editar_nombre" placeholder="Nombre" class="rounded-lg border-slate-200 text-sm">
+            <input type="text" wire:model="editar_nombre" placeholder="Nombre" class="rounded-lg text-sm">
             @error('editar_nombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
             @if ($editando_tipo === 'producto')
-                <input type="text" wire:model="editar_modelo" placeholder="Modelo" class="rounded-lg border-slate-200 text-sm">
+                <input type="text" wire:model="editar_modelo" placeholder="Modelo" class="rounded-lg text-sm">
                 @error('editar_modelo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                <select wire:model="editar_marca_id" class="rounded-lg border-slate-200 text-sm">
+                <select wire:model="editar_marca_id" class="rounded-lg text-sm">
                     <option value="">Marca</option>
                     @foreach ($this->marcas as $marca)
                         <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
                     @endforeach
                 </select>
                 @error('editar_marca_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-                <select wire:model="editar_categoria_id" class="rounded-lg border-slate-200 text-sm">
+                <select wire:model="editar_categoria_id" class="rounded-lg text-sm">
                     <option value="">Categoría</option>
                     @foreach ($this->categorias as $categoria)
                         <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
@@ -427,7 +427,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 @error('editar_categoria_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
             @endif
             @if ($editando_tipo === 'temporada')
-                <select wire:model="editar_estado" class="rounded-lg border-slate-200 text-sm">
+                <select wire:model="editar_estado" class="rounded-lg text-sm">
                     @foreach (\App\Services\Catalogo\GestionarCampanaAction::ORDEN_ESTADOS as $estado)
                         <option value="{{ $estado }}">{{ ucfirst(str_replace('_', ' ', $estado)) }}</option>
                     @endforeach
@@ -435,7 +435,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 <span class="text-xs text-slate-500">El estado solo avanza un paso a la vez.</span>
                 @error('editar_estado') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
             @endif
-            <input type="text" wire:model="editar_descripcion" placeholder="Descripción" class="rounded-lg border-slate-200 text-sm">
+            <input type="text" wire:model="editar_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
             @error('editar_descripcion') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
             <div class="flex gap-2">
                 <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Guardar cambios</button>
@@ -453,9 +453,9 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
     @if ($pestana === 'lineas')
         <form wire:submit="guardarLinea" class="grid max-w-xl grid-cols-1 gap-3 rounded-2xl border bg-white p-4">
-            <input type="text" wire:model="linea_nombre" placeholder="Nombre de la línea" class="rounded-lg border-slate-200 text-sm">
+            <input type="text" wire:model="linea_nombre" placeholder="Nombre de la línea" class="rounded-lg text-sm">
             @error('linea_nombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <input type="text" wire:model="linea_descripcion" placeholder="Descripción" class="rounded-lg border-slate-200 text-sm">
+            <input type="text" wire:model="linea_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
             <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Crear línea</button>
         </form>
         <table class="w-full rounded-2xl bg-white text-sm">
@@ -477,9 +477,9 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         </table>
     @elseif ($pestana === 'marcas')
         <form wire:submit="guardarMarca" class="grid max-w-xl grid-cols-1 gap-3 rounded-2xl border bg-white p-4">
-            <input type="text" wire:model="marca_nombre" placeholder="Nombre de la marca" class="rounded-lg border-slate-200 text-sm">
+            <input type="text" wire:model="marca_nombre" placeholder="Nombre de la marca" class="rounded-lg text-sm">
             @error('marca_nombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <input type="text" wire:model="marca_descripcion" placeholder="Descripción" class="rounded-lg border-slate-200 text-sm">
+            <input type="text" wire:model="marca_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
             <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Crear marca</button>
         </form>
         <table class="w-full rounded-2xl bg-white text-sm">
@@ -501,16 +501,16 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         </table>
     @elseif ($pestana === 'temporadas')
         <form wire:submit="guardarTemporada" class="grid max-w-xl grid-cols-1 gap-3 rounded-2xl border bg-white p-4">
-            <select wire:model="temporada_linea_id" class="rounded-lg border-slate-200 text-sm">
+            <select wire:model="temporada_linea_id" class="rounded-lg text-sm">
                 <option value="">Línea</option>
                 @foreach ($this->lineas as $linea)
                     <option value="{{ $linea->id }}">{{ $linea->nombre }}</option>
                 @endforeach
             </select>
             @error('temporada_linea_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <input type="text" wire:model="temporada_nombre" placeholder="Nombre de la temporada" class="rounded-lg border-slate-200 text-sm">
+            <input type="text" wire:model="temporada_nombre" placeholder="Nombre de la temporada" class="rounded-lg text-sm">
             @error('temporada_nombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <select wire:model="temporada_estado" class="rounded-lg border-slate-200 text-sm">
+            <select wire:model="temporada_estado" class="rounded-lg text-sm">
                 <option value="borrador">Borrador</option>
                 <option value="activa">Activa</option>
                 <option value="cerrada">Cerrada</option>
@@ -537,34 +537,34 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         </table>
     @else
         <form wire:submit="guardarProducto" class="grid max-w-xl grid-cols-1 gap-3 rounded-2xl border bg-white p-4">
-            <select wire:model="producto_marca_id" class="rounded-lg border-slate-200 text-sm">
+            <select wire:model="producto_marca_id" class="rounded-lg text-sm">
                 <option value="">Marca</option>
                 @foreach ($this->marcas as $marca)
                     <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
                 @endforeach
             </select>
             @error('producto_marca_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <select wire:model="producto_categoria_id" class="rounded-lg border-slate-200 text-sm">
+            <select wire:model="producto_categoria_id" class="rounded-lg text-sm">
                 <option value="">Categoría</option>
                 @foreach ($this->categorias as $categoria)
                     <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
                 @endforeach
             </select>
             @error('producto_categoria_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <input type="text" wire:model="producto_modelo" placeholder="Modelo" class="rounded-lg border-slate-200 text-sm">
+            <input type="text" wire:model="producto_modelo" placeholder="Modelo" class="rounded-lg text-sm">
             @error('producto_modelo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <input type="text" wire:model="producto_nombre" placeholder="Nombre" class="rounded-lg border-slate-200 text-sm">
+            <input type="text" wire:model="producto_nombre" placeholder="Nombre" class="rounded-lg text-sm">
             @error('producto_nombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <select wire:model="producto_campana_id" class="rounded-lg border-slate-200 text-sm">
+            <select wire:model="producto_campana_id" class="rounded-lg text-sm">
                 <option value="">Temporada</option>
                 @foreach ($this->temporadas as $temporada)
                     <option value="{{ $temporada->id }}">{{ $temporada->linea?->nombre }} — {{ $temporada->nombre }}</option>
                 @endforeach
             </select>
             @error('producto_campana_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <input type="text" wire:model="producto_codigo" placeholder="Código de catálogo" class="rounded-lg border-slate-200 text-sm">
+            <input type="text" wire:model="producto_codigo" placeholder="Código de catálogo" class="rounded-lg text-sm">
             @error('producto_codigo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <input type="number" step="0.01" wire:model="producto_precio" placeholder="Precio de menudeo" class="rounded-lg border-slate-200 text-sm">
+            <input type="number" step="0.01" wire:model="producto_precio" placeholder="Precio de menudeo" class="rounded-lg text-sm">
             @error('producto_precio') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
             <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Publicar producto</button>
         </form>

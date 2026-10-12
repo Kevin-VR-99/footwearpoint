@@ -12,6 +12,8 @@ class NotificacionResource extends JsonResource
         return [
             'id'           => $this->id,
             'tipo'         => $this->tipo,
+            // TG-196: grupo de la campana (pedidos, pagos, promociones, generales).
+            'grupo'        => \App\Support\GruposNotificacion::de($this->tipo),
             'titulo'       => $this->titulo,
             'mensaje'      => $this->mensaje,
             'leida'        => $this->leida_at !== null,

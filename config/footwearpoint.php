@@ -19,6 +19,16 @@ return [
     ],
 
     /*
+    | TG-234: redes sociales de la sección de contacto de la página de inicio.
+    | Si una URL queda vacía, ese icono no se muestra.
+    */
+    'redes' => [
+        'instagram' => env('REDES_INSTAGRAM_URL'),
+        'facebook' => env('REDES_FACEBOOK_URL'),
+        'youtube' => env('REDES_YOUTUBE_URL'),
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | Solicitudes de alta (TG-220)
     |--------------------------------------------------------------------------

@@ -53,9 +53,8 @@ new class extends Component {
     <x-catalogo.aviso-solo-lectura />
 
     <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-        <input type="search" wire:model.live.debounce.400ms="busqueda"
-            placeholder="Buscar por nombre, modelo, código o marca"
-            class="w-full rounded-lg border-slate-300 text-sm">
+        <x-ui.buscador wire:model.live.debounce.400ms="busqueda"
+            placeholder="Buscar por nombre, modelo, código o marca" etiqueta="Buscar productos" />
     </div>
 
     <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">

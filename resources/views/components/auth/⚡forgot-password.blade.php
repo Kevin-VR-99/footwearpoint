@@ -57,7 +57,7 @@ new #[Layout('layouts.guest')] #[Title('Recuperar contraseña — FootwearPoint'
             <input
                 type="email"
                 wire:model="email"
-                class="w-full rounded-lg border-slate-300 focus:border-blue-600 focus:ring-blue-600"
+                class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600"
                 placeholder="correo@ejemplo.com"
                 autofocus
             >

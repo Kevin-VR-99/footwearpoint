@@ -121,8 +121,8 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         <p class="text-sm font-medium text-slate-800">Cambio de una venta de mostrador</p>
         <p class="text-xs text-slate-500">Los cambios de pedidos se piden desde el detalle del pedido o desde la app del cliente.</p>
         <form wire:submit="buscarVenta" class="mt-3 flex gap-2">
-            <input type="text" wire:model="folioVenta" placeholder="Folio de la venta (VD-...)" class="w-64 rounded-lg border-slate-300 text-sm">
-            <button type="submit" class="rounded-lg border border-fp-primary px-3 text-sm text-fp-primary">Buscar</button>
+            <x-ui.buscador wire:model="folioVenta" placeholder="Buscar por folio de la venta (VD-…)" etiqueta="Buscar venta por folio" class="w-full sm:w-80" />
+            <button type="submit" class="rounded-xl bg-fp-primary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-fp-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40">Buscar</button>
         </form>
 
         @if ($this->venta)
@@ -143,7 +143,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                                     @elseif ($cambio && $cambio['puede_solicitar'])
                                         @if ($cambioLineaId === $l->id)
                                             <div class="ml-auto max-w-sm space-y-2 text-left">
-                                                <textarea wire:model="cambioMotivo" rows="2" maxlength="300" placeholder="Motivo del cambio" class="w-full rounded-lg border-slate-300 text-sm"></textarea>
+                                                <textarea wire:model="cambioMotivo" rows="2" maxlength="300" placeholder="Motivo del cambio" class="w-full rounded-lg text-sm"></textarea>
                                                 <button type="button" wire:click="solicitarCambio" class="rounded-lg bg-fp-primary px-3 py-1.5 text-xs text-white">Enviar solicitud</button>
                                                 <button type="button" wire:click="$set('cambioLineaId', null)" class="text-xs text-slate-600">Cancelar</button>
                                             </div>
@@ -165,7 +165,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
 
     <div class="flex items-center gap-3">
         <label class="text-sm text-slate-600">Estado</label>
-        <select wire:model.live="estado" class="rounded-lg border-slate-300 text-sm">
+        <select wire:model.live="estado" class="rounded-lg text-sm">
             <option value="">Todos</option>
             @foreach (['solicitada', 'autorizada', 'rechazada', 'enviada_fabrica', 'aceptada_fabrica', 'vale_emitido', 'cerrada'] as $e)
                 <option value="{{ $e }}">{{ ucfirst(str_replace('_', ' ', $e)) }}</option>

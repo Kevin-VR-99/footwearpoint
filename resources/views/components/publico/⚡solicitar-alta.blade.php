@@ -316,7 +316,7 @@ class extends Component
                         Nombre comercial <span class="text-red-600">*</span>
                     </label>
                     <input type="text" id="nombre_comercial" wire:model="nombre_comercial"
-                        class="w-full rounded-lg border-slate-300 text-sm">
+                        class="w-full rounded-lg text-sm">
                     @error('nombre_comercial') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
 
@@ -324,28 +324,28 @@ class extends Component
                     <div>
                         <label for="razon_social" class="block text-sm font-medium text-slate-700 mb-1">Razón social</label>
                         <input type="text" id="razon_social" wire:model="razon_social"
-                            class="w-full rounded-lg border-slate-300 text-sm">
+                            class="w-full rounded-lg text-sm">
                         @error('razon_social') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
                         <label for="rfc" class="block text-sm font-medium text-slate-700 mb-1">RFC</label>
                         <input type="text" id="rfc" wire:model="rfc"
-                            class="w-full rounded-lg border-slate-300 text-sm uppercase">
+                            class="w-full rounded-lg text-sm uppercase">
                         @error('rfc') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
                         <label for="telefono_publico" class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
                         <input type="text" id="telefono_publico" wire:model="telefono_publico"
-                            class="w-full rounded-lg border-slate-300 text-sm">
+                            class="w-full rounded-lg text-sm">
                         @error('telefono_publico') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
                         <label for="email_publico" class="block text-sm font-medium text-slate-700 mb-1">Correo de contacto</label>
                         <input type="email" id="email_publico" wire:model="email_publico"
-                            class="w-full rounded-lg border-slate-300 text-sm">
+                            class="w-full rounded-lg text-sm">
                         @error('email_publico') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
@@ -353,7 +353,7 @@ class extends Component
                 <div>
                     <label for="direccion_publica" class="block text-sm font-medium text-slate-700 mb-1">Dirección</label>
                     <input type="text" id="direccion_publica" wire:model="direccion_publica"
-                        class="w-full rounded-lg border-slate-300 text-sm">
+                        class="w-full rounded-lg text-sm">
                     @error('direccion_publica') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
             </section>
@@ -374,7 +374,7 @@ class extends Component
                                 {{ (string) $plan->id === $plan_id ? 'border-[#111E38] ring-2 ring-[#111E38]/20 bg-[#F8FAFF]' : 'border-slate-200 hover:bg-slate-50' }}">
                                 <span class="flex items-start gap-2">
                                     <input type="radio" wire:model.live="plan_id" value="{{ $plan->id }}"
-                                        class="mt-1 border-slate-300 text-[#111E38] focus:ring-[#111E38]">
+                                        class="mt-1 text-[#111E38] focus:ring-[#111E38]">
                                     <span>
                                         <span class="block font-semibold text-slate-900">{{ $plan->nombre }}</span>
                                         <span class="block text-lg font-bold text-slate-900">
@@ -404,7 +404,7 @@ class extends Component
                         Tu nombre <span class="text-red-600">*</span>
                     </label>
                     <input type="text" id="admin_nombre" wire:model="admin_nombre"
-                        class="w-full rounded-lg border-slate-300 text-sm">
+                        class="w-full rounded-lg text-sm">
                     @error('admin_nombre') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
 
@@ -413,7 +413,7 @@ class extends Component
                         Tu correo <span class="text-red-600">*</span>
                     </label>
                     <input type="email" id="admin_email" wire:model="admin_email"
-                        class="w-full rounded-lg border-slate-300 text-sm">
+                        class="w-full rounded-lg text-sm">
                     @error('admin_email') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
 
@@ -423,7 +423,7 @@ class extends Component
                             Contraseña <span class="text-red-600">*</span>
                         </label>
                         <input type="password" id="admin_password" wire:model="admin_password"
-                            class="w-full rounded-lg border-slate-300 text-sm">
+                            class="w-full rounded-lg text-sm">
                         @error('admin_password') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
 
@@ -432,7 +432,7 @@ class extends Component
                             Repite la contraseña <span class="text-red-600">*</span>
                         </label>
                         <input type="password" id="admin_password_confirmation" wire:model="admin_password_confirmation"
-                            class="w-full rounded-lg border-slate-300 text-sm">
+                            class="w-full rounded-lg text-sm">
                     </div>
                 </div>
             </section>
@@ -441,7 +441,7 @@ class extends Component
             <div>
                 <label class="flex items-start gap-3 cursor-pointer">
                     <input type="checkbox" wire:model="acepta_legales"
-                        class="mt-1 rounded border-slate-300 text-[#111E38] focus:ring-[#111E38]">
+                        class="mt-1 rounded text-[#111E38] focus:ring-[#111E38]">
                     <span class="text-sm text-slate-700">
                         Acepto el
                         <a href="{{ route('aviso-privacidad') }}" target="_blank" class="text-[#2563EB] hover:underline">aviso de privacidad</a>

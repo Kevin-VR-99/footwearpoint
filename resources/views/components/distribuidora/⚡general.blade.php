@@ -51,32 +51,32 @@ new class extends Component {
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Anticipo por producto (MXN)</label>
-                <input type="number" step="0.01" wire:model="anticipo_por_producto" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                <input type="number" step="0.01" wire:model="anticipo_por_producto" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Días máximos de recolección</label>
-                <input type="number" wire:model="dias_maximos_recoleccion" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                <input type="number" wire:model="dias_maximos_recoleccion" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Días para solicitar cambio</label>
-                <input type="number" wire:model="dias_solicitud_cambio" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                <input type="number" wire:model="dias_solicitud_cambio" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Días de gestión de devolución</label>
-                <input type="number" wire:model="dias_gestion_devolucion" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                <input type="number" wire:model="dias_gestion_devolucion" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Días de vigencia del vale</label>
-                <input type="number" wire:model="dias_vigencia_vale" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+                <input type="number" wire:model="dias_vigencia_vale" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Moneda</label>
-                <input type="text" wire:model="moneda" maxlength="3" class="w-full rounded-md border-slate-300 uppercase">
+                <input type="text" wire:model="moneda" maxlength="3" class="w-full rounded-md uppercase">
             </div>
         </div>
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Zona horaria</label>
-            <input type="text" wire:model="zona_horaria" class="w-full rounded-lg border-slate-200 bg-white text-sm shadow-sm focus:border-fp-primary focus:ring-fp-primary">
+            <input type="text" wire:model="zona_horaria" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
         </div>
         <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar Cambios</button>
     </form>
