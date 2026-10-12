@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Vale\AvisarValesPorVencerAction;
+use App\Services\Vale\ResumenValesPorVencerAction;
 use Illuminate\Console\Command;
 
 /**
@@ -18,7 +19,7 @@ class AvisarValesPorVencer extends Command
 
     protected $description = 'Avisa a quien tiene un vale con saldo que está por vencer';
 
-    public function handle(AvisarValesPorVencerAction $accion): int
+    public function handle(AvisarValesPorVencerAction $accion, ResumenValesPorVencerAction $resumen): int
     {
         $dias = $this->option('dias');
 
@@ -29,6 +30,14 @@ class AvisarValesPorVencer extends Command
             $resultado['revisados'],
             $resultado['avisados'],
             $resultado['sin_cuenta'],
+        ));
+
+        // TG-122: y un resumen al personal de cada distribuidora.
+        $resumenes = $resumen->ejecutar($dias !== null ? (int) $dias : null);
+        $this->info(sprintf(
+            'Resumen al personal: %d distribuidoras, %d avisos.',
+            $resumenes['distribuidoras'],
+            $resumenes['avisos'],
         ));
 
         return self::SUCCESS;
