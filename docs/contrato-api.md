@@ -782,6 +782,50 @@ La nueva sigue las mismas reglas que el cambio por enlace: mínimo 8 caracteres 
 
 ---
 
+## 8.1 Reportes
+
+### GET `/api/reportes/pedidos-por-cliente-mayorista` (TG-251)
+
+Total de pedidos y montos por cliente mayorista (en el código, *revendedor*), para saber quiénes compran más.
+
+Roles: `admin_distribuidora`, y `empleado` **solo con el permiso `reportes.ver_financieros`** (TG-246). Sin el permiso responde **403**.
+
+**Parámetros opcionales (query):**
+- `desde`, `hasta`: `AAAA-MM-DD`, días completos. Se filtra por la **fecha de colocación** del pedido.
+- `ciclo_id`: solo pedidos de ese ciclo de compra.
+
+**Qué pedidos cuentan:** los de clientes mayoristas desde que se colocan. No cuentan los borradores ni los pedidos `rechazado`, `descartado`, `no_surtido` o `vencido_recoleccion`.
+
+**Salida (200)**
+
+```json
+{
+  "data": {
+    "filtros": { "desde": "2026-09-01", "hasta": "2026-09-30", "ciclo_id": null },
+    "filas": [
+      {
+        "revendedor_distribuidora_id": 3,
+        "nombre": "María López",
+        "pedidos": 4,
+        "monto": 5200.0,
+        "pagado": 3000.0,
+        "pendiente": 2200.0
+      }
+    ],
+    "totales": { "clientes": 1, "pedidos": 4, "monto": 5200.0, "pagado": 3000.0, "pendiente": 2200.0 }
+  }
+}
+```
+
+- `filas` viene ordenado de mayor a menor `monto`.
+- `monto`: suma de los totales de sus pedidos.
+- `pagado`: pagos de entrada aplicados más vales aplicados a esos pedidos.
+- `pendiente`: lo que falta por pagar de cada pedido (nunca negativo), sumado.
+
+**Errores (422):** fechas con otro formato, o `hasta` anterior a `desde` (`La fecha "hasta" no puede ser anterior a "desde".`).
+
+---
+
 ## 9. De dónde salió cada cosa
 
 Para verificar o actualizar este documento:

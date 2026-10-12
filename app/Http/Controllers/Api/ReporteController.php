@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\Auth\PermisoModuloService;
+use App\Services\Reporte\PedidosPorRevendedorAction;
 use App\Services\Reporte\ResumenOperativoAction;
 use App\Support\Tenant;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +21,30 @@ class ReporteController extends Controller
 
         return response()->json([
             'data' => $accion->ejecutar($desde, $hasta),
+        ]);
+    }
+
+    /**
+     * TG-251: pedidos y montos por cliente mayorista. Solo con el permiso
+     * 'reportes.ver_financieros' (el admin siempre lo tiene).
+     */
+    public function pedidosPorClienteMayorista(Request $request, PedidosPorRevendedorAction $accion, PermisoModuloService $permisos): JsonResponse
+    {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+        abort_unless($permisos->puede($request->user(), PermisoModuloService::REPORTES_FINANCIEROS), 403, 'No tienes permiso para ver reportes financieros.');
+
+        $datos = $request->validate([
+            'desde' => ['nullable', 'date_format:Y-m-d'],
+            'hasta' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:desde'],
+            'ciclo_id' => ['nullable', 'integer', 'min:1'],
+        ], [
+            'hasta.after_or_equal' => 'La fecha "hasta" no puede ser anterior a "desde".',
+            'desde.date_format' => 'Usa el formato AAAA-MM-DD en "desde".',
+            'hasta.date_format' => 'Usa el formato AAAA-MM-DD en "hasta".',
+        ]);
+
+        return response()->json([
+            'data' => $accion->ejecutar($datos['desde'] ?? null, $datos['hasta'] ?? null, isset($datos['ciclo_id']) ? (int) $datos['ciclo_id'] : null),
         ]);
     }
 }
