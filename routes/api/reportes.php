@@ -12,4 +12,7 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empl
 
         // TG-252: montos pendientes por cliente y cliente mayorista, y vales vigentes.
         Route::get('/reportes/montos-pendientes', [ReporteController::class, 'montosPendientes']);
+
+        // TG-253: demanda por temporada (campaña) y marca.
+        Route::get('/reportes/demanda', [ReporteController::class, 'demanda']);
     });

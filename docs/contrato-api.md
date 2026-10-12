@@ -870,6 +870,47 @@ Roles: `admin_distribuidora`, y `empleado` **solo con el permiso `reportes.ver_f
 
 **Error (422):** `ciclo_id` que no es un número entero positivo.
 
+### GET `/api/reportes/demanda` (TG-253)
+
+Productos más solicitados y marcas con más demanda, por temporada (en el código, *campaña*), para orientar las compras a fábrica.
+
+Roles: `admin_distribuidora`, y `empleado` **solo con el permiso `reportes.ver_financieros`** (TG-246). Sin el permiso responde **403**.
+
+**Parámetros opcionales (query):**
+- `campana_id`: una temporada.
+- `marca_id`: una marca.
+- `desde`, `hasta`: `AAAA-MM-DD`, días completos. Se filtra por la **fecha de colocación** del pedido.
+- `ciclo_id`: solo pedidos de ese ciclo de compra.
+
+**Qué cuenta:** las piezas de los **pedidos** (no las ventas de mostrador) desde que se colocan, **incluidas las no surtidas** (pedidos `no_surtido` y líneas no surtidas), porque fueron demanda real. No cuentan los borradores ni los pedidos `rechazado`, `descartado` o `vencido_recoleccion`.
+
+**Salida (200)**
+
+```json
+{
+  "data": {
+    "filtros": { "campana_id": null, "marca_id": null, "desde": null, "hasta": null, "ciclo_id": null },
+    "por_marca": [
+      { "id": 2, "nombre": "Andrea", "piezas": 48, "pedidos": 17, "modelos": 9, "monto": 31200.0 }
+    ],
+    "productos": [
+      { "producto_campana_id": 7, "producto": "Bota Texana", "modelo": "BT-200", "marca": "Andrea", "temporada": "Primavera 2026", "piezas": 12, "pedidos": 6, "monto": 9600.0 }
+    ],
+    "por_temporada": [
+      { "id": 3, "nombre": "Primavera 2026", "linea": "Dama", "piezas": 48, "pedidos": 17, "monto": 31200.0 }
+    ],
+    "totales": { "piezas": 48, "pedidos": 17, "monto": 31200.0 }
+  }
+}
+```
+
+- Todas las listas vienen ordenadas de mayor a menor `piezas`.
+- `productos` trae solo los 20 con más piezas.
+- `monto`: suma de los subtotales pedidos (precio por cantidad), no lo cobrado.
+- `modelos`: número de productos distintos de esa marca que se pidieron.
+
+**Errores (422):** ids que no son números enteros positivos, fechas con otro formato, o `hasta` anterior a `desde` (`La fecha "hasta" no puede ser anterior a "desde".`).
+
 ---
 
 ## 9. De dónde salió cada cosa
