@@ -61,7 +61,7 @@
         <div class="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 py-6 text-xs sm:flex-row sm:justify-between">
             <p class="flex items-center gap-2">
                 <img src="{{ asset('brand/logo-mark-white-40.png') }}" alt="" class="h-6 w-6 rounded-full" width="24" height="24">
-                <span>&copy; {{ now()->year }} FootwearPoint — {{ $subtitulo ?? 'Marketplace' }}</span>
+                <span>© {{ now()->year }} FootwearPoint — {{ $subtitulo ?? 'Marketplace' }}</span>
             </p>
             {{-- TG-219 (E15-04): los legales se alcanzan desde cualquier pantalla pública. --}}
             <p class="flex flex-wrap justify-center gap-4">

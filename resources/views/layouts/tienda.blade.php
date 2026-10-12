@@ -63,7 +63,7 @@
         <div class="mx-auto flex max-w-6xl items-center justify-center gap-2 px-4 py-6 text-center text-xs">
             <img src="{{ asset('brand/logo-mark-white-40.png') }}" alt="" class="h-6 w-6 rounded-full" width="24" height="24">
             <span>
-                &copy; {{ now()->year }}
+                © {{ now()->year }}
                 @isset($distribuidora)
                     {{ $distribuidora->nombre_comercial }} ·
                 @endisset
