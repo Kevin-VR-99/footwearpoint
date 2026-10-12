@@ -1,16 +1,23 @@
 <?php
 
 use App\Models\Notificacion;
+use App\Support\GruposNotificacion;
+use App\Support\Services\AgruparNotificaciones;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class extends Component
 {
     public string $filtro = 'todas';
     public string $mensaje = '';
+
+    /** TG-196: grupo elegido desde la campana (?grupo=pedidos). */
+    #[Url(except: '')]
+    public string $grupo = '';
 
     public function mount()
     {
@@ -31,6 +38,10 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
 
         if ($this->filtro === 'no_leidas') {
             $query->whereNull('leida_at');
+        }
+
+        if (GruposNotificacion::existe($this->grupo)) {
+            app(AgruparNotificaciones::class)->filtrarPorGrupo($query, $this->grupo);
         }
 
         return $query->limit(50)->get();
@@ -106,6 +117,19 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
         </div>
         </x-slot:acciones>
     </x-panel.encabezado>
+
+    {{-- TG-196: grupos como en la campana --}}
+    <div class="mb-4 flex flex-wrap gap-2" aria-label="Filtrar por grupo">
+        <button type="button" wire:click="$set('grupo', '')"
+            @class(['rounded-full px-3.5 py-1.5 text-sm font-medium shadow-sm transition', 'bg-fp-sidebar text-white' => $grupo === '', 'border border-slate-200 bg-white text-slate-700 hover:bg-fp-page' => $grupo !== ''])>Todos</button>
+        @foreach (\App\Support\GruposNotificacion::GRUPOS as $clave => $meta)
+            <button type="button" wire:click="$set('grupo', '{{ $clave }}')"
+                @class(['inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium shadow-sm transition', 'bg-fp-sidebar text-white' => $grupo === $clave, 'border border-slate-200 bg-white text-slate-700 hover:bg-fp-page' => $grupo !== $clave])>
+                <x-notificaciones.icono-grupo :icono="$meta['icono']" class="h-4 w-4" />
+                {{ $meta['titulo'] }}
+            </button>
+        @endforeach
+    </div>
 
     @if ($mensaje)
         <x-panel.alerta tipo="exito" class="mb-4">

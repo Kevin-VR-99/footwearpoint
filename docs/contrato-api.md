@@ -705,6 +705,7 @@ Roles: `admin_distribuidora`, `empleado`, `revendedor`, `cliente_directo`. Cada 
     {
       "id": 30,
       "tipo": "pedido_estado",
+      "grupo": "pedidos",
       "titulo": "Tu pedido está listo",
       "mensaje": "El pedido PED-20260912-0001 ya está listo para entrega.",
       "leida": false,
@@ -718,6 +719,8 @@ Roles: `admin_distribuidora`, `empleado`, `revendedor`, `cliente_directo`. Cada 
 ```
 
 `entidad_tipo` y `entidad_id` sirven para que al tocar la notificación la app abra la pantalla correspondiente.
+
+`grupo` (TG-196, campo nuevo, solo lectura) agrupa las notificaciones como la campana del panel: `pedidos` (Pedidos y entregas: `pedido_estado`, `pedido_llegada`, `pedido_anticipo_pendiente`), `pagos` (Pagos y vales: `pago_mercado_pago`, `pago_suscripcion`, `vale_por_vencer`), `promociones` (tipos que empiecen con `promo` o `campana`) y `generales` (todo lo demás). El mapa vive en `app/Support/GruposNotificacion.php`. La app puede ignorarlo sin romper nada.
 
 ### POST `/api/notificaciones/{id}/marcar-leida`
 
