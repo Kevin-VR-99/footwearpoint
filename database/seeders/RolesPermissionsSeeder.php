@@ -31,12 +31,15 @@ class RolesPermissionsSeeder extends Seeder
         $registrar = app(PermissionRegistrar::class);
 
         // admin_general es global: no pertenece a ninguna distribuidora,
-        // por eso se crea sin equipo (team_id = null).
+        // por eso vive en el "equipo" 0 (convención del proyecto, ver
+        // e1bc982). El team_id va explícito: firstOrCreate de Eloquent no lo
+        // toma del registrar y lo dejaba en null, duplicando el rol (TG-280).
         $registrar->setPermissionsTeamId(0);
 
         Role::firstOrCreate([
             'name' => 'admin_general',
             'guard_name' => 'web',
+            'team_id' => 0,
         ]);
 
         // Los permisos son globales (la tabla permissions no lleva equipo):
