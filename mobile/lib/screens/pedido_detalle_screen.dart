@@ -10,6 +10,7 @@ import '../services/pedido_service.dart';
 import '../tema/fp_colores.dart';
 import 'producto_detalle_screen.dart';
 import '../widgets/botones_pago_mercado_pago.dart';
+import '../widgets/bajo_pedido.dart';
 import '../widgets/fp_componentes.dart';
 
 /// El detalle de un pedido propio (TG-165): su estado explicado, lo que se
@@ -156,9 +157,19 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
             child: ListTile(
               leading: const FpIconoCuadro(icono: Icons.inventory_2_outlined, tamano: 36),
               title: Text(linea.productoNombre, style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text(
-                'Modelo ${linea.modelo} · Talla ${linea.talla} · ${linea.color}\n'
-                '${linea.cantidad} × ${formatoPrecio(linea.precioUnitario)}',
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Modelo ${linea.modelo} · Talla ${linea.talla} · ${linea.color}\n'
+                    '${linea.cantidad} × ${formatoPrecio(linea.precioUnitario)}',
+                  ),
+                  // TG-266
+                  if (linea.bajoPedido) ...[
+                    const SizedBox(height: 4),
+                    const InsigniaBajoPedido(),
+                  ],
+                ],
               ),
               isThreeLine: true,
               trailing: Text(
@@ -166,6 +177,11 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
+          ),
+        if (pedido.lineas.any((l) => l.bajoPedido))
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: AvisoBajoPedido(texto: textoTallasBajoPedido),
           ),
         // TG-254: cambio de producto dentro del plazo (lo decide el servidor).
         if (pedido.lineas.any((l) => l.cambio != null && (l.cambio!.puedeSolicitar || l.cambio!.tieneSolicitud))) ...[

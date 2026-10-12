@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart' show Size;
 import 'dart:convert';
 import 'dart:io';
 
@@ -164,6 +165,35 @@ void main() {
     expect(find.byTooltip('Talla 24: Disponible'), findsOneWidget);
     expect(find.byTooltip('Talla 25: Bajo pedido'), findsOneWidget);
     expect(find.byTooltip('Talla 23: No disponible'), findsOneWidget);
+  });
+
+  testWidgets('TG-266: la lista avisa de tallas bajo pedido y el detalle lo explica al elegirla', (tester) async {
+    // Pantalla de celular alta, para que las tallas queden a la vista.
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+
+    await abrirCatalogo(tester, () async => _json({'data': _catalogo()}, 200));
+
+    await tester.tap(find.text('Impuls'));
+    await tester.pumpAndSettle();
+
+    // Tiene tallas disponibles, pero no esconde que la 25 va bajo pedido.
+    expect(find.text('Algunas tallas bajo pedido'), findsOneWidget);
+
+    await tester.tap(find.text('Botín casual'));
+    await tester.pumpAndSettle();
+
+    const nota = 'Talla 25 bajo pedido: se encarga a la fábrica y tarda más en llegar.';
+    expect(find.text(nota, skipOffstage: false), findsNothing);
+
+    await tester.tap(find.byTooltip('Talla 25: Bajo pedido'));
+    await tester.pumpAndSettle();
+    expect(find.text(nota, skipOffstage: false), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Talla 24: Disponible'));
+    await tester.pumpAndSettle();
+    expect(find.text(nota, skipOffstage: false), findsNothing);
   });
 
   testWidgets('un cliente directo no ve el precio mayorista en ninguna pantalla', (tester) async {

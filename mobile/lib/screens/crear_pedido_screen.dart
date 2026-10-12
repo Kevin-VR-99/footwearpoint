@@ -12,6 +12,7 @@ import '../widgets/selector_vale.dart';
 import 'login_screen.dart';
 import 'producto_detalle_screen.dart';
 import '../tema/fp_colores.dart';
+import '../widgets/bajo_pedido.dart';
 import '../widgets/fp_componentes.dart';
 
 /// Pedido directo de una variante (E8-01 / E8-02), con vale opcional (E12-03).
@@ -149,6 +150,13 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
                   'Modelo ${producto.modelo} · Talla ${variante.talla} · ${variante.colorParaMostrar}',
                   style: tema.textTheme.bodyMedium?.copyWith(color: tema.colorScheme.onSurfaceVariant),
                 ),
+                // TG-266: avisar antes de enviar que esta talla tarda más.
+                if (variante.disponibilidad == Disponibilidad.bajoPedido) ...[
+                  const SizedBox(height: 8),
+                  const InsigniaBajoPedido(),
+                  const SizedBox(height: 8),
+                  const AvisoBajoPedido(texto: textoBajoPedido),
+                ],
                 const Divider(height: 28),
                 Row(
                   children: [

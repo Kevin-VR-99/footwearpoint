@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/producto_catalogo.dart';
 import '../tema/fp_colores.dart';
+import '../widgets/bajo_pedido.dart';
 import '../widgets/fp_componentes.dart';
 import 'producto_detalle_screen.dart';
 
@@ -98,6 +99,12 @@ class _TarjetaProducto extends StatelessWidget {
                     if (disponibilidad != null) ...[
                       const SizedBox(height: 8),
                       EtiquetaDisponibilidad(disponibilidad: disponibilidad),
+                    ],
+                    // TG-266: si hay tallas disponibles, la etiqueta dice
+                    // "Disponible" y escondía las que van bajo pedido.
+                    if (disponibilidad == Disponibilidad.disponible && producto.hayBajoPedido) ...[
+                      const SizedBox(height: 6),
+                      const InsigniaBajoPedido(texto: 'Algunas tallas bajo pedido'),
                     ],
                   ],
                 ),
