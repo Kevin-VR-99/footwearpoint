@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\Auth\PermisoModuloService;
+use App\Services\Reporte\MontosPendientesAction;
 use App\Services\Reporte\PedidosPorRevendedorAction;
 use App\Services\Reporte\ResumenOperativoAction;
 use App\Support\Tenant;
@@ -45,6 +46,24 @@ class ReporteController extends Controller
 
         return response()->json([
             'data' => $accion->ejecutar($datos['desde'] ?? null, $datos['hasta'] ?? null, isset($datos['ciclo_id']) ? (int) $datos['ciclo_id'] : null),
+        ]);
+    }
+
+    /**
+     * TG-252: cuánto falta por cobrar (foto al día de hoy) y vales vigentes.
+     * Solo con el permiso 'reportes.ver_financieros'.
+     */
+    public function montosPendientes(Request $request, MontosPendientesAction $accion, PermisoModuloService $permisos): JsonResponse
+    {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+        abort_unless($permisos->puede($request->user(), PermisoModuloService::REPORTES_FINANCIEROS), 403, 'No tienes permiso para ver reportes financieros.');
+
+        $datos = $request->validate([
+            'ciclo_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        return response()->json([
+            'data' => $accion->ejecutar(isset($datos['ciclo_id']) ? (int) $datos['ciclo_id'] : null),
         ]);
     }
 }
