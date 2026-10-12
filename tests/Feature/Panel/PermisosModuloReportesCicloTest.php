@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Panel;
 
+use App\Models\CicloCompra;
 use App\Models\Distribuidora;
 use App\Models\Usuario;
 use App\Support\PropietarioActual;
@@ -67,6 +68,15 @@ class PermisosModuloReportesCicloTest extends TestCase
         $registrar->forgetCachedPermissions();
     }
 
+    private function cicloAbierto(): CicloCompra
+    {
+        Livewire::test('ciclo.index');
+
+        return Tenant::forzar($this->distribuidora()->id, fn () => CicloCompra::query()
+            ->where('estado', 'abierto')
+            ->firstOrFail());
+    }
+
     // ------------------------------------------------------------------
     // Falla 1: reportes financieros
     // ------------------------------------------------------------------
@@ -100,5 +110,62 @@ class PermisosModuloReportesCicloTest extends TestCase
         $this->como(self::ADMIN);
 
         $this->get(route('reportes.index'))->assertOk();
+    }
+
+    // ------------------------------------------------------------------
+    // Falla 2: cerrar ciclo
+    // ------------------------------------------------------------------
+
+    public function test_el_empleado_sin_permiso_no_ve_el_boton_cerrar_ciclo(): void
+    {
+        $this->como(self::EMPLEADO);
+
+        $this->get(route('ciclo.index'))
+            ->assertOk()
+            ->assertDontSee('wire:click="cerrar"', false)
+            ->assertDontSee('Cerrar ciclo');
+    }
+
+    public function test_el_empleado_sin_permiso_no_puede_cerrar_el_ciclo_desde_el_servidor(): void
+    {
+        $this->como(self::EMPLEADO);
+        $ciclo = $this->cicloAbierto();
+
+        Livewire::test('ciclo.index')
+            ->set('cicloId', $ciclo->id)
+            ->call('cerrar')
+            ->assertSet('mensaje', '')
+            ->assertSee('No tienes permiso');
+
+        $this->assertSame('abierto', $ciclo->fresh()->estado);
+    }
+
+    public function test_el_empleado_con_permiso_si_cierra_el_ciclo(): void
+    {
+        $this->darPermiso(self::EMPLEADO, 'ciclo.cerrar');
+        $this->como(self::EMPLEADO);
+        $ciclo = $this->cicloAbierto();
+
+        Livewire::test('ciclo.index')
+            ->assertSee('Cerrar ciclo')
+            ->set('cicloId', $ciclo->id)
+            ->call('cerrar')
+            ->assertSet('mensaje', 'Ciclo cerrado.');
+
+        $this->assertSame('cerrado', $ciclo->fresh()->estado);
+    }
+
+    public function test_el_admin_ve_el_boton_y_cierra_el_ciclo(): void
+    {
+        $this->como(self::ADMIN);
+        $ciclo = $this->cicloAbierto();
+
+        Livewire::test('ciclo.index')
+            ->assertSee('Cerrar ciclo')
+            ->set('cicloId', $ciclo->id)
+            ->call('cerrar')
+            ->assertSet('mensaje', 'Ciclo cerrado.');
+
+        $this->assertSame('cerrado', $ciclo->fresh()->estado);
     }
 }

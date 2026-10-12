@@ -2,7 +2,9 @@
 
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\CicloCompra;
+use App\Services\Auth\PermisoModuloService;
 use App\Services\Ciclo\AsignarCicloVigenteService;
+use App\Support\MensajeError;
 use App\Services\Ciclo\TransicionCicloService;
 use App\Support\Tenant;
 use Illuminate\Support\Carbon;
@@ -84,6 +86,12 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
             return null;
         }
 
+        // TG-246: sin 'ciclo.cerrar' no se ofrece el botón. La acción también
+        // se revisa en cerrar(), por si alguien la llama a mano.
+        if ($detalle->ciclo->estado === 'abierto' && ! $this->puedeCerrar()) {
+            return null;
+        }
+
         return match ($detalle->ciclo->estado) {
             'abierto' => ['cerrar', 'Cerrar ciclo', 'Deja de aceptar pedidos nuevos. No toca los pedidos todavía.'],
             'cerrado' => ['solicitarFabrica', 'Solicitar a fábrica', 'Pasa los pedidos del ciclo a "solicitado a fábrica".'],
@@ -94,8 +102,24 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         };
     }
 
+    public function puedeCerrar(): bool
+    {
+        return app(PermisoModuloService::class)->puede(Auth::user(), PermisoModuloService::CERRAR_CICLO);
+    }
+
     public function cerrar()
     {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            app(PermisoModuloService::class)->exigir(Auth::user(), PermisoModuloService::CERRAR_CICLO);
+        } catch (\App\Exceptions\SinPermisoModuloException $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e);
+
+            return;
+        }
+
         $this->ejecutar(fn ($s) => $s->cerrar((int) $this->cicloId), 'Ciclo cerrado.');
     }
 
@@ -262,6 +286,10 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
                         {{ $this->accion[1] }}
                     </button>
                     <p class="text-xs text-slate-500 flex-1 min-w-[16rem]">{{ $this->accion[2] }}</p>
+                </div>
+            @elseif ($this->detalle->ciclo->estado === 'abierto')
+                <div class="mt-5 pt-5 border-t border-slate-100">
+                    <p class="text-sm text-slate-500">No tienes permiso para cerrar el ciclo. Pídeselo al administrador de tu distribuidora.</p>
                 </div>
             @else
                 <div class="mt-5 pt-5 border-t border-slate-100">
