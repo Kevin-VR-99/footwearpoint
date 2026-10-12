@@ -656,6 +656,7 @@ Roles: `admin_distribuidora`, `empleado`, `revendedor`, `cliente_directo` — ca
       "fecha_emision": "2026-09-01T10:00:00-06:00",
       "fecha_vencimiento": "2026-11-30T10:00:00-06:00",
       "estado": "activo",
+      "por_vencer": false,
       "motivo": "Pedido no surtido",
       "propietario": { "tipo": "revendedor", "id": 3, "nombre": "María López" },
       "creado_por_staff_id": 2
@@ -665,6 +666,8 @@ Roles: `admin_distribuidora`, `empleado`, `revendedor`, `cliente_directo` — ca
 ```
 
 Estados: `activo`, `agotado`, `vencido`, `bloqueado`.
+
+**`por_vencer`** (TG-122): `true` si el vale está `activo`, tiene saldo, todavía no vence y vence dentro del margen de aviso (`VALES_DIAS_AVISO_VENCIMIENTO`, 7 días por omisión; el mismo del aviso de TG-242). La app lo marca como «Vence pronto». Lo calcula el servidor para que el margen se cambie en un solo lugar.
 
 ### POST `/api/vales/{id}/aplicar`
 
