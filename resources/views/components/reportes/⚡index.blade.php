@@ -2,6 +2,7 @@
 
 use App\Models\CicloCompra;
 use App\Services\Auth\PermisoModuloService;
+use App\Services\Reporte\DemandaPorTemporadaMarcaAction;
 use App\Services\Reporte\MontosPendientesAction;
 use App\Services\Reporte\PedidosPorRevendedorAction;
 use App\Services\Reporte\ResumenOperativoAction;
@@ -23,6 +24,11 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
 
     /** TG-252: error legible del reporte de montos pendientes. */
     public string $errorPendientes = '';
+
+    /** TG-253: filtros propios del reporte de demanda y su error legible. */
+    public string $demandaCampanaId = '';
+    public string $demandaMarcaId = '';
+    public string $errorDemanda = '';
 
     public function mount()
     {
@@ -92,6 +98,39 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             $vacio = ['filas' => [], 'totales' => ['clientes' => 0, 'pedidos' => 0, 'monto' => 0, 'pagado' => 0, 'pendiente' => 0, 'anticipo_pendiente' => 0]];
 
             return ['clientes_directos' => $vacio, 'revendedores' => $vacio, 'vales_vigentes' => ['filas' => [], 'totales' => ['vales' => 0, 'saldo' => 0]]];
+        }
+    }
+
+    public function getTemporadasDemandaProperty()
+    {
+        return app(DemandaPorTemporadaMarcaAction::class)->temporadasParaFiltro();
+    }
+
+    public function getMarcasDemandaProperty()
+    {
+        return app(DemandaPorTemporadaMarcaAction::class)->marcasParaFiltro();
+    }
+
+    /**
+     * TG-253 (E14-04): demanda por temporada y marca. Usa las fechas y el
+     * ciclo de la pantalla, más sus filtros de temporada y marca.
+     */
+    public function getDemandaProperty(): array
+    {
+        $this->errorDemanda = '';
+
+        try {
+            return app(DemandaPorTemporadaMarcaAction::class)->ejecutar(
+                $this->demandaCampanaId !== '' ? (int) $this->demandaCampanaId : null,
+                $this->demandaMarcaId !== '' ? (int) $this->demandaMarcaId : null,
+                $this->desde !== '' ? $this->desde : null,
+                $this->hasta !== '' ? $this->hasta : null,
+                $this->cicloId !== '' ? (int) $this->cicloId : null,
+            );
+        } catch (\Throwable $e) {
+            $this->errorDemanda = MensajeError::paraUsuario($e, 'No se pudo calcular la demanda.');
+
+            return ['por_marca' => [], 'productos' => [], 'por_temporada' => [], 'totales' => ['piezas' => 0, 'pedidos' => 0, 'monto' => 0]];
         }
     }
 };
@@ -380,6 +419,89 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                         </tr>
                     @empty
                         <x-panel.vacio colspan="4" mensaje="No hay vales vigentes" />
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- TG-253 (E14-04): qué se pide más, para orientar compras a fábrica. --}}
+    @php($demanda = $this->demanda)
+    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+        <div class="px-4 py-3 font-medium text-slate-800">
+            Demanda por temporada y marca
+            <span class="block text-xs font-normal text-slate-500">
+                Piezas pedidas en pedidos colocados (por fecha de colocación), incluidas las no surtidas; sin borradores ni pedidos rechazados, descartados o vencidos. No incluye ventas de mostrador.
+            </span>
+        </div>
+        <div class="flex flex-wrap gap-3 px-4 pb-3">
+            <div>
+                <label class="block text-xs text-slate-500 mb-1">Temporada</label>
+                <select wire:model.live="demandaCampanaId" class="rounded-lg border-slate-300 text-sm">
+                    <option value="">Todas</option>
+                    @foreach ($this->temporadasDemanda as $temporada)
+                        <option value="{{ $temporada->id }}">{{ $temporada->nombre }} · {{ $temporada->linea?->nombre }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-slate-500 mb-1">Marca</label>
+                <select wire:model.live="demandaMarcaId" class="rounded-lg border-slate-300 text-sm">
+                    <option value="">Todas</option>
+                    @foreach ($this->marcasDemanda as $marca)
+                        <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <p class="self-end text-sm text-slate-600">
+                Total: <span class="font-semibold">{{ $demanda['totales']['piezas'] }} piezas</span>
+                en {{ $demanda['totales']['pedidos'] }} pedidos · ${{ number_format($demanda['totales']['monto'], 2) }}
+            </p>
+        </div>
+        @if ($errorDemanda)
+            <x-panel.alerta tipo="error" class="m-4">{{ $errorDemanda }}</x-panel.alerta>
+        @endif
+        <div class="overflow-x-auto border-t border-slate-100">
+            <p class="px-4 pt-3 text-sm font-medium text-slate-700">Marcas</p>
+            <table class="min-w-full text-sm">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                    <tr><th class="px-4 py-2">Marca</th><th class="px-4 py-2 text-right">Piezas</th><th class="px-4 py-2 text-right">Pedidos</th><th class="px-4 py-2 text-right">Modelos</th><th class="px-4 py-2 text-right">Monto</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse ($demanda['por_marca'] as $fila)
+                        <tr><td class="px-4 py-3">{{ $fila['nombre'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['piezas'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['pedidos'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['modelos'] }}</td><td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td></tr>
+                    @empty
+                        <x-panel.vacio colspan="5" mensaje="Sin demanda en el periodo" />
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="overflow-x-auto border-t border-slate-100">
+            <p class="px-4 pt-3 text-sm font-medium text-slate-700">Productos más solicitados <span class="text-xs font-normal text-slate-500">(los 20 con más piezas)</span></p>
+            <table class="min-w-full text-sm">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                    <tr><th class="px-4 py-2">Producto</th><th class="px-4 py-2">Marca</th><th class="px-4 py-2">Temporada</th><th class="px-4 py-2 text-right">Piezas</th><th class="px-4 py-2 text-right">Pedidos</th><th class="px-4 py-2 text-right">Monto</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse ($demanda['productos'] as $fila)
+                        <tr><td class="px-4 py-3">{{ $fila['producto'] }}<span class="block text-xs text-slate-500">Modelo {{ $fila['modelo'] }}</span></td><td class="px-4 py-3">{{ $fila['marca'] }}</td><td class="px-4 py-3">{{ $fila['temporada'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['piezas'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['pedidos'] }}</td><td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td></tr>
+                    @empty
+                        <x-panel.vacio colspan="6" mensaje="Sin demanda en el periodo" />
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="overflow-x-auto border-t border-slate-100">
+            <p class="px-4 pt-3 text-sm font-medium text-slate-700">Temporadas</p>
+            <table class="min-w-full text-sm">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                    <tr><th class="px-4 py-2">Temporada</th><th class="px-4 py-2">Línea</th><th class="px-4 py-2 text-right">Piezas</th><th class="px-4 py-2 text-right">Pedidos</th><th class="px-4 py-2 text-right">Monto</th></tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse ($demanda['por_temporada'] as $fila)
+                        <tr><td class="px-4 py-3">{{ $fila['nombre'] }}</td><td class="px-4 py-3">{{ $fila['linea'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['piezas'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['pedidos'] }}</td><td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td></tr>
+                    @empty
+                        <x-panel.vacio colspan="5" mensaje="Sin demanda en el periodo" />
                     @endforelse
                 </tbody>
             </table>
