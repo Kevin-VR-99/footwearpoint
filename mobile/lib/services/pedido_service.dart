@@ -58,4 +58,22 @@ class PedidoService {
 
     return PedidoResumen.desdeJson(respuesta['data'] as Map<String, dynamic>);
   }
+
+  /// TG-241 (A12): la fábrica no surtió un producto y la persona dice qué
+  /// prefiere: 'sustitucion' o 'reembolso_anticipo'.
+  ///
+  /// Esto NO mueve dinero: solo deja anotada su decisión. El efectivo se lo
+  /// entrega la distribuidora en el mostrador.
+  Future<String> resolverNoSurtido({
+    required int pedidoId,
+    required int lineaId,
+    required String resolucion,
+  }) async {
+    final respuesta = await _api.post(
+      'pedidos/$pedidoId/detalle/$lineaId/resolucion',
+      cuerpo: {'resolucion': resolucion},
+    );
+
+    return respuesta['message'] as String? ?? 'Listo, quedó anotado.';
+  }
 }

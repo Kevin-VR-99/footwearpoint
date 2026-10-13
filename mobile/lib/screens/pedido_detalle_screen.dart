@@ -31,6 +31,9 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
 
   PedidoResumen? _pedido;
   bool _cargando = true;
+
+  /// TG-241 (A12): mientras se manda la decision de lo que no se surtio.
+  bool _resolviendo = false;
   String? _error;
 
   @override
@@ -55,6 +58,32 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
         _error = e.codigoHttp == 404 ? 'No encontramos ese pedido.' : e.mensaje;
         _cargando = false;
       });
+    }
+  }
+
+  /// TG-241 (A12): la persona dice que prefiere con lo que no llego.
+  ///
+  /// No mueve dinero: solo deja anotada su decision. El efectivo se lo
+  /// entrega la distribuidora en el mostrador.
+  Future<void> _resolver(LineaPedido linea, String resolucion) async {
+    setState(() => _resolviendo = true);
+
+    final mensajero = ScaffoldMessenger.of(context);
+
+    try {
+      final mensaje = await _pedidos.resolverNoSurtido(
+        pedidoId: widget.pedidoId,
+        lineaId: linea.id!,
+        resolucion: resolucion,
+      );
+      if (!mounted) return;
+      mensajero.showSnackBar(SnackBar(content: Text(mensaje)));
+      await _cargar();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      mensajero.showSnackBar(SnackBar(content: Text(e.mensaje)));
+    } finally {
+      if (mounted) setState(() => _resolviendo = false);
     }
   }
 
@@ -202,6 +231,71 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
             padding: EdgeInsets.only(bottom: 8),
             child: AvisoBajoPedido(texto: textoTallasBajoPedido),
           ),
+        // TG-241 (A12): la fábrica no surtió algo. La persona elige aquí
+        // mismo, que es a donde la manda la notificación.
+        if (pedido.lineas.any((l) => l.noSurtido)) ...[
+          const SizedBox(height: 4),
+          const FpTituloSeccion('No llegó de fábrica'),
+          for (final linea in pedido.lineas)
+            if (linea.noSurtido)
+              Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const FpIconoCuadro(icono: Icons.report_gmailerrorred_outlined, tamano: 36),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              linea.productoNombre,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (linea.motivoNoSurtido != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          linea.motivoNoSurtido!,
+                          style: const TextStyle(fontSize: 13.5, color: Colors.black54),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      if (linea.esperaDecision && linea.id != null) ...[
+                        const Text(
+                          '¿Qué prefieres?',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: _resolviendo ? null : () => _resolver(linea, 'sustitucion'),
+                          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                          icon: const Icon(Icons.swap_horiz),
+                          label: const Text('Que me lo cambien por otro'),
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: _resolviendo ? null : () => _resolver(linea, 'reembolso_anticipo'),
+                          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                          icon: const Icon(Icons.payments_outlined),
+                          label: const Text('Que me devuelvan mi anticipo'),
+                        ),
+                      ] else
+                        Text(
+                          linea.resolucionNoSurtido == 'sustitucion'
+                              ? 'Pediste que te lo cambien por otro producto. La distribuidora te va a contactar.'
+                              : 'Pediste que te devuelvan tu anticipo. Pasa a la distribuidora por él.',
+                          style: const TextStyle(fontSize: 13.5),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+        ],
         // TG-254: cambio de producto dentro del plazo (lo decide el servidor).
         if (pedido.lineas.any((l) => l.cambio != null && (l.cambio!.puedeSolicitar || l.cambio!.tieneSolicitud))) ...[
           const SizedBox(height: 4),

@@ -1,0 +1,11 @@
+# Copia este archivo como android/key.properties y llena los valores.
+#
+# El de verdad NO se sube al repositorio (esta en android/.gitignore), igual
+# que el .jks. Si se pierden, Android ya no deja actualizar la app publicada:
+# habria que publicar otra y pedirle a cada persona que la instale de cero.
+# Guardalos aparte (gestor de contrasenas del equipo o unidad compartida).
+
+storeFile=../footwearpoint.jks
+storePassword=la-que-elegiste
+keyAlias=footwearpoint
+keyPassword=la-que-elegiste

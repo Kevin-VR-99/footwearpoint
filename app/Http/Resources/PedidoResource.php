@@ -57,6 +57,10 @@ class PedidoResource extends JsonResource
                     'subtotal'         => (float) $l->subtotal,
                     'anticipo_requerido' => (float) $l->anticipo_requerido,
                     'estado_surtido'   => $l->estado_surtido,
+                    // TG-241 (A12): para que la app pueda decir que no llego,
+                    // por que, y ofrecer elegir cuando falta decidirlo.
+                    'motivo_no_surtido'     => $l->motivo_no_surtido,
+                    'resolucion_no_surtido' => $l->resolucion_no_surtido,
                     'variante_id'      => $l->variante_id,
                     'producto_campana_id' => $l->producto_campana_id,
                     // TG-266: la talla está "bajo pedido" (estado actual): tarda más.
