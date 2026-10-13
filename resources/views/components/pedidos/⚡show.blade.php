@@ -5,6 +5,8 @@ use App\Services\Cambio\PlazoCambio;
 use App\Services\Cambio\SolicitarCambioAction;
 use App\Services\Pedido\EntregaPedidoAction;
 use App\Services\Pedido\EnviarPedidoAction;
+use App\Services\Pedido\MarcarNoSurtidoAction;
+use App\Services\Pedido\ResolverNoSurtidoAction;
 use App\Services\Pago\VerificarPagoMercadoPagoAction;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
 use App\Support\MensajeError;
@@ -31,6 +33,10 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     // TG-254: solicitud de cambio de una línea (el personal la pide por el cliente).
     public ?int $cambioLineaId = null;
     public string $cambioMotivo = '';
+
+    /* TG-241 (A12): la fabrica confirmo algo y al final no lo surtio. */
+    public ?int $noSurtidoLineaId = null;
+    public string $noSurtidoMotivo = '';
 
     public function mount(int $id)
     {
@@ -222,6 +228,103 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     {
         $this->cambioLineaId = null;
         $this->cambioMotivo = '';
+    }
+
+    // ------------------------------------------------------------------
+    // TG-241 (A12): producto no surtido por fabrica
+    // ------------------------------------------------------------------
+
+    /** True si el pedido esta en un momento donde esto tiene sentido. */
+    public function getPuedeMarcarNoSurtidoProperty(): bool
+    {
+        return in_array($this->pedido->estado, MarcarNoSurtidoAction::ESTADOS_QUE_LO_PERMITEN, true);
+    }
+
+    /** Cuanto se le puede devolver por cada renglon, para enseñarlo antes. */
+    public function getReembolsosProperty(): array
+    {
+        $accion = app(ResolverNoSurtidoAction::class);
+        $montos = [];
+
+        foreach ($this->pedido->detalle as $linea) {
+            if ($linea->estado_surtido === 'no_surtido') {
+                $montos[$linea->id] = $accion->montoADevolver($linea);
+            }
+        }
+
+        return $montos;
+    }
+
+    public function abrirNoSurtido(int $lineaId): void
+    {
+        $this->noSurtidoLineaId = $lineaId;
+        $this->noSurtidoMotivo = '';
+        $this->mensaje = '';
+        $this->errorMsg = '';
+    }
+
+    public function cancelarNoSurtido(): void
+    {
+        $this->noSurtidoLineaId = null;
+        $this->noSurtidoMotivo = '';
+    }
+
+    public function marcarNoSurtido(MarcarNoSurtidoAction $accion): void
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $linea = $this->pedido->detalle()->findOrFail($this->noSurtidoLineaId);
+            $accion->ejecutar($linea, $this->noSurtidoMotivo);
+
+            // Sin esto la fila sigue viendose igual hasta recargar: el pedido
+            // es una propiedad calculada y se guarda en memoria por peticion.
+            unset($this->pedido);
+
+            $this->cancelarNoSurtido();
+            $this->mensaje = 'Marcado como no surtido. Al cliente le llegó el aviso para que elija qué prefiere.';
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo marcar como no surtido.');
+        }
+    }
+
+    /** Lo que la persona dijo por telefono, anotado desde el mostrador. */
+    public function registrarDecision(int $lineaId, string $resolucion, ResolverNoSurtidoAction $accion): void
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $linea = $this->pedido->detalle()->findOrFail($lineaId);
+            $accion->registrarDecision($linea, $resolucion);
+
+            unset($this->pedido);
+
+            $this->mensaje = $resolucion === 'sustitucion'
+                ? 'Anotado: se le va a cambiar por otro producto.'
+                : 'Anotado: hay que devolverle su anticipo. Registra la entrega cuando se lo des.';
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar la decisión.');
+        }
+    }
+
+    /** El efectivo que de verdad se entrego. Es la unica salida de dinero del sistema. */
+    public function entregarReembolso(int $lineaId, ResolverNoSurtidoAction $accion): void
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $linea = $this->pedido->detalle()->findOrFail($lineaId);
+            $pago = $accion->entregarReembolso($linea);
+
+            unset($this->pedido);
+
+            $this->mensaje = 'Reembolso registrado: $'.number_format((float) $pago->monto, 2).' (folio '.$pago->folio.').';
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar el reembolso.');
+        }
     }
 
     public function solicitarCambio(SolicitarCambioAction $accion): void
@@ -460,6 +563,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     <th class="px-4 py-2 font-medium text-right">Cant.</th>
                     <th class="px-4 py-2 font-medium text-right">P. unit.</th>
                     <th class="px-4 py-2 font-medium text-right">Subtotal</th>
+                    <th class="px-4 py-2 font-medium">Surtido</th>
                     @if ($this->pedido->estado === 'entregado')
                         <th class="px-4 py-2 font-medium">Cambio</th>
                     @endif
@@ -482,6 +586,63 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                         <td class="px-4 py-3 text-right">{{ $l->cantidad }}</td>
                         <td class="px-4 py-3 text-right tabular-nums">${{ number_format((float) $l->precio_unitario, 2) }}</td>
                         <td class="px-4 py-3 text-right tabular-nums">${{ number_format((float) $l->subtotal, 2) }}</td>
+                        {{-- TG-241 (A12): lo que la fábrica no surtió. --}}
+                        <td class="px-4 py-3">
+                            @if ($l->estado_surtido === 'no_surtido')
+                                <x-ui.insignia-estado variante="danger" texto="No surtido" />
+                                @if ($l->motivo_no_surtido)
+                                    <p class="mt-1 text-xs text-slate-500">{{ $l->motivo_no_surtido }}</p>
+                                @endif
+
+                                @if ($l->resolucion_no_surtido === 'pendiente')
+                                    <p class="mt-2 text-xs font-medium text-slate-700">¿Qué prefiere el cliente?</p>
+                                    <div class="mt-1 flex flex-wrap gap-2">
+                                        <button type="button" wire:click="registrarDecision({{ $l->id }}, 'sustitucion')"
+                                            class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-fp-page">
+                                            Cambiarlo por otro
+                                        </button>
+                                        <button type="button" wire:click="registrarDecision({{ $l->id }}, 'reembolso_anticipo')"
+                                            class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-fp-page">
+                                            Devolverle su anticipo
+                                        </button>
+                                    </div>
+                                @elseif ($l->resolucion_no_surtido === 'sustitucion')
+                                    <p class="mt-2 text-xs text-slate-600">Se le cambia por otro producto.</p>
+                                @else
+                                    @php($porDevolver = $this->reembolsos[$l->id] ?? 0)
+                                    @if ($porDevolver > 0)
+                                        <p class="mt-2 text-xs text-slate-600">
+                                            Hay que devolverle <strong>${{ number_format($porDevolver, 2) }}</strong> en efectivo.
+                                        </p>
+                                        <button type="button" wire:click="entregarReembolso({{ $l->id }})"
+                                            wire:confirm="¿Ya le entregaste el efectivo al cliente? Esto lo deja registrado."
+                                            class="mt-1 rounded-lg bg-fp-primary px-2.5 py-1 text-xs font-medium text-white">
+                                            Registrar que ya se le entregó
+                                        </button>
+                                    @else
+                                        <p class="mt-2 text-xs text-slate-600">Anticipo devuelto.</p>
+                                    @endif
+                                @endif
+                            @elseif ($this->puedeMarcarNoSurtido)
+                                @if ($noSurtidoLineaId === $l->id)
+                                    <div class="space-y-2">
+                                        <textarea wire:model="noSurtidoMotivo" rows="2" maxlength="300"
+                                            placeholder="¿Por qué no se surtió?" class="w-full rounded-lg text-sm"></textarea>
+                                        <div class="flex gap-2">
+                                            <button type="button" wire:click="marcarNoSurtido"
+                                                class="rounded-lg bg-fp-danger px-3 py-1.5 text-xs text-white">Marcar no surtido</button>
+                                            <button type="button" wire:click="cancelarNoSurtido"
+                                                class="text-xs text-slate-600">Cancelar</button>
+                                        </div>
+                                    </div>
+                                @else
+                                    <button type="button" wire:click="abrirNoSurtido({{ $l->id }})"
+                                        class="text-xs font-medium text-fp-danger">No surtido</button>
+                                @endif
+                            @else
+                                <span class="text-xs text-slate-400">—</span>
+                            @endif
+                        </td>
                         @if ($this->pedido->estado === 'entregado')
                             @php($cambio = $this->cambios[$l->id] ?? null)
                             <td class="px-4 py-3">
@@ -509,7 +670,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-slate-500">Sin líneas</td>
+                        <td colspan="7" class="px-4 py-8 text-center text-slate-500">Sin líneas</td>
                     </tr>
                 @endforelse
             </tbody>

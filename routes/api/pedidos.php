@@ -35,6 +35,12 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empl
         // borrador no, para no toparla con un muro antes de tiempo.
         Route::post('/pedidos/{id}/enviar', [PedidoController::class, 'enviar'])
             ->middleware('correo.verificado');
+
+        // TG-241 (A12): la persona dice que prefiere cuando la fabrica no
+        // surtio algo de su pedido. No mueve dinero: solo deja anotada su
+        // decision. El efectivo lo entrega el personal en el mostrador.
+        Route::post('/pedidos/{id}/detalle/{detalleId}/resolucion', [PedidoController::class, 'resolverNoSurtido'])
+            ->whereNumber(['id', 'detalleId']);
         Route::delete('/pedidos/{pedidoId}/lineas/{lineaId}', [PedidoController::class, 'quitarLinea']);
     });
 

@@ -15,8 +15,10 @@ use App\Services\Pedido\QuitarLineaPedidoAction;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
+use App\Services\Pedido\ResolverNoSurtidoAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PedidoController extends Controller
 {
@@ -80,6 +82,46 @@ class PedidoController extends Controller
             'data'    => new PedidoResource($pedido),
             'message' => 'Producto agregado al pedido.',
         ], 201);
+    }
+
+    /**
+     * POST /api/pedidos/{id}/detalle/{detalleId}/resolucion (TG-241 / A12).
+     *
+     * La persona elige, desde la app, qué quiere que pase con lo que la
+     * fabrica no surtio: que se lo cambien o que le devuelvan su anticipo.
+     *
+     * Aqui NO se mueve dinero. Solo queda anotada su decision; el efectivo lo
+     * entrega y lo registra el personal en el mostrador, que es la unica
+     * puerta por donde sale dinero del sistema.
+     */
+    public function resolverNoSurtido(
+        Request $request,
+        int $id,
+        int $detalleId,
+        ResolverNoSurtidoAction $accion,
+    ): JsonResponse {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+
+        $datos = $request->validate([
+            'resolucion' => ['required', 'string', Rule::in(ResolverNoSurtidoAction::RESOLUCIONES)],
+        ], [
+            'resolucion.required' => 'Dinos que prefieres.',
+            'resolucion.in'       => 'Solo puedes elegir que te lo cambiemos o que te devolvamos el anticipo.',
+        ]);
+
+        // Con el filtro de siempre: el pedido de otra persona ni se encuentra.
+        $pedido = PropietarioActual::limitar(Pedido::query())->findOrFail($id);
+
+        $detalle = $pedido->detalle()->findOrFail($detalleId);
+
+        $accion->registrarDecision($detalle, $datos['resolucion']);
+
+        return response()->json([
+            'data'    => new PedidoResource($pedido->fresh(['detalle', 'pagos'])),
+            'message' => $datos['resolucion'] === 'sustitucion'
+                ? 'Listo. La distribuidora te va a contactar para cambiarte el producto.'
+                : 'Listo. Pasa a la distribuidora por tu anticipo.',
+        ]);
     }
 
     public function enviar(int $id, EnviarPedidoAction $accion): JsonResponse
