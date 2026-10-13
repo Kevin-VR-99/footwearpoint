@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -27,6 +29,9 @@ class PerfilScreen extends StatefulWidget {
 
 class _PerfilScreenState extends State<PerfilScreen> {
   final _formulario = GlobalKey<FormState>();
+
+  /// TG-189 (A11): mientras se pide otro enlace de confirmacion.
+  bool _reenviando = false;
   final _nombre = TextEditingController();
   final _telefono = TextEditingController();
 
@@ -74,6 +79,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
       auth.actualizarUsuario(usuario);
       _mostrar(usuario);
       setState(() => _cargando = false);
+
+      // TG-189 (A11): la persona confirma su correo FUERA de la app, así que
+      // al volver aquí se vuelve a preguntar. Si ya lo hizo, el aviso se
+      // quita solo. Solo cuesta una petición mientras falte confirmarlo.
+      unawaited(auth.revisarCorreoConfirmado());
     } on ApiException catch (e) {
       // Un 401 lo atiende AuthProvider (regresa al login). Lo demás se
       // muestra aquí con opción de reintentar.
@@ -167,6 +177,26 @@ class _PerfilScreenState extends State<PerfilScreen> {
     return null;
   }
 
+  /// TG-189 (A11): el boton "no me llego". El mensaje lo escribe el
+  /// servidor, y es el mismo haya mandado algo o no.
+  Future<void> _reenviarConfirmacion() async {
+    setState(() => _reenviando = true);
+
+    final mensajero = ScaffoldMessenger.of(context);
+    final auth = context.read<AuthProvider>();
+
+    try {
+      final mensaje = await auth.reenviarVerificacion();
+      if (!mounted) return;
+      mensajero.showSnackBar(SnackBar(content: Text(mensaje)));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      mensajero.showSnackBar(SnackBar(content: Text(e.mensaje)));
+    } finally {
+      if (mounted) setState(() => _reenviando = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -218,6 +248,55 @@ class _PerfilScreenState extends State<PerfilScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // TG-189 (A11): mientras no confirme su correo no puede
+                // enviar pedidos. Aquí está el botón al que lo manda el aviso
+                // del servidor cuando lo intenta.
+                if (!context.watch<AuthProvider>().emailVerificado) ...[
+                  FpTarjeta(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.mark_email_unread_outlined, color: Color(0xFFB45309)),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Falta confirmar tu correo',
+                                style: TextStyle(
+                                  color: Color(0xFFB45309),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Te mandamos un enlace cuando te dieron la cuenta. Ábrelo para poder '
+                          'enviar pedidos y pagar. Si no lo encuentras, revisa la carpeta de spam '
+                          'o pide otro aquí.',
+                          style: TextStyle(fontSize: 13.5, height: 1.35),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _reenviando ? null : _reenviarConfirmacion,
+                          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                          icon: _reenviando
+                              ? const SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.send_outlined),
+                          label: Text(_reenviando ? 'Enviando…' : 'Mandarme otro enlace'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 FpTarjeta(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,

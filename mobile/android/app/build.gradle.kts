@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -5,6 +7,25 @@ plugins {
     // Firebase: procesa google-services.json de esta misma carpeta.
     id("com.google.gms.google-services")
 }
+
+// Llave de firma para publicar (TG-241).
+//
+// Android solo deja actualizar una app si la nueva version viene firmada con
+// la MISMA llave que la anterior. Si se pierde, no hay forma de volver a
+// firmar: habria que publicar otra app y pedirle a cada persona que la
+// instale de cero. Por eso el archivo key.properties y el .jks viven fuera
+// del repositorio (ya estan en android/.gitignore) y se guardan aparte.
+//
+// Quien no tenga la llave (el resto del equipo) puede seguir compilando: sin
+// key.properties se firma con la de depuracion, que sirve para probar pero NO
+// para publicar ni para actualizar lo que ya esta publicado.
+val archivoLlave = rootProject.file("key.properties")
+val llave = Properties().apply {
+    if (archivoLlave.exists()) {
+        archivoLlave.inputStream().use { load(it) }
+    }
+}
+val hayLlaveDePublicacion = archivoLlave.exists()
 
 android {
     namespace = "com.footwearpoint.footwearpoint"
@@ -37,11 +58,29 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hayLlaveDePublicacion) {
+            create("publicacion") {
+                keyAlias = llave["keyAlias"] as String
+                keyPassword = llave["keyPassword"] as String
+                storeFile = file(llave["storeFile"] as String)
+                storePassword = llave["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hayLlaveDePublicacion) {
+                signingConfigs.getByName("publicacion")
+            } else {
+                // Sirve para probar en el celular, no para publicar.
+                logger.lifecycle(
+                    "AVISO: no hay android/key.properties, asi que este APK se firma con la llave " +
+                        "de depuracion. No se puede subir a la tienda ni actualiza al que ya esta instalado.",
+                )
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

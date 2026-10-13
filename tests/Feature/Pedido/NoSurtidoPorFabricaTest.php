@@ -245,6 +245,44 @@ class NoSurtidoPorFabricaTest extends TestCase
         $this->assertSame(0, Pago::withoutGlobalScopes()->where('direccion', 'salida')->count());
     }
 
+    /**
+     * Sin estos tres campos la app no puede decir que algo no llegó: no sabe
+     * cuál renglón fue, ni por qué, ni si todavía falta que la persona elija.
+     * La notificación la manda a esta pantalla, así que si el detalle no los
+     * trae, la decisión nunca se puede tomar.
+     */
+    public function test_el_detalle_del_pedido_le_dice_a_la_app_que_no_se_surtio(): void
+    {
+        $pedido = $this->pedidoConAnticipo();
+        $linea = $this->primeraLinea($pedido);
+        $this->marcar($linea, 'La fábrica ya no tiene esa talla');
+
+        $this->como(self::JOSE);
+
+        $this->getJson("/api/pedidos/{$pedido->id}")
+            ->assertOk()
+            ->assertJsonPath('data.lineas.0.estado_surtido', 'no_surtido')
+            ->assertJsonPath('data.lineas.0.motivo_no_surtido', 'La fábrica ya no tiene esa talla')
+            ->assertJsonPath('data.lineas.0.resolucion_no_surtido', 'pendiente');
+    }
+
+    public function test_el_detalle_del_pedido_le_dice_a_la_app_que_ya_se_eligio(): void
+    {
+        $pedido = $this->pedidoConAnticipo();
+        $linea = $this->primeraLinea($pedido);
+        $this->marcar($linea);
+
+        $this->como(self::JOSE);
+
+        $this->postJson("/api/pedidos/{$pedido->id}/detalle/{$linea->id}/resolucion", [
+            'resolucion' => 'reembolso_anticipo',
+        ])->assertOk();
+
+        $this->getJson("/api/pedidos/{$pedido->id}")
+            ->assertOk()
+            ->assertJsonPath('data.lineas.0.resolucion_no_surtido', 'reembolso_anticipo');
+    }
+
     public function test_desde_la_app_no_se_acepta_cualquier_cosa(): void
     {
         $pedido = $this->pedidoConAnticipo();

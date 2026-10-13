@@ -30,8 +30,60 @@ flutter build apk --release --dart-define=API_URL=https://footwearpoint.app/api
 
 Queda en `mobile/build/app/outputs/flutter-apk/app-release.apk`.
 
-- **Firma:** por ahora el APK de release se firma con la llave de depuración (`signingConfig = debug` en `android/app/build.gradle.kts`). Sirve para instalarlo en celulares y en el emulador, pero no para la Play Store. Si algún día se publica, se crea un keystore y se configura con `key.properties`; **nunca** se suben el keystore ni sus contraseñas.
+- **Firma:** ver la sección «Llave de firma» aquí abajo. Con `android/key.properties` el APK sale firmado para publicar; sin él sale firmado con la llave de depuración y el build lo avisa en pantalla.
 - **Versión:** sale de `version:` en `mobile/pubspec.yaml` (`nombre+versionCode`). Hay que subir el número después del `+` en cada APK que se reparta, para que Android lo acepte como actualización.
+
+## Llave de firma
+
+Android solo deja **actualizar** una app instalada si la versión nueva viene firmada con la **misma** llave que la anterior. Si la llave se pierde no hay forma de recuperarla ni de volver a firmar: habría que publicar otra app y pedirle a cada persona que la instale de cero. Por eso la llave y sus contraseñas viven **fuera del repositorio** y se guardan aparte (gestor de contraseñas del equipo o unidad compartida del proyecto).
+
+### Crearla (una sola vez, en todo el proyecto)
+
+```powershell
+cd mobile/android
+keytool -genkeypair -v -keystore footwearpoint.jks -keyalg RSA -keysize 2048 -validity 10000 -alias footwearpoint
+```
+
+`keytool` viene con el JDK; si no lo encuentra, está en `C:/Program Files/Android/Android Studio/jbr/bin`.
+
+Pide una contraseña (la misma sirve para el almacén y para la llave) y unos datos de identificación; con el nombre del equipo y la ciudad basta. `-validity 10000` son unos 27 años: tiene que durar más que la app.
+
+### Configurarla
+
+Copiar `mobile/android/key.properties.example` a `mobile/android/key.properties` y poner ahí la contraseña elegida:
+
+```properties
+storeFile=../footwearpoint.jks
+storePassword=...
+keyAlias=footwearpoint
+keyPassword=...
+```
+
+`footwearpoint.jks` y `key.properties` ya están en `android/.gitignore`: **no se suben nunca**, ni al repositorio ni al grupo de WhatsApp ni a Taiga.
+
+### Comprobar que el APK quedó firmado con ella
+
+Con `apksigner`, que viene en el SDK de Android (`build-tools`; en Windows suele estar en `C:/Users/<usuario>/AppData/Local/Android/Sdk/build-tools/<version>/apksigner.bat`):
+
+```powershell
+apksigner verify --print-certs mobile/build/app/outputs/flutter-apk/app-release.apk
+```
+
+Tiene que mostrar el `CN` que se escribió al crear la llave. Si dice `CN=Android Debug`, el APK salió con la llave de depuración y **no** sirve para publicar.
+
+`keytool -printcert -jarfile` no sirve aquí: solo lee la firma vieja (v1) y estos APK usan la v2/v3, así que responde «no es un archivo jar firmado» aunque sí esté firmado.
+
+### Ojo con el primer APK firmado de verdad
+
+El APK que está publicado hoy (1.0.0+1) salió firmado con la llave de **depuración**. En cuanto se publique uno firmado con la llave nueva, Android **no** lo va a aceptar como actualización de ese: quien ya lo tenga instalado va a tener que desinstalarlo y volverlo a instalar (pierde solo la sesión; los datos están en el servidor). Conviene hacer el cambio ahora, mientras casi nadie lo tiene instalado, y avisarlo en las novedades de la versión.
+
+## Subir una versión nueva a Uptodown
+
+1. Subir el `versionCode` (el número después del `+` en `mobile/pubspec.yaml`). Uptodown rechaza un APK con un número que ya subió.
+2. Generar el APK con el comando de arriba y comprobar la firma.
+3. En <https://developer.uptodown.com>, entrar a la app y subir el archivo nuevo.
+4. Escribir las **novedades** de la versión en español, en frases cortas y sin palabras técnicas: lo que la persona va a notar, no cómo se hizo.
+5. Uptodown revisa el archivo antes de publicarlo; tarda desde unas horas hasta un día.
 
 ## Nombre e icono
 

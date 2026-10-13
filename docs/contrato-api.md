@@ -399,6 +399,8 @@ Un revendedor o cliente directo solo ve y toca **sus** pedidos. El empleado ve t
         "subtotal": 1600.0,
         "anticipo_requerido": 200.0,
         "estado_surtido": "pendiente",
+        "motivo_no_surtido": null,
+        "resolucion_no_surtido": null,
         "variante_id": 9,
         "producto_campana_id": 12,
         "bajo_pedido": false,
@@ -411,6 +413,8 @@ Un revendedor o cliente directo solo ve y toca **sus** pedidos. El empleado ve t
 ```
 
 **`bajo_pedido` en cada línea** (TG-266): `true` si esa talla está **hoy** «bajo pedido» en su temporada (la misma `disponibilidad` del catálogo, sección 3). Es el estado actual, no el que tenía al pedirse: si la fábrica la cambia, cambia aquí también. La app lo usa para marcar la línea («Bajo pedido: se encarga a la fábrica y tarda más en llegar»); no cambia montos ni lo que se puede hacer con el pedido.
+
+**`estado_surtido`, `motivo_no_surtido` y `resolucion_no_surtido` en cada línea** (TG-241): cuando la fábrica confirmó ese producto y al final no lo mandó, `estado_surtido` queda en `no_surtido`, `motivo_no_surtido` trae por qué (texto libre escrito por la distribuidora) y `resolucion_no_surtido` queda en `pendiente` hasta que la persona elige, y después en `sustitucion` o `reembolso_anticipo`. Con esos tres la app enseña la pregunta y los dos botones; sin ellos la notificación la mandaría a una pantalla donde no hay nada que tocar. En las líneas normales `motivo_no_surtido` y `resolucion_no_surtido` son `null`. La decisión se manda con `POST /api/pedidos/{id}/detalle/{detalleId}/resolucion`.
 
 **`fecha_limite_recoleccion`** (TG-125): hasta cuándo puede recogerse el pedido (ISO 8601 con zona). Se llena al marcarlo «listo para entrega» con los `dias_maximos_recoleccion` de la distribuidora; antes es `null`. Si pasa la fecha y nadie lo recoge, un proceso diario lo pasa a `vencido_recoleccion` (ver `docs/vencer-recoleccion.md`). La app lo muestra como «Recoge antes del dd/mm/aaaa».
 
