@@ -510,6 +510,25 @@ Sin cuerpo. Saca el pedido de `borrador` y lo coloca.
 
 Armar el borrador y agregarle líneas **no** pide el correo confirmado: solo enviarlo y pagar. Es a propósito, para no toparse con un muro antes de entender qué se pide. Desde la app se pide un enlace nuevo con `auth/reenviar-verificacion`.
 
+### POST `/api/pedidos/{id}/detalle/{detalleId}/resolucion`
+
+La fábrica confirmó un producto y al final no lo surtió (TG-241). La persona dice qué prefiere.
+
+**Entrada:**
+
+```json
+{ "resolucion": "sustitucion" }
+```
+
+`resolucion` es obligatorio y solo acepta `sustitucion` o `reembolso_anticipo`.
+
+**Salida (200):** `{ "data": { ...pedido... }, "message": "Listo. Pasa a la distribuidora por tu anticipo." }`
+
+**Esto NO mueve dinero.** Solo deja anotada la decisión: el efectivo lo entrega y lo registra el personal desde el panel, que es la única puerta por la que sale dinero del sistema. Según el backlog (E8-05), este es el único caso en el que se devuelve efectivo y no un vale, porque la persona nunca llegó a recibir el producto.
+
+**Errores (422):** si el renglón sí se surtió, si ya se había resuelto, o si `resolucion` trae otra cosa.
+**Error (404):** el pedido de otra persona, igual que en el resto de la API.
+
 ### POST `/api/pedidos/{id}/total/mercado-pago`
 
 Rol: **solo `revendedor`** (cliente mayorista), y solo sobre **sus** pedidos. Límite: **10 por minuto** (cada llamada sale a Mercado Pago). (TG-229)
