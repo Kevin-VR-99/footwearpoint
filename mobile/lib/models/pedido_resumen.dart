@@ -170,6 +170,9 @@ class LineaPedido {
     required this.subtotal,
     this.cambio,
     this.bajoPedido = false,
+    this.estadoSurtido = '',
+    this.motivoNoSurtido,
+    this.resolucionNoSurtido,
   });
 
   /// pedido_detalle.id; hace falta para pedir un cambio (TG-254).
@@ -190,6 +193,22 @@ class LineaPedido {
   /// TG-266: la talla está bajo pedido hoy (tarda más en llegar).
   final bool bajoPedido;
 
+  /// TG-241 (A12): 'no_surtido' cuando la fábrica confirmó este producto y al
+  /// final no lo mandó.
+  final String estadoSurtido;
+
+  /// Por qué no se surtió, tal cual lo escribió la distribuidora.
+  final String? motivoNoSurtido;
+
+  /// 'pendiente' mientras la persona no haya dicho qué prefiere; después
+  /// 'sustitucion' o 'reembolso_anticipo'.
+  final String? resolucionNoSurtido;
+
+  /// True si la fábrica no lo surtió y todavía falta que la persona elija.
+  bool get esperaDecision => estadoSurtido == 'no_surtido' && resolucionNoSurtido == 'pendiente';
+
+  bool get noSurtido => estadoSurtido == 'no_surtido';
+
   factory LineaPedido.desdeJson(Map<String, dynamic> json) {
     final cambio = json['cambio'];
     return LineaPedido(
@@ -203,6 +222,9 @@ class LineaPedido {
       precioUnitario: (json['precio_unitario'] as num?)?.toDouble() ?? 0,
       subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0,
       bajoPedido: json['bajo_pedido'] == true,
+      estadoSurtido: json['estado_surtido'] as String? ?? '',
+      motivoNoSurtido: json['motivo_no_surtido'] as String?,
+      resolucionNoSurtido: json['resolucion_no_surtido'] as String?,
     );
   }
 }

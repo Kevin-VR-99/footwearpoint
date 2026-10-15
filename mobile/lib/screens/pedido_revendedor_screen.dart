@@ -78,8 +78,10 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _enviando = false);
+      // TG-189 (A11): un 403 no es una falla del servidor, es una regla
+      // ("confirma tu correo"). Con el prefijo parecia que algo se rompio.
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error del servidor: ${e.mensaje}')),
+        SnackBar(content: Text(e.codigoHttp == 403 ? e.mensaje : 'Error del servidor: ${e.mensaje}')),
       );
     } catch (e) {
       if (!mounted) return;

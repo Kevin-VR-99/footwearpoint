@@ -43,6 +43,11 @@ class AuthProvider extends ChangeNotifier {
   /// TG-193: la distribuidora le puso una contraseña temporal y tiene que
   /// cambiarla antes de poder usar la app.
   bool _debeCambiarPassword = false;
+
+  /// TG-189 (A11): mientras no confirme su correo no puede enviar pedidos ni
+  /// pagar. No se le saca de la app: solo se le avisa y se le ofrece pedir
+  /// otro enlace.
+  bool _emailVerificado = true;
   bool _iniciando = true;
   bool _sinConexion = false;
   bool _ocupado = false;
@@ -53,6 +58,7 @@ class AuthProvider extends ChangeNotifier {
   int? get distribuidoraId => _distribuidoraId;
   bool get legalesAceptados => _legalesAceptados;
   bool get debeCambiarPassword => _debeCambiarPassword;
+  bool get emailVerificado => _emailVerificado;
   bool get ocupado => _ocupado;
   String? get error => _error;
   bool get haySesion => _usuario != null;
@@ -230,12 +236,16 @@ class AuthProvider extends ChangeNotifier {
     final legalesAceptados = datos['legales_aceptados'] as bool? ?? false;
     // Si el servidor no manda la llave (versión vieja), se asume que no.
     final debeCambiar = datos['debe_cambiar_password'] as bool? ?? false;
+    // Si el servidor no manda la llave (version vieja), se asume confirmado
+    // para no inventarle un problema a nadie.
+    final verificado = datos['email_verificado'] as bool? ?? true;
 
     _usuario = usuario;
     _rol = rol;
     _distribuidoraId = distribuidoraId;
     _legalesAceptados = legalesAceptados;
     _debeCambiarPassword = debeCambiar;
+    _emailVerificado = verificado;
   }
 
   /// TG-193: la acaba de cambiar desde la pantalla obligatoria, así que ya
@@ -256,6 +266,42 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// TG-189 (A11): "no me llegó el correo". El servidor siempre responde lo
+  /// mismo, haya mandado algo o no, para no delatar el estado de la cuenta.
+  ///
+  /// Devuelve el mensaje que hay que enseñar.
+  Future<String> reenviarVerificacion() async {
+    final respuesta = await api.post('auth/reenviar-verificacion');
+
+    return respuesta['message'] as String? ??
+        'Si tu correo está sin confirmar, te mandamos un enlace nuevo.';
+  }
+
+  /// TG-189 (A11): vuelve a preguntarle al servidor si el correo ya está
+  /// confirmado.
+  ///
+  /// Hace falta porque la persona confirma FUERA de la app: abre el enlace en
+  /// su correo y regresa. Sin esto, el aviso se quedaría puesto hasta que
+  /// cerrara y volviera a abrir la app, y creería que no sirvió de nada.
+  ///
+  /// Si el servidor no contesta no pasa nada: se queda como estaba.
+  Future<void> revisarCorreoConfirmado() async {
+    if (!haySesion || _emailVerificado) return;
+
+    try {
+      final respuesta = await api.get('auth/me');
+      final datos = respuesta['data'] as Map<String, dynamic>;
+      final verificado = datos['email_verificado'] as bool? ?? true;
+
+      if (verificado == _emailVerificado) return;
+
+      _emailVerificado = verificado;
+      notifyListeners();
+    } on ApiException {
+      // Sin conexión o el servidor falló: el aviso se queda, que es lo seguro.
+    }
+  }
+
   /// Borra la sesión de memoria y el token del teléfono.
   Future<void> _olvidarSesion() async {
     // Primero la memoria, sin esperar a nada: así [haySesion] cambia en ese
@@ -265,6 +311,7 @@ class AuthProvider extends ChangeNotifier {
     _distribuidoraId = null;
     _legalesAceptados = false;
     _debeCambiarPassword = false;
+    _emailVerificado = true;
 
     await api.borrarToken();
   }
