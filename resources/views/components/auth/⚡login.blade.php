@@ -202,5 +202,10 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
             <span wire:loading.remove>Entrar</span>
             <span wire:loading>Entrando...</span>
         </button>
+
+        <a href="{{ route('inicio') }}"
+            class="flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+            Volver al inicio
+        </a>
     </form>
 </div>

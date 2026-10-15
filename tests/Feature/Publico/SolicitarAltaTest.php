@@ -107,7 +107,12 @@ class SolicitarAltaTest extends TestCase
         }
 
         $respuesta->assertSee(route('aviso-privacidad'), false)
-            ->assertSee(route('terminos'), false);
+            ->assertSee(route('terminos'), false)
+            ->assertSee('Los campos con')
+            ->assertSee('id="nombre_comercial"', false)
+            ->assertSee('id="admin_email"', false)
+            ->assertSee('name="plan_id"', false)
+            ->assertSee('minlength="8"', false);
     }
 
     public function test_sin_datos_no_crea_nada_y_pide_lo_obligatorio(): void
@@ -116,7 +121,10 @@ class SolicitarAltaTest extends TestCase
         $this->travel(30)->seconds();
 
         $componente->call('enviar')
-            ->assertHasErrors(['nombre_comercial', 'plan_id', 'admin_nombre', 'admin_email', 'admin_password', 'acepta_legales']);
+            ->assertHasErrors(['nombre_comercial', 'plan_id', 'admin_nombre', 'admin_email', 'admin_password', 'acepta_legales'])
+            ->assertSee('No se envió la solicitud')
+            ->assertSee('Los campos con')
+            ->assertSee('Plan que te gustaría si te aceptamos');
 
         $this->assertNull($this->distribuidoraCreada());
     }

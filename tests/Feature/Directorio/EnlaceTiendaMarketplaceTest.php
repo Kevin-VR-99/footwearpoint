@@ -80,13 +80,12 @@ class EnlaceTiendaMarketplaceTest extends TestCase
             ->assertSeeHtml('aria-label="Ver la tienda de Zapatería Norte"');
     }
 
-    public function test_al_filtrar_por_categoria_se_conserva_el_enlace(): void
+    public function test_al_buscar_por_nombre_se_conserva_el_enlace(): void
     {
-        $this->otra('Zapatería Norte', categorias: ['Infantil']);
-        $infantil = CategoriaDirectorio::where('nombre', 'Infantil')->firstOrFail();
+        $this->otra('Zapatería Norte');
 
         Livewire::test('marketplace.index')
-            ->call('filtrar', $infantil->id)
+            ->set('q', 'Norte')
             ->assertSeeHtml('href="'.route('tienda', 'zapateria-norte').'"')
             ->assertDontSeeHtml('href="'.route('tienda', 'calzados-ramirez').'"');
     }

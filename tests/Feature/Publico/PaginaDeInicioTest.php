@@ -35,6 +35,14 @@ class PaginaDeInicioTest extends TestCase
     // Ya no saca a nadie al login
     // ------------------------------------------------------------------
 
+    public function test_el_login_tiene_un_boton_para_volver_al_inicio(): void
+    {
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('Volver al inicio')
+            ->assertSee('href="'.route('inicio').'"', false);
+    }
+
     public function test_la_raiz_muestra_la_pagina_y_ya_no_redirige_al_login(): void
     {
         $this->assertGuest();
