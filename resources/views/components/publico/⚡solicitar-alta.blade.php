@@ -245,7 +245,7 @@ class extends Component
             'email_publico.email' => 'El correo de contacto no es válido.',
             'email_publico.max' => 'El correo de contacto no puede pasar de 190 caracteres.',
             'direccion_publica.max' => 'La dirección no puede pasar de 300 caracteres.',
-            'plan_id.required' => 'Elige el plan que quieres.',
+            'plan_id.required' => 'Elige el plan que te gustaría si te aceptamos.',
             'plan_id.exists' => 'Ese plan ya no está disponible. Elige otro.',
             'admin_nombre.required' => 'Tu nombre es obligatorio.',
             'admin_nombre.max' => 'Tu nombre no puede pasar de 150 caracteres.',
@@ -292,7 +292,23 @@ class extends Component
             <p class="mt-1 text-sm text-slate-500">
                 Cuéntanos de tu distribuidora. Revisamos tu solicitud y te avisamos por correo.
             </p>
+            <p class="mt-2 text-sm text-slate-600">
+                Los campos con <span class="text-red-600">*</span> son obligatorios:
+                nombre comercial, el plan que te gustaría, tu nombre, tu correo, la contraseña y aceptar los documentos.
+            </p>
         </div>
+
+        @if ($errors->any())
+            <div id="errores-solicitud" tabindex="-1" x-init="$nextTick(() => $el.focus())"
+                class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                <p class="font-semibold">No se envió la solicitud. Revisa lo que falta:</p>
+                <ul class="mt-2 list-disc space-y-1 pl-5">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
 
         @if ($avisoLimite)
             <div class="mb-6 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-4">
@@ -315,7 +331,7 @@ class extends Component
                     <label for="nombre_comercial" class="block text-sm font-medium text-slate-700 mb-1">
                         Nombre comercial <span class="text-red-600">*</span>
                     </label>
-                    <input type="text" id="nombre_comercial" wire:model="nombre_comercial"
+                    <input type="text" id="nombre_comercial" wire:model="nombre_comercial" required
                         class="w-full rounded-lg text-sm">
                     @error('nombre_comercial') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
@@ -358,10 +374,10 @@ class extends Component
                 </div>
             </section>
 
-            {{-- El plan --}}
+            {{-- Preferencia de plan: no se cobra ni se activa hasta que la solicitud se acepte. --}}
             <section class="bg-white rounded-xl border border-slate-200 p-6">
-                <h2 class="font-semibold text-slate-900">Tu plan</h2>
-                <p class="mt-1 text-sm text-slate-500">Lo puedes cambiar después. Precios en pesos mexicanos, por mes.</p>
+                <h2 class="font-semibold text-slate-900">Plan que te gustaría si te aceptamos <span class="text-red-600">*</span></h2>
+                <p class="mt-1 text-sm text-slate-500">Todavía no se cobra ni queda activo. Si aceptamos tu solicitud, este es el plan con el que te gustaría empezar. Después se puede cambiar. Precios en pesos mexicanos, por mes.</p>
 
                 @if ($this->planes->isEmpty())
                     <p class="mt-4 text-sm text-slate-500">
@@ -373,7 +389,7 @@ class extends Component
                             <label class="block cursor-pointer rounded-xl border p-4 transition
                                 {{ (string) $plan->id === $plan_id ? 'border-[#111E38] ring-2 ring-[#111E38]/20 bg-[#F8FAFF]' : 'border-slate-200 hover:bg-slate-50' }}">
                                 <span class="flex items-start gap-2">
-                                    <input type="radio" wire:model.live="plan_id" value="{{ $plan->id }}"
+                                    <input type="radio" name="plan_id" wire:model.live="plan_id" value="{{ $plan->id }}" required
                                         class="mt-1 text-[#111E38] focus:ring-[#111E38]">
                                     <span>
                                         <span class="block font-semibold text-slate-900">{{ $plan->nombre }}</span>
@@ -403,7 +419,7 @@ class extends Component
                     <label for="admin_nombre" class="block text-sm font-medium text-slate-700 mb-1">
                         Tu nombre <span class="text-red-600">*</span>
                     </label>
-                    <input type="text" id="admin_nombre" wire:model="admin_nombre"
+                    <input type="text" id="admin_nombre" wire:model="admin_nombre" required
                         class="w-full rounded-lg text-sm">
                     @error('admin_nombre') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
@@ -412,7 +428,7 @@ class extends Component
                     <label for="admin_email" class="block text-sm font-medium text-slate-700 mb-1">
                         Tu correo <span class="text-red-600">*</span>
                     </label>
-                    <input type="email" id="admin_email" wire:model="admin_email"
+                    <input type="email" id="admin_email" wire:model="admin_email" required
                         class="w-full rounded-lg text-sm">
                     @error('admin_email') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
@@ -422,7 +438,7 @@ class extends Component
                         <label for="admin_password" class="block text-sm font-medium text-slate-700 mb-1">
                             Contraseña <span class="text-red-600">*</span>
                         </label>
-                        <input type="password" id="admin_password" wire:model="admin_password"
+                        <input type="password" id="admin_password" wire:model="admin_password" required minlength="8"
                             class="w-full rounded-lg text-sm">
                         @error('admin_password') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
@@ -431,7 +447,7 @@ class extends Component
                         <label for="admin_password_confirmation" class="block text-sm font-medium text-slate-700 mb-1">
                             Repite la contraseña <span class="text-red-600">*</span>
                         </label>
-                        <input type="password" id="admin_password_confirmation" wire:model="admin_password_confirmation"
+                        <input type="password" id="admin_password_confirmation" wire:model="admin_password_confirmation" required minlength="8"
                             class="w-full rounded-lg text-sm">
                     </div>
                 </div>
@@ -440,14 +456,14 @@ class extends Component
             {{-- Legales --}}
             <div>
                 <label class="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" wire:model="acepta_legales"
+                    <input type="checkbox" wire:model="acepta_legales" required
                         class="mt-1 rounded text-[#111E38] focus:ring-[#111E38]">
                     <span class="text-sm text-slate-700">
                         Acepto el
                         <a href="{{ route('aviso-privacidad') }}" target="_blank" class="text-[#2563EB] hover:underline">aviso de privacidad</a>
                         y los
                         <a href="{{ route('terminos') }}" target="_blank" class="text-[#2563EB] hover:underline">términos y condiciones</a>
-                        (versión 1.0).
+                        (versión 1.0). <span class="text-red-600">*</span>
                     </span>
                 </label>
                 @error('acepta_legales') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror

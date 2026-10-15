@@ -91,54 +91,43 @@ class MarketplaceDirectorioTest extends TestCase
     // Página pública /marketplace
     // ---------------------------------------------------------------
 
-    public function test_muestra_chips_en_orden_alfabetico_solo_de_categorias_con_distribuidoras_visibles(): void
+    public function test_el_marketplace_busca_por_nombre_y_lugar_sin_mostrar_categorias(): void
     {
-        $this->get(route('marketplace'))
+        $norte = $this->otra('Zapatería Norte', ['Infantil']);
+        $norte->update(['direccion_publica' => 'Centro, San Cristóbal de las Casas']);
+
+        $pagina = $this->get(route('marketplace'))
             ->assertOk()
-            ->assertSeeInOrder(['Todas', 'Caballero', 'Casual', 'Dama'])
-            ->assertDontSee('Infantil')
-            ->assertDontSee('Deportivo');
+            ->assertSee('Buscar por nombre')
+            ->assertSee('Buscar por lugar')
+            ->assertSee('Volver al inicio')
+            ->assertDontSee('Filtrar por categoría')
+            ->assertDontSee('Caballero')
+            ->assertDontSee('Casual');
+
+        Livewire::test('marketplace.index')
+            ->set('q', 'Norte')
+            ->assertSee('Zapatería Norte')
+            ->assertDontSee('Calzados Ramírez')
+            ->set('q', '')
+            ->set('lugar', 'Cristóbal')
+            ->assertSee('Zapatería Norte')
+            ->assertDontSee('Calzados Ramírez')
+            ->set('lugar', 'no-existe-xyz')
+            ->assertSee('Ninguna distribuidora coincide con esa búsqueda.');
+
+        $pagina->assertDontSee('Infantil');
     }
 
-    public function test_filtra_por_categoria(): void
+    public function test_la_pagina_no_filtra_por_categoria_aunque_llegue_en_la_direccion(): void
     {
         $this->otra('Zapatería Norte', ['Infantil', 'Dama']);
-        $infantil = $this->categoria('Infantil');
 
-        Livewire::test('marketplace.index')
-            ->assertSee('Calzados Ramírez')
-            ->assertSee('Zapatería Norte')
-            ->call('filtrar', $infantil->id)
-            ->assertSet('categoria', (string) $infantil->id)
-            ->assertSee('Zapatería Norte')
-            ->assertDontSee('Calzados Ramírez')
-            ->call('filtrar')
-            ->assertSet('categoria', '')
-            ->assertSee('Calzados Ramírez');
-
-        Livewire::withQueryParams(['categoria' => (string) $this->categoria('Caballero')->id])
+        Livewire::withQueryParams(['categoria' => (string) $this->categoria('Infantil')->id])
             ->test('marketplace.index')
             ->assertSee('Calzados Ramírez')
-            ->assertDontSee('Zapatería Norte');
-
-        // Una dirección mal escrita muestra todas, sin error.
-        Livewire::withQueryParams(['categoria' => 'abc'])
-            ->test('marketplace.index')
-            ->assertSee('Calzados Ramírez')
-            ->assertSee('Zapatería Norte');
-    }
-
-    public function test_una_categoria_inactiva_no_se_muestra_ni_filtra(): void
-    {
-        $dama = $this->categoria('Dama');
-        $dama->update(['activa' => false]);
-
-        Livewire::test('marketplace.index')
-            ->assertSeeInOrder(['Caballero', 'Casual'])
-            ->assertDontSee('Dama')
-            ->call('filtrar', $dama->id)
-            ->assertDontSee('Calzados Ramírez')
-            ->assertSee('No hay distribuidoras en esta categoría por ahora.');
+            ->assertSee('Zapatería Norte')
+            ->assertDontSee('Infantil');
     }
 
     public function test_ocultas_suspendidas_y_pendientes_no_aparecen_aunque_tengan_categoria(): void
@@ -156,11 +145,16 @@ class MarketplaceDirectorioTest extends TestCase
             ->assertDontSee('Escolar');
     }
 
-    public function test_cada_tarjeta_muestra_sus_categorias(): void
+    public function test_cada_tarjeta_muestra_el_logo_y_no_las_categorias(): void
     {
         $this->get(route('marketplace'))
             ->assertOk()
-            ->assertSeeInOrder(['Calzados Ramírez', 'Caballero', 'Casual', 'Dama', 'Distribuidora multimarca']);
+            ->assertSee('Calzados Ramírez')
+            ->assertSee('Distribuidora multimarca')
+            ->assertSee('h-28 w-28', false)
+            ->assertDontSee('Caballero')
+            ->assertDontSee('Casual')
+            ->assertDontSee('Dama');
     }
 
     // ---------------------------------------------------------------

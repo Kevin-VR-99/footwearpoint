@@ -18,9 +18,17 @@ use Illuminate\Database\Eloquent\Collection;
  */
 class DirectorioPublico
 {
-    /** Distribuidoras visibles, por nombre; opcionalmente de una categoría. */
-    public function distribuidoras(?int $categoriaId = null): Collection
+    /**
+     * Distribuidoras visibles, por nombre.
+     *
+     * La categoría sigue disponible para la API. El marketplace público
+     * filtra por nombre y por lugar (la dirección pública), no por categoría.
+     */
+    public function distribuidoras(?int $categoriaId = null, ?string $nombre = null, ?string $lugar = null): Collection
     {
+        $nombre = $this->texto($nombre);
+        $lugar = $this->texto($lugar);
+
         return Distribuidora::query()
             ->where('distribuidoras.estado', 'activa')
             ->where('distribuidoras.marketplace_visible', true)
@@ -28,9 +36,28 @@ class DirectorioPublico
                 'categoriasDirectorio',
                 fn (Builder $c) => $c->activas()->where('categorias_directorio.id', $categoriaId)
             ))
+            ->when($nombre !== null, fn (Builder $q) => $q->where(
+                'nombre_comercial', 'like', '%'.$this->comoLike($nombre).'%'
+            ))
+            ->when($lugar !== null, fn (Builder $q) => $q->where(
+                'direccion_publica', 'like', '%'.$this->comoLike($lugar).'%'
+            ))
             ->with(['categoriasDirectorio' => fn ($c) => $c->activas()->orderBy('nombre')])
             ->orderBy('nombre_comercial')
             ->get();
+    }
+
+    private function texto(?string $valor): ?string
+    {
+        $valor = trim((string) $valor);
+
+        return $valor === '' ? null : $valor;
+    }
+
+    /** Evita que % y _ del texto se vuelvan comodines del LIKE. */
+    private function comoLike(string $valor): string
+    {
+        return addcslashes($valor, '%_\\');
     }
 
     /** Categorías activas con al menos una distribuidora visible, por nombre. */
