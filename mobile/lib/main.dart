@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -12,14 +14,24 @@ import 'services/api_service.dart';
 import 'tema/fp_tema.dart';
 
 Future<void> main() async {
-  // Firebase se conecta al arrancar, leyendo android/app/google-services.json.
-  // Las notificaciones push ya usan esta conexion: AuthProvider registra el
-  // celular en Laravel al iniciar sesion y al abrir la app (E16-03), y el
-  // servidor lo quita al cerrar la sesion (TG-144).
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await _iniciarFirebase();
 
   runApp(const FootwearPointApp());
+}
+
+/// En Android Firebase lee google-services.json y un fallo aquí sí debe
+/// verse. En la prueba de iPhone no hay GoogleService-Info.plist: sin él
+/// la app sigue, y los avisos push no se registran (E16-03 / TG-144).
+Future<void> _iniciarFirebase() async {
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    if (!Platform.isIOS) {
+      rethrow;
+    }
+    debugPrint('Firebase no quedó listo en iOS: $e');
+  }
 }
 
 class FootwearPointApp extends StatelessWidget {
