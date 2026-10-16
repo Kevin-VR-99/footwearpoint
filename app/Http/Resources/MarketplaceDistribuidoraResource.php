@@ -25,20 +25,9 @@ class MarketplaceDistribuidoraResource extends JsonResource
             // TG-269: búsqueda en Google Maps ("Ver en mapa"); null si no hay dirección.
             'url_mapa'            => MapaUbicacion::urlVerEnMapa($this->resource),
             'horario_publico'     => $this->horario_publico,
-            // TG-197 (G16): solo sus categorías activas, por nombre.
-            'categorias'          => $this->categoriasActivas()
-                ->map(fn ($categoria) => ['id' => $categoria->id, 'nombre' => $categoria->nombre])
-                ->values(),
+            // Las categorías del directorio ya no se usan. La lista queda vacía
+            // para no romper a quien todavía lee esta clave.
+            'categorias'          => [],
         ];
-    }
-
-    /** Usa las ya cargadas (DirectorioPublico las trae) o las consulta. */
-    private function categoriasActivas()
-    {
-        $categorias = $this->relationLoaded('categoriasDirectorio')
-            ? $this->categoriasDirectorio
-            : $this->categoriasDirectorio()->orderBy('nombre')->get();
-
-        return $categorias->filter(fn ($categoria) => $categoria->activa);
     }
 }

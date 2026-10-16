@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\MercadoPago;
 
+use App\Mail\PagoSuscripcionMail;
 use App\Models\Auditoria;
 use App\Models\ConfiguracionDistribuidora;
 use App\Models\Distribuidora;
@@ -20,6 +21,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as PeticionHttp;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -570,5 +572,131 @@ class SuscripcionCheckoutProTest extends TestCase
         $this->assertTrue(Auditoria::where('accion', 'pago.mercado_pago.aplicado')->sole()->datos_nuevos['requiere_revision']);
         $this->assertSame(0, Auditoria::where('accion', 'suscripcion.renovada')->count());
         $this->assertStringContainsString('El equipo de FootwearPoint revisará', $this->avisosAlAdmin()->sole()->mensaje);
+    }
+
+    public function test_al_renovar_la_mensualidad_se_manda_correo_al_admin_y_al_correo_publico(): void
+    {
+        Mail::fake();
+        $pago = $this->pagar();
+        $this->enMercadoPago($this->aprobado($pago));
+
+        $this->aviso()->assertOk();
+
+        Mail::assertSent(PagoSuscripcionMail::class, 2);
+        Mail::assertSent(PagoSuscripcionMail::class, function (PagoSuscripcionMail $correo) {
+            if (! $correo->hasTo(self::ADMIN) || $correo->tipo !== PagoSuscripcionMail::MENSUALIDAD) {
+                return false;
+            }
+
+            $html = $correo->render();
+            $this->assertStringContainsString('Calzados Ramírez', $html);
+            $this->assertStringContainsString('449.00', $html);
+            $this->assertStringContainsString('pagada hasta el', $html);
+
+            return true;
+        });
+        Mail::assertSent(PagoSuscripcionMail::class, fn (PagoSuscripcionMail $correo) => $correo->hasTo('contacto@calzadosramirez.test')
+            && $correo->tipo === PagoSuscripcionMail::MENSUALIDAD);
+        Mail::assertNotSent(PagoSuscripcionMail::class, fn (PagoSuscripcionMail $correo) => $correo->hasTo(self::EMPLEADO));
+    }
+
+    public function test_si_el_correo_de_la_mensualidad_falla_el_pago_queda_aplicado(): void
+    {
+        Mail::shouldReceive('to')->atLeast()->once()->andReturn(new class {
+            public function send(): void
+            {
+                throw new \RuntimeException('smtp caido');
+            }
+        });
+
+        $pago = $this->pagar();
+        $this->enMercadoPago($this->aprobado($pago));
+        $this->aviso()->assertOk();
+
+        $this->assertSame('aplicado', $pago->fresh()->estado);
+        $this->assertSame(1, Auditoria::where('accion', 'suscripcion.renovada')->count());
+    }
+
+    public function test_no_cobra_linea_extra_si_el_periodo_ya_vencio(): void
+    {
+        $this->suscripcion()->update([
+            'estado' => 'activa',
+            'fecha_fin' => today()->subDay()->toDateString(),
+        ]);
+
+        $this->como(self::ADMIN);
+        Livewire::test('distribuidora.suscripcion')
+            ->assertSet('puedeLineaExtra', false)
+            ->call('pagarLineaExtra')
+            ->assertSet('error', 'Para agregar una línea extra tu suscripción tiene que estar activa.');
+
+        $this->assertSame(0, Pago::withoutGlobalScopes()->where('referencia', Pago::REFERENCIA_LINEA_EXTRA)->count());
+    }
+
+    public function test_la_linea_extra_se_cobra_sola_y_no_alarga_el_periodo(): void
+    {
+        Mail::fake();
+        $mensual = $this->pagar();
+        $fin = $this->suscripcion()->fecha_fin->toDateString();
+
+        $this->como(self::ADMIN);
+        Livewire::test('distribuidora.suscripcion')
+            ->assertSee('Solicitar línea extra')
+            ->call('pedirLineaExtra')
+            ->assertSee('Vas a pagar')
+            ->assertSee('$150.00 MXN')
+            ->call('pagarLineaExtra')
+            ->assertHasNoErrors();
+
+        $extra = Pago::withoutGlobalScopes()->where('referencia', Pago::REFERENCIA_LINEA_EXTRA)->sole();
+        $this->assertSame('pendiente', $mensual->fresh()->estado);
+        $this->assertSame('pendiente', $extra->estado);
+        $this->assertEquals(150, (float) $extra->monto);
+        $this->assertSame('suscripcion', $extra->tipo);
+
+        $peticion = $this->preferenciasEnviadas()->last();
+        $this->assertEquals(150, $peticion['items'][0]['unit_price']);
+        $this->assertSame('linea_extra', $peticion['metadata']['tipo']);
+        $this->assertSame('Línea extra FootwearPoint', $peticion['items'][0]['title']);
+
+        $this->enMercadoPago($this->aprobado($extra, ['id' => 555000779]));
+        $this->regresoDeMercadoPago($extra, 555000779)
+            ->assertSee('¡Recibimos el pago de tu línea extra!')
+            ->assertDontSee('¡Recibimos el pago de tu mensualidad!');
+
+        $suscripcion = $this->suscripcion();
+        $this->assertSame($fin, $suscripcion->fecha_fin->toDateString());
+        $this->assertSame(1, (int) $suscripcion->lineas_extra_contratadas);
+        $this->assertSame('pendiente', $mensual->fresh()->estado);
+        $this->assertSame('aplicado', $extra->fresh()->estado);
+        $this->assertSame(0, Auditoria::where('accion', 'suscripcion.renovada')->count());
+        $this->assertSame(1, Auditoria::where('accion', 'linea_extra.contratada')->count());
+        $this->assertSame('Recibimos el pago de una línea extra', $this->avisosAlAdmin()->sole()->titulo);
+
+        Mail::assertSent(PagoSuscripcionMail::class, fn (PagoSuscripcionMail $correo) => $correo->hasTo(self::ADMIN)
+            && $correo->tipo === PagoSuscripcionMail::LINEA_EXTRA
+            && $correo->monto === '150.00');
+    }
+
+    public function test_una_linea_extra_que_aun_cabe_en_el_plan_no_sube_la_mensualidad(): void
+    {
+        $activas = Tenant::forzar($this->distribuidoraId(), fn () => DistribuidoraLinea::query()->vigentes()->count());
+        $this->suscripcion()->update([
+            'lineas_incluidas_contratadas' => $activas,
+            'lineas_extra_contratadas' => 0,
+        ]);
+
+        $this->como(self::ADMIN);
+        Livewire::test('distribuidora.suscripcion')->call('pedirLineaExtra')->call('pagarLineaExtra');
+
+        $extra = Pago::withoutGlobalScopes()->where('referencia', Pago::REFERENCIA_LINEA_EXTRA)->sole();
+        $this->enMercadoPago($this->aprobado($extra, ['id' => 555000780]));
+        $this->regresoDeMercadoPago($extra, 555000780);
+
+        $suscripcion = $this->suscripcion();
+        $this->assertSame(1, (int) $suscripcion->lineas_extra_contratadas);
+        $monto = CrearPagoSuscripcionMercadoPagoAction::monto($suscripcion);
+        $this->assertSame(0, $monto['lineas_extra']);
+        $this->assertEquals(299, $monto['total']);
     }
 }

@@ -30,6 +30,9 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     public string $temporada_nombre = '';
     public string $temporada_estado = 'borrador';
 
+    public ?int $temporadaPorEliminar = null;
+    public string $temporadaPorEliminarNombre = '';
+
     public string $producto_marca_id = '';
     public string $producto_categoria_id = '';
     public string $producto_modelo = '';
@@ -202,6 +205,31 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         }
 
         $this->dispatch('guardado', mensaje: 'Estado actualizado.');
+    }
+
+    public function pedirEliminarTemporada(int $id): void
+    {
+        $this->autorizar();
+        $temporada = Campana::query()->findOrFail($id);
+        $this->temporadaPorEliminar = $temporada->id;
+        $this->temporadaPorEliminarNombre = $temporada->nombre;
+    }
+
+    public function cancelarEliminarTemporada(): void
+    {
+        $this->temporadaPorEliminar = null;
+        $this->temporadaPorEliminarNombre = '';
+    }
+
+    public function confirmarEliminarTemporada(): void
+    {
+        if ($this->temporadaPorEliminar === null) {
+            return;
+        }
+
+        $id = $this->temporadaPorEliminar;
+        $this->cancelarEliminarTemporada();
+        $this->eliminar('temporada', $id);
     }
 
     public function eliminar(string $tipo, int $id): void
@@ -529,12 +557,27 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         <td class="p-3">{{ ucfirst(str_replace('_', ' ', $temporada->estado)) }}</td>
                         <td class="p-3 whitespace-nowrap text-xs">
                             <button type="button" wire:click="editar('temporada', {{ $temporada->id }})" class="text-fp-primary hover:underline">Editar</button>
-                            <button type="button" wire:click="eliminar('temporada', {{ $temporada->id }})" wire:confirm="¿Eliminar la temporada «{{ $temporada->nombre }}»? Esta acción no se puede deshacer." class="text-red-600 hover:underline">Eliminar</button>
+                            <button type="button" wire:click="pedirEliminarTemporada({{ $temporada->id }})" class="text-red-600 hover:underline">Eliminar</button>
                         </td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
+
+        @if ($temporadaPorEliminar)
+            <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-labelledby="titulo-eliminar-temporada">
+                <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                    <h2 id="titulo-eliminar-temporada" class="text-lg font-semibold text-slate-900">Eliminar temporada</h2>
+                    <p class="mt-2 text-sm text-slate-600">
+                        ¿Eliminar la temporada «{{ $temporadaPorEliminarNombre }}»? Esta acción no se puede deshacer.
+                    </p>
+                    <div class="mt-5 flex justify-end gap-2">
+                        <button type="button" wire:click="cancelarEliminarTemporada" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancelar</button>
+                        <button type="button" wire:click="confirmarEliminarTemporada" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">Eliminar</button>
+                    </div>
+                </div>
+            </div>
+        @endif
     @else
         <form wire:submit="guardarProducto" class="grid max-w-xl grid-cols-1 gap-3 rounded-2xl border bg-white p-4">
             <select wire:model="producto_marca_id" class="rounded-lg text-sm">

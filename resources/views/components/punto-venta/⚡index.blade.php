@@ -4,6 +4,7 @@ use App\Models\ClienteDirecto;
 use App\Models\Color;
 use App\Models\ProductoCampana;
 use App\Services\Catalogo\CatalogoVisible;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Models\StockLocal;
 use App\Models\Talla;
@@ -16,7 +17,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] class extends Component
+new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class extends Component
 {
     /** Tasa documentada en el Plan de Tareas. El modelo no tiene columna de tasa. */
     private const TASA_IVA = 0.16;
@@ -89,6 +90,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
             ->groupBy('producto_id');
 
         $precios = app(PrecioEfectivo::class)->precargar($publicaciones->flatten());
+        $fotos = app(ImagenDeProducto::class)->porProductoCampana($publicaciones->flatten()->pluck('id'));
 
         // tallas y colores son catálogos GLOBALES: no llevan distribuidora_id.
         $tallas = Talla::query()
@@ -104,7 +106,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
         $termino = mb_strtolower(trim($this->busqueda));
 
         return $existencias
-            ->flatMap(function ($existencia) use ($publicaciones, $tallas, $colores, $precios) {
+            ->flatMap(function ($existencia) use ($publicaciones, $tallas, $colores, $precios, $fotos) {
                 $variante = $existencia->variante;
                 $delProducto = $publicaciones->get($variante->producto_id, collect());
 
@@ -119,6 +121,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     'variante_id' => (int) $existencia->variante_id,
                     'producto_campana_id' => (int) $publicacion->id,
                     'sku' => (string) $variante->sku,
+                    'imagen' => $fotos[$publicacion->id] ?? '',
                     'codigo_catalogo' => (string) $publicacion->codigo_catalogo,
                     'nombre' => (string) ($variante->producto?->nombre ?? ''),
                     'talla' => $textoTalla,
@@ -277,6 +280,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
             'variante_id' => $fila['variante_id'],
             'producto_campana_id' => $fila['producto_campana_id'],
             'sku' => $fila['sku'],
+            'imagen' => $fila['imagen'],
             'nombre' => $fila['nombre'],
             'talla' => $fila['talla'],
             'color' => $fila['color'],
@@ -389,7 +393,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
 ?>
 
 <div>
-    <x-panel.encabezado titulo="Punto de Venta"
+    <x-panel.encabezado titulo="Venta local"
         subtitulo="Venta de contado con entrega inmediata. Solo se ofrece lo que hay en existencia." class="mb-6" />
 
     @if ($mensaje)
@@ -440,7 +444,12 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($this->disponibles as $fila)
                             <tr class="hover:bg-slate-50" wire:key="disp-{{ $fila['clave'] }}">
-                                <td class="px-4 py-3 font-mono text-xs">{{ $fila['sku'] }}</td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center gap-2">
+                                        <x-ui.miniatura :url="$fila['imagen'] ?: null" :alt="$fila['nombre'] !== '' ? $fila['nombre'] : 'Producto'" />
+                                        <span class="font-mono text-xs">{{ $fila['sku'] }}</span>
+                                    </div>
+                                </td>
                                 <td class="px-4 py-3">
                                     <div class="text-slate-900">{{ $fila['nombre'] !== '' ? $fila['nombre'] : '—' }}</div>
                                     <div class="text-xs text-slate-500">{{ $fila['codigo_catalogo'] }}</div>
@@ -491,6 +500,7 @@ new #[Layout('layouts.panel')] #[Title('Punto de Venta — FootwearPoint')] clas
                     @foreach ($lineas as $clave => $linea)
                         <div class="flex items-start gap-3 pb-3 border-b border-slate-100 last:border-0"
                              wire:key="linea-{{ $clave }}">
+                            <x-ui.miniatura :url="($linea['imagen'] ?? '') !== '' ? $linea['imagen'] : null" :alt="$linea['nombre'] !== '' ? $linea['nombre'] : 'Producto'" />
                             <div class="flex-1 min-w-0">
                                 <p class="font-mono text-xs text-slate-500">{{ $linea['sku'] }}</p>
                                 <p class="text-sm text-slate-900 truncate">

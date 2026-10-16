@@ -1,12 +1,10 @@
 <?php
 
 use App\Exceptions\OperacionInvalidaException;
-use App\Models\CategoriaDirectorio;
 use App\Models\Distribuidora;
 use App\Models\PlanSuscripcion;
 use App\Rules\SubdominioValido;
 use App\Services\Distribuidora\AprobacionDistribuidoraException;
-use App\Services\Directorio\AsignarCategoriasDirectorioAction;
 use App\Services\Distribuidora\ActualizarAdminDistribuidoraAction;
 use App\Services\Distribuidora\ActualizarDistribuidoraAction;
 use App\Services\Distribuidora\AprobarDistribuidoraAction;
@@ -72,9 +70,6 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     // Revisar los datos antes de aprobar o rechazar (TG-195)
     public ?int $distribuidoraDetalleId = null;
-
-    // Categorías del directorio de la distribuidora en "Ver datos" (TG-197)
-    public array $categoriasSeleccionadas = [];
 
     // Rechazar con motivo (TG-195)
     public ?int $distribuidoraRechazoId = null;
@@ -302,54 +297,11 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
         $this->distribuidoraDetalleId = $distribuidora->id;
         $this->mensaje = '';
-        $this->resetErrorBag('categoriasSeleccionadas');
-
-        // TG-197: se marcan las categorías activas que ya tiene.
-        $this->categoriasSeleccionadas = $distribuidora->categoriasDirectorio()
-            ->activas()
-            ->pluck('categorias_directorio.id')
-            ->map(fn ($id) => (string) $id)
-            ->all();
     }
 
     public function cerrarDatos(): void
     {
         $this->distribuidoraDetalleId = null;
-        $this->categoriasSeleccionadas = [];
-    }
-
-    /** TG-197: categorías activas que se pueden asignar, por nombre. */
-    public function getCategoriasDisponiblesProperty()
-    {
-        return CategoriaDirectorio::activas()->orderBy('nombre')->get(['id', 'nombre']);
-    }
-
-    /**
-     * TG-197 (G16) — Guarda en qué categorías del directorio aparece la
-     * distribuidora que se está viendo. Solo el admin general (E2-05).
-     */
-    public function guardarCategorias(): void
-    {
-        $this->mensaje = '';
-        $this->resetErrorBag('categoriasSeleccionadas');
-
-        if ($this->distribuidoraDetalleId === null) {
-            return;
-        }
-
-        try {
-            $distribuidora = Distribuidora::findOrFail($this->distribuidoraDetalleId);
-            app(AsignarCategoriasDirectorioAction::class)->ejecutar($distribuidora, $this->categoriasSeleccionadas);
-        } catch (ValidationException $e) {
-            $this->addError('categoriasSeleccionadas', collect($e->errors())->flatten()->first() ?? AsignarCategoriasDirectorioAction::MENSAJE_NO_DISPONIBLE);
-            return;
-        } catch (\Throwable $e) {
-            // TG-224 (G3): el detalle técnico va al log, nunca a la pantalla.
-            $this->addError('categoriasSeleccionadas', MensajeError::paraUsuario($e, 'No se pudieron guardar las categorías. Intenta de nuevo.'));
-            return;
-        }
-
-        $this->mensaje = "Categorías de «{$distribuidora->nombre_comercial}» guardadas.";
     }
 
     /** Datos del panel "Ver datos" (los mismos que da la API). */
@@ -952,44 +904,6 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     </div>
                 @endif
             </dl>
-
-            {{-- TG-197: categorías del directorio (solo el admin general las asigna) --}}
-            <div class="mt-5 border-t pt-4">
-                <h4 class="text-sm font-medium text-slate-800">Categorías del directorio</h4>
-                <p class="text-xs text-slate-500 mb-3">Con ellas la encuentran en el marketplace.</p>
-
-                @if ($this->categoriasDisponibles->isEmpty())
-                    <p class="text-sm text-slate-500">
-                        Aún no hay categorías activas.
-                        <a href="{{ route('admin.categorias-directorio') }}" class="text-fp-primary hover:underline">Créalas en Categorías del directorio</a>.
-                    </p>
-                @else
-                    <div class="flex flex-wrap gap-x-5 gap-y-2">
-                        @foreach ($this->categoriasDisponibles as $categoria)
-                            <label class="flex items-center gap-2 text-sm">
-                                <input type="checkbox" wire:model="categoriasSeleccionadas" value="{{ $categoria->id }}"
-                                    class="rounded">
-                                {{ $categoria->nombre }}
-                            </label>
-                        @endforeach
-                    </div>
-                    @error('categoriasSeleccionadas') <p class="text-xs text-fp-danger mt-2">{{ $message }}</p> @enderror
-                    <button type="button" wire:click="guardarCategorias" wire:loading.attr="disabled"
-                        class="mt-3 rounded-lg border border-slate-300 text-sm px-3 py-1.5 hover:bg-slate-50">
-                        Guardar categorías
-                    </button>
-                @endif
-
-                @php
-                    $inactivas = collect($detalle['categorias_directorio'])->where('activa', false);
-                @endphp
-                @if ($inactivas->isNotEmpty())
-                    <p class="text-xs text-slate-500 mt-2">
-                        También tiene categorías inactivas (no se muestran en el marketplace):
-                        {{ $inactivas->pluck('nombre')->join(', ') }}.
-                    </p>
-                @endif
-            </div>
 
             @if ($detalle['estado'] === 'pendiente')
                 <div class="mt-5 flex gap-2">

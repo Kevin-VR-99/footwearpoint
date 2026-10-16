@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\CicloCompra;
+use App\Models\Distribuidora;
 use App\Services\Auth\PermisoModuloService;
 use App\Services\Reporte\DemandaPorTemporadaMarcaAction;
+use App\Services\Reporte\EstadoDeCuentaAction;
 use App\Services\Reporte\MontosPendientesAction;
 use App\Services\Reporte\PedidosPorRevendedorAction;
 use App\Services\Reporte\ResumenOperativoAction;
@@ -45,6 +47,21 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         if (! app(PermisoModuloService::class)->puede(Auth::user(), PermisoModuloService::REPORTES_FINANCIEROS)) {
             abort(403, MensajeError::SIN_PERMISO);
         }
+    }
+
+    public function getDistribuidoraProperty(): Distribuidora
+    {
+        return Distribuidora::query()->findOrFail(Tenant::id());
+    }
+
+    public function getEstadoDeCuentaProperty(): array
+    {
+        return app(EstadoDeCuentaAction::class)->ejecutar(
+            $this->desde !== '' ? $this->desde : null,
+            $this->hasta !== '' ? $this->hasta : null,
+            $this->estado !== '' ? $this->estado : null,
+            $this->cicloId !== '' ? (int) $this->cicloId : null,
+        );
     }
 
     public function getCiclosProperty()
@@ -137,9 +154,65 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
 ?>
 
 <div>
-    <x-panel.encabezado titulo="Reportes" subtitulo="Resumen operativo de la distribuidora" class="mb-6" />
+    @php($casa = $this->distribuidora)
+    @php($cuenta = $this->estadoDeCuenta)
+    @php($periodo = match (true) {
+        $desde !== '' && $hasta !== '' => \Illuminate\Support\Carbon::parse($desde)->format('d/m/Y').' al '.\Illuminate\Support\Carbon::parse($hasta)->format('d/m/Y'),
+        $desde !== '' => 'Desde el '.\Illuminate\Support\Carbon::parse($desde)->format('d/m/Y'),
+        $hasta !== '' => 'Hasta el '.\Illuminate\Support\Carbon::parse($hasta)->format('d/m/Y'),
+        default => 'Todos los movimientos',
+    })
 
-    <div class="mb-6 flex flex-wrap gap-3 items-end">
+    <header id="estado-cuenta" class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="flex min-w-0 items-center gap-4">
+                @if ($casa->logotipo_url)
+                    <img src="{{ $casa->logotipo_url }}" alt="Logo de {{ $casa->nombre_comercial }}" class="h-16 w-16 rounded-xl border border-slate-200 object-contain bg-white">
+                @else
+                    <span class="flex h-16 w-16 items-center justify-center rounded-xl bg-fp-sidebar text-lg font-semibold text-white">{{ mb_strtoupper(mb_substr($casa->nombre_comercial, 0, 1)) }}</span>
+                @endif
+                <div class="min-w-0">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Estado de cuenta</p>
+                    <h1 class="truncate text-xl font-bold text-slate-900">{{ $casa->nombre_comercial }}</h1>
+                    <p class="text-sm text-slate-500">
+                        @if ($casa->rfc) RFC {{ $casa->rfc }} · @endif
+                        {{ $periodo }}
+                    </p>
+                </div>
+            </div>
+            <button type="button" onclick="window.print()" class="no-imprimir rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Imprimir
+            </button>
+        </div>
+        <dl class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div class="rounded-xl bg-fp-page px-3 py-2">
+                <dt class="text-xs text-slate-500">Saldo anterior</dt>
+                <dd class="text-lg font-semibold tabular-nums">${{ number_format($cuenta['saldo_anterior'], 2) }}</dd>
+            </div>
+            <div class="rounded-xl bg-fp-page px-3 py-2">
+                <dt class="text-xs text-slate-500">Abonos</dt>
+                <dd class="text-lg font-semibold tabular-nums">${{ number_format($cuenta['abonos'], 2) }}</dd>
+            </div>
+            <div class="rounded-xl bg-fp-page px-3 py-2">
+                <dt class="text-xs text-slate-500">Cargos</dt>
+                <dd class="text-lg font-semibold tabular-nums">${{ number_format($cuenta['cargos'], 2) }}</dd>
+            </div>
+            <div class="rounded-xl bg-fp-page px-3 py-2">
+                <dt class="text-xs text-slate-500">Saldo</dt>
+                <dd class="text-lg font-semibold tabular-nums">${{ number_format($cuenta['saldo'], 2) }}</dd>
+            </div>
+        </dl>
+    </header>
+
+    <nav class="no-imprimir mb-6 flex flex-wrap gap-2" aria-label="Secciones del reporte">
+        <a href="#estado-cuenta" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-fp-primary/40">Estado de cuenta</a>
+        <a href="#operacion" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-fp-primary/40">Operación</a>
+        <a href="#por-cobrar" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-fp-primary/40">Por cobrar</a>
+        <a href="#demanda" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-fp-primary/40">Demanda</a>
+        <a href="#movimientos" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-fp-primary/40">Detalle</a>
+    </nav>
+
+    <div class="no-imprimir mb-6 flex flex-wrap gap-3 items-end">
         <div>
             <label class="block text-xs text-slate-500 mb-1">Desde</label>
             <input type="date" wire:model.live="desde" class="rounded-lg text-sm" />
@@ -170,7 +243,37 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
+    <div class="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+        <table class="min-w-full text-sm">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <tr>
+                    <th class="px-4 py-2">Fecha</th>
+                    <th class="px-4 py-2">Concepto</th>
+                    <th class="px-4 py-2">Folio</th>
+                    <th class="px-4 py-2 text-right">Cargo</th>
+                    <th class="px-4 py-2 text-right">Abono</th>
+                    <th class="px-4 py-2 text-right">Saldo</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @forelse ($cuenta['movimientos'] as $movimiento)
+                    <tr>
+                        <td class="px-4 py-3 whitespace-nowrap">{{ $movimiento['fecha'] }}</td>
+                        <td class="px-4 py-3">{{ $movimiento['concepto'] }}</td>
+                        <td class="px-4 py-3 font-mono text-xs">{{ $movimiento['folio'] }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums">{{ $movimiento['cargo'] > 0 ? '$'.number_format($movimiento['cargo'], 2) : '—' }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums">{{ $movimiento['abono'] > 0 ? '$'.number_format($movimiento['abono'], 2) : '—' }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums font-medium">${{ number_format($movimiento['saldo'], 2) }}</td>
+                    </tr>
+                @empty
+                    <x-panel.vacio colspan="6" mensaje="No hay pagos aplicados en este periodo." />
+                @endforelse
+            </tbody>
+        </table>
+        <p class="px-4 py-3 text-xs text-slate-500">Los abonos son cobros a clientes. Los cargos son reembolsos y la suscripción de FootwearPoint. El saldo es lo cobrado menos lo pagado.</p>
+    </div>
+
+    <div id="operacion" class="solo-pantalla mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
         <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
             <p class="text-xs text-slate-500">Pedidos</p>
             <p class="text-2xl font-semibold">{{ $this->resumen['pedidos']['total'] }}</p>
@@ -194,7 +297,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="solo-pantalla rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">Pedidos por estado</div>
         <table class="min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
@@ -218,7 +321,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </table>
     </div>
 
-    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">Pedidos por ciclo</div>
         <table class="min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
@@ -243,7 +346,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     </div>
 
     {{-- TG-251 (E14-05): quiénes compran más. --}}
-    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div id="por-cobrar" class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         @php($mayoristas = $this->porClienteMayorista)
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Pedidos por cliente mayorista
@@ -295,7 +398,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
 
     {{-- TG-252 (E14-03): cuánto falta por cobrar y vales vigentes. --}}
     @php($pendientes = $this->montosPendientes)
-    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-4 py-3 font-medium text-slate-800">
             Montos pendientes
             <span class="block text-xs font-normal text-slate-500">
@@ -389,7 +492,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Vales vigentes
             <span class="text-xs font-normal text-slate-500">
@@ -427,7 +530,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
 
     {{-- TG-253 (E14-04): qué se pide más, para orientar compras a fábrica. --}}
     @php($demanda = $this->demanda)
-    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div id="demanda" class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-4 py-3 font-medium text-slate-800">
             Demanda por temporada y marca
             <span class="block text-xs font-normal text-slate-500">
@@ -508,7 +611,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div id="movimientos" class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Detalle de pedidos
             <span class="text-xs font-normal text-slate-500">(máx. 100 del periodo)</span>
@@ -570,9 +673,9 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div class="mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">
-            Detalle de ventas (punto de venta)
+            Detalle de ventas (venta local)
             <span class="text-xs font-normal text-slate-500">(máx. 100 del periodo)</span>
         </div>
         <div class="overflow-x-auto">

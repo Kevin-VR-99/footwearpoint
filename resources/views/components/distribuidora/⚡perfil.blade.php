@@ -7,10 +7,12 @@ use App\Services\Tienda\DominioTienda;
 use App\Services\Tienda\EnlaceTienda;
 use Illuminate\Validation\ValidationException;
 use App\Support\Tenant;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-new class extends Component {
+new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extends Component {
     use WithFileUploads;
 
     public string $nombre_comercial = '';
@@ -21,9 +23,6 @@ new class extends Component {
     public ?string $horario_publico = null;
     public $logotipo = null;
     public ?string $logotipo_url_actual = null;
-
-    /** TG-197 (G16): sus categorías del directorio, solo para ver (las asigna FootwearPoint). */
-    public array $categoriasDirectorio = [];
 
     /** TG-232 (E3-02): subdominio de su tienda y la dirección con la que se abre hoy. */
     public string $subdominio = '';
@@ -41,11 +40,6 @@ new class extends Component {
         $this->logotipo_url_actual = $distribuidora->logotipo_url;
         $this->subdominio = (string) $distribuidora->subdominio;
         $this->urlTienda = app(EnlaceTienda::class)->url($distribuidora);
-        $this->categoriasDirectorio = $distribuidora->categoriasDirectorio()
-            ->activas()
-            ->orderBy('nombre')
-            ->pluck('nombre')
-            ->all();
     }
 
     public function guardarPerfil(): void
@@ -102,7 +96,9 @@ new class extends Component {
 };
 ?>
 
-<div>
+<div class="mx-auto max-w-5xl">
+    <x-panel.encabezado eyebrow="Distribuidora" titulo="Perfil" nivel="h1"
+        subtitulo="Datos generales de tu distribuidora." class="mb-6" />
     <form wire:submit="guardarPerfil" x-data="{ subiendo: false }"
         x-on:livewire-upload-start="subiendo = true"
         x-on:livewire-upload-finish="subiendo = false"
@@ -148,19 +144,6 @@ new class extends Component {
             <p x-show="subiendo" x-cloak class="text-xs text-fp-text-muted mt-1">Subiendo logotipo…</p>
             @error('logotipo') <span class="block text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
             <p class="text-xs text-fp-text-muted mt-1">PNG o JPG, hasta 2MB.</p>
-        </div>
-        <div>
-            <span class="block text-sm font-medium text-slate-700 mb-1">Categorías del directorio</span>
-            @if ($categoriasDirectorio === [])
-                <p class="text-sm text-fp-text-muted">Todavía no tienes categorías en el directorio.</p>
-            @else
-                <div class="flex flex-wrap gap-1.5">
-                    @foreach ($categoriasDirectorio as $nombreCategoria)
-                        <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">{{ $nombreCategoria }}</span>
-                    @endforeach
-                </div>
-            @endif
-            <p class="text-xs text-fp-text-muted mt-1">Las asigna FootwearPoint. Si te falta alguna, comunícate con nosotros.</p>
         </div>
         <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled" wire:target="logotipo,guardarPerfil" x-bind:disabled="subiendo">Guardar Cambios</button>
     </form>

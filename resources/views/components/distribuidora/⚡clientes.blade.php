@@ -8,9 +8,11 @@ use App\Services\Distribuidora\ActivarCuentaAccesoAction;
 use App\Services\Distribuidora\GestionarClienteDirectoAction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new class extends Component {
+new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] class extends Component {
     // TG-192: aviso del envio del enlace de restablecimiento.
     public ?string $avisoEnlace = null;
     public bool $avisoEnlaceEsError = false;
@@ -251,7 +253,9 @@ new class extends Component {
 };
 ?>
 
-<div>
+<div class="mx-auto max-w-5xl space-y-6">
+    <x-panel.encabezado eyebrow="Distribuidora" titulo="Clientes directos" nivel="h1"
+        subtitulo="Personas que compran en mostrador o en la app." class="mb-6" />
     @if (! $mostrandoFormularioCliente)
         <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
             <div class="flex justify-between items-center mb-4">

@@ -2,8 +2,10 @@
 
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\ConfiguracionDistribuidora;
+use App\Models\DistribuidoraLinea;
 use App\Services\Catalogo\CatalogoParaConfigurarPrecios;
 use App\Services\Catalogo\PrecioEfectivo;
+use App\Services\Distribuidora\FijarDescuentoLineaAction;
 use App\Services\Distribuidora\FijarDescuentoMayoristaAction;
 use App\Services\Distribuidora\GestionarOfertaDistribuidoraAction;
 use App\Support\MensajeError;
@@ -33,6 +35,9 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
     public string $filtro = CatalogoParaConfigurarPrecios::FILTRO_TODOS;
     public string $descuento = '0';
 
+    /** @var array<int, string> porcentaje capturado por línea activa */
+    public array $descuentosLinea = [];
+
     /** @var array<int, string> precio propio capturado, por producto de temporada */
     public array $preciosPropios = [];
 
@@ -44,6 +49,21 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
         $this->descuento = (string) (float) (ConfiguracionDistribuidora::query()->value('descuento_mayorista_pct') ?? 0);
+        $this->cargarDescuentosDeLinea();
+    }
+
+    private function cargarDescuentosDeLinea(): void
+    {
+        $this->descuentosLinea = DistribuidoraLinea::query()
+            ->vigentes()
+            ->orderBy('linea_id')
+            ->get()
+            ->mapWithKeys(fn (DistribuidoraLinea $fila) => [
+                $fila->linea_id => $fila->descuento_mayorista_pct === null
+                    ? ''
+                    : (string) (float) $fila->descuento_mayorista_pct,
+            ])
+            ->all();
     }
 
     public function updatedBusqueda(): void
@@ -66,8 +86,33 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
             $config = app(FijarDescuentoMayoristaAction::class)->ejecutar((float) str_replace(',', '.', trim($this->descuento)));
             $this->descuento = (string) (float) $config->descuento_mayorista_pct;
 
-            return 'Descuento de mayoreo guardado.';
+            $this->cargarDescuentosDeLinea();
+
+            return 'Descuento general de mayoreo guardado.';
         }, 'No se pudo guardar el descuento.');
+    }
+
+    public function guardarDescuentoLinea(int $lineaId): void
+    {
+        $this->ejecutar(function () use ($lineaId) {
+            $texto = str_replace(',', '.', trim((string) ($this->descuentosLinea[$lineaId] ?? '')));
+
+            if ($texto === '') {
+                app(FijarDescuentoLineaAction::class)->ejecutar($lineaId, null);
+                $this->descuentosLinea[$lineaId] = '';
+
+                return 'Esta línea vuelve a usar el descuento general.';
+            }
+
+            if (! is_numeric($texto)) {
+                throw new OperacionInvalidaException('Escribe el descuento de la línea como un número, por ejemplo 15.', 422);
+            }
+
+            $fila = app(FijarDescuentoLineaAction::class)->ejecutar($lineaId, (float) $texto);
+            $this->descuentosLinea[$lineaId] = (string) (float) $fila->descuento_mayorista_pct;
+
+            return 'Descuento de la línea guardado.';
+        }, 'No se pudo guardar el descuento de la línea.');
     }
 
     public function guardarPrecio(int $productoCampanaId): void
@@ -92,7 +137,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
             app(GestionarOfertaDistribuidoraAction::class)->quitarPrecioMayorista($productoCampanaId);
             unset($this->preciosPropios[$productoCampanaId]);
 
-            return 'Listo: ese producto vuelve a usar tu descuento general.';
+            return 'Listo: ese producto vuelve a usar el descuento de su línea, o el general si la línea no tiene el suyo.';
         }, 'No se pudo quitar el precio.');
     }
 
@@ -136,6 +181,11 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
     {
         return app(PrecioEfectivo::class);
     }
+
+    public function getLineasActivasProperty()
+    {
+        return DistribuidoraLinea::query()->vigentes()->with('linea')->orderBy('linea_id')->get();
+    }
 }; ?>
 
 <div class="space-y-4">
@@ -156,8 +206,29 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
                 <input type="text" inputmode="decimal" wire:model="descuento" class="mt-1 w-32 rounded-lg text-sm">
             </label>
             <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Guardar descuento</button>
-            <p class="text-xs text-fp-text-muted">Se aplica al precio de catálogo de los productos que no tienen precio propio.</p>
+            <p class="text-xs text-fp-text-muted">Se usa en las líneas activas que todavía no tienen un descuento propio, y en los productos sin precio propio.</p>
         </form>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+        <h2 class="text-sm font-semibold text-slate-800">Descuento por línea activa</h2>
+        <p class="mt-1 text-xs text-fp-text-muted">Cada línea puede tener un porcentaje distinto. Si dejas el campo vacío y guardas, esa línea usa el descuento general.</p>
+        @if ($this->lineasActivas->isEmpty())
+            <p class="mt-3 text-sm text-slate-500">Todavía no tienes líneas activas.</p>
+        @else
+            <div class="mt-3 space-y-2">
+                @foreach ($this->lineasActivas as $fila)
+                    <form wire:submit="guardarDescuentoLinea({{ $fila->linea_id }})" wire:key="descuento-linea-{{ $fila->linea_id }}" class="flex flex-wrap items-end gap-3">
+                        <label class="text-sm">
+                            <span class="block font-medium text-slate-700">{{ $fila->linea?->nombre }} (%)</span>
+                            <input type="text" inputmode="decimal" wire:model="descuentosLinea.{{ $fila->linea_id }}"
+                                placeholder="General {{ $descuento }}%" class="mt-1 w-32 rounded-lg text-sm">
+                        </label>
+                        <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Guardar</button>
+                    </form>
+                @endforeach
+            </div>
+        @endif
     </div>
 
     <div class="flex flex-wrap gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">

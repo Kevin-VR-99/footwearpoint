@@ -122,7 +122,7 @@
 
 @if ($esPantalla)
     <div class="barra no-imprimir">
-        <a class="volver" href="{{ route('punto-venta.index') }}">&larr; Punto de venta</a>
+        <a class="volver" href="{{ route('punto-venta.index') }}">&larr; Venta local</a>
         <a class="volver" href="{{ route('reportes.index') }}">Reportes</a>
         <br>
 

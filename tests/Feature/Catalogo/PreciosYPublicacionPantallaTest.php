@@ -116,6 +116,28 @@ class PreciosYPublicacionPantallaTest extends TestCase
         $this->assertEqualsWithDelta(25, (float) ConfiguracionDistribuidora::query()->value('descuento_mayorista_pct'), 0.001);
     }
 
+    public function test_el_descuento_de_la_linea_se_guarda_aparte_y_el_vacio_vuelve_al_general(): void
+    {
+        $pc = $this->producto(1000, 'Bota de linea');
+        $lineaId = (int) $pc->campana->linea_id;
+
+        $this->pantalla()
+            ->set('descuento', '10')
+            ->call('guardarDescuento')
+            ->assertSet('errorMsg', '')
+            ->assertSet("descuentosLinea.$lineaId", '')
+            ->set('busqueda', 'Bota de linea')
+            ->assertSee('$900.00')
+            ->set("descuentosLinea.$lineaId", '40')
+            ->call('guardarDescuentoLinea', $lineaId)
+            ->assertSet('errorMsg', '')
+            ->assertSee('$600.00')
+            ->set("descuentosLinea.$lineaId", '')
+            ->call('guardarDescuentoLinea', $lineaId)
+            ->assertSet('mensaje', 'Esta línea vuelve a usar el descuento general.')
+            ->assertSee('$900.00');
+    }
+
     public function test_un_descuento_fuera_de_rango_muestra_un_mensaje_legible(): void
     {
         $this->pantalla()

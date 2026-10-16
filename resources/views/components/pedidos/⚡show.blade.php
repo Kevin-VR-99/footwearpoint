@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Pedido;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Cambio\PlazoCambio;
 use App\Services\Cambio\SolicitarCambioAction;
 use App\Services\Pedido\EntregaPedidoAction;
@@ -62,6 +63,14 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         return Pedido::query()
             ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle', 'pagos'])
             ->findOrFail($this->pedidoId);
+    }
+
+    /** @return array<int, string> producto_campana_id => url */
+    public function getFotosProperty(): array
+    {
+        return app(ImagenDeProducto::class)->porProductoCampana(
+            $this->pedido->detalle->pluck('producto_campana_id'),
+        );
     }
 
     public function getResumenProperty(): array
@@ -573,8 +582,15 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 @forelse ($this->pedido->detalle as $l)
                     <tr>
                         <td class="px-4 py-3">
-                            <div class="font-medium text-slate-900">{{ $l->producto_nombre }}</div>
-                            <div class="text-xs text-slate-500">{{ $l->modelo }}</div>
+                            <div class="flex items-center gap-3">
+                                <x-ui.miniatura
+                                    :url="$this->fotos[$l->producto_campana_id] ?? null"
+                                    :alt="$l->producto_nombre" />
+                                <div class="min-w-0">
+                                    <div class="font-medium text-slate-900">{{ $l->producto_nombre }}</div>
+                                    <div class="text-xs text-slate-500">{{ $l->modelo }}</div>
+                                </div>
+                            </div>
                         </td>
                         <td class="px-4 py-3">
                             {{ $l->talla }}

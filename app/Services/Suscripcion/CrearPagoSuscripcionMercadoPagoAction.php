@@ -210,6 +210,10 @@ class CrearPagoSuscripcionMercadoPagoAction
             ->where('tipo', 'suscripcion')
             ->where('metodo', 'mercado_pago')
             ->where('estado', 'pendiente')
+            ->where(function ($consulta) {
+                $consulta->whereNull('referencia')
+                    ->orWhere('referencia', '!=', Pago::REFERENCIA_LINEA_EXTRA);
+            })
             ->orderByDesc('id')
             ->get();
 

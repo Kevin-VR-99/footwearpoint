@@ -6,11 +6,8 @@ use Livewire\Component;
 
 new #[Layout('layouts.panel')] class extends Component {
     public const PESTANAS = [
-        'perfil' => 'Datos generales',
         'general' => 'Anticipos y plazos',
         'ciclos' => 'Ciclos de compra',
-        'usuarios' => 'Usuarios',
-        'clientes' => 'Clientes directos',
         'mercado-pago' => 'Mercado Pago',
         // TG-230 (G11): pago de la mensualidad con Mercado Pago.
         'suscripcion' => 'Suscripción',
@@ -18,13 +15,25 @@ new #[Layout('layouts.panel')] class extends Component {
 
     // TG-225 (G6): ?pestana=mercado-pago abre esa pestaña directo (el
     // regreso de Mercado Pago llega así).
-    #[Url(as: 'pestana', except: 'perfil')]
-    public string $pestanaActiva = 'perfil';
+    #[Url(as: 'pestana', except: 'general')]
+    public string $pestanaActiva = 'general';
 
     public function mount(): void
     {
+        $paginas = [
+            'perfil' => 'distribuidora.perfil',
+            'usuarios' => 'distribuidora.empleados',
+            'clientes' => 'distribuidora.clientes-directos',
+        ];
+
+        if (isset($paginas[$this->pestanaActiva])) {
+            $this->redirect(route($paginas[$this->pestanaActiva]), navigate: true);
+
+            return;
+        }
+
         if (! array_key_exists($this->pestanaActiva, self::PESTANAS)) {
-            $this->pestanaActiva = 'perfil';
+            $this->pestanaActiva = 'general';
         }
     }
 };
@@ -33,7 +42,7 @@ new #[Layout('layouts.panel')] class extends Component {
 <div class="mx-auto max-w-5xl">
     {{-- Encabezado minimalista --}}
     <x-panel.encabezado eyebrow="Administración" titulo="Configuración" nivel="h1"
-        subtitulo="Datos, reglas y usuarios de tu distribuidora." class="mb-6">
+        subtitulo="Anticipos, ciclos, Mercado Pago y suscripción." class="mb-6">
         <x-slot:acciones>
         <span class="inline-flex items-center gap-1.5 self-start rounded-full border border-fp-danger/20 bg-fp-danger-soft px-2.5 py-1 text-[11px] font-medium text-fp-danger">
             <span class="h-1.5 w-1.5 rounded-full bg-fp-danger"></span>
@@ -70,16 +79,10 @@ new #[Layout('layouts.panel')] class extends Component {
     </div>
 
     <div class="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-6">
-        @if ($pestanaActiva === 'perfil')
-            <livewire:distribuidora.perfil :key="'config-perfil'" />
-        @elseif ($pestanaActiva === 'general')
+        @if ($pestanaActiva === 'general')
             <livewire:distribuidora.general :key="'config-general'" />
         @elseif ($pestanaActiva === 'ciclos')
             <livewire:distribuidora.ciclos :key="'config-ciclos'" />
-        @elseif ($pestanaActiva === 'usuarios')
-            <livewire:distribuidora.usuarios :key="'config-usuarios'" />
-        @elseif ($pestanaActiva === 'clientes')
-            <livewire:distribuidora.clientes :key="'config-clientes'" />
         @elseif ($pestanaActiva === 'mercado-pago')
             <livewire:distribuidora.mercado-pago :key="'config-mercado-pago'" />
         @elseif ($pestanaActiva === 'suscripcion')

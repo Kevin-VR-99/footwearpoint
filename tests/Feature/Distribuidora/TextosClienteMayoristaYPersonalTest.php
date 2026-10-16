@@ -43,7 +43,7 @@ class TextosClienteMayoristaYPersonalTest extends TestCase
 
     public function test_usuarios_dice_clientes_mayoristas(): void
     {
-        Livewire::test('distribuidora.usuarios')
+        Livewire::test('distribuidora.usuarios', ['seccion' => 'mayoristas'])
             ->assertSee('Clientes mayoristas')
             ->assertSee('+ Afiliar cliente mayorista')
             ->assertDontSee('Afiliar revendedor');
@@ -122,7 +122,7 @@ class TextosClienteMayoristaYPersonalTest extends TestCase
 
     public function test_formulario_de_cliente_mayorista_sin_revendedor(): void
     {
-        Livewire::test('distribuidora.usuarios')
+        Livewire::test('distribuidora.usuarios', ['seccion' => 'mayoristas'])
             ->call('abrirFormularioAfiliarRevendedor')
             ->assertSee('Afiliar nuevo cliente mayorista')
             ->set('revendedor_nombre', 'Laura Méndez')

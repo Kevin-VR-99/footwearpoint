@@ -3,6 +3,7 @@
 namespace App\Services\Catalogo;
 
 use App\Models\ConfiguracionDistribuidora;
+use App\Models\DistribuidoraLinea;
 use App\Models\OfertaDistribuidora;
 use App\Models\ProductoCampana;
 
@@ -19,7 +20,8 @@ use App\Models\ProductoCampana;
  *     distribuidoras y ninguna lo cambia. Lo paga el cliente directo.
  *   - MAYOREO: lo paga el cliente mayorista (el revendedor). Si la
  *     distribuidora le puso precio propio a ese producto, ese; si no, el de
- *     menudeo menos su descuento general.
+ *     menudeo menos el descuento de esa línea. Si la línea no tiene el suyo,
+ *     se usa el descuento general.
  */
 class PrecioEfectivo
 {
@@ -27,6 +29,9 @@ class PrecioEfectivo
     private array $preciosPropios = [];
 
     private ?float $descuento = null;
+
+    /** @var array<int, float|null>|null porcentaje por línea activa; null en el valor = usa el general */
+    private ?array $descuentosPorLinea = null;
 
     public function menudeo(ProductoCampana $productoCampana): float
     {
@@ -41,7 +46,7 @@ class PrecioEfectivo
             return round($propio, 2);
         }
 
-        return $this->conDescuento($this->menudeo($productoCampana));
+        return $this->conDescuento($this->menudeo($productoCampana), $this->lineaId($productoCampana));
     }
 
     /** @return array{menudeo: float, mayoreo: float} */
@@ -106,11 +111,43 @@ class PrecioEfectivo
     {
         $this->preciosPropios = [];
         $this->descuento = null;
+        $this->descuentosPorLinea = null;
     }
 
-    private function conDescuento(float $precio): float
+    /** El porcentaje que aplica a esa línea, o el general si no tiene el suyo. */
+    public function descuentoParaLinea(?int $lineaId): float
     {
-        return round($precio * (1 - ($this->descuentoMayorista() / 100)), 2);
+        if ($lineaId !== null && array_key_exists($lineaId, $this->descuentosPorLinea()) && $this->descuentosPorLinea()[$lineaId] !== null) {
+            return max(0.0, min(99.99, (float) $this->descuentosPorLinea()[$lineaId]));
+        }
+
+        return $this->descuentoMayorista();
+    }
+
+    private function conDescuento(float $precio, ?int $lineaId = null): float
+    {
+        return round($precio * (1 - ($this->descuentoParaLinea($lineaId) / 100)), 2);
+    }
+
+    private function lineaId(ProductoCampana $productoCampana): ?int
+    {
+        $lineaId = $productoCampana->campana?->linea_id;
+
+        return $lineaId === null ? null : (int) $lineaId;
+    }
+
+    /** @return array<int, float|null> */
+    private function descuentosPorLinea(): array
+    {
+        if ($this->descuentosPorLinea === null) {
+            $this->descuentosPorLinea = DistribuidoraLinea::query()
+                ->vigentes()
+                ->pluck('descuento_mayorista_pct', 'linea_id')
+                ->map(fn ($valor) => $valor === null ? null : (float) $valor)
+                ->all();
+        }
+
+        return $this->descuentosPorLinea;
     }
 
     private function precioPropio(int $productoCampanaId): ?float

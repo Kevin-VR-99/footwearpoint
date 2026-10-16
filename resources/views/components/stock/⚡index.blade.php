@@ -2,6 +2,7 @@
 
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\Variante;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Stock\StockService;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
@@ -56,6 +57,14 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         } catch (OperacionInvalidaException $e) {
             return collect();
         }
+    }
+
+    /** @return array<int, string> producto_id => url */
+    public function getFotosProperty(): array
+    {
+        return app(ImagenDeProducto::class)->porProducto(
+            $this->existencias->map(fn ($existencia) => $existencia->variante?->producto_id),
+        );
     }
 
     public function getVariantesProperty()
@@ -268,8 +277,13 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($this->existencias as $existencia)
                         <tr class="hover:bg-slate-50">
-                            <td class="px-4 py-3 font-mono text-xs">
-                                {{ $existencia->variante?->sku ?? '—' }}
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-2">
+                                    <x-ui.miniatura
+                                        :url="$this->fotos[$existencia->variante?->producto_id] ?? null"
+                                        :alt="$existencia->variante?->producto?->nombre ?? 'Producto'" />
+                                    <span class="font-mono text-xs">{{ $existencia->variante?->sku ?? '—' }}</span>
+                                </div>
                             </td>
                             <td class="px-4 py-3 text-slate-700">
                                 {{ $existencia->variante?->producto?->nombre ?? '—' }}

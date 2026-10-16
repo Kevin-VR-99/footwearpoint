@@ -55,6 +55,9 @@ class Pago extends Model
         'suscripcion' => 'Suscripción',
     ];
 
+    /** Cobro inmediato de una línea extra. No alarga el periodo ya pagado. */
+    public const REFERENCIA_LINEA_EXTRA = 'linea-extra';
+
     /** TG-263: nombre que ve el usuario para cada método de pago. */
     public const ETIQUETAS_METODO = [
         'efectivo' => 'Efectivo',

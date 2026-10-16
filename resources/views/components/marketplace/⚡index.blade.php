@@ -32,36 +32,34 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
 ?>
 
 <div>
-    <section class="relative mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-fp-sidebar via-fp-sidebar to-fp-accent px-6 py-8 text-white shadow-xl shadow-fp-sidebar/20 sm:px-8 sm:py-10">
-        <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-fp-primary via-white/40 to-fp-danger"></div>
-        <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-white/50">Marketplace</p>
-        <h2 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Distribuidoras</h2>
-        <p class="mt-2 max-w-xl text-sm text-white/70">
-            Encuentra distribuidoras de calzado afiliadas a FootwearPoint.
-        </p>
-        <p class="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-white/80 ring-1 ring-white/15">
-            <span class="h-1.5 w-1.5 rounded-full bg-fp-primary"></span>
-            {{ $distribuidoras->count() }} {{ $distribuidoras->count() === 1 ? 'distribuidora' : 'distribuidoras' }}
-        </p>
-        <a href="{{ route('inicio') }}"
-            class="mt-5 inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-fp-sidebar transition hover:bg-fp-page">
+    <div class="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <h2 class="text-xl font-bold tracking-tight text-slate-900">Distribuidoras</h2>
+            <p class="text-sm text-slate-500">
+                {{ $distribuidoras->count() }} {{ $distribuidoras->count() === 1 ? 'distribuidora' : 'distribuidoras' }}
+            </p>
+        </div>
+        <a href="{{ route('inicio') }}" class="text-sm font-medium text-fp-primary hover:underline">
             Volver al inicio
         </a>
-    </section>
+    </div>
 
-    <form class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2" role="search">
+    {{-- La barra pública mide 4.125rem (franja + fila del logo). El buscador se queda debajo al hacer scroll. --}}
+    <form class="sticky top-[4.125rem] z-20 -mx-4 mb-6 grid grid-cols-1 gap-3 border-b border-slate-200/80 bg-fp-page/95 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-fp-page/80 sm:-mx-5 sm:grid-cols-2 sm:px-5"
+        role="search">
         <div>
-            <label for="buscar-nombre" class="mb-1 block text-sm font-medium text-slate-700">Buscar por nombre</label>
-            <input id="buscar-nombre" type="search" wire:model.live.debounce.300ms="q"
-                placeholder="Nombre de la distribuidora"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+            <p id="etiqueta-buscar-nombre" class="mb-1 text-sm font-medium text-slate-700">Buscar por nombre</p>
+            <x-ui.buscador id="buscar-nombre" wire:model.live.debounce.300ms="q"
+                placeholder="Nombre de la distribuidora" etiqueta="Buscar por nombre" class="w-full"
+                aria-labelledby="etiqueta-buscar-nombre" />
         </div>
         <div>
-            <label for="buscar-lugar" class="mb-1 block text-sm font-medium text-slate-700">Buscar por lugar</label>
-            <input id="buscar-lugar" type="search" wire:model.live.debounce.300ms="lugar"
-                placeholder="Ciudad, colonia o dirección"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+            <p id="etiqueta-buscar-lugar" class="mb-1 text-sm font-medium text-slate-700">Buscar por lugar</p>
+            <x-ui.buscador id="buscar-lugar" wire:model.live.debounce.300ms="lugar"
+                placeholder="Ciudad, colonia o dirección" etiqueta="Buscar por lugar" class="w-full"
+                aria-labelledby="etiqueta-buscar-lugar" />
         </div>
+        <p wire:loading.delay.shortest class="text-sm font-medium text-slate-500 sm:col-span-2" aria-live="polite">Buscando…</p>
     </form>
 
     @if ($distribuidoras->isEmpty() && $buscando)

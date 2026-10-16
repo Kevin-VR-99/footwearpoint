@@ -101,6 +101,8 @@ class MarketplaceDirectorioTest extends TestCase
             ->assertSee('Buscar por nombre')
             ->assertSee('Buscar por lugar')
             ->assertSee('Volver al inicio')
+            ->assertSee('sticky top-[4.125rem]', false)
+            ->assertSee('Buscando…')
             ->assertDontSee('Filtrar por categoría')
             ->assertDontSee('Caballero')
             ->assertDontSee('Casual');
@@ -161,47 +163,28 @@ class MarketplaceDirectorioTest extends TestCase
     // API pública
     // ---------------------------------------------------------------
 
-    public function test_api_marketplace_trae_categorias_y_filtra(): void
+    public function test_api_marketplace_ya_no_filtra_por_categoria(): void
     {
         $this->otra('Zapatería Norte', ['Infantil']);
-        $this->categoria('Casual')->update(['activa' => false]);
 
         $this->getJson('/api/marketplace')
             ->assertOk()
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('data.0.nombre_comercial', 'Calzados Ramírez')
-            ->assertJsonPath('data.0.categorias', [
-                ['id' => $this->categoria('Caballero')->id, 'nombre' => 'Caballero'],
-                ['id' => $this->categoria('Dama')->id, 'nombre' => 'Dama'],
-            ]);
+            ->assertJsonPath('data.0.categorias', []);
 
-        $this->getJson('/api/marketplace?categoria=' . $this->categoria('Infantil')->id)
+        $this->getJson('/api/marketplace?categoria='.$this->categoria('Infantil')->id)
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.nombre_comercial', 'Zapatería Norte');
-
-        $this->getJson('/api/marketplace?categoria=' . $this->categoria('Casual')->id)
-            ->assertOk()
-            ->assertJsonCount(0, 'data');
-
-        $this->getJson('/api/marketplace?categoria=abc')
-            ->assertStatus(422)
-            ->assertJsonPath('errors.categoria.0', 'La categoría no es válida.');
+            ->assertJsonCount(2, 'data');
     }
 
-    public function test_api_categorias_del_directorio(): void
+    public function test_api_categorias_del_directorio_responde_vacio(): void
     {
         $this->otra('Zapatería Norte', ['Infantil', 'Dama']);
-        $this->otra('Zapatería Oculta', ['Escolar'], 'activa', false);
 
         $this->getJson('/api/marketplace/categorias')
             ->assertOk()
-            ->assertExactJson(['data' => [
-                ['id' => $this->categoria('Caballero')->id, 'nombre' => 'Caballero', 'total_distribuidoras' => 1],
-                ['id' => $this->categoria('Casual')->id, 'nombre' => 'Casual', 'total_distribuidoras' => 1],
-                ['id' => $this->categoria('Dama')->id, 'nombre' => 'Dama', 'total_distribuidoras' => 2],
-                ['id' => $this->categoria('Infantil')->id, 'nombre' => 'Infantil', 'total_distribuidoras' => 1],
-            ]]);
+            ->assertExactJson(['data' => []]);
     }
 
     // ---------------------------------------------------------------

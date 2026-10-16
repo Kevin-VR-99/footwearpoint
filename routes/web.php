@@ -276,9 +276,8 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_general'])->group(function
     Route::livewire('/admin/auditoria', 'admin.auditoria')
         ->name('admin.auditoria');
 
-    // TG-197 (G16): categorías generales del directorio público.
-    Route::livewire('/admin/categorias-directorio', 'admin.categorias-directorio-index')
-        ->name('admin.categorias-directorio');
+    // Las categorías del directorio ya no se usan. La dirección vieja regresa al inicio del admin.
+    Route::redirect('/admin/categorias-directorio', '/admin')->name('admin.categorias-directorio');
 
     // TG-237 (A7): subir el catálogo de la fábrica para que lo lea la IA.
     Route::livewire('/admin/catalogos', 'admin.catalogos-importaciones')

@@ -114,6 +114,17 @@ class PreciosDeLaDistribuidoraTest extends TestCase
     // Mayoreo con el descuento general
     // ------------------------------------------------------------------
 
+    public function test_el_descuento_de_la_linea_le_gana_al_general(): void
+    {
+        $this->conDescuentoDe(10);
+        $producto = $this->productoDelCatalogo(precioPublico: 1000);
+        $lineaId = (int) $producto->campana->linea_id;
+
+        app(\App\Services\Distribuidora\FijarDescuentoLineaAction::class)->ejecutar($lineaId, 40);
+
+        $this->assertEqualsWithDelta(600.00, $this->precios()->mayoreo($producto), 0.001);
+    }
+
     public function test_el_mayoreo_sale_del_descuento_general(): void
     {
         $this->conDescuentoDe(30);
