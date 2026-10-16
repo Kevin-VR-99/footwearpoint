@@ -5,6 +5,7 @@ namespace App\Services\Distribuidora;
 use App\Models\ClienteDirecto;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Usuario;
+use App\Services\Correo\IntentarEnviarCorreoAction;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -95,7 +96,18 @@ class ActivarCuentaAccesoAction
             // TG-189 (A11): el correo para confirmar que la cuenta es suya.
             // Va despues de la transaccion (afterCommit) para no mandarlo si
             // algo falla y la cuenta termina no existiendo.
-            DB::afterCommit(fn () => $usuario->sendEmailVerificationNotification());
+            //
+            // Y justo por eso el envio no puede tumbar la pantalla: cuando
+            // esto corre, la cuenta YA esta guardada. Si el correo falla y se
+            // deja subir la excepcion, el panel muestra "Algo salio mal" por
+            // una cuenta que si se creo, y quien afilio no sabe que paso. El
+            // fallo queda en el log y el personal puede reintentar con
+            // "Reenviar confirmacion".
+            DB::afterCommit(fn () => app(IntentarEnviarCorreoAction::class)->ejecutar(
+                fn () => $usuario->sendEmailVerificationNotification(),
+                'confirmacion de correo',
+                ['usuario_id' => $usuario->id, 'email' => $usuario->email],
+            ));
 
             return $usuario;
         });

@@ -45,7 +45,13 @@ return [
             'port' => env('MAIL_PORT', 2525),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
-            'timeout' => null,
+            // Segundos que se espera a que el servidor de correo conteste.
+            // Sin esto PHP usa default_socket_timeout (60 s por omision): si
+            // la conexion se cuelga, la peticion se queda esperando un minuto
+            // y el servidor la puede cortar antes de que Laravel alcance a
+            // escribir en el log por que fallo. Con un valor corto, el fallo
+            // se escribe. Laravel solo lo aplica si la clave no es null.
+            'timeout' => env('MAIL_TIMEOUT') !== null ? (float) env('MAIL_TIMEOUT') : null,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
