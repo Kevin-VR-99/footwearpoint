@@ -48,7 +48,7 @@ class EnviarEnlaceRestablecerPanelAction
             function () use ($cuenta, &$estado) {
                 $estado = Password::broker('users')->sendResetLink(['email' => $cuenta->email]);
             },
-            'restablecer contrasena',
+            'restablecimiento de contrasena',
             ['usuario_id' => $cuenta->id, 'email' => $cuenta->email],
         );
 
