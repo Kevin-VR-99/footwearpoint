@@ -154,7 +154,7 @@ new class extends Component {
 
         $fallo = app(IntentarEnviarCorreoAction::class)->ejecutar(
             fn () => $cuenta->sendEmailVerificationNotification(),
-            'confirmacion de correo',
+            'confirmacion',
             ['usuario_id' => $cuenta->id, 'email' => $cuenta->email, 'tipo' => 'cliente directo'],
         );
 

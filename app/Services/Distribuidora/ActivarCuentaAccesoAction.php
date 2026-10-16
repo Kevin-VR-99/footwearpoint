@@ -105,7 +105,7 @@ class ActivarCuentaAccesoAction
             // "Reenviar confirmacion".
             DB::afterCommit(fn () => app(IntentarEnviarCorreoAction::class)->ejecutar(
                 fn () => $usuario->sendEmailVerificationNotification(),
-                'confirmacion de correo',
+                'confirmacion',
                 ['usuario_id' => $usuario->id, 'email' => $usuario->email],
             ));
 
