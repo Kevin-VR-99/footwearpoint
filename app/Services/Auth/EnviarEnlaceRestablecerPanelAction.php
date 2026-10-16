@@ -4,6 +4,7 @@ namespace App\Services\Auth;
 
 use App\Models\Usuario;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
+use App\Services\Correo\IntentarEnviarCorreoAction;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -37,7 +38,23 @@ class EnviarEnlaceRestablecerPanelAction
      */
     public function ejecutar(Usuario $cuenta, string $entidadTipo, int $entidadId): string
     {
-        $estado = Password::broker('users')->sendResetLink(['email' => $cuenta->email]);
+        // Si el proveedor de correo falla, sendResetLink lanza y la pantalla
+        // se cae con un "Algo salio mal". Para quien esta en el mostrador eso
+        // no dice nada: aqui se convierte en un aviso que si se entiende, y el
+        // error de verdad queda en el log.
+        $estado = null;
+
+        $falloElEnvio = app(IntentarEnviarCorreoAction::class)->ejecutar(
+            function () use ($cuenta, &$estado) {
+                $estado = Password::broker('users')->sendResetLink(['email' => $cuenta->email]);
+            },
+            'restablecer contrasena',
+            ['usuario_id' => $cuenta->id, 'email' => $cuenta->email],
+        );
+
+        if ($falloElEnvio !== null) {
+            throw ValidationException::withMessages(['enlace' => [$falloElEnvio]]);
+        }
 
         if ($estado === Password::RESET_THROTTLED) {
             throw ValidationException::withMessages([

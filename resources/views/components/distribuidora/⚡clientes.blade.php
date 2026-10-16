@@ -2,6 +2,7 @@
 
 use App\Models\ClienteDirecto;
 use App\Services\Auth\EnviarEnlaceRestablecerPanelAction;
+use App\Services\Correo\IntentarEnviarCorreoAction;
 use App\Services\Auth\GenerarPasswordTemporalAction;
 use App\Services\Distribuidora\ActivarCuentaAccesoAction;
 use App\Services\Distribuidora\GestionarClienteDirectoAction;
@@ -151,7 +152,18 @@ new class extends Component {
             return;
         }
 
-        $cuenta->sendEmailVerificationNotification();
+        $fallo = app(IntentarEnviarCorreoAction::class)->ejecutar(
+            fn () => $cuenta->sendEmailVerificationNotification(),
+            'confirmacion de correo',
+            ['usuario_id' => $cuenta->id, 'email' => $cuenta->email, 'tipo' => 'cliente directo'],
+        );
+
+        if ($fallo !== null) {
+            $this->avisoEnlace = $fallo;
+            $this->avisoEnlaceEsError = true;
+
+            return;
+        }
 
         $this->avisoEnlace = 'Le reenviamos el enlace de confirmacion a '.$cuenta->email.'.';
         $this->avisoEnlaceEsError = false;
