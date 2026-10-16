@@ -46,13 +46,20 @@ class VerificarPagoSuscripcionMercadoPagoAction
      *
      * @throws MercadoPagoException si no hay nada que verificar o MP no responde.
      */
-    public function ejecutar(int $distribuidoraId, ?string $pagoMpId = null, string $origen = 'panel'): string
+    public function ejecutar(int $distribuidoraId, ?string $pagoMpId = null, string $origen = 'panel', bool $lineaExtra = false): string
     {
         $pendiente = Tenant::forzar($distribuidoraId, fn () => Pago::query()
             ->where('tipo', 'suscripcion')
             ->where('metodo', 'mercado_pago')
             ->where('estado', 'pendiente')
             ->whereNotNull('preferencia_externa')
+            ->when(
+                $lineaExtra,
+                fn ($consulta) => $consulta->where('referencia', Pago::REFERENCIA_LINEA_EXTRA),
+                fn ($consulta) => $consulta->where(function ($filtro) {
+                    $filtro->whereNull('referencia')->orWhere('referencia', '!=', Pago::REFERENCIA_LINEA_EXTRA);
+                }),
+            )
             ->latest('id')
             ->first());
 

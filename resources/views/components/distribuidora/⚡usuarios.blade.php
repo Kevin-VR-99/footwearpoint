@@ -13,10 +13,14 @@ use Database\Seeders\RolesPermissionsSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 use Spatie\Permission\PermissionRegistrar;
 
-new class extends Component {
+new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class extends Component {
+    /** empleados o mayoristas. Lo decide la ruta. */
+    public string $seccion = 'empleados';
     public $empleados = [];
     public array $permisosEmpleado = [];
     public bool $mostrandoFormularioEmpleado = false;
@@ -45,6 +49,10 @@ new class extends Component {
 
     public function mount(): void
     {
+        if (request()->routeIs('distribuidora.mayoristas')) {
+            $this->seccion = 'mayoristas';
+        }
+
         $this->cargarEmpleados();
         $this->cargarRevendedores();
     }
@@ -367,8 +375,17 @@ new class extends Component {
 };
 ?>
 
-<div class="space-y-6">
+<div class="mx-auto max-w-5xl space-y-6">
+    @if ($seccion === 'empleados')
+        <x-panel.encabezado eyebrow="Distribuidora" titulo="Empleados" nivel="h1"
+            subtitulo="Personal que entra al panel de tu distribuidora." class="mb-6" />
+    @else
+        <x-panel.encabezado eyebrow="Distribuidora" titulo="Clientes mayoristas" nivel="h1"
+            subtitulo="Revendedores afiliados a tu distribuidora." class="mb-6" />
+    @endif
+
     {{-- Empleados: listado o formulario inline --}}
+    @if ($seccion === 'empleados')
     <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioEmpleado)
             <div class="flex justify-between items-center mb-4">
@@ -463,8 +480,10 @@ new class extends Component {
             </form>
         @endif
     </div>
+    @endif
 
     {{-- Revendedores --}}
+    @if ($seccion === 'mayoristas')
     <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioRevendedor)
             <div class="flex justify-between items-center mb-4">
@@ -619,4 +638,5 @@ new class extends Component {
             </form>
         @endif
     </div>
+    @endif
 </div>

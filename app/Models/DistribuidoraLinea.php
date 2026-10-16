@@ -21,12 +21,14 @@ class DistribuidoraLinea extends Model
         'distribuidora_id',
         'linea_id',
         'es_extra',
+        'descuento_mayorista_pct',
         'activa',
         'fecha_activacion',
     ];
 
     protected $casts = [
         'es_extra' => 'boolean',
+        'descuento_mayorista_pct' => 'decimal:2',
         'activa' => 'boolean',
         'fecha_activacion' => 'datetime',
     ];

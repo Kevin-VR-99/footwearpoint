@@ -48,8 +48,6 @@
                     icono="M3 7h18v10H3zM3 11h18">Planes</x-panel.enlace-lateral>
                 <x-panel.enlace-lateral :href="route('admin.catalogo')" :activo="request()->routeIs('admin.catalogo')"
                     icono="M4 6h16M4 12h16M4 18h10">Catálogo maestro</x-panel.enlace-lateral>
-                <x-panel.enlace-lateral :href="route('admin.categorias-directorio')" :activo="request()->routeIs('admin.categorias-directorio')"
-                    icono="M7 7h.01M3 12l9-9h7a2 2 0 012 2v7l-9 9-9-9z">Categorías del directorio</x-panel.enlace-lateral>
                 <x-panel.enlace-lateral :href="route('admin.catalogos')" :activo="request()->routeIs('admin.catalogos')"
                     icono="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16">Catálogos para importar</x-panel.enlace-lateral>
             </nav>

@@ -136,6 +136,10 @@ class AplicarPagoSuscripcionMercadoPagoAction
             'lineas_extra_contratadas' => (int) $suscripcion->lineas_extra_contratadas,
         ];
 
+        if ($actual->referencia === Pago::REFERENCIA_LINEA_EXTRA) {
+            return $this->aplicarLineaExtra($actual, $suscripcion, $estadoAnterior, $pagoMp);
+        }
+
         $renovada = in_array($suscripcion->estado, CrearPagoSuscripcionMercadoPagoAction::ESTADOS_PAGABLES, true);
 
         if ($renovada) {
@@ -171,6 +175,39 @@ class AplicarPagoSuscripcionMercadoPagoAction
         }
 
         return [self::APLICADO, $actual->fresh(), $suscripcion, $renovada];
+    }
+
+    /**
+     * La línea extra se cobra hoy y se suma al cupo. El periodo ya pagado
+     * no se mueve: entra en la siguiente mensualidad.
+     *
+     * @return array{0: string, 1: Pago, 2: Suscripcion, 3: bool}
+     */
+    private function aplicarLineaExtra(Pago $actual, Suscripcion $suscripcion, string $estadoAnterior, array $pagoMp): array
+    {
+        $antes = (int) $suscripcion->lineas_extra_contratadas;
+        $suscripcion->increment('lineas_extra_contratadas');
+        $suscripcion->refresh();
+
+        $this->auditoria->ejecutar('pago.mercado_pago.aplicado', 'pago', $actual->id, ['estado' => $estadoAnterior], [
+            'estado' => 'aplicado',
+            'suscripcion_id' => $suscripcion->id,
+            'folio' => $actual->folio,
+            'tipo' => 'linea_extra',
+            'monto' => (float) $actual->monto,
+            'pago_mercado_pago' => (string) $pagoMp['id'],
+        ]);
+
+        $this->auditoria->ejecutar('linea_extra.contratada', 'suscripcion', $suscripcion->id,
+            ['lineas_extra_contratadas' => $antes],
+            [
+                'lineas_extra_contratadas' => (int) $suscripcion->lineas_extra_contratadas,
+                'fecha_fin' => $suscripcion->fecha_fin?->toDateString(),
+                'pago_id' => $actual->id,
+            ]
+        );
+
+        return [self::APLICADO, $actual->fresh(), $suscripcion, false];
     }
 
     private function fechaAprobacion(array $pagoMp): Carbon

@@ -15,15 +15,21 @@
         [x-cloak] {
             display: none !important
         }
+
+        @media print {
+            aside, header, .no-imprimir, .solo-pantalla { display: none !important; }
+            main { overflow: visible !important; padding: 0 !important; }
+            body { background: white !important; }
+        }
     </style>
 </head>
 
 <body class="min-h-screen bg-fp-page text-slate-800 antialiased" x-data="{
     sidebarOpen: false,
     openCatalogo: {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'true' : 'false' }},
-    openOperacion: {{ request()->routeIs('stock.*', 'punto-venta.*', 'ciclo.*', 'pedidos.*', 'vales.*') ? 'true' : 'false' }},
-    openMas: {{ request()->routeIs('reportes.*', 'auditoria.*') ? 'true' : 'false' }},
-    openSistema: {{ request()->routeIs('distribuidora.configuracion') ? 'true' : 'false' }},
+    openOperacion: {{ request()->routeIs('stock.*', 'punto-venta.*', 'ciclo.*', 'pedidos.*', 'vales.*', 'cambios.*', 'reportes.*') ? 'true' : 'false' }},
+    openMas: {{ request()->routeIs('auditoria.*') ? 'true' : 'false' }},
+    openSistema: {{ request()->routeIs('distribuidora.configuracion', 'distribuidora.perfil', 'distribuidora.empleados', 'distribuidora.mayoristas', 'distribuidora.clientes-directos') ? 'true' : 'false' }},
 }"
     @keydown.escape.window="sidebarOpen = false">
     @php
@@ -158,8 +164,8 @@
                             <a href="{{ route('stock.index') }}" wire:navigate
                                 class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('stock.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Stock</a>
                             <a href="{{ route('punto-venta.index') }}" wire:navigate
-                                class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('punto-venta.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Punto
-                                de Venta</a>
+                                class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('punto-venta.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Venta
+                                local</a>
                             <a href="{{ route('ciclo.index') }}" wire:navigate
                                 class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('ciclo.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Ciclo
                                 de compra</a>
@@ -169,9 +175,14 @@
                                 class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('vales.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Vales</a>
                             <a href="{{ route('cambios.index') }}" wire:navigate
                                 class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('cambios.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Cambios</a>
+                            @if ($puedeReportesFinancieros)
+                                <a href="{{ route('reportes.index') }}" wire:navigate
+                                    class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('reportes.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Reportes</a>
+                            @endif
                         </div>
                     </div>
 
+                    @if ($esAdminDistribuidora)
                     <div class="pt-2">
                         <p class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">Más
                         </p>
@@ -194,16 +205,13 @@
                             </svg>
                         </button>
                         <div x-show="openMas" x-cloak class="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
-                            @if ($puedeReportesFinancieros)
-                                <a href="{{ route('reportes.index') }}" wire:navigate
-                                    class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('reportes.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Reportes</a>
-                            @endif
                             @if ($esAdminDistribuidora)
                                 <a href="{{ route('auditoria.index') }}" wire:navigate
                                     class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('auditoria.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Auditoría</a>
                             @endif
                         </div>
                     </div>
+                    @endif
 
                     @if ($puedeConfiguracion)
                         <div class="pt-2">
@@ -279,7 +287,22 @@
                     <div class="flex items-center gap-1.5 sm:gap-2">
                         <livewire:notificaciones.nav-badge />
 
-                        <x-panel.menu-usuario :logotipo="$logotipoDistribuidora" />
+                        <x-panel.menu-usuario :logotipo="$logotipoDistribuidora">
+                            @if ($puedeConfiguracion)
+                                <a href="{{ route('distribuidora.perfil') }}" wire:navigate
+                                    class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium transition hover:bg-fp-page {{ request()->routeIs('distribuidora.perfil') ? 'bg-fp-page text-fp-primary' : 'text-slate-700' }}"
+                                    role="menuitem">Perfil</a>
+                                <a href="{{ route('distribuidora.empleados') }}" wire:navigate
+                                    class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium transition hover:bg-fp-page {{ request()->routeIs('distribuidora.empleados') ? 'bg-fp-page text-fp-primary' : 'text-slate-700' }}"
+                                    role="menuitem">Empleados</a>
+                                <a href="{{ route('distribuidora.mayoristas') }}" wire:navigate
+                                    class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium transition hover:bg-fp-page {{ request()->routeIs('distribuidora.mayoristas') ? 'bg-fp-page text-fp-primary' : 'text-slate-700' }}"
+                                    role="menuitem">Clientes mayoristas</a>
+                                <a href="{{ route('distribuidora.clientes-directos') }}" wire:navigate
+                                    class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium transition hover:bg-fp-page {{ request()->routeIs('distribuidora.clientes-directos') ? 'bg-fp-page text-fp-primary' : 'text-slate-700' }}"
+                                    role="menuitem">Clientes directos</a>
+                            @endif
+                        </x-panel.menu-usuario>
                     </div>
                 </div>
             </header>
