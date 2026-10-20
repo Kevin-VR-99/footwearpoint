@@ -339,7 +339,16 @@ class VincularMercadoPagoTest extends TestCase
 
         Livewire::withQueryParams(['pestana' => 'no-existe'])
             ->test('distribuidora.configuracion')
-            ->assertSet('pestanaActiva', 'perfil');
+            ->assertSet('pestanaActiva', 'general');
+    }
+
+    public function test_la_pestana_perfil_redirige_a_la_pagina_de_perfil(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::withQueryParams(['pestana' => 'perfil'])
+            ->test('distribuidora.configuracion')
+            ->assertRedirect(route('distribuidora.perfil'));
     }
 
     public function test_reconectar_la_misma_cuenta_actualiza_el_token(): void
