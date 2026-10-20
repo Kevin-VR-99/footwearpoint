@@ -289,7 +289,7 @@ class AltaDistribuidoraConAdminTest extends TestCase
         $distribuidora->refresh();
         $this->assertSame('activa', $distribuidora->estado);
         $this->assertNotNull($distribuidora->fecha_aprobacion);
-        $this->assertSame(1, DB::table('suscripciones')->where('distribuidora_id', $distribuidora->id)->where('estado', 'activa')->count());
+        $this->assertSame(1, DB::table('suscripciones')->where('distribuidora_id', $distribuidora->id)->where('estado', 'pendiente_pago')->whereNull('fecha_fin')->count());
         $this->assertSame(1, DB::table('sucursales')->where('distribuidora_id', $distribuidora->id)->count());
 
         // Aprobar no duplica roles.
