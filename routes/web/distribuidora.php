@@ -37,6 +37,16 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_distribuidora'])->group(fu
 });
 
 /*
+| TG-220 — Pantalla de pago del primer mes. Mientras la distribuidora no lo
+| pague, CobroInicialPendiente manda aquí todo el panel. La ve todo el
+| personal; solo el administrador puede pagar.
+*/
+Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
+    Route::livewire('/distribuidora/pago-inicial', 'distribuidora.pago-inicial')
+        ->name('distribuidora.pago-inicial');
+});
+
+/*
 | TG-225 (G6) — Conectar la cuenta de Mercado Pago de la distribuidora (OAuth).
 |
 | 'conectar' manda a la pantalla oficial de Mercado Pago y Mercado Pago

@@ -10,6 +10,9 @@ class Suscripcion extends Model
     use BelongsToTenant;
     protected $table = 'suscripciones';
 
+    /** TG-220: aprobada, pero todavía no paga su primer mes. */
+    public const PENDIENTE_PAGO = 'pendiente_pago';
+
     protected $fillable = [
         'distribuidora_id',
         'plan_id',
@@ -39,5 +42,23 @@ class Suscripcion extends Model
     public function plan()
     {
         return $this->belongsTo(PlanSuscripcion::class, 'plan_id');
+    }
+
+    /**
+     * TG-220 — La suscripción que espera el primer pago de la distribuidora,
+     * o null. Solo cuenta si es la más reciente que no está cancelada: una
+     * distribuidora que ya pagó (o a la que el admin general le asignó un
+     * plan) nunca vuelve a quedar bloqueada.
+     */
+    public static function pendientePrimerPago(int $distribuidoraId): ?self
+    {
+        $ultima = static::withoutGlobalScopes()
+            ->with('plan')
+            ->where('distribuidora_id', $distribuidoraId)
+            ->where('estado', '!=', 'cancelada')
+            ->latest('id')
+            ->first();
+
+        return $ultima?->estado === self::PENDIENTE_PAGO ? $ultima : null;
     }
 }
