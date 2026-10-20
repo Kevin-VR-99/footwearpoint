@@ -105,6 +105,17 @@ class VerificarCorreoTest extends TestCase
         $this->assertStringNotContainsString('Laravel', $cuerpo);
     }
 
+    public function test_al_cliente_le_habla_de_su_cuenta_para_pedir_desde_la_app(): void
+    {
+        $this->maria()->sendEmailVerificationNotification();
+
+        $cuerpo = (string) $this->correoEnviado()->getHtmlBody();
+
+        $this->assertStringContainsString('Tu distribuidora te dio una cuenta en FootwearPoint', $cuerpo);
+        $this->assertStringContainsString('hacer pedidos desde la app', $cuerpo);
+        $this->assertStringNotContainsString('solicitud de alta', $cuerpo);
+    }
+
     // ------------------------------------------------------------------
     // El enlace
     // ------------------------------------------------------------------

@@ -3,6 +3,8 @@
 namespace Tests\Feature\Publico;
 
 use App\Mail\SolicitudAltaDistribuidoraMail;
+use App\Mail\SolicitudAltaRecibidaMail;
+use App\Mail\VerificarCorreoMail;
 use App\Models\AceptacionLegal;
 use App\Models\Distribuidora;
 use App\Models\PlanSuscripcion;
@@ -266,6 +268,59 @@ class SolicitarAltaTest extends TestCase
                 && $correo->nombreDistribuidora === self::NOMBRE
                 && $correo->emailAdministrador === self::EMAIL_ADMIN;
         });
+    }
+
+    public function test_al_administrador_le_llega_el_acuse_de_su_solicitud(): void
+    {
+        Mail::fake();
+
+        $this->formulario()->call('enviar')->assertHasNoErrors();
+
+        Mail::assertSent(SolicitudAltaRecibidaMail::class, function ($correo) {
+            return $correo->hasTo(self::EMAIL_ADMIN)
+                && ! $correo->hasTo(\Database\Seeders\AdminGeneralSeeder::EMAIL)
+                && $correo->nombreDistribuidora === self::NOMBRE;
+        });
+        Mail::assertSent(SolicitudAltaRecibidaMail::class, 1);
+    }
+
+    public function test_el_acuse_dice_que_se_revisara_y_que_aun_no_entra_al_panel(): void
+    {
+        $correo = new SolicitudAltaRecibidaMail(self::NOMBRE, 'Lucía Ramos');
+
+        $correo->assertHasSubject('Recibimos tu solicitud de alta en FootwearPoint');
+        $correo->assertSeeInHtml('Hola Lucía Ramos', false);
+        $correo->assertSeeInHtml(self::NOMBRE);
+        $correo->assertSeeInHtml('La revisaremos pronto');
+        $correo->assertSeeInHtml('aprobada o rechazada');
+        $correo->assertSeeInHtml('todavía no podrás entrar al panel', false);
+    }
+
+    public function test_si_falla_solo_el_acuse_la_solicitud_se_guarda_y_el_admin_general_recibe_aviso(): void
+    {
+        Mail::fake();
+        Mail::shouldReceive('to')->with(self::EMAIL_ADMIN)->andThrow(new \RuntimeException('sin servidor de correo'));
+        Mail::shouldReceive('to')->with(\Database\Seeders\AdminGeneralSeeder::EMAIL)->andReturnSelf();
+        Mail::shouldReceive('send')->once();
+
+        $this->formulario()->call('enviar')->assertHasNoErrors()->assertSet('enviada', true);
+
+        $this->assertNotNull($this->distribuidoraCreada());
+    }
+
+    public function test_el_correo_de_confirmacion_habla_de_la_solicitud_y_no_de_pedidos(): void
+    {
+        Notification::fake();
+
+        $this->formulario()->call('enviar')->assertHasNoErrors();
+
+        $admin = Usuario::where('email', self::EMAIL_ADMIN)->firstOrFail();
+        $correo = new VerificarCorreoMail($admin, 'https://footwearpoint.test/verificar-correo/1/abc');
+
+        $correo->assertSeeInHtml('Confirma que este correo es tuyo para tu solicitud de alta de', false);
+        $correo->assertSeeInHtml(self::NOMBRE);
+        $correo->assertDontSeeInHtml('Tu distribuidora te dio una cuenta', false);
+        $correo->assertDontSeeInHtml('hacer pedidos desde la app', false);
     }
 
     public function test_si_el_correo_falla_la_solicitud_se_guarda_igual(): void
