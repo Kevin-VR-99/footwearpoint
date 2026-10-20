@@ -51,8 +51,10 @@ Route::prefix('auth')->group(function () {
     Route::post('/reenviar-verificacion', [AuthController::class, 'reenviarVerificacion'])
         ->middleware(['auth:sanctum', 'throttle:4,10']);
 
-    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])
+        ->middleware('throttle:recuperar-password');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])
+        ->middleware('throttle:recuperar-password');
 });
 
 /*

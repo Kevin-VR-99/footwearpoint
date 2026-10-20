@@ -15,6 +15,9 @@ use App\Http\Middleware\SoloPersonalPanel;
 use App\Services\Notificacion\Push\EnviadorPushFirebase;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -24,6 +27,8 @@ use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
 {
+    public const MENSAJE_DEMASIADOS_INTENTOS = 'Demasiados intentos. Espera un minuto y vuelve a intentarlo.';
+
     public function register(): void
     {
         $this->app->bind(EnviadorPush::class, EnviadorPushFirebase::class);
@@ -88,6 +93,15 @@ class AppServiceProvider extends ServiceProvider
         // contenido y la notificación sigue siendo la de Laravel, así valen
         // igual las tres puertas que lo mandan: la web, la app (TG-141) y el
         // botón del panel (TG-192).
+        // Tope por IP para pedir el enlace y para restablecer: 5 por minuto.
+        // Es por IP y no por correo, así la respuesta no dice nada de quién
+        // tiene cuenta (TG-141); solo frena a quien manda muchas seguidas.
+        RateLimiter::for('recuperar-password', fn (Request $request) => Limit::perMinute(5)
+            ->by('recuperar-password|'.$request->ip())
+            ->response(fn (Request $request, array $headers) => response()->json([
+                'message' => self::MENSAJE_DEMASIADOS_INTENTOS,
+            ], 429, $headers)));
+
         ResetPassword::toMailUsing(
             fn (Usuario $usuario, string $token) => new RestablecerPasswordMail($usuario, $token)
         );

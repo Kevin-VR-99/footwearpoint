@@ -4,7 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\Usuario;
 use App\Services\Auth\EnviarEnlaceRecuperacionAction;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\RestablecerPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -48,7 +48,7 @@ class RecuperarPasswordTest extends TestCase
 
         Notification::assertSentTo(
             Usuario::where('email', self::CORREO_EXISTENTE)->firstOrFail(),
-            ResetPassword::class
+            RestablecerPasswordNotification::class
         );
     }
 
@@ -90,7 +90,7 @@ class RecuperarPasswordTest extends TestCase
         // Y de verdad se frenó: solo salió un correo.
         Notification::assertSentToTimes(
             Usuario::where('email', self::CORREO_EXISTENTE)->firstOrFail(),
-            ResetPassword::class,
+            RestablecerPasswordNotification::class,
             1
         );
     }
@@ -128,7 +128,7 @@ class RecuperarPasswordTest extends TestCase
 
         Notification::assertSentTo(
             Usuario::where('email', self::CORREO_EXISTENTE)->firstOrFail(),
-            ResetPassword::class
+            RestablecerPasswordNotification::class
         );
     }
 }

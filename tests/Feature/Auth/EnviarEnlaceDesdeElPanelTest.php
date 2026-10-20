@@ -10,7 +10,7 @@ use App\Models\RevendedorDistribuidora;
 use App\Models\Usuario;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\RestablecerPasswordNotification;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -73,7 +73,7 @@ class EnviarEnlaceDesdeElPanelTest extends TestCase
             ->call('enviarEnlaceRevendedor', $afiliacion->id)
             ->assertSet('avisoEnlaceEsError', false);
 
-        Notification::assertSentTo($cuenta, ResetPassword::class);
+        Notification::assertSentTo($cuenta, RestablecerPasswordNotification::class);
     }
 
     public function test_el_aviso_dice_a_que_correo_se_mando(): void
@@ -96,7 +96,7 @@ class EnviarEnlaceDesdeElPanelTest extends TestCase
             ->call('enviarEnlaceCliente', $cliente->id)
             ->assertSet('avisoEnlaceEsError', false);
 
-        Notification::assertSentTo($cuenta, ResetPassword::class);
+        Notification::assertSentTo($cuenta, RestablecerPasswordNotification::class);
     }
 
     public function test_el_envio_queda_en_la_bitacora_de_auditoria(): void
