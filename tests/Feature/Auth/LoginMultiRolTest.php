@@ -86,6 +86,10 @@ class LoginMultiRolTest extends TestCase
         $this->assertSame($distribuidoraA->id, $respuesta->json('data.distribuidora_id'));
         $this->assertSame('revendedor', $respuesta->json('data.rol'));
         $this->assertNotEmpty($respuesta->json('data.token'));
+
+        // TG-281: la app enseñaba el numero ("Distribuidora: 1"), que no le
+        // dice nada a nadie. Con el nombre, el dato sirve para algo.
+        $this->assertSame($distribuidoraA->nombre_comercial, $respuesta->json('data.distribuidora'));
     }
 
     public function test_un_cliente_directo_inicia_sesion_y_recibe_su_distribuidora_y_su_rol(): void

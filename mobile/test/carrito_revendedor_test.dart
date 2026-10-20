@@ -274,7 +274,8 @@ void main() {
     await tester.tap(find.text('Entrar'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Roberto García'), findsOneWidget);
+    // TG-281: el inicio ya no lista los datos de la cuenta; saluda por el nombre.
+    expect(find.text('Hola, Roberto'), findsOneWidget);
     expect(carrito().vacio, isTrue);
   });
 }

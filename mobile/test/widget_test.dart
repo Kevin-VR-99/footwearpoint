@@ -94,7 +94,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sesión iniciada'), findsOneWidget);
-    expect(find.text('María López'), findsOneWidget);
+    // TG-281: el inicio ya no lista los datos de la cuenta; saluda por el nombre.
+    expect(find.text('Hola, María'), findsOneWidget);
     expect(find.text('Entrar'), findsNothing);
   });
 

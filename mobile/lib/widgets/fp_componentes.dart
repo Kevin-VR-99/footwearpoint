@@ -548,3 +548,152 @@ class FpIconoGrande extends StatelessWidget {
     );
   }
 }
+
+/// El buscador, igual que el `<x-ui.buscador>` de la web (TG-234): lupa a la
+/// izquierda, borde de 2 px que se marca en azul al escribir, y esquinas
+/// redondeadas. Las medidas salen de `.fp-buscador` en resources/css/app.css,
+/// para que la app y el panel se vean iguales.
+///
+/// Lo que la web no necesita y el teléfono sí: la crucecita para limpiar, que
+/// evita tener que borrar letra por letra.
+class FpBuscador extends StatefulWidget {
+  const FpBuscador({
+    super.key,
+    required this.alCambiar,
+    this.texto = 'Buscar…',
+    this.valorInicial = '',
+  });
+
+  /// Se llama en cada tecla. Quien lo use filtra su propia lista.
+  final ValueChanged<String> alCambiar;
+
+  /// Lo que se lee dentro cuando está vacío. Conviene decir qué se busca
+  /// ("Buscar por nombre o modelo") y no solo "Buscar".
+  final String texto;
+
+  final String valorInicial;
+
+  @override
+  State<FpBuscador> createState() => _FpBuscadorState();
+}
+
+class _FpBuscadorState extends State<FpBuscador> {
+  late final TextEditingController _control = TextEditingController(text: widget.valorInicial);
+  final _foco = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // El color de la lupa cambia al enfocar, como en la web.
+    _foco.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _control.dispose();
+    _foco.dispose();
+    super.dispose();
+  }
+
+  void _limpiar() {
+    _control.clear();
+    widget.alCambiar('');
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final conTexto = _control.text.isNotEmpty;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(color: Color(0x1A111E38), blurRadius: 6, offset: Offset(0, 2)),
+        ],
+      ),
+      child: TextField(
+        controller: _control,
+        focusNode: _foco,
+        textInputAction: TextInputAction.search,
+        onChanged: (valor) {
+          widget.alCambiar(valor);
+          // Para que aparezca o desaparezca la crucecita.
+          setState(() {});
+        },
+        style: const TextStyle(fontSize: 15, color: FpColores.texto),
+        decoration: InputDecoration(
+          isDense: true,
+          filled: true,
+          fillColor: Colors.white,
+          hintText: widget.texto,
+          hintStyle: const TextStyle(color: FpColores.textoTenue, fontSize: 15),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          prefixIcon: Icon(
+            Icons.search,
+            size: 20,
+            color: _foco.hasFocus ? FpColores.primario : FpColores.textoTenue,
+          ),
+          suffixIcon: conTexto
+              ? IconButton(
+                  onPressed: _limpiar,
+                  icon: const Icon(Icons.close, size: 20),
+                  color: FpColores.textoTenue,
+                  tooltip: 'Limpiar',
+                )
+              : null,
+          border: _borde(FpColores.bordeFuerte),
+          enabledBorder: _borde(FpColores.bordeFuerte),
+          focusedBorder: _borde(FpColores.primario),
+        ),
+      ),
+    );
+  }
+
+  OutlineInputBorder _borde(Color color) => OutlineInputBorder(
+    borderRadius: BorderRadius.circular(12),
+    borderSide: BorderSide(color: color, width: 2),
+  );
+}
+
+/// Lo que se enseña cuando el buscador no encontró nada. Es distinto de
+/// [FpEstadoVacio]: ahí no hay datos; aquí sí los hay, pero ninguno coincide,
+/// y hay que decirlo de otra forma o parece que se perdieron.
+class FpSinResultados extends StatelessWidget {
+  const FpSinResultados({super.key, required this.busqueda, this.que = 'resultados'});
+
+  final String busqueda;
+  final String que;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+      child: Column(
+        children: [
+          const FpIconoGrande(
+            icono: Icons.search_off,
+            fondo: FpColores.fondoSuave,
+            color: FpColores.textoTenue,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'No hay $que para «$busqueda»',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: FpColores.sidebar,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Revisa que esté bien escrito o prueba con menos palabras.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: FpColores.textoTenue, fontSize: 13.5, height: 1.35),
+          ),
+        ],
+      ),
+    );
+  }
+}

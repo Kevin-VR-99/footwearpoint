@@ -56,9 +56,22 @@ class InicioScreen extends StatelessWidget {
           // TG-165: con el número de no leídas, como el panel web (TG-156).
           _CampanaNotificaciones(habilitada: habilitado),
           const SizedBox(width: 4),
+          // TG-281: antes era solo un adorno. Ahora es la puerta a Mi
+          // perfil, que es donde la gente la busca.
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: FpAvatar(nombre: usuario?.nombre, tamano: 34),
+            child: Semantics(
+              button: true,
+              label: 'Mi perfil',
+              child: Tooltip(
+                message: 'Mi perfil',
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: habilitado ? () => _abrir(context, const PerfilScreen()) : null,
+                  child: FpAvatar(nombre: usuario?.nombre, tamano: 34),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -114,29 +127,9 @@ class InicioScreen extends StatelessWidget {
                 subtitulo: 'Saldo y vigencia de tus vales',
                 alTocar: habilitado ? () => _abrir(context, const ValesScreen()) : null,
               ),
-              const SizedBox(height: 10),
-              FpAccion(
-                icono: Icons.person_outline,
-                titulo: 'Mi perfil',
-                subtitulo: 'Nombre, teléfono y contraseña',
-                alTocar: habilitado ? () => _abrir(context, const PerfilScreen()) : null,
-              ),
-              const SizedBox(height: 20),
-              const FpTituloSeccion('Tu cuenta'),
-              FpTarjeta(
-                child: Column(
-                  children: [
-                    _Dato(etiqueta: 'Nombre', valor: usuario?.nombre),
-                    _Dato(etiqueta: 'Correo', valor: usuario?.email),
-                    _Dato(etiqueta: 'Rol', valor: nombreRol(auth.rol)),
-                    _Dato(
-                      etiqueta: 'Distribuidora',
-                      valor: auth.distribuidoraId?.toString(),
-                      ultimo: true,
-                    ),
-                  ],
-                ),
-              ),
+              // TG-281: "Mi perfil" y los datos de la cuenta se fueron de
+              // aqui. Al perfil se entra por el avatar de arriba, y los datos
+              // viven dentro del perfil, que es su lugar.
               const SizedBox(height: 20),
               OutlinedButton.icon(
                 onPressed: habilitado ? () => context.read<AuthProvider>().logout() : null,
@@ -188,52 +181,6 @@ class _SesionIniciada extends StatelessWidget {
               color: FpColores.insigniaExitoTexto,
               fontSize: 12,
               fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Dato extends StatelessWidget {
-  const _Dato({required this.etiqueta, required this.valor, this.ultimo = false});
-
-  final String etiqueta;
-  final String? valor;
-  final bool ultimo;
-
-  @override
-  Widget build(BuildContext context) {
-    final vacio = valor == null || valor!.isEmpty;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: ultimo
-          ? null
-          : const BoxDecoration(
-              border: Border(bottom: BorderSide(color: FpColores.borde)),
-            ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              etiqueta,
-              style: const TextStyle(
-                color: FpColores.textoTenue,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              vacio ? '(vacío)' : valor!,
-              style: vacio
-                  ? TextStyle(color: Theme.of(context).colorScheme.error)
-                  : const TextStyle(color: FpColores.texto, fontWeight: FontWeight.w500),
             ),
           ),
         ],

@@ -48,6 +48,10 @@ class AuthProvider extends ChangeNotifier {
   /// pagar. No se le saca de la app: solo se le avisa y se le ofrece pedir
   /// otro enlace.
   bool _emailVerificado = true;
+
+  /// TG-281: antes se enseñaba el numero de la distribuidora, que no le dice
+  /// nada a nadie. El servidor ya manda el nombre.
+  String? _distribuidoraNombre;
   bool _iniciando = true;
   bool _sinConexion = false;
   bool _ocupado = false;
@@ -59,6 +63,10 @@ class AuthProvider extends ChangeNotifier {
   bool get legalesAceptados => _legalesAceptados;
   bool get debeCambiarPassword => _debeCambiarPassword;
   bool get emailVerificado => _emailVerificado;
+
+  /// TG-281: el nombre de la distribuidora, para enseñarlo en Mi perfil.
+  /// Null en versiones del servidor que todavia no lo mandan.
+  String? get distribuidoraNombre => _distribuidoraNombre;
   bool get ocupado => _ocupado;
   String? get error => _error;
   bool get haySesion => _usuario != null;
@@ -246,6 +254,7 @@ class AuthProvider extends ChangeNotifier {
     _legalesAceptados = legalesAceptados;
     _debeCambiarPassword = debeCambiar;
     _emailVerificado = verificado;
+    _distribuidoraNombre = datos['distribuidora'] as String?;
   }
 
   /// TG-193: la acaba de cambiar desde la pantalla obligatoria, así que ya
@@ -312,6 +321,7 @@ class AuthProvider extends ChangeNotifier {
     _legalesAceptados = false;
     _debeCambiarPassword = false;
     _emailVerificado = true;
+    _distribuidoraNombre = null;
 
     await api.borrarToken();
   }

@@ -7,6 +7,7 @@ import '../models/usuario.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'cambiar_password_screen.dart';
+import 'inicio_screen.dart';
 import 'login_screen.dart';
 import '../tema/fp_colores.dart';
 import '../widgets/fp_componentes.dart';
@@ -206,6 +207,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   Widget _contenido(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
     if (_cargando) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -251,7 +254,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 // TG-189 (A11): mientras no confirme su correo no puede
                 // enviar pedidos. Aquí está el botón al que lo manda el aviso
                 // del servidor cuando lo intenta.
-                if (!context.watch<AuthProvider>().emailVerificado) ...[
+                if (!auth.emailVerificado) ...[
                   FpTarjeta(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,6 +378,25 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                // TG-281: esto estaba en el Inicio. Aqui solo van el rol y la
+                // distribuidora: el nombre y el correo ya estan arriba, en el
+                // formulario, y repetirlos solo confunde.
+                const FpTituloSeccion('Tu cuenta'),
+                FpTarjeta(
+                  child: Column(
+                    children: [
+                      _Dato(etiqueta: 'Rol', valor: InicioScreen.nombreRol(auth.rol)),
+                      _Dato(
+                        etiqueta: 'Distribuidora',
+                        // El nombre si el servidor lo manda; si no (version
+                        // vieja), se cae al numero, que es lo que habia antes.
+                        valor: auth.distribuidoraNombre ?? auth.distribuidoraId?.toString(),
+                        ultimo: true,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
                 const FpTituloSeccion('Seguridad'),
                 OutlinedButton.icon(
                   onPressed: _guardando ? null : _abrirCambiarPassword,
@@ -386,6 +408,54 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Un renglón de dato que solo se lee, como el de la tabla del panel web.
+/// Venía del Inicio (TG-165); se mudó aquí con TG-281.
+class _Dato extends StatelessWidget {
+  const _Dato({required this.etiqueta, required this.valor, this.ultimo = false});
+
+  final String etiqueta;
+  final String? valor;
+  final bool ultimo;
+
+  @override
+  Widget build(BuildContext context) {
+    final vacio = valor == null || valor!.isEmpty;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: ultimo
+          ? null
+          : const BoxDecoration(
+              border: Border(bottom: BorderSide(color: FpColores.borde)),
+            ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              etiqueta,
+              style: const TextStyle(
+                color: FpColores.textoTenue,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              vacio ? '(vacío)' : valor!,
+              style: vacio
+                  ? TextStyle(color: Theme.of(context).colorScheme.error)
+                  : const TextStyle(color: FpColores.texto, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
       ),
     );
   }
