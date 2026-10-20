@@ -36,4 +36,16 @@ class Notificacion extends Model
     {
         return $this->belongsTo(Distribuidora::class, 'distribuidora_id');
     }
+
+    /** A dónde lleva el aviso al abrirlo, si lleva a algún lado. */
+    public function enlace(): ?string
+    {
+        if ($this->entidad_tipo === 'importacion_catalogo' && $this->entidad_id !== null) {
+            return $this->tipo === 'catalogo_ia_listo'
+                ? route('admin.catalogos.revisar', ['importacion' => $this->entidad_id])
+                : route('admin.catalogos');
+        }
+
+        return null;
+    }
 }

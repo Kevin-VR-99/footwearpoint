@@ -32,6 +32,8 @@ final class GruposNotificacion
         'pago_mercado_pago'         => self::PAGOS,
         'pago_suscripcion'          => self::PAGOS,
         'vale_por_vencer'           => self::PAGOS,
+        'catalogo_ia_listo'         => self::GENERALES,
+        'catalogo_ia_error'         => self::GENERALES,
     ];
 
     /** Respaldo por prefijo para tipos futuros. */

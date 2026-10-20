@@ -408,6 +408,76 @@ class ExtraerProductosConIaTest extends TestCase
         $this->assertGreaterThan($timeout, (int) config('queue.connections.database.retry_after'));
     }
 
+    // ------------------------------------------------------------------
+    // Aviso en la campana
+    // ------------------------------------------------------------------
+
+    private function avisosDe(Usuario $usuario)
+    {
+        return \App\Models\Notificacion::withoutGlobalScopes()->where('usuario_id', $usuario->id)->get();
+    }
+
+    public function test_al_terminar_avisa_en_la_campana_a_quien_lo_subio(): void
+    {
+        $importacion = $this->importacionConCatalogoDe(25);
+        $linea = $importacion->linea->nombre;
+
+        $this->accion()->ejecutar($importacion);
+
+        $avisos = $this->avisosDe($this->adminGeneral());
+        $this->assertCount(1, $avisos);
+        $aviso = $avisos->first();
+        $this->assertSame('catalogo_ia_listo', $aviso->tipo);
+        $this->assertSame("El catálogo de {$linea} está listo para revisar", $aviso->titulo);
+        $this->assertStringContainsString('4 productos', $aviso->mensaje);
+        $this->assertNull($aviso->leida_at);
+        $this->assertSame(route('admin.catalogos.revisar', ['importacion' => $importacion->id]), $aviso->enlace());
+    }
+
+    public function test_si_falla_tambien_avisa_en_la_campana(): void
+    {
+        $importacion = $this->importacionConCatalogoDe(15);
+        $this->lector->fallaEnElBloqueQueEmpiezaEn = 1;
+
+        $this->accion()->ejecutar($importacion);
+
+        $aviso = $this->avisosDe($this->adminGeneral())->sole();
+        $this->assertSame('catalogo_ia_error', $aviso->tipo);
+        $this->assertStringStartsWith('Falló el análisis del catálogo de', $aviso->titulo);
+        $this->assertSame(route('admin.catalogos'), $aviso->enlace());
+    }
+
+    public function test_si_el_worker_corta_la_lectura_tambien_avisa_una_sola_vez(): void
+    {
+        $importacion = $this->importacionConCatalogoDe(76);
+        $importacion->update(['estado' => 'procesando']);
+
+        $job = new ProcesarCatalogoConIa($importacion->id);
+        $job->failed(new \Illuminate\Queue\MaxAttemptsExceededException('x'));
+        // Ya quedó en error: un segundo aviso del mismo fallo no se repite.
+        $job->failed(new \Illuminate\Queue\MaxAttemptsExceededException('x'));
+
+        $aviso = $this->avisosDe($this->adminGeneral())->sole();
+        $this->assertSame('catalogo_ia_error', $aviso->tipo);
+        $this->assertStringContainsString('servidor se reinició', $aviso->mensaje);
+    }
+
+    public function test_el_admin_general_ve_el_aviso_en_la_campana_y_en_su_bandeja(): void
+    {
+        $importacion = $this->importacionConCatalogoDe(25);
+        $this->accion()->ejecutar($importacion);
+
+        $this->actingAs($this->adminGeneral());
+
+        Livewire::test('notificaciones.nav-badge')
+            ->assertSee('está listo para revisar');
+
+        $this->get(route('notificaciones.index'))
+            ->assertOk()
+            ->assertSee('está listo para revisar')
+            ->assertSee(route('admin.catalogos.revisar', ['importacion' => $importacion->id]), false);
+    }
+
     public function test_un_admin_de_distribuidora_no_puede_mandar_a_procesar(): void
     {
         Queue::fake();

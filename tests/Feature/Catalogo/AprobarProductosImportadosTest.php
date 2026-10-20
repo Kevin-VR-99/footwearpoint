@@ -88,7 +88,6 @@ class AprobarProductosImportadosTest extends TestCase
                 'modelo'          => null,
                 'nombre'          => null,
                 'color'           => 'MIEL',
-                'color_base_id'   => $this->colorNegro()->id,
                 'codigo_catalogo' => '033-39',
                 'precio_publico'  => 699.0,
                 'talla_desde'     => '22',
@@ -143,16 +142,63 @@ class AprobarProductosImportadosTest extends TestCase
         );
     }
 
-    public function test_el_nombre_del_catalogo_se_guarda_y_el_color_base_agrupa(): void
+    public function test_el_color_es_el_del_catalogo_y_reutiliza_el_que_ya_existe(): void
     {
-        $fila = $this->revisado();
+        // «Negro» ya está en la paleta: no se duplica aunque venga en mayúsculas.
+        $miel = $this->colorNegro();
+        $antes = Color::count();
+
+        $fila = $this->revisado(['color' => 'NEGRO']);
 
         $this->aprobar();
 
         $variante = Variante::where('producto_id', $fila->fresh()->producto_creado_id)->firstOrFail();
 
-        $this->assertSame('MIEL', $variante->nombre_color_comercial);
-        $this->assertSame($this->colorNegro()->id, (int) $variante->color_id);
+        $this->assertSame($miel->id, (int) $variante->color_id);
+        $this->assertSame($miel->nombre, $variante->nombre_color_comercial);
+        $this->assertSame($antes, Color::count());
+    }
+
+    public function test_un_color_que_no_existe_se_crea_solo_con_mayuscula_inicial(): void
+    {
+        $fila = $this->revisado(['color' => '  TIERRA   SIENA ']);
+
+        $this->assertSame(1, $this->aprobar()['aprobados']);
+
+        $color = Color::where('nombre', 'Tierra Siena')->firstOrFail();
+        $variante = Variante::where('producto_id', $fila->fresh()->producto_creado_id)->firstOrFail();
+
+        $this->assertSame($color->id, (int) $variante->color_id);
+        $this->assertSame('Tierra Siena', $variante->nombre_color_comercial);
+        $this->assertTrue((bool) $color->activo);
+    }
+
+    public function test_no_duplica_colores_por_mayusculas_ni_acentos(): void
+    {
+        $colores = app(ColoresDelCatalogo::class);
+
+        $a = $colores->resolver('VERDE OLIVÁ');
+        $b = $colores->resolver('verde oliva');
+        $c = $colores->resolver(' Verde  Olivá ');
+        $cafe = $colores->resolver('CAFE');
+
+        $this->assertSame($a->id, $b->id);
+        $this->assertSame($a->id, $c->id);
+        $this->assertSame('Verde Olivá', $a->nombre);
+        // «Café» ya existe en la paleta sembrada.
+        $this->assertSame(Color::whereRaw('LOWER(nombre) = ?', ['café'])->value('id'), $cafe->id);
+    }
+
+    public function test_el_color_que_trae_otro_id_de_paleta_ya_no_manda(): void
+    {
+        // Filas viejas con color_base_id (el emparejado de antes): ahora
+        // manda el nombre del catálogo.
+        $fila = $this->revisado(['color' => 'HUESO', 'color_base_id' => $this->colorNegro()->id]);
+
+        $this->aprobar();
+
+        $variante = Variante::where('producto_id', $fila->fresh()->producto_creado_id)->firstOrFail();
+        $this->assertSame('Hueso', $variante->color->nombre ?? Color::find($variante->color_id)->nombre);
     }
 
     public function test_sin_modelo_usa_el_codigo_y_el_nombre_lleva_la_categoria(): void
@@ -241,7 +287,7 @@ class AprobarProductosImportadosTest extends TestCase
         app(\App\Services\Catalogo\GestionarVarianteAction::class)->crear([
             'producto_id' => $existente->id,
             'talla_id'    => Talla::where('valor', '22')->firstOrFail()->id,
-            'color_id'    => $this->colorNegro()->id,
+            'color_id'    => app(ColoresDelCatalogo::class)->resolver('MIEL')->id,
         ]);
 
         $this->revisado();
@@ -384,91 +430,44 @@ class AprobarProductosImportadosTest extends TestCase
         $this->assertSame(0, $this->aprobar()['aprobados']);
     }
 
-    public function test_sin_color_resuelto_no_se_aprueba(): void
+    public function test_sin_color_no_se_aprueba_y_se_explica(): void
     {
-        $fila = $this->revisado();
-        $datos = $fila->datos_extraidos;
-        unset($datos['color_base_id']);
-        $fila->update(['datos_extraidos' => $datos]);
+        $this->revisado(['color' => '  ']);
 
         $resumen = $this->aprobar();
 
         $this->assertSame(0, $resumen['aprobados']);
-        $this->assertStringContainsString('color de la paleta', $resumen['saltados'][0]);
+        $this->assertStringContainsString('no trae color', $resumen['saltados'][0]);
     }
 
     // ------------------------------------------------------------------
     // Los colores, una vez por color distinto
     // ------------------------------------------------------------------
 
-    public function test_agrupa_los_colores_distintos_y_no_pregunta_por_producto(): void
+    public function test_agrupa_los_colores_distintos_para_ensenarlos(): void
     {
-        $this->revisado(['color' => 'MIEL', 'codigo_catalogo' => 'A-1']);
-        $this->revisado(['color' => 'MIEL', 'codigo_catalogo' => 'A-2']);
-        $this->revisado(['color' => 'HUESO', 'codigo_catalogo' => 'A-3']);
+        $this->revisado(['color' => 'NEGRO', 'codigo_catalogo' => 'A-1']);
+        $this->revisado(['color' => 'negro', 'codigo_catalogo' => 'A-2']);
+        $this->revisado(['color' => 'HUESO NUEVO', 'codigo_catalogo' => 'A-3']);
 
         $colores = app(ColoresDelCatalogo::class)->distintos($this->importacion);
 
         $this->assertCount(2, $colores);
-        $this->assertSame(2, $colores['MIEL']['productos']);
-        $this->assertSame(1, $colores['HUESO']['productos']);
+        $this->assertSame(2, $colores['Negro']['productos']);
+        $this->assertTrue($colores['Negro']['existe']);
+        $this->assertFalse($colores['Hueso Nuevo']['existe']);
     }
 
-    public function test_reutiliza_el_color_base_que_ya_se_decidio_antes(): void
+    public function test_la_ia_no_tiene_una_lista_cerrada_de_colores(): void
     {
-        // Asi la segunda importacion casi no pregunta nada. "Miel" no sirve
-        // para esta prueba: el catalogo demo ya lo trae, que es justamente la
-        // regla funcionando.
-        $producto = Producto::create([
-            'marca_id' => $this->marcaId, 'categoria_id' => $this->categoriaId,
-            'modelo' => 'PREVIO', 'nombre' => 'Previo', 'activo' => true,
-        ]);
+        $instruccion = \App\Services\Ia\LectorDeCatalogosClaude::instruccion(1, 10);
+        $esquema = \App\Services\Ia\LectorDeCatalogosClaude::esquema();
+        $campos = $esquema['properties']['productos']['items']['properties'];
 
-        app(\App\Services\Catalogo\GestionarVarianteAction::class)->crear([
-            'producto_id'            => $producto->id,
-            'talla_id'               => Talla::where('valor', '23')->firstOrFail()->id,
-            'color_id'               => $this->colorNegro()->id,
-            'nombre_color_comercial' => 'Arena quemada',
-        ]);
-
-        [$sugerido, $origen] = app(ColoresDelCatalogo::class)->sugerir('ARENA QUEMADA');
-
-        $this->assertSame($this->colorNegro()->id, $sugerido);
-        $this->assertSame('ya se usó antes', $origen);
-    }
-
-    public function test_el_catalogo_demo_ya_le_enseno_a_que_color_base_va_miel(): void
-    {
-        // No es casualidad: el catalogo sembrado ya usa "Miel", asi que la
-        // primera regla lo resuelve sin preguntarle a nadie.
-        [$sugerido, $origen] = app(ColoresDelCatalogo::class)->sugerir('MIEL');
-
-        $this->assertNotNull($sugerido);
-        $this->assertSame('ya se usó antes', $origen);
-    }
-
-    public function test_toma_la_propuesta_de_la_ia_si_es_un_color_de_la_paleta(): void
-    {
-        // Un color que nadie ha usado todavia: ahi si manda la IA.
-        [$sugerido, $origen] = app(ColoresDelCatalogo::class)->sugerir('TIERRA SIENA', 'Café');
-
-        $this->assertSame(Color::whereRaw('LOWER(nombre) = ?', ['café'])->value('id'), $sugerido);
-        $this->assertSame('lo propuso la IA', $origen);
-    }
-
-    public function test_guardar_los_colores_los_deja_en_todos_los_productos_de_ese_color(): void
-    {
-        $a = $this->revisado(['color' => 'HUESO', 'codigo_catalogo' => 'A-1']);
-        $b = $this->revisado(['color' => 'HUESO', 'codigo_catalogo' => 'A-2']);
-
-        $beige = Color::whereRaw('LOWER(nombre) = ?', ['beige'])->firstOrFail();
-
-        $resueltos = app(ColoresDelCatalogo::class)
-            ->asignar($this->importacion, ['HUESO' => $beige->id]);
-
-        $this->assertSame(2, $resueltos);
-        $this->assertSame($beige->id, $a->fresh()->datos_extraidos['color_base_id']);
-        $this->assertSame($beige->id, $b->fresh()->datos_extraidos['color_base_id']);
+        $this->assertArrayNotHasKey('color_base', $campos);
+        $this->assertArrayNotHasKey('enum', $campos['color']);
+        $this->assertStringNotContainsString('de esta lista', $instruccion);
+        $this->assertStringContainsString('tal cual', $instruccion);
     }
 
     // ------------------------------------------------------------------
@@ -506,23 +505,24 @@ class AprobarProductosImportadosTest extends TestCase
             ->assertHasErrors(['campanaId', 'categoriaPorOmision', 'marcaPorOmision']);
     }
 
-    public function test_la_pantalla_no_deja_aprobar_con_colores_sin_resolver(): void
+    public function test_la_pantalla_ya_no_pide_emparejar_colores(): void
     {
-        $fila = $this->revisado();
-        $datos = $fila->datos_extraidos;
-        unset($datos['color_base_id']);
-        $fila->update(['datos_extraidos' => $datos]);
+        $this->revisado(['color' => 'ARENA']);
 
         $this->actingAs($this->adminGeneral());
 
-        Livewire::test('admin.revisar-catalogo', ['importacion' => $this->importacion->id])
+        $componente = Livewire::test('admin.revisar-catalogo', ['importacion' => $this->importacion->id])
+            ->assertSee('Arena')
+            ->assertDontSee('Elige un color')
+            ->assertDontSee('Guardar colores')
             ->set('campanaId', $this->campanaId)
             ->set('categoriaPorOmision', $this->categoriaId)
             ->set('marcaPorOmision', $this->marcaId)
             ->call('aprobar')
-            ->assertSet('esError', true);
+            ->assertSet('esError', false);
 
-        $this->assertSame(0, ProductoCampana::where('codigo_catalogo', '033-39')->count());
+        $this->assertSame(1, $componente->get('resumenAprobacion')['aprobados']);
+        $this->assertNotNull(Color::where('nombre', 'Arena')->first());
     }
 
     public function test_un_admin_de_distribuidora_no_puede_aprobar(): void

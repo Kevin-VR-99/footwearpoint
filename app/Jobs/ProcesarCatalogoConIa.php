@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\ImportacionCatalogo;
 use App\Services\Ia\ExtraerProductosDelCatalogoAction;
+use App\Services\Notificacion\NotificarCatalogoIaAction;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\MaxAttemptsExceededException;
@@ -53,11 +54,15 @@ class ProcesarCatalogoConIa implements ShouldQueue
             ? 'El proceso se interrumpió porque el servidor se reinició. Puedes volver a intentarlo.'
             : 'El proceso se interrumpió. Puedes volver a intentarlo.';
 
-        ImportacionCatalogo::where('id', $this->importacionId)
+        $marcadas = ImportacionCatalogo::where('id', $this->importacionId)
             ->where('estado', 'procesando')
             ->update([
                 'estado' => 'error',
                 'mensaje_error' => $mensaje,
             ]);
+
+        if ($marcadas > 0 && ($importacion = ImportacionCatalogo::find($this->importacionId)) !== null) {
+            app(NotificarCatalogoIaAction::class)->fallo($importacion);
+        }
     }
 }

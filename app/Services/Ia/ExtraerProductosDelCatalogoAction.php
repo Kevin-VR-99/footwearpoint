@@ -6,6 +6,7 @@ use App\Models\ImportacionCatalogo;
 use App\Models\ProductoImportadoStaging;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Catalogo\SubirCatalogoParaImportarAction;
+use App\Services\Notificacion\NotificarCatalogoIaAction;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -31,6 +32,7 @@ class ExtraerProductosDelCatalogoAction
         private LectorDeCatalogos $lector,
         private ContarPaginasPdf $contador,
         private RegistrarAuditoriaAction $auditoria,
+        private NotificarCatalogoIaAction $avisos,
     ) {
     }
 
@@ -79,6 +81,9 @@ class ExtraerProductosDelCatalogoAction
                     'costo_usd' => $uso->costo(),
                 ],
             );
+
+            // Aviso en la campana para quien lo subió.
+            $this->avisos->listo($importacion);
         } catch (Throwable $e) {
             // El detalle técnico va al log; la persona ve algo que se entiende.
             Log::error('Falló la importación con IA', [
@@ -90,6 +95,8 @@ class ExtraerProductosDelCatalogoAction
                 'estado' => 'error',
                 'mensaje_error' => $this->mensajeParaLaPersona($e),
             ]);
+
+            $this->avisos->fallo($importacion);
         } finally {
             // Pase lo que pase, el catálogo no se queda en el proveedor.
             if ($archivoIa !== null) {

@@ -58,6 +58,7 @@ class AprobarProductosImportadosAction
         private GestionarProductoCampanaAction $productosCampana,
         private RangoDeTallas $rangoDeTallas,
         private RegistrarAuditoriaAction $auditoria,
+        private ColoresDelCatalogo $colores,
     ) {
     }
 
@@ -317,9 +318,8 @@ class AprobarProductosImportadosAction
                 'producto_id'            => $producto->id,
                 'talla_id'               => $talla->id,
                 'color_id'               => $color->id,
-                // El nombre del catálogo ("MIEL") se guarda tal cual; el color
-                // de la paleta es solo para agrupar y filtrar.
-                'nombre_color_comercial' => trim((string) ($datos['color'] ?? '')) ?: null,
+                // El color ES el del catálogo ("MIEL" -> "Miel").
+                'nombre_color_comercial' => $color->nombre,
             ]);
 
             $resumen['variantes']++;
@@ -329,20 +329,18 @@ class AprobarProductosImportadosAction
     }
 
     /**
-     * El color base de la paleta. Lo decide la pantalla de revisión (una vez
-     * por color distinto, no por producto) y queda en color_base_id.
+     * El color tal cual lo leyó la IA ("MIEL" -> "Miel"). Si no existe en
+     * `colores` se crea; ya no se pide emparejarlo con otro color.
      */
     private function colorDe(array $datos): Color
     {
-        $id = $datos['color_base_id'] ?? null;
+        $color = $this->colores->resolver($datos['color'] ?? null);
 
-        if ($id !== null && ($color = Color::find((int) $id)) !== null) {
-            return $color;
+        if ($color === null) {
+            throw new InvalidArgumentException('no trae color: escríbelo en la revisión');
         }
 
-        throw new InvalidArgumentException(
-            'falta decir a qué color de la paleta corresponde «'.($datos['color'] ?? 'sin color').'»'
-        );
+        return $color;
     }
 
     /**

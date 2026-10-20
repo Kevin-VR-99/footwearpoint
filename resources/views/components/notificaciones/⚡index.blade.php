@@ -25,7 +25,9 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
             return $this->redirect(route('login'), navigate: true);
         }
 
-        if (Tenant::id() === null) {
+        // El admin general no tiene distribuidora y también recibe avisos
+        // (por ejemplo, cuando la IA termina de leer un catálogo).
+        if (Tenant::id() === null && ! Tenant::esAdminGeneral()) {
             abort(403, 'No se pudo determinar la distribuidora.');
         }
     }
@@ -157,6 +159,11 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
                         <time class="text-xs tabular-nums text-slate-400">{{ optional($n->created_at)->format('d/m/Y H:i') }}</time>
                     </div>
                     <p class="mt-1 text-sm leading-relaxed text-slate-600">{{ $n->mensaje }}</p>
+                    @if ($enlace = $n->enlace())
+                        <a href="{{ $enlace }}" wire:navigate
+                            @if (! $n->leida_at) wire:click="marcarLeida({{ $n->id }})" @endif
+                            class="mt-2 inline-block text-xs font-semibold text-fp-primary hover:underline">Abrir</a>
+                    @endif
                     @if (! $n->leida_at)
                         <button type="button" wire:click="marcarLeida({{ $n->id }})"
                             class="mt-3 text-xs font-medium text-fp-primary hover:underline">

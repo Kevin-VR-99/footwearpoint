@@ -4,7 +4,6 @@ namespace App\Services\Ia;
 
 use Anthropic\Client;
 use Anthropic\Core\FileParam;
-use App\Models\Color;
 use RuntimeException;
 
 /**
@@ -104,12 +103,6 @@ class LectorDeCatalogosClaude implements LectorDeCatalogos
      */
     public static function instruccion(int $desde, int $hasta): string
     {
-        // TG-240 (A10): se le pasa la paleta para que, ademas del nombre del
-        // catalogo ("MIEL"), proponga a que color base se parece. El ve la
-        // foto, asi que acierta mucho mas que una tabla de equivalencias, y
-        // lo que proponga lo confirma una persona antes de aprobar.
-        $paleta = Color::where('activo', true)->orderBy('nombre')->pluck('nombre')->implode(', ');
-
         return <<<TEXTO
         Estás capturando el catálogo de una fábrica de calzado para una distribuidora.
 
@@ -130,10 +123,9 @@ class LectorDeCatalogosClaude implements LectorDeCatalogos
         - "medios_numeros": true solo si el catálogo dice que hay medias tallas. Si dice
           "enteros", es false.
         - "disponibilidad": cópiala tal cual si aparece ("hasta agotar existencias").
-        - "color": el nombre tal cual del catálogo ("MIEL", "HUESO").
-        - "color_base": a cuál de estos colores se parece más, MIRANDO LA FOTO. Elige uno
-          exactamente de esta lista y escríbelo igual: {$paleta}. Si de verdad no se parece
-          a ninguno, ponlo en null y agrega "color_base" a dudosos.
+        - "color": el nombre del color tal cual lo escribe el catálogo ("MIEL", "HUESO",
+          "AZUL MARINO"). No lo cambies por otro parecido ni lo elijas de ninguna lista.
+          Si no viene escrito, ponlo en null y agrega "color" a dudosos.
         - Si un dato no aparece en la página, ponlo en null.
 
         "dudosos" es lo más importante para quien va a revisar: pon ahí el nombre de cada campo
@@ -162,7 +154,6 @@ class LectorDeCatalogosClaude implements LectorDeCatalogos
                             'modelo'          => $texto,
                             'nombre'          => $texto,
                             'color'           => $texto,
-                            'color_base'      => $texto,
                             'codigo_catalogo' => $texto,
                             'precio_publico'  => ['type' => ['number', 'null']],
                             'talla_desde'     => $texto,
@@ -172,7 +163,7 @@ class LectorDeCatalogosClaude implements LectorDeCatalogos
                             'dudosos'         => ['type' => 'array', 'items' => ['type' => 'string']],
                         ],
                         'required' => [
-                            'pagina', 'marca', 'modelo', 'nombre', 'color', 'color_base',
+                            'pagina', 'marca', 'modelo', 'nombre', 'color',
                             'codigo_catalogo', 'precio_publico', 'talla_desde', 'talla_hasta',
                             'medios_numeros', 'disponibilidad', 'dudosos',
                         ],

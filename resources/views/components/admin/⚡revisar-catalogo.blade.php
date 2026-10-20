@@ -7,7 +7,6 @@ use App\Services\Ia\CamposDelProductoImportado;
 use App\Services\Ia\CompletarCampoEnLoteAction;
 use App\Models\Campana;
 use App\Models\CategoriaProducto;
-use App\Models\Color;
 use App\Models\Marca;
 use App\Services\Ia\AprobarProductosImportadosAction;
 use App\Services\Ia\ColoresDelCatalogo;
@@ -51,9 +50,6 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
     public bool $esError = false;
 
     /* TG-240 (A10): lo que hace falta para pasar al catalogo maestro. */
-    /** @var array<string, string> nombre comercial del color => id del color base */
-    public array $coloresBase = [];
-
     public ?int $campanaId = null;
     public ?int $categoriaPorOmision = null;
     public ?int $marcaPorOmision = null;
@@ -81,10 +77,6 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         $fila = ImportacionCatalogo::findOrFail($importacion);
 
         $this->campanaId = $fila->campana_id;
-
-        foreach (app(ColoresDelCatalogo::class)->distintos($fila) as $comercial => $info) {
-            $this->coloresBase[$comercial] = (string) ($info['asignado'] ?? $info['sugerido'] ?? '');
-        }
     }
 
     public function getImportacionProperty(): ImportacionCatalogo
@@ -216,15 +208,10 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
     // TG-240 (A10): pasar al catalogo maestro
     // ------------------------------------------------------------------
 
-    /** @return array<string, array{productos: int, asignado: ?int, sugerido: ?int, origen: string}> */
+    /** @return array<string, array{productos: int, existe: bool}> */
     public function getColoresProperty(): array
     {
         return app(ColoresDelCatalogo::class)->distintos($this->importacion);
-    }
-
-    public function getPaletaProperty()
-    {
-        return Color::where('activo', true)->orderBy('nombre')->get();
     }
 
     public function getCategoriasProperty()
@@ -248,21 +235,6 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         return $this->importacion->productosStaging()->where('estado', 'corregido')->count();
     }
 
-    public function getColoresSinResolverProperty(): int
-    {
-        return app(ColoresDelCatalogo::class)->sinResolver($this->importacion);
-    }
-
-    public function guardarColores(ColoresDelCatalogo $accion): void
-    {
-        $resueltos = $accion->asignar($this->importacion, $this->coloresBase);
-
-        $this->mensaje = $resueltos === 0
-            ? 'No se guardó ningún color. Elige al menos uno de la paleta.'
-            : "Colores guardados en {$resueltos} ".($resueltos === 1 ? 'producto' : 'productos').'.';
-        $this->esError = $resueltos === 0;
-    }
-
     public function aprobar(AprobarProductosImportadosAction $accion): void
     {
         $this->validate([
@@ -279,13 +251,6 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
 
         if ($this->listosParaAprobar === 0) {
             $this->mensaje = 'No hay nada revisado todavía. Revisa los productos antes de aprobarlos.';
-            $this->esError = true;
-
-            return;
-        }
-
-        if ($this->coloresSinResolver > 0) {
-            $this->mensaje = 'Faltan colores por resolver. Guarda primero a qué color de la paleta corresponde cada uno.';
             $this->esError = true;
 
             return;
@@ -388,41 +353,25 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         </form>
     </x-panel.tarjeta>
 
-    {{-- TG-240 (A10): los colores se resuelven UNA VEZ POR COLOR, no por producto. --}}
+    {{-- Los colores se guardan tal cual los leyó la IA; los que no existen se crean al aprobar. --}}
     @if ($this->colores)
         <x-panel.tarjeta titulo="Colores de este catálogo">
             <p class="mb-3 text-sm text-fp-text-muted">
-                El catálogo dice «MIEL» y la paleta tiene «Café». Di una sola vez a qué color de la paleta
-                corresponde cada uno: el nombre del catálogo se guarda igual, y la paleta sirve para agrupar
-                y filtrar. En la siguiente importación ya no te lo va a preguntar.
+                Cada producto se guarda con el color que dice el catálogo. Los colores nuevos se agregan
+                solos al catálogo de colores cuando apruebes. Si alguno está mal escrito, corrígelo en el producto.
             </p>
 
-            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach ($this->colores as $comercial => $info)
-                    <div class="rounded-xl border border-slate-200 p-3">
-                        <p class="text-sm font-semibold text-fp-sidebar">{{ $comercial }}</p>
-                        <p class="mb-2 text-xs text-fp-text-muted">
-                            {{ $info['productos'] }} {{ $info['productos'] === 1 ? 'producto' : 'productos' }}
-                            · {{ $info['origen'] }}
-                        </p>
-                        <select wire:model="coloresBase.{{ $comercial }}" class="w-full rounded-lg text-sm">
-                            <option value="">Elige un color</option>
-                            @foreach ($this->paleta as $color)
-                                <option value="{{ $color->id }}">{{ $color->nombre }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+            <ul class="flex flex-wrap gap-2">
+                @foreach ($this->colores as $nombre => $info)
+                    <li class="rounded-full border border-slate-200 px-3 py-1 text-sm" data-color="{{ $nombre }}">
+                        <span class="font-semibold text-fp-sidebar">{{ $nombre }}</span>
+                        <span class="text-xs text-fp-text-muted">
+                            · {{ $info['productos'] }} {{ $info['productos'] === 1 ? 'producto' : 'productos' }}
+                            · {{ $info['existe'] ? 'ya existe' : 'nuevo' }}
+                        </span>
+                    </li>
                 @endforeach
-            </div>
-
-            <div class="mt-4 flex flex-wrap items-center gap-3">
-                <x-panel.boton wire:click="guardarColores" wire:loading.attr="disabled">Guardar colores</x-panel.boton>
-                @if ($this->coloresSinResolver > 0)
-                    <span class="text-xs text-fp-badge-warning-fg">
-                        {{ $this->coloresSinResolver }} productos todavía sin color resuelto.
-                    </span>
-                @endif
-            </div>
+            </ul>
         </x-panel.tarjeta>
     @endif
 
