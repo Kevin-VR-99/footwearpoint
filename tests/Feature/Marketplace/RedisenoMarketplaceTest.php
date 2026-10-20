@@ -92,7 +92,8 @@ class RedisenoMarketplaceTest extends TestCase
             ->assertSee('aria-label="Cerrar menú"', false);
 
         $html = $this->get(route('admin.dashboard'))->getContent();
-        $this->assertSame(5, substr_count($html, 'data-enlace-lateral'));
+        $this->assertSame(4, substr_count($html, 'data-enlace-lateral'));
+        $this->assertStringNotContainsString('Categorías del directorio', $html);
         $this->assertStringContainsString('aria-current="page"', $html);
         $this->assertStringContainsString('group-hover:bg-white/15', $html);
     }
