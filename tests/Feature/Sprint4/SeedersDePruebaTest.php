@@ -131,13 +131,28 @@ class SeedersDePruebaTest extends TestCase
 
     public function test_con_la_variable_configurada_se_usa_esa_contrasena(): void
     {
-        putenv('SEED_PASSWORD=otra-clave-de-prueba');
+        $this->fijarEntorno('SEED_PASSWORD', 'otra-clave-de-prueba');
 
         try {
             $this->assertSame('otra-clave-de-prueba', PasswordDePrueba::obtener());
             $this->assertStringContainsString('SEED_PASSWORD', PasswordDePrueba::comoExplicarla());
         } finally {
-            putenv('SEED_PASSWORD');
+            $this->fijarEntorno('SEED_PASSWORD', null);
         }
+    }
+
+    /** putenv() solo no basta: Laravel también lee $_ENV y $_SERVER. */
+    private function fijarEntorno(string $nombre, ?string $valor): void
+    {
+        if ($valor === null) {
+            putenv($nombre);
+            unset($_ENV[$nombre], $_SERVER[$nombre]);
+
+            return;
+        }
+
+        putenv("{$nombre}={$valor}");
+        $_ENV[$nombre] = $valor;
+        $_SERVER[$nombre] = $valor;
     }
 }
