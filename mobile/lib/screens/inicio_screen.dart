@@ -158,14 +158,18 @@ class _InicioScreenState extends State<InicioScreen> {
                 _BotonCarrito(habilitado: habilitado),
                 const SizedBox(height: 10),
               ],
-              FpAccion(
-                icono: Icons.group_outlined,
-                titulo: 'Mis Clientes Particulares',
-                subtitulo: 'Tu lista de clientes',
-                alTocar: habilitado
-                    ? () => _abrir(context, const ClientesPrivadosScreen())
-                    : null,
-              ),
+              // Los clientes particulares son solo del revendedor (E9-06):
+              // a un cliente directo el servidor le contesta 403 y la
+              // pantalla se veía vacía o con error. Ya no se le enseña.
+              if (auth.rol == 'revendedor')
+                FpAccion(
+                  icono: Icons.group_outlined,
+                  titulo: 'Mis Clientes Particulares',
+                  subtitulo: 'Tu lista de clientes',
+                  alTocar: habilitado
+                      ? () => _abrir(context, const ClientesPrivadosScreen())
+                      : null,
+                ),
               _UltimosPedidos(
                 pedidos: _pedidos,
                 alVerTodos: habilitado
