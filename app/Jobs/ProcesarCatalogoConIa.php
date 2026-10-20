@@ -6,6 +6,7 @@ use App\Models\ImportacionCatalogo;
 use App\Services\Ia\ExtraerProductosDelCatalogoAction;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\MaxAttemptsExceededException;
 
 /**
  * TG-238 (A8) — Leer un catálogo con la IA, en segundo plano.
@@ -46,11 +47,17 @@ class ProcesarCatalogoConIa implements ShouldQueue
     /** Si el worker mata la tarea (por tiempo o por caída), que no quede "procesando" para siempre. */
     public function failed(?\Throwable $e): void
     {
+        // MaxAttemptsExceeded = el worker se reinició (p. ej. un redeploy) a
+        // media lectura y la tarea ya no se repite sola (tries = 1).
+        $mensaje = $e instanceof MaxAttemptsExceededException
+            ? 'El proceso se interrumpió porque el servidor se reinició. Puedes volver a intentarlo.'
+            : 'El proceso se interrumpió. Puedes volver a intentarlo.';
+
         ImportacionCatalogo::where('id', $this->importacionId)
             ->where('estado', 'procesando')
             ->update([
                 'estado' => 'error',
-                'mensaje_error' => 'El proceso se interrumpió. Puedes volver a intentarlo.',
+                'mensaje_error' => $mensaje,
             ]);
     }
 }

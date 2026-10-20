@@ -40,7 +40,12 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Debe ser MAYOR que el timeout del trabajo más largo
+            // (ProcesarCatalogoConIa: 1800 s). Con 90 s, un catálogo grande que
+            // sigue corriendo se daba por "perdido" y otro worker (o el mismo
+            // tras reiniciarse) lo volvía a tomar: con tries = 1 eso acaba en
+            // MaxAttemptsExceeded y el catálogo queda en "error".
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 1860),
             'after_commit' => false,
         ],
 

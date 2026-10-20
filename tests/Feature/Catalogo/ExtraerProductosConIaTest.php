@@ -329,6 +329,85 @@ class ExtraerProductosConIaTest extends TestCase
         $this->assertNull($importacion->fresh()->mensaje_error);
     }
 
+    public function test_mientras_la_ia_analiza_la_pantalla_mantiene_viva_la_sesion(): void
+    {
+        // Gabriel: la sesión caducaba con la pestaña en segundo plano mientras
+        // la IA seguía leyendo. El poll con keep-alive no se frena en segundo
+        // plano y cada consulta renueva la sesión.
+        $importacion = $this->importacionConCatalogoDe(25);
+        $importacion->update(['estado' => 'procesando']);
+
+        $this->actingAs($this->adminGeneral());
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->assertSeeHtml('wire:poll.5s.keep-alive')
+            ->assertSeeHtml('data-mantiene-sesion');
+    }
+
+    public function test_sin_analisis_en_curso_no_se_mantiene_viva_la_sesion(): void
+    {
+        // No se alarga la sesión en general: sin trabajo no hay poll.
+        $this->importacionConCatalogoDe(25);
+
+        $this->actingAs($this->adminGeneral());
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->assertDontSeeHtml('wire:poll')
+            ->assertDontSeeHtml('data-mantiene-sesion');
+    }
+
+    public function test_la_consulta_del_poll_renueva_la_sesion(): void
+    {
+        $importacion = $this->importacionConCatalogoDe(25);
+        $importacion->update(['estado' => 'procesando']);
+
+        $this->actingAs($this->adminGeneral());
+
+        // Un refresco (lo que hace el poll) pasa por la sesión y la deja viva.
+        Livewire::test('admin.catalogos-importaciones')
+            ->call('$refresh')
+            ->assertSeeHtml('wire:poll.5s.keep-alive');
+
+        $this->assertAuthenticatedAs($this->adminGeneral());
+    }
+
+    public function test_si_un_reinicio_del_worker_corta_la_lectura_queda_en_error_y_se_puede_reintentar(): void
+    {
+        // Lo que le pasó a «2 Cklass»: el worker se redesplegó a media lectura
+        // y, al volver, la tarea ya contaba un intento (tries = 1).
+        Queue::fake();
+
+        $importacion = $this->importacionConCatalogoDe(76);
+        $importacion->update(['estado' => 'procesando']);
+
+        (new ProcesarCatalogoConIa($importacion->id))
+            ->failed(new \Illuminate\Queue\MaxAttemptsExceededException('attempted too many times'));
+
+        $importacion->refresh();
+        $this->assertSame('error', $importacion->estado);
+        $this->assertStringContainsString('servidor se reinició', $importacion->mensaje_error);
+
+        $this->actingAs($this->adminGeneral());
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->assertSee('Reintentar con IA')
+            ->call('procesar', $importacion->id)
+            ->assertSet('esError', false);
+
+        Queue::assertPushed(ProcesarCatalogoConIa::class,
+            fn ($job) => $job->importacionId === $importacion->id);
+        $this->assertSame('procesando', $importacion->fresh()->estado);
+    }
+
+    public function test_la_cola_no_da_por_perdido_un_catalogo_que_sigue_leyendose(): void
+    {
+        // retry_after menor que el timeout = la cola vuelve a entregar una
+        // tarea que sigue corriendo y con tries = 1 termina en error.
+        $timeout = (new ProcesarCatalogoConIa(1))->timeout;
+
+        $this->assertGreaterThan($timeout, (int) config('queue.connections.database.retry_after'));
+    }
+
     public function test_un_admin_de_distribuidora_no_puede_mandar_a_procesar(): void
     {
         Queue::fake();
