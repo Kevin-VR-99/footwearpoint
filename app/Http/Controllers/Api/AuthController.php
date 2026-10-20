@@ -166,6 +166,29 @@ class AuthController extends Controller
      * Usuario, rol y distribuidora, en la forma que espera la app. Lo usan
      * login y me para responder exactamente igual.
      */
+    private function nombreDistribuidora(?int $distribuidoraId): ?string
+    {
+        if ($distribuidoraId === null) {
+            return null;
+        }
+
+        $distribuidora = Distribuidora::withoutGlobalScopes()
+            ->whereKey($distribuidoraId)
+            ->first(['nombre_comercial', 'razon_social']);
+
+        if ($distribuidora === null) {
+            return null;
+        }
+
+        foreach ([$distribuidora->nombre_comercial, $distribuidora->razon_social] as $nombre) {
+            if (is_string($nombre) && trim($nombre) !== '') {
+                return trim($nombre);
+            }
+        }
+
+        return null;
+    }
+
     private function datosDeSesion(Usuario $usuario): array
     {
         // La distribuidora se resuelve con la misma lógica que usa todo el
@@ -215,9 +238,8 @@ class AuthController extends Controller
             'distribuidora_id' => $distribuidoraId,
             // TG-281: la app enseñaba el numero ("Distribuidora: 1"), que no
             // le dice nada a nadie. Con el nombre, el dato sirve para algo.
-            'distribuidora' => $distribuidoraId === null
-                ? null
-                : Distribuidora::withoutGlobalScopes()->whereKey($distribuidoraId)->value('nombre_comercial'),
+            // Si no tiene nombre comercial se usa la razón social; nunca el id.
+            'distribuidora' => $this->nombreDistribuidora($distribuidoraId),
             'legales_aceptados' => $legalesAceptados,
             // TG-193: si es true, la app debe mandarla a cambiar su
             // contraseña antes de dejarla usar lo demás.

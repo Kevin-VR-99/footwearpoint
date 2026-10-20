@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import '../models/usuario.dart';
 import '../services/api_service.dart';
+import '../services/registro_fcm.dart';
 
 /// Guarda quién inició sesión y avisa a las pantallas cuando eso cambia.
 ///
@@ -18,6 +19,20 @@ class AuthProvider extends ChangeNotifier {
   /// Se expone para que las demás pantallas hagan sus peticiones con el
   /// mismo token, sin crear su propio ApiService.
   final ApiService api;
+
+  /// Registro del token de Firebase con reintentos (ver [RegistroFcm]).
+  late final registroFcm = RegistroFcm(
+    enviar: (token) => api.post(
+      'dispositivos-fcm',
+      cuerpo: {'token': token, 'plataforma': _plataformaFcm},
+    ),
+  );
+
+  /// La columna acepta android, ios y web; antes siempre se mandaba android.
+  static String get _plataformaFcm {
+    if (kIsWeb) return 'web';
+    return defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+  }
 
   static const mensajeSesionVencida = 'Tu sesión expiró. Vuelve a iniciar sesión.';
 
@@ -184,6 +199,7 @@ class AuthProvider extends ChangeNotifier {
       // (sin internet, sin servicios de Google), no impide cerrar la sesión.
       await _renovacionTokenFcm?.cancel();
       _renovacionTokenFcm = null;
+      registroFcm.detener();
 
       try {
         await FirebaseMessaging.instance.deleteToken();
@@ -203,6 +219,7 @@ class AuthProvider extends ChangeNotifier {
   @override
   void dispose() {
     _renovacionTokenFcm?.cancel();
+    registroFcm.detener();
     super.dispose();
   }
 
@@ -328,35 +345,39 @@ class AuthProvider extends ChangeNotifier {
 
   /// Pide el token a Firebase y lo registra en Laravel (TG-96).
   void _registrarDispositivoFCM() async {
+    // 2. Escuchamos por si Firebase decide renovar el token en segundo plano.
+    // Va primero, aparte del permiso y del getToken: si esos fallaban, antes
+    // nunca se llegaba a escuchar la renovación. Solo UNA vez (??=): esto se
+    // llama en cada login y en cada apertura. Se cancela al cerrar sesión.
+    try {
+      _renovacionTokenFcm ??= FirebaseMessaging.instance.onTokenRefresh.listen(
+        (nuevoToken) {
+          if (haySesion) registroFcm.registrar(nuevoToken);
+        },
+        onError: (Object e) => debugPrint('Error en la renovación FCM: $e'),
+      );
+    } catch (e) {
+      debugPrint('Error al escuchar la renovación FCM: $e');
+    }
+
     try {
       // 0. TG-183: desde Android 13 hay que pedir permiso para mostrar
       // notificaciones; sin esto el push llega pero el celular no lo enseña.
       // Si la persona ya contestó, no vuelve a preguntar.
       await FirebaseMessaging.instance.requestPermission();
-
-      // 1. Pedimos el token de este celular a Firebase
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token != null) {
-        await api.post(
-          'dispositivos-fcm', 
-          cuerpo: {'token': token, 'plataforma': 'android'},
-        );
-      }
-
-      // 2. Escuchamos por si Firebase decide renovar el token en segundo plano.
-      // Solo UNA vez: esto se llama en cada login y en cada apertura de la
-      // app, y sin el ??= se iba sumando un escuchador más cada vez (el
-      // celular se volvía a registrar repetido). Se cancela al cerrar sesión.
-      _renovacionTokenFcm ??= FirebaseMessaging.instance.onTokenRefresh.listen((nuevoToken) async {
-        if (haySesion) {
-          await api.post(
-            'dispositivos-fcm',
-            cuerpo: {'token': nuevoToken, 'plataforma': 'android'},
-          );
-        }
-      });
     } catch (e) {
-      // Si el usuario no tiene internet o Firebase falla, lo ignoramos para no tumbar la app
+      // Sin permiso el token sigue sirviendo; no se corta el registro.
+      debugPrint('Error al pedir permiso de notificaciones: $e');
+    }
+
+    try {
+      // 1. Pedimos el token de este celular a Firebase y lo mandamos con
+      // reintentos (sin red al abrir la app ya no se pierde el registro).
+      if (haySesion) {
+        await registroFcm.registrarDesde(FirebaseMessaging.instance.getToken);
+      }
+    } catch (e) {
+      // Si Firebase falla, lo ignoramos para no tumbar la app.
       debugPrint('Error al registrar FCM: $e');
     }
   }

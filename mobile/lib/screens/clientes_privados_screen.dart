@@ -28,6 +28,10 @@ class _ClientesPrivadosScreenState extends State<ClientesPrivadosScreen> {
   bool _cargando = true;
   List<ClientePrivadoRevendedor> _clientes = [];
 
+  /// Si no se pudo cargar la lista. Antes un error dejaba la lista vacía y se
+  /// enseñaba "Todavía no tienes clientes", como si no tuviera ninguno.
+  String? _errorCarga;
+
   /// TG-281: filtra la lista de clientes propios sin ir al servidor.
   String _busqueda = '';
 
@@ -38,7 +42,10 @@ class _ClientesPrivadosScreenState extends State<ClientesPrivadosScreen> {
   }
 
   Future<void> _cargarClientes() async {
-    setState(() => _cargando = true);
+    setState(() {
+      _cargando = true;
+      _errorCarga = null;
+    });
 
     // Después de cada await se revisa `mounted`: si la persona salió de la
     // pantalla mientras el servidor contestaba, ya no se debe tocar (tronaba).
@@ -48,7 +55,11 @@ class _ClientesPrivadosScreenState extends State<ClientesPrivadosScreen> {
       setState(() => _clientes = lista);
     } on ApiException catch (e) {
       if (!mounted) return;
-      _avisar(e.mensaje, esError: true);
+      setState(() => _errorCarga = e.mensaje);
+    } catch (_) {
+      // Una respuesta con forma inesperada ya no truena la pantalla.
+      if (!mounted) return;
+      setState(() => _errorCarga = 'No se pudo leer la lista de clientes.');
     } finally {
       if (mounted) setState(() => _cargando = false);
     }
@@ -116,7 +127,7 @@ class _ClientesPrivadosScreenState extends State<ClientesPrivadosScreen> {
       appBar: AppBar(title: const Text('Mis clientes particulares'), bottom: const FpBordeMarca()),
       body: SafeArea(child: _contenido()),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _cargando ? null : () => _abrirFormulario(),
+        onPressed: _cargando || _errorCarga != null ? null : () => _abrirFormulario(),
         icon: const Icon(Icons.person_add_alt_1),
         label: const Text('Agregar cliente'),
       ),
@@ -126,6 +137,22 @@ class _ClientesPrivadosScreenState extends State<ClientesPrivadosScreen> {
   Widget _contenido() {
     if (_cargando) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorCarga != null) {
+      return Center(
+        child: FpEstadoVacio(
+          icono: Icons.cloud_off_outlined,
+          titulo: 'No se pudieron cargar tus clientes',
+          texto: _errorCarga,
+          error: true,
+          accion: FilledButton.icon(
+            onPressed: _cargarClientes,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
+          ),
+        ),
+      );
     }
 
     if (_clientes.isEmpty) {

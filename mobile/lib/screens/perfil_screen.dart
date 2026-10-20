@@ -388,9 +388,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       _Dato(etiqueta: 'Rol', valor: InicioScreen.nombreRol(auth.rol)),
                       _Dato(
                         etiqueta: 'Distribuidora',
-                        // El nombre si el servidor lo manda; si no (version
-                        // vieja), se cae al numero, que es lo que habia antes.
-                        valor: auth.distribuidoraNombre ?? auth.distribuidoraId?.toString(),
+                        // Solo el nombre real. Antes, si no llegaba, se caía
+                        // al número y se veía «Distribuidora 1»; un número
+                        // no le dice nada a nadie, mejor el dato vacío.
+                        valor: auth.distribuidoraNombre,
                         ultimo: true,
                       ),
                     ],

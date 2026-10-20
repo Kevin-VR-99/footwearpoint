@@ -114,6 +114,28 @@ class SesionActualTest extends TestCase
         $this->assertSame($login->json('data.distribuidora_id'), $me->json('data.distribuidora_id'));
     }
 
+    public function test_manda_el_nombre_de_la_distribuidora_y_no_su_numero(): void
+    {
+        $this->crearRevendedor('maria.nombre@revendedor.test');
+        $token = $this->iniciarSesion('maria.nombre@revendedor.test');
+
+        $me = $this->withToken($token)->getJson('/api/auth/me')->assertOk();
+
+        $this->assertSame('Calzados Ramírez', $me->json('data.distribuidora'));
+    }
+
+    public function test_sin_nombre_comercial_usa_la_razon_social(): void
+    {
+        $this->crearRevendedor('maria.razon@revendedor.test');
+        Distribuidora::withoutGlobalScopes()->where('slug', 'calzados-ramirez')
+            ->update(['nombre_comercial' => '']);
+        $token = $this->iniciarSesion('maria.razon@revendedor.test');
+
+        $me = $this->withToken($token)->getJson('/api/auth/me')->assertOk();
+
+        $this->assertSame('Calzados Ramírez S.A. de C.V.', $me->json('data.distribuidora'));
+    }
+
     public function test_no_entrega_un_token_nuevo(): void
     {
         $this->crearRevendedor('maria.sintoken@revendedor.test');

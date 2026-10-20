@@ -17,9 +17,10 @@ http.Response _json(Object cuerpo, int codigo) => http.Response(
 /// Un servidor falso con una sesión de María ya iniciada. Guarda lo que se
 /// le pidió para revisarlo, y cada prueba decide qué responde el PATCH.
 class _ServidorFalso {
-  _ServidorFalso({this.alGuardar});
+  _ServidorFalso({this.alGuardar, this.distribuidora = 'Calzados Ramírez'});
 
   final http.Response Function(Map<String, dynamic> cuerpo)? alGuardar;
+  final String? distribuidora;
   final peticiones = <http.Request>[];
 
   Map<String, dynamic> usuario = {
@@ -40,7 +41,7 @@ class _ServidorFalso {
           'usuario': usuario,
           'rol': 'revendedor',
           'distribuidora_id': 1,
-          'distribuidora': 'Calzados Ramírez',
+          'distribuidora': distribuidora,
           'legales_aceptados': true,
         },
       }, 200);
@@ -219,5 +220,21 @@ void main() {
 
     expect(find.text('Contraseña actual'), findsOneWidget);
     expect(find.text('Nueva contraseña'), findsOneWidget);
+  });
+
+  testWidgets('enseña el nombre real de la distribuidora, no su número', (tester) async {
+    await abrirPerfil(tester, _ServidorFalso());
+    await tester.ensureVisible(find.text('Calzados Ramírez'));
+
+    expect(find.text('Calzados Ramírez'), findsOneWidget);
+    expect(find.text('1'), findsNothing);
+  });
+
+  testWidgets('si el servidor no manda el nombre, no se cae a «1»', (tester) async {
+    await abrirPerfil(tester, _ServidorFalso(distribuidora: null));
+    await tester.ensureVisible(find.text('Distribuidora'));
+
+    expect(find.text('1'), findsNothing);
+    expect(find.textContaining('Distribuidora 1'), findsNothing);
   });
 }
