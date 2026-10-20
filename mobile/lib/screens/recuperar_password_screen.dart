@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -29,6 +31,10 @@ class RecuperarPasswordScreen extends StatefulWidget {
   static const mensajeRespaldo =
       'Si el correo pertenece a una cuenta, te llegará un enlace para restablecer tu contraseña.';
 
+  /// Segundos que hay que esperar para pedir otro enlace. Es el 'throttle'
+  /// del broker 'users' en config/auth.php (60 s).
+  static const segundosEspera = 60;
+
   @override
   State<RecuperarPasswordScreen> createState() => _RecuperarPasswordScreenState();
 }
@@ -47,8 +53,26 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
   /// Lo que respondió el servidor al mandar el enlace.
   String? _mensajeEnviado;
 
+  /// Segundos que faltan para poder reenviar (0 = ya se puede).
+  int _faltan = 0;
+  Timer? _reloj;
+
+  void _iniciarEspera() {
+    _reloj?.cancel();
+    _faltan = RecuperarPasswordScreen.segundosEspera;
+    _reloj = Timer.periodic(const Duration(seconds: 1), (reloj) {
+      if (!mounted) return reloj.cancel();
+      setState(() => _faltan--);
+      if (_faltan <= 0) reloj.cancel();
+    });
+  }
+
+  static String _textoReloj(int segundos) =>
+      '${segundos ~/ 60}:${(segundos % 60).toString().padLeft(2, '0')}';
+
   @override
   void dispose() {
+    _reloj?.cancel();
     _email.dispose();
     super.dispose();
   }
@@ -58,7 +82,14 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
 
     FocusScope.of(context).unfocus();
 
-    final correo = _email.text.trim();
+    await _pedirEnlace(_email.text.trim());
+  }
+
+  /// También la usa "Reenviar enlace". El contador sale exista o no la cuenta
+  /// (TG-141): solo depende de que el servidor haya respondido.
+  Future<void> _pedirEnlace(String correo) async {
+    if (_enviando || _faltan > 0) return;
+
     final api = context.read<AuthProvider>().api;
 
     setState(() {
@@ -86,7 +117,8 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
 
     setState(() {
       _enviando = false;
-      _correoEnviado = enviado;
+      if (enviado != null) _iniciarEspera();
+      _correoEnviado = enviado ?? _correoEnviado;
       _mensajeEnviado = mensaje;
       _error = error;
     });
@@ -200,18 +232,47 @@ class _RecuperarPasswordScreenState extends State<RecuperarPasswordScreen> {
           style: tema.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 16),
-        // 60 minutos: 'expire' del broker 'users' en config/auth.php.
+        // 15 minutos: 'expire' del broker 'users' en config/auth.php.
         Text(
-          'El enlace vence en 60 minutos. Ábrelo desde tu teléfono y ahí mismo '
+          'El enlace vence en 15 minutos. Ábrelo desde tu teléfono y ahí mismo '
           'crea tu nueva contraseña. Si no lo ves, revisa la carpeta de spam.',
           textAlign: TextAlign.center,
           style: textoSecundario,
         ),
+        if (_error != null) ...[
+          const SizedBox(height: 16),
+          AvisoError(mensaje: _error!),
+        ],
         const SizedBox(height: 32),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(),
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
           child: const Text('Volver al login'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          key: const Key('reenviar-enlace'),
+          onPressed: (_faltan > 0 || _enviando) ? null : () => _pedirEnlace(correo),
+          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+          child: _enviando
+              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : _faltan > 0
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            value: _faltan / RecuperarPasswordScreen.segundosEspera,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text('Reenviar en ${_textoReloj(_faltan)}'),
+                      ],
+                    )
+                  : const Text('Reenviar enlace'),
         ),
       ],
     );
