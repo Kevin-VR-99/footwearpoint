@@ -97,6 +97,15 @@ class Usuario extends Authenticatable implements CanResetPassword, MustVerifyEma
      * personal. Un solo lugar: lo usan el login, el perfil, las
      * notificaciones, la auditoría, los correos y las pantallas.
      */
+    /**
+     * El enlace para restablecer la contraseña se manda en cola (ver
+     * RestablecerPasswordNotification), así la petición no espera al correo.
+     */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new \App\Notifications\RestablecerPasswordNotification($token));
+    }
+
     public function nombreVisible(): ?string
     {
         return $this->contacto()?->nombre ?? $this->nombre;

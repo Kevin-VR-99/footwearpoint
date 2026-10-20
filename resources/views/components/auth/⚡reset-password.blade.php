@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\Auth\RestablecerPasswordAction;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -31,6 +32,7 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
     {
         return [
             'email.required'     => 'El correo es obligatorio.',
+            'email.email'        => 'El correo no es válido.',
             'password.required'  => 'La contraseña es obligatoria.',
             'password.min'       => 'Mínimo 8 caracteres.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
@@ -45,6 +47,10 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
     {
         $this->validate();
 
+        if ($this->demasiadosIntentos('restablecer')) {
+            return;
+        }
+
         if ($accion->ejecutar($this->email, $this->password, $this->password_confirmation, $this->token)) {
             session()->flash('status', 'Contraseña restablecida. Ya puedes iniciar sesión.');
             return $this->redirect(route('login'), navigate: true);
@@ -52,6 +58,22 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
 
         // Mismo mensaje exista o no el correo, para no revelar cuentas.
         $this->addError('email', RestablecerPasswordAction::MENSAJE_ENLACE_INVALIDO);
+    }
+    /**
+     * Tope por IP (5 por minuto), igual que en la API. Devuelve true si ya se
+     * pasó; en ese caso deja el mensaje en el campo de correo.
+     */
+    private function demasiadosIntentos(string $accion): bool
+    {
+        $clave = 'recuperar-password-web|'.$accion.'|'.request()->ip();
+
+        if (RateLimiter::tooManyAttempts($clave, 5)) {
+            $this->addError('email', 'Demasiados intentos. Espera '.RateLimiter::availableIn($clave).' segundos y vuelve a intentarlo.');
+            return true;
+        }
+
+        RateLimiter::hit($clave, 60);
+        return false;
     }
 };
 ?>

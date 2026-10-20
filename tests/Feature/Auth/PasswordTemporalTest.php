@@ -12,7 +12,7 @@ use App\Models\Usuario;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\RestablecerPasswordNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -342,6 +342,6 @@ class PasswordTemporalTest extends TestCase
             ->call('enviarEnlaceRevendedor', $this->afiliacionDeMaria()->id)
             ->assertSet('avisoEnlaceEsError', false);
 
-        Notification::assertSentTo($this->cuentaDeMaria(), ResetPassword::class);
+        Notification::assertSentTo($this->cuentaDeMaria(), RestablecerPasswordNotification::class);
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\Auth\EnviarEnlaceRecuperacionAction;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -34,7 +35,27 @@ new #[Layout('layouts.guest')] #[Title('Recuperar contraseña — FootwearPoint'
     {
         $this->validate();
 
+        if ($this->demasiadosIntentos('enlace')) {
+            return;
+        }
+
         $this->status = $accion->ejecutar($this->email);
+    }
+    /**
+     * Tope por IP (5 por minuto), igual que en la API. Devuelve true si ya se
+     * pasó; en ese caso deja el mensaje en el campo de correo.
+     */
+    private function demasiadosIntentos(string $accion): bool
+    {
+        $clave = 'recuperar-password-web|'.$accion.'|'.request()->ip();
+
+        if (RateLimiter::tooManyAttempts($clave, 5)) {
+            $this->addError('email', 'Demasiados intentos. Espera '.RateLimiter::availableIn($clave).' segundos y vuelve a intentarlo.');
+            return true;
+        }
+
+        RateLimiter::hit($clave, 60);
+        return false;
     }
 };
 ?>

@@ -24,6 +24,7 @@ class ResetPasswordRequest extends FormRequest
     {
         return [
             'email.required'     => 'El correo es obligatorio.',
+            'email.email'        => 'El correo no es válido.',
             'token.required'     => 'El token es obligatorio.',
             'password.required'  => 'La contraseña es obligatoria.',
             'password.min'       => 'La contraseña debe tener al menos 8 caracteres.',
