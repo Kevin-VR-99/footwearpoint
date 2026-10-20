@@ -249,6 +249,19 @@ void main() {
           'data': {'token': '2|token-roberto', 'token_type': 'Bearer', ..._sesion(9, 'Roberto García', 'roberto@ejemplo.com')},
         }, 200);
       }
+      // TG-281: cerrar sesión se mudó al perfil, así que la prueba pasa por
+      // esa pantalla y el servidor falso tiene que contestarle.
+      if (ruta.endsWith('/perfil')) {
+        return _json({
+          'data': {
+            'id': 7,
+            'nombre': 'María López',
+            'email': 'maria@ejemplo.com',
+            'telefono': null,
+            'estado': 'activo',
+          },
+        }, 200);
+      }
       return _json({'message': 'ok'}, 200);
     });
 
@@ -264,7 +277,10 @@ void main() {
     expect(carrito().totalPiezas, 1);
 
     // Cierra sesión y entra Roberto en el mismo teléfono.
-    // En pantallas chicas el inicio se desliza: primero se lleva el botón a la vista.
+    // TG-281: cerrar sesión se mudó al perfil, que es una pestaña de la
+    // barra de abajo.
+    await tester.tap(find.text('Perfil'));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Cerrar sesión'));
     await tester.tap(find.text('Cerrar sesión'));
     await tester.pumpAndSettle();

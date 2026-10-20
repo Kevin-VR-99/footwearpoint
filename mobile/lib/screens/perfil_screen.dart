@@ -404,6 +404,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   icon: const Icon(Icons.lock_outline),
                   label: const Text('Cambiar contraseña'),
                 ),
+                const SizedBox(height: 10),
+                // TG-281: estaba al final del Inicio. Ahora el Inicio enseña
+                // el resumen y la navegacion vive en la barra de abajo, asi
+                // que cerrar sesion va aqui, que es donde se busca.
+                OutlinedButton.icon(
+                  onPressed: _guardando ? null : () => context.read<AuthProvider>().logout(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: FpColores.peligro,
+                    side: BorderSide(color: FpColores.peligro.withValues(alpha: 0.3)),
+                    minimumSize: const Size.fromHeight(52),
+                  ),
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Cerrar sesión'),
+                ),
               ],
             ),
           ),

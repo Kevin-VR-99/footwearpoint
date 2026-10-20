@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/pedido_resumen.dart';
+import '../models/vale.dart';
+import '../models/estado_pedido.dart';
+import '../services/pedido_service.dart';
+import '../services/vale_service.dart';
+import 'producto_detalle_screen.dart' show formatoPrecio;
 import '../providers/auth_provider.dart';
 import '../providers/carrito_revendedor_provider.dart';
 import '../services/api_service.dart';
 import '../services/notificacion_service.dart';
 import '../tema/fp_colores.dart';
 import '../widgets/fp_componentes.dart';
-import 'catalogo_screen.dart';
 import 'mis_pedidos_screen.dart';
-import 'pedido_revendedor_screen.dart';
+import 'pedido_revendedor_screen.dart' hide formatoPrecio;
 import 'perfil_screen.dart';
 import 'clientes_privados_screen.dart';
-import 'vales_screen.dart';
 import 'notificaciones_screen.dart';
 
-class InicioScreen extends StatelessWidget {
+class InicioScreen extends StatefulWidget {
   const InicioScreen({super.key});
 
   /// El rol como se lee en pantalla. Si llegara uno nuevo, se muestra tal cual.
@@ -26,8 +30,50 @@ class InicioScreen extends StatelessWidget {
     _ => rol,
   };
 
+  @override
+  State<InicioScreen> createState() => _InicioScreenState();
+}
+
+class _InicioScreenState extends State<InicioScreen> {
+  List<PedidoResumen>? _pedidos;
+  List<Vale>? _vales;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarResumen();
+  }
+
+  /// TG-281: las cifras de arriba, como las del Inicio del panel web.
+  ///
+  /// Si alguna peticion falla no se enseña ningun error: el Inicio sigue
+  /// sirviendo para navegar, y una tarjeta con un guion molesta menos que
+  /// una pantalla de error por un numero.
+  Future<void> _cargarResumen() async {
+    final api = context.read<AuthProvider>().api;
+
+    // Se atrapa cualquier cosa, no solo ApiException: si el servidor
+    // contestara con una forma rara, el error seria un TypeError y tumbaria
+    // el Inicio entero por un numero de adorno. La pantalla tiene que seguir
+    // sirviendo para navegar aunque el resumen no se pueda armar.
+    try {
+      final pedidos = await PedidoService(api).listar();
+      if (mounted) setState(() => _pedidos = pedidos);
+    } catch (_) {
+      // Se queda con el guion.
+    }
+
+    try {
+      final vales = await ValeService(api: api).listarValesVigentes();
+      if (mounted) setState(() => _vales = vales);
+    } catch (_) {
+      // Igual.
+    }
+  }
+
   void _abrir(BuildContext context, Widget pantalla) {
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => pantalla));
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => pantalla));
   }
 
   @override
@@ -35,7 +81,10 @@ class InicioScreen extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final usuario = auth.usuario;
     final habilitado = !auth.ocupado;
-    final primerNombre = (usuario?.nombre ?? '').trim().split(RegExp(r'\s+')).first;
+    final primerNombre = (usuario?.nombre ?? '')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .first;
 
     // Diseño (TG-165): como el Inicio del panel web. Encabezado con barra
     // azul, accesos en tarjetas y los datos de la cuenta abajo. Mismos
@@ -48,7 +97,9 @@ class InicioScreen extends StatelessWidget {
             FpLogo(tamano: 34),
             SizedBox(width: 10),
             // En celulares angostos se recorta en vez de desbordarse.
-            Flexible(child: Text('Footwear Point', overflow: TextOverflow.ellipsis)),
+            Flexible(
+              child: Text('Footwear Point', overflow: TextOverflow.ellipsis),
+            ),
           ],
         ),
         bottom: const FpBordeMarca(),
@@ -67,7 +118,9 @@ class InicioScreen extends StatelessWidget {
                 message: 'Mi perfil',
                 child: InkWell(
                   customBorder: const CircleBorder(),
-                  onTap: habilitado ? () => _abrir(context, const PerfilScreen()) : null,
+                  onTap: habilitado
+                      ? () => _abrir(context, const PerfilScreen())
+                      : null,
                   child: FpAvatar(nombre: usuario?.nombre, tamano: 34),
                 ),
               ),
@@ -84,67 +137,187 @@ class InicioScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               FpEncabezado(
-                etiqueta: auth.rol == null ? null : nombreRol(auth.rol),
+                etiqueta: auth.rol == null
+                    ? null
+                    : InicioScreen.nombreRol(auth.rol),
                 titulo: primerNombre.isEmpty ? 'Hola' : 'Hola, $primerNombre',
-                subtitulo: 'Tu catálogo, tus pedidos y tus vales en un solo lugar.',
+                subtitulo:
+                    'Tu catálogo, tus pedidos y tus vales en un solo lugar.',
                 pie: const _SesionIniciada(),
               ),
               const SizedBox(height: 20),
+              // TG-281: el Inicio enseña numeros, como el del panel web.
+              // Antes solo tenia botones para ir a otro lado; ahora de un
+              // vistazo se sabe como van los pedidos y los vales.
+              const FpTituloSeccion('Tu resumen'),
+              _Cifras(pedidos: _pedidos, vales: _vales),
+              const SizedBox(height: 20),
+              // Solo lo que NO esta en la barra de abajo.
               const FpTituloSeccion('Accesos'),
-              FpAccion(
-                destacada: true,
-                icono: Icons.storefront_outlined,
-                titulo: 'Ver catálogo',
-                subtitulo: 'Productos por línea, tallas y colores',
-                alTocar: habilitado ? () => _abrir(context, const CatalogoScreen()) : null,
-              ),
-              // TG-165: el carrito ahora se guarda en el teléfono; sin
-              // este botón, al volver a abrir la app solo se llegaba a
-              // él desde el detalle de un producto.
               if (auth.rol == 'revendedor') ...[
-                const SizedBox(height: 10),
                 _BotonCarrito(habilitado: habilitado),
+                const SizedBox(height: 10),
               ],
-              const SizedBox(height: 10),
-              // TG-165: ver el estado de los pedidos propios desde la app.
-              FpAccion(
-                icono: Icons.receipt_long_outlined,
-                titulo: 'Mis pedidos',
-                subtitulo: 'Estado, pagos y saldo',
-                alTocar: habilitado ? () => _abrir(context, const MisPedidosScreen()) : null,
-              ),
-              const SizedBox(height: 10),
               FpAccion(
                 icono: Icons.group_outlined,
                 titulo: 'Mis Clientes Particulares',
                 subtitulo: 'Tu lista de clientes',
-                alTocar: habilitado ? () => _abrir(context, const ClientesPrivadosScreen()) : null,
+                alTocar: habilitado
+                    ? () => _abrir(context, const ClientesPrivadosScreen())
+                    : null,
               ),
-              const SizedBox(height: 10),
-              FpAccion(
-                icono: Icons.confirmation_number_outlined,
-                titulo: 'Consultar y Aplicar Vales',
-                subtitulo: 'Saldo y vigencia de tus vales',
-                alTocar: habilitado ? () => _abrir(context, const ValesScreen()) : null,
-              ),
-              // TG-281: "Mi perfil" y los datos de la cuenta se fueron de
-              // aqui. Al perfil se entra por el avatar de arriba, y los datos
-              // viven dentro del perfil, que es su lugar.
-              const SizedBox(height: 20),
-              OutlinedButton.icon(
-                onPressed: habilitado ? () => context.read<AuthProvider>().logout() : null,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: FpColores.peligro,
-                  side: BorderSide(color: FpColores.peligro.withValues(alpha: 0.3)),
-                  minimumSize: const Size.fromHeight(48),
-                ),
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('Cerrar sesión'),
+              _UltimosPedidos(
+                pedidos: _pedidos,
+                alVerTodos: habilitado
+                    ? () => _abrir(context, const MisPedidosScreen())
+                    : null,
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Las cifras de arriba del Inicio (TG-281), como las del panel web.
+///
+/// Mientras no llegan los datos se enseña un guion en vez de un cero: un
+/// cero dice "no tienes nada", y eso todavia no se sabe.
+class _Cifras extends StatelessWidget {
+  const _Cifras({required this.pedidos, required this.vales});
+
+  final List<PedidoResumen>? pedidos;
+  final List<Vale>? vales;
+
+  /// Los que todavia estan en curso. Un borrador no cuenta: no se ha
+  /// enviado. Un entregado o rechazado tampoco: ya se acabaron.
+  static const _terminados = {
+    'borrador',
+    'descartado',
+    'entregado',
+    'rechazado',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final enCurso = pedidos
+        ?.where((p) => !_terminados.contains(p.estado))
+        .toList();
+    final porPagar = enCurso?.fold<double>(0, (suma, p) => suma + p.saldo);
+    final saldoVales = vales?.fold<double>(
+      0,
+      (suma, v) => suma + v.saldoActual,
+    );
+
+    // IntrinsicHeight + stretch: las tres quedan de la misma altura aunque
+    // una lleve el texto en dos renglones. Sin esto se ven desparejas.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: FpDato(
+              etiqueta: 'Pedidos en curso',
+              valor: enCurso == null ? '—' : '${enCurso.length}',
+              nota: enCurso == null ? 'Cargando…' : 'Sin contar los entregados',
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: FpDato(
+              etiqueta: 'Te falta pagar',
+              valor: porPagar == null ? '—' : formatoPrecio(porPagar),
+              nota: porPagar == null ? 'Cargando…' : 'De tus pedidos en curso',
+              colorValor: (porPagar ?? 0) > 0
+                  ? FpColores.peligro
+                  : FpColores.sidebar,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: FpDato(
+              etiqueta: 'Tus vales',
+              valor: saldoVales == null ? '—' : formatoPrecio(saldoVales),
+              nota: vales == null
+                  ? 'Cargando…'
+                  : vales!.length == 1
+                  ? '1 vale vigente'
+                  : '${vales!.length} vales vigentes',
+              colorValor: (saldoVales ?? 0) > 0
+                  ? FpColores.insigniaExitoTexto
+                  : FpColores.sidebar,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Los ultimos pedidos, como la tabla "Pedidos recientes" del panel web.
+///
+/// Solo tres: el Inicio es para ver como va todo de un vistazo, no para
+/// repetir la pantalla de pedidos, que esta a un toque en la barra de abajo.
+class _UltimosPedidos extends StatelessWidget {
+  const _UltimosPedidos({required this.pedidos, required this.alVerTodos});
+
+  final List<PedidoResumen>? pedidos;
+  final VoidCallback? alVerTodos;
+
+  @override
+  Widget build(BuildContext context) {
+    final lista = pedidos;
+
+    // Sin datos todavia, o sin pedidos: no se enseña una seccion vacia.
+    if (lista == null || lista.isEmpty) return const SizedBox.shrink();
+
+    final recientes = lista.take(3).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            const Expanded(child: FpTituloSeccion('Tus últimos pedidos')),
+            TextButton(onPressed: alVerTodos, child: const Text('Ver todos')),
+          ],
+        ),
+        for (final pedido in recientes) ...[
+          FpTarjeta(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        pedido.folio,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: FpColores.sidebar,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      EtiquetaEstadoPedido(estado: pedido.estado),
+                    ],
+                  ),
+                ),
+                Text(
+                  formatoPrecio(pedido.total),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: FpColores.sidebar,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ],
     );
   }
 }
@@ -220,21 +393,26 @@ class _CampanaNotificacionesState extends State<_CampanaNotificaciones> {
   }
 
   Future<void> _abrir() async {
-    await Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (_) => const NotificacionesScreen()));
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const NotificacionesScreen()),
+    );
     _contar();
   }
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      tooltip: _noLeidas > 0 ? 'Notificaciones ($_noLeidas sin leer)' : 'Notificaciones',
+      tooltip: _noLeidas > 0
+          ? 'Notificaciones ($_noLeidas sin leer)'
+          : 'Notificaciones',
       onPressed: widget.habilitada ? _abrir : null,
       icon: Badge(
         isLabelVisible: _noLeidas > 0,
         label: Text(_noLeidas > 9 ? '9+' : '$_noLeidas'),
         child: Icon(
-          _noLeidas > 0 ? Icons.notifications_active_outlined : Icons.notifications_outlined,
+          _noLeidas > 0
+              ? Icons.notifications_active_outlined
+              : Icons.notifications_outlined,
         ),
       ),
     );
@@ -253,12 +431,18 @@ class _BotonCarrito extends StatelessWidget {
 
     return FpAccion(
       icono: Icons.shopping_cart_outlined,
-      titulo: piezas > 0 ? 'Mi pedido acumulado ($piezas)' : 'Mi pedido acumulado',
-      subtitulo: piezas > 0 ? 'Listo para revisar y enviar' : 'Tu carrito está vacío',
+      titulo: piezas > 0
+          ? 'Mi pedido acumulado ($piezas)'
+          : 'Mi pedido acumulado',
+      subtitulo: piezas > 0
+          ? 'Listo para revisar y enviar'
+          : 'Tu carrito está vacío',
       alTocar: habilitado
-          ? () =>
-                Navigator.of(context)
-                    .push(MaterialPageRoute<void>(builder: (_) => const PedidoRevendedorScreen()))
+          ? () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const PedidoRevendedorScreen(),
+              ),
+            )
           : null,
     );
   }

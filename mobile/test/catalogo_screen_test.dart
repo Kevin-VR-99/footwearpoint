@@ -117,7 +117,9 @@ void main() {
     await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: servidor)));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Ver catálogo'));
+    // TG-281: el inicio ya no tiene la tarjeta "Ver catálogo"; se entra por
+    // la barra de abajo.
+    await tester.tap(find.text('Catálogo'));
     await tester.pumpAndSettle();
 
     return peticiones;
