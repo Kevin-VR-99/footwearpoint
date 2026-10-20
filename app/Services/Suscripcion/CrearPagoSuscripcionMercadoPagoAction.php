@@ -28,7 +28,8 @@ use Illuminate\Support\Facades\Route;
  *
  * Reglas:
  *   - la distribuidora debe estar activa;
- *   - se paga la suscripción activa o vencida más reciente;
+ *   - se paga la suscripción activa, vencida o pendiente de su primer pago
+ *     (TG-220) más reciente;
  *   - un mes a la vez y como máximo un mes por adelantado (fecha_fin ≤ hoy + 1 mes);
  *   - monto = precio base contratado + líneas activas por encima de las
  *     incluidas × precio por línea extra contratado (la misma cuenta de
@@ -41,7 +42,7 @@ class CrearPagoSuscripcionMercadoPagoAction
     public const MONEDA = 'MXN';
 
     /** Estados de la suscripción que se pueden pagar. */
-    public const ESTADOS_PAGABLES = ['activa', 'vencida'];
+    public const ESTADOS_PAGABLES = ['activa', 'vencida', Suscripcion::PENDIENTE_PAGO];
 
     private const MINUTOS_EN_PREPARACION = 2;
 
@@ -168,7 +169,7 @@ class CrearPagoSuscripcionMercadoPagoAction
 
     /**
      * El periodo que queda pagado: un mes desde que termina el actual, o
-     * desde hoy si ya venció.
+     * desde hoy si ya venció o si es el primer pago (TG-220).
      *
      * @return array{desde: Carbon, hasta: Carbon}
      */
@@ -296,8 +297,11 @@ class CrearPagoSuscripcionMercadoPagoAction
             'expiration_date_to'   => $pago->venceMercadoPagoAt()->format('Y-m-d\TH:i:s.vP'),
         ];
 
-        // De regreso, a la misma pestaña (ahí se confirma el pago).
-        $retorno = route('distribuidora.configuracion', ['pestana' => 'suscripcion']);
+        // De regreso, a la misma pestaña (ahí se confirma el pago). El primer
+        // pago (TG-220) regresa a la pantalla de pago inicial.
+        $retorno = $pago->suscripcion?->estado === Suscripcion::PENDIENTE_PAGO
+            ? route('distribuidora.pago-inicial')
+            : route('distribuidora.configuracion', ['pestana' => 'suscripcion']);
         if (str_starts_with($retorno, 'https://')) {
             $preferencia['back_urls'] = ['success' => $retorno, 'pending' => $retorno, 'failure' => $retorno];
             $preferencia['auto_return'] = 'approved';

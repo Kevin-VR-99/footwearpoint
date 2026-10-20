@@ -47,7 +47,8 @@ class AsignarSuscripcionAction
         return Tenant::forzar((int) $distribuidora->id, fn () => DB::transaction(function () use ($distribuidora, $plan, $meses, $lineasExtra, $renovacionAutomatica) {
             Suscripcion::query()
                 ->where('distribuidora_id', $distribuidora->id)
-                ->where('estado', 'activa')
+                // TG-220: también la que esperaba su primer pago.
+                ->whereIn('estado', ['activa', Suscripcion::PENDIENTE_PAGO])
                 ->update([
                     'estado'    => 'cancelada',
                     'fecha_fin' => now()->toDateString(),

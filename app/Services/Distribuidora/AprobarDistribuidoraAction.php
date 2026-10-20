@@ -51,9 +51,11 @@ class AprobarDistribuidoraAction
 
             $this->preparar->datosIniciales($distribuidora);
 
-            // Igual que antes de TG-194: aprobar siempre abre una suscripción
-            // nueva. Con el plan que pidió, si pidió uno (TG-220).
-            $this->preparar->suscripcionInicial($distribuidora, $plan);
+            // Aprobar abre una suscripción nueva, con el plan que pidió si
+            // pidió uno (TG-220). Ya no es un mes gratis: queda esperando el
+            // primer pago y hasta entonces el panel solo muestra la pantalla
+            // de pago (CobroInicialPendiente).
+            $this->preparar->suscripcionPendientePago($distribuidora, $plan);
 
             $this->roles->ejecutar($distribuidora);
 

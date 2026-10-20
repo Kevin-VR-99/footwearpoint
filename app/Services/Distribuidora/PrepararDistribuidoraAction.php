@@ -90,4 +90,26 @@ class PrepararDistribuidoraAction
             'renovacion_automatica'         => true,
         ]));
     }
+
+    /**
+     * TG-220 — Al aprobar ya no se regala el primer mes: la suscripción queda
+     * 'pendiente_pago', con los precios del plan congelados y sin fecha de
+     * fin. El primer pago la activa un mes desde el día en que se paga
+     * (AplicarPagoSuscripcionMercadoPagoAction).
+     */
+    public function suscripcionPendientePago(Distribuidora $distribuidora, PlanSuscripcion $plan): Suscripcion
+    {
+        return Tenant::forzar($distribuidora->id, fn () => Suscripcion::create([
+            'distribuidora_id'              => $distribuidora->id,
+            'plan_id'                       => $plan->id,
+            'fecha_inicio'                  => now()->toDateString(),
+            'fecha_fin'                     => null,
+            'estado'                        => Suscripcion::PENDIENTE_PAGO,
+            'precio_base_contratado'        => $plan->precio_base_mensual,
+            'lineas_incluidas_contratadas'  => $plan->lineas_incluidas,
+            'precio_linea_extra_contratado' => $plan->precio_linea_extra,
+            'lineas_extra_contratadas'      => 0,
+            'renovacion_automatica'         => true,
+        ]));
+    }
 }

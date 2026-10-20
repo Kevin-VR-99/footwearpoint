@@ -145,8 +145,12 @@ class AplicarPagoSuscripcionMercadoPagoAction
         if ($renovada) {
             ['hasta' => $hasta] = CrearPagoSuscripcionMercadoPagoAction::periodoAlPagar($suscripcion);
 
+            $primerPago = $suscripcion->estado === Suscripcion::PENDIENTE_PAGO;
+
             $suscripcion->update([
                 'estado'                   => 'activa',
+                // TG-220: el primer pago activa el mes desde el día en que se paga.
+                'fecha_inicio'             => $primerPago ? today()->toDateString() : $suscripcion->fecha_inicio?->toDateString(),
                 'fecha_fin'                => $hasta->toDateString(),
                 'lineas_extra_contratadas' => max(0, app(CupoLineasDistribuidora::class)->activas() - (int) $suscripcion->lineas_incluidas_contratadas),
             ]);
