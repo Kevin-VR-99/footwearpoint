@@ -122,18 +122,30 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     final buscando = _busqueda.trim().isNotEmpty;
     final encontrados = buscando ? filtrarProductos(_productos, _busqueda) : const <ProductoCatalogo>[];
 
+    // TG-281: el buscador va fijo arriba y no dentro del scroll. Si se
+    // fuera con la lista, para buscar otra cosa habria que subir primero.
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: FpBuscador(
+            texto: 'Buscar un producto en todo el catálogo',
+            alCambiar: (valor) => setState(() => _busqueda = valor),
+          ),
+        ),
+        Expanded(child: _resultados(buscando, encontrados)),
+      ],
+    );
+  }
+
+  Widget _resultados(bool buscando, List<ProductoCatalogo> encontrados) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
       children: [
         if (_error != null) ...[
           AvisoError(mensaje: _error!),
           const SizedBox(height: 12),
         ],
-        FpBuscador(
-          texto: 'Buscar un producto en todo el catálogo',
-          alCambiar: (valor) => setState(() => _busqueda = valor),
-        ),
-        const SizedBox(height: 14),
         if (buscando) ...[
           if (encontrados.isEmpty)
             FpSinResultados(busqueda: _busqueda, que: 'productos')
