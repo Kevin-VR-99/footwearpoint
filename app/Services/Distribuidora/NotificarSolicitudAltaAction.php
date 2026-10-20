@@ -3,6 +3,7 @@
 namespace App\Services\Distribuidora;
 
 use App\Mail\SolicitudAltaDistribuidoraMail;
+use App\Mail\SolicitudAltaRecibidaMail;
 use App\Models\Distribuidora;
 use App\Models\Usuario;
 use Illuminate\Support\Facades\Mail;
@@ -17,12 +18,18 @@ use Throwable;
  * momento, un correo por persona para que nadie vea el correo de los demás, y
  * un correo que falla NUNCA deshace la solicitud. Se reporta al log y se
  * devuelve false.
+ *
+ * Además le manda al administrador de la distribuidora el acuse de que su
+ * solicitud llegó (SolicitudAltaRecibidaMail), con el mismo criterio: si falla,
+ * se reporta y la solicitud se queda.
  */
 class NotificarSolicitudAltaAction
 {
     /** @return bool true si el aviso salió a todos sus destinatarios. */
     public function ejecutar(Distribuidora $distribuidora, Usuario $administrador): bool
     {
+        $this->avisarAlSolicitante($distribuidora, $administrador);
+
         $destinatarios = $this->adminsGenerales();
 
         if ($destinatarios->isEmpty()) {
@@ -47,6 +54,27 @@ class NotificarSolicitudAltaAction
         }
 
         return $enviado;
+    }
+
+    /** El acuse para quien pidió el alta. Nunca lanza: un fallo va al log. */
+    private function avisarAlSolicitante(Distribuidora $distribuidora, Usuario $administrador): bool
+    {
+        if (blank($administrador->email)) {
+            return false;
+        }
+
+        try {
+            Mail::to($administrador->email)->send(new SolicitudAltaRecibidaMail(
+                nombreDistribuidora: $distribuidora->nombre_comercial,
+                nombreDestinatario: $administrador->nombre,
+            ));
+
+            return true;
+        } catch (Throwable $e) {
+            report($e);
+
+            return false;
+        }
     }
 
     /**
