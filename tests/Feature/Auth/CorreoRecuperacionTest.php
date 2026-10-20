@@ -82,7 +82,7 @@ class CorreoRecuperacionTest extends TestCase
         $this->assertSame('Restablece tu contraseña de FootwearPoint', $correo->getSubject());
         $this->assertStringContainsString('Pediste cambiar tu contraseña de FootwearPoint', $cuerpo);
         $this->assertStringContainsString('Cambiar mi contraseña', $cuerpo);
-        $this->assertStringContainsString('vence en 60 minutos', $cuerpo);
+        $this->assertStringContainsString('vence en 15 minutos', $cuerpo);
         $this->assertStringContainsString('Si no lo pediste, ignora este correo', $cuerpo);
 
         // Nada de la plantilla de fabrica de Laravel.
