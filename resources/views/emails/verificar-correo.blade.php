@@ -8,8 +8,13 @@
 <body style="font-family: Arial, Helvetica, sans-serif; color: #1f2937; font-size: 14px; line-height: 1.5;">
     <p>Hola{{ $nombre ? ' ' . $nombre : '' }}:</p>
 
-    <p>Tu distribuidora te dio una cuenta en FootwearPoint. Confirma que este correo es tuyo
-        para poder hacer pedidos desde la app:</p>
+    @if ($distribuidoraEnSolicitud ?? null)
+        <p>Confirma que este correo es tuyo para tu solicitud de alta de
+            <strong>{{ $distribuidoraEnSolicitud }}</strong> en FootwearPoint:</p>
+    @else
+        <p>Tu distribuidora te dio una cuenta en FootwearPoint. Confirma que este correo es tuyo
+            para poder hacer pedidos desde la app:</p>
+    @endif
 
     <p>
         <a href="{{ $url }}"
@@ -17,8 +22,13 @@
                   padding: 12px 20px; border-radius: 8px; font-weight: bold;">Confirmar mi correo</a>
     </p>
 
-    <p>El enlace vence en {{ $minutos }} minutos. Si ya venció, pide uno nuevo desde la app o
-        dile a tu distribuidora que te lo reenvíe.</p>
+    @if ($distribuidoraEnSolicitud ?? null)
+        <p>El enlace vence en {{ $minutos }} minutos. Tu solicitud se revisa de todos modos; te
+            avisaremos por correo cuando sea aprobada o rechazada.</p>
+    @else
+        <p>El enlace vence en {{ $minutos }} minutos. Si ya venció, pide uno nuevo desde la app o
+            dile a tu distribuidora que te lo reenvíe.</p>
+    @endif
 
     <p>Si no esperabas este correo, ignóralo: sin confirmarlo no pasa nada.</p>
 
