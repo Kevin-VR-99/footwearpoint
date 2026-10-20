@@ -85,8 +85,9 @@ void main() {
     await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: servidor.cliente)));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Mi perfil'));
-    await tester.tap(find.text('Mi perfil'));
+    // TG-281: ya no hay tarjeta "Mi perfil" en el inicio; se entra por el
+    // avatar de la barra de arriba.
+    await tester.tap(find.byTooltip('Mi perfil'));
     await tester.pumpAndSettle();
   }
 
@@ -126,8 +127,9 @@ void main() {
     servidor.verificado = true;
     await tester.pageBack();
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Mi perfil'));
-    await tester.tap(find.text('Mi perfil'));
+    // TG-281: ya no hay tarjeta "Mi perfil" en el inicio; se entra por el
+    // avatar de la barra de arriba.
+    await tester.tap(find.byTooltip('Mi perfil'));
     await tester.pumpAndSettle();
 
     expect(find.text('Falta confirmar tu correo'), findsNothing);

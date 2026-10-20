@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../services/catalogo_service.dart';
 import 'login_screen.dart';
 import 'productos_linea_screen.dart';
+import '../widgets/fila_producto.dart';
 import '../tema/fp_colores.dart';
 import '../widgets/fp_componentes.dart';
 
@@ -24,6 +25,15 @@ class CatalogoScreen extends StatefulWidget {
 
 class _CatalogoScreenState extends State<CatalogoScreen> {
   List<LineaCatalogo>? _lineas;
+
+  /// Todos los productos, sin agrupar: es sobre esto que busca el buscador.
+  List<ProductoCatalogo> _productos = const [];
+
+  /// TG-281: mientras hay algo escrito, en vez de las lineas se enseñan los
+  /// productos que coinciden, de TODAS las lineas. Buscar entre dos lineas no
+  /// le sirve a nadie; buscar un modelo, si.
+  String _busqueda = '';
+
   bool _cargando = true;
   String? _error;
 
@@ -51,6 +61,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       if (!mounted) return;
 
       setState(() {
+        _productos = productos;
         _lineas = LineaCatalogo.agrupar(productos);
         _error = null;
         _cargando = false;
@@ -103,24 +114,62 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
                 ),
               ],
             )
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (_error != null) ...[
-                  AvisoError(mensaje: _error!),
-                  const SizedBox(height: 12),
-                ],
-                FpEncabezado(
-                  etiqueta: 'Catálogo',
-                  titulo: 'Elige una línea',
-                  subtitulo: _lineas!.length == 1
-                      ? '1 línea con productos publicados'
-                      : '${_lineas!.length} líneas con productos publicados',
-                ),
-                const SizedBox(height: 12),
-                for (final linea in _lineas!) _TarjetaLinea(linea: linea),
-              ],
+          : _lista(context),
+    );
+  }
+
+  Widget _lista(BuildContext context) {
+    final buscando = _busqueda.trim().isNotEmpty;
+    final encontrados = buscando ? filtrarProductos(_productos, _busqueda) : const <ProductoCatalogo>[];
+
+    // TG-281: el buscador va fijo arriba y no dentro del scroll. Si se
+    // fuera con la lista, para buscar otra cosa habria que subir primero.
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: FpBuscador(
+            texto: 'Buscar un producto en todo el catálogo',
+            alCambiar: (valor) => setState(() => _busqueda = valor),
+          ),
+        ),
+        Expanded(child: _resultados(buscando, encontrados)),
+      ],
+    );
+  }
+
+  Widget _resultados(bool buscando, List<ProductoCatalogo> encontrados) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+      children: [
+        if (_error != null) ...[
+          AvisoError(mensaje: _error!),
+          const SizedBox(height: 12),
+        ],
+        if (buscando) ...[
+          if (encontrados.isEmpty)
+            FpSinResultados(busqueda: _busqueda, que: 'productos')
+          else ...[
+            FpTituloSeccion(
+              encontrados.length == 1 ? '1 producto' : '${encontrados.length} productos',
             ),
+            for (final producto in encontrados) ...[
+              FilaProducto(producto: producto),
+              const SizedBox(height: 10),
+            ],
+          ],
+        ] else ...[
+          FpEncabezado(
+            etiqueta: 'Catálogo',
+            titulo: 'Elige una línea',
+            subtitulo: _lineas!.length == 1
+                ? '1 línea con productos publicados'
+                : '${_lineas!.length} líneas con productos publicados',
+          ),
+          const SizedBox(height: 12),
+          for (final linea in _lineas!) _TarjetaLinea(linea: linea),
+        ],
+      ],
     );
   }
 }

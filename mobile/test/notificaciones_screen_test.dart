@@ -16,10 +16,24 @@ http.Response _json(Object cuerpo, int codigo) => http.Response(
 /// Un servidor falso con sesión de María, 2 notificaciones sin leer (una de
 /// pedido) y 1 leída. Recuerda cuáles se marcaron.
 class _Servidor {
+  _Servidor({this.borrarFalla = false});
+
   final marcadas = <int>{};
+
+  /// TG-281: los que se quitaron de la bandeja.
+  final borradas = <int>{};
+
+  /// Para probar que, si el servidor dice que no, el aviso vuelve.
+  final bool borrarFalla;
+
   final peticiones = <String>[];
 
   List<Map<String, dynamic>> get _notificaciones => [
+    for (final n in _todas)
+      if (!borradas.contains(n['id'])) n,
+  ];
+
+  List<Map<String, dynamic>> get _todas => [
     {
       'id': 30,
       'tipo': 'pedido_estado',
@@ -75,6 +89,14 @@ class _Servidor {
         ],
       }, 200);
     }
+    final borrar = RegExp(r'^/notificaciones/(\d+)$').firstMatch(ruta);
+    if (borrar != null && peticion.method == 'DELETE') {
+      if (borrarFalla) {
+        return _json({'message': 'No se encontró lo que buscas.'}, 404);
+      }
+      borradas.add(int.parse(borrar.group(1)!));
+      return _json({'message': 'Aviso borrado.'}, 200);
+    }
     final marcar = RegExp(r'^/notificaciones/(\d+)/marcar-leida$').firstMatch(ruta);
     if (marcar != null) {
       marcadas.add(int.parse(marcar.group(1)!));
@@ -103,11 +125,23 @@ class _Servidor {
   });
 }
 
+/// Deja pasar el tiempo hasta que el aviso de abajo se cierra solo.
+///
+/// pumpAndSettle no adelanta temporizadores, y el aviso se va por tiempo
+/// (4 s), no por una animación. Se avanza el reloj de a poco porque el
+/// temporizador no existe hasta que termina de entrar.
+Future<void> esperarAQueSeCierreElAviso(WidgetTester tester) async {
+  for (var i = 0; i < 8; i++) {
+    await tester.pump(const Duration(seconds: 1));
+  }
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues(<String, String>{'token_sanctum': '1|token'}));
 
-  Future<_Servidor> abrirBandeja(WidgetTester tester) async {
-    final servidor = _Servidor();
+  Future<_Servidor> abrirBandeja(WidgetTester tester, [_Servidor? propio]) async {
+    final servidor = propio ?? _Servidor();
 
     await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: servidor.cliente)));
     await tester.pumpAndSettle();
@@ -174,5 +208,96 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byTooltip('Notificaciones (1 sin leer)'), findsOneWidget);
+  });
+
+  /// TG-281 (E19-11), punto 4: quitar un aviso deslizándolo.
+  ///
+  /// La bandeja se llenaba y no había forma de limpiarla.
+  testWidgets('deslizar un aviso hacia la derecha lo quita de la bandeja', (tester) async {
+    final servidor = await abrirBandeja(tester);
+
+    expect(find.text('Aviso general'), findsOneWidget);
+
+    await tester.drag(find.text('Aviso general'), const Offset(700, 0));
+    await tester.pumpAndSettle();
+
+    // Se quita de la pantalla enseguida, pero al servidor no se le pide nada
+    // hasta que el aviso de abajo se cierra solo.
+    expect(find.text('Aviso general'), findsNothing);
+    expect(servidor.peticiones.where((p) => p.startsWith('DELETE')), isEmpty);
+
+    // pumpAndSettle no adelanta temporizadores: hay que mover el reloj a
+    // mano para que el aviso de abajo se cierre solo.
+    await esperarAQueSeCierreElAviso(tester);
+
+    expect(servidor.peticiones, contains('DELETE /notificaciones/31'));
+    expect(find.text('Aviso general'), findsNothing);
+    // Los demás se quedan.
+    expect(find.text('Tu pedido ya llegó'), findsOneWidget);
+  });
+
+  testWidgets('al borrar se avisa y se ofrece deshacer', (tester) async {
+    await abrirBandeja(tester);
+
+    await tester.drag(find.text('Aviso general'), const Offset(700, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aviso borrado.'), findsOneWidget);
+    expect(find.text('Deshacer'), findsOneWidget);
+
+    // Se deja pasar el margen para deshacer, o la prueba termina con un
+    // temporizador pendiente.
+    await esperarAQueSeCierreElAviso(tester);
+  });
+
+  testWidgets('si el servidor no deja borrarlo, el aviso vuelve a su sitio', (tester) async {
+    await abrirBandeja(tester, _Servidor(borrarFalla: true));
+
+    await tester.drag(find.text('Aviso general'), const Offset(700, 0));
+    await tester.pumpAndSettle();
+
+    // Justo despues del margen para deshacer, que es cuando se manda el
+    // borrado y el servidor lo rechaza.
+    await tester.pump(const Duration(seconds: 5));
+    // Deja que el aviso viejo se vaya y entre el del error.
+    await tester.pumpAndSettle();
+
+    // Es peor que desaparezca de la pantalla algo que sigue en el servidor.
+    expect(find.text('Aviso general'), findsOneWidget);
+    expect(find.text('No se encontró lo que buscas.'), findsOneWidget);
+
+    await esperarAQueSeCierreElAviso(tester);
+  });
+
+  testWidgets('tocar "Deshacer" devuelve el aviso y no le pide nada al servidor', (tester) async {
+    final servidor = await abrirBandeja(tester);
+
+    await tester.drag(find.text('Aviso general'), const Offset(700, 0));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Deshacer'));
+    await tester.pumpAndSettle();
+
+    // Vuelve en el acto, sin esperar a que termine el margen: si no, se
+    // tocaria "Deshacer" y no pasaria nada durante unos segundos.
+    expect(find.text('Aviso general'), findsOneWidget);
+
+    await esperarAQueSeCierreElAviso(tester);
+    expect(find.text('Aviso general'), findsOneWidget);
+    // En el servidor no hay forma de des-borrar, asi que lo importante es
+    // que nunca se le haya pedido.
+    expect(servidor.peticiones.where((p) => p.startsWith('DELETE')), isEmpty);
+  });
+
+  testWidgets('deslizar hacia la izquierda no borra nada', (tester) async {
+    final servidor = await abrirBandeja(tester);
+
+    await tester.drag(find.text('Aviso general'), const Offset(-700, 0));
+    await tester.pumpAndSettle();
+
+    // A proposito: con las dos direcciones es facil borrar sin querer al
+    // desplazarse en diagonal.
+    expect(find.text('Aviso general'), findsOneWidget);
+    expect(servidor.peticiones.where((p) => p.startsWith('DELETE')), isEmpty);
   });
 }

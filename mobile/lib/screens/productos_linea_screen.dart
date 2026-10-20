@@ -1,118 +1,80 @@
 import 'package:flutter/material.dart';
 
 import '../models/producto_catalogo.dart';
-import '../tema/fp_colores.dart';
-import '../widgets/bajo_pedido.dart';
+import '../widgets/fila_producto.dart';
 import '../widgets/fp_componentes.dart';
-import 'producto_detalle_screen.dart';
 
 /// Los productos de una línea del catálogo (E4-05).
-class ProductosLineaScreen extends StatelessWidget {
+///
+/// TG-281: con buscador. Una línea puede traer decenas de modelos y antes
+/// había que recorrerlos todos con el dedo para encontrar uno.
+class ProductosLineaScreen extends StatefulWidget {
   const ProductosLineaScreen({super.key, required this.linea});
 
   final LineaCatalogo linea;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(linea.nombre), bottom: const FpBordeMarca()),
-      body: SafeArea(
-        child: ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: linea.productos.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 12),
-          itemBuilder: (_, i) => _TarjetaProducto(producto: linea.productos[i]),
-        ),
-      ),
-    );
-  }
+  State<ProductosLineaScreen> createState() => _ProductosLineaScreenState();
 }
 
-class _TarjetaProducto extends StatelessWidget {
-  const _TarjetaProducto({required this.producto});
-
-  final ProductoCatalogo producto;
+class _ProductosLineaScreenState extends State<ProductosLineaScreen> {
+  String _busqueda = '';
 
   @override
   Widget build(BuildContext context) {
-    final tema = Theme.of(context);
-    final disponibilidad = producto.mejorDisponibilidad;
+    final productos = filtrarProductos(widget.linea.productos, _busqueda);
 
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => ProductoDetalleScreen(producto: producto),
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.linea.nombre), bottom: const FpBordeMarca()),
+      body: SafeArea(
+        child: Column(
           children: [
-            SizedBox(
-              width: 110,
-              height: 110,
-              child: ImagenProducto(url: producto.imagenPrincipal?.url),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: FpBuscador(
+                texto: 'Buscar por nombre, marca o modelo',
+                alCambiar: (valor) => setState(() => _busqueda = valor),
+              ),
             ),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      producto.nombre,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: tema.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: FpColores.sidebar,
-                      ),
+              child: productos.isEmpty
+                  ? ListView(
+                      children: [FpSinResultados(busqueda: _busqueda, que: 'productos')],
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      itemCount: productos.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (_, i) => FilaProducto(producto: productos[i]),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      [
-                        if (producto.marca != null) producto.marca!.nombre,
-                        producto.modelo,
-                      ].join(' · '),
-                      style: tema.textTheme.bodySmall?.copyWith(
-                        color: tema.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      formatoPrecio(producto.precioMinoristaSugerido),
-                      style: tema.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: FpColores.sidebar,
-                      ),
-                    ),
-                    if (producto.precioMayorista != null)
-                      Text(
-                        'Mayorista: ${formatoPrecio(producto.precioMayorista!)}',
-                        style: tema.textTheme.bodySmall?.copyWith(
-                          color: tema.colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    if (disponibilidad != null) ...[
-                      const SizedBox(height: 8),
-                      EtiquetaDisponibilidad(disponibilidad: disponibilidad),
-                    ],
-                    // TG-266: si hay tallas disponibles, la etiqueta dice
-                    // "Disponible" y escondía las que van bajo pedido.
-                    if (disponibilidad == Disponibilidad.disponible && producto.hayBajoPedido) ...[
-                      const SizedBox(height: 6),
-                      const InsigniaBajoPedido(texto: 'Algunas tallas bajo pedido'),
-                    ],
-                  ],
-                ),
-              ),
             ),
           ],
         ),
       ),
     );
   }
+}
+
+/// Filtra por nombre, marca o modelo, sin distinguir mayúsculas.
+///
+/// Se busca por varias palabras sueltas y todas tienen que aparecer en algún
+/// lado: así "adidas negro" encuentra el producto aunque la marca y el color
+/// estén en campos distintos.
+List<ProductoCatalogo> filtrarProductos(List<ProductoCatalogo> productos, String busqueda) {
+  final palabras = busqueda.toLowerCase().trim().split(RegExp(r'\s+'))
+      ..removeWhere((p) => p.isEmpty);
+
+  if (palabras.isEmpty) return productos;
+
+  return productos.where((producto) {
+    final texto = [
+      producto.nombre,
+      producto.modelo,
+      producto.marca?.nombre ?? '',
+      producto.linea?.nombre ?? '',
+      producto.codigoCatalogo,
+    ].join(' ').toLowerCase();
+
+    return palabras.every(texto.contains);
+  }).toList();
 }

@@ -50,4 +50,29 @@ class NotificacionController extends Controller
             'message' => 'Notificación marcada como leída.',
         ]);
     }
+
+    /**
+     * TG-281 (E19-11) — Quitar un aviso de la bandeja.
+     *
+     * Se borra de verdad, no se esconde: cada renglón de notificaciones es de
+     * UNA persona (usuario_id), así que no se le quita el aviso a nadie más,
+     * y una bandeja no es una bitácora. Lo que pasó de verdad —el pedido, el
+     * pago, el vale— sigue en su tabla y en la auditoría.
+     *
+     * El filtro por usuario_id es lo que impide borrar la notificación de
+     * otra persona: si no es suya, responde 404 y no dice si existe.
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+
+        $notificacion = Notificacion::query()
+            ->where('usuario_id', Auth::id())
+            ->where('id', $id)
+            ->firstOrFail();
+
+        $notificacion->delete();
+
+        return response()->json(['message' => 'Aviso borrado.']);
+    }
 }

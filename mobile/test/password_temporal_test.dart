@@ -67,7 +67,8 @@ void main() {
     expect(find.textContaining('contraseña temporal'), findsOneWidget);
     // No llega al inicio ni puede irse a otra pantalla.
     expect(find.text('Sesión iniciada'), findsNothing);
-    expect(find.text('Ver catálogo'), findsNothing);
+    // TG-281: ni siquiera aparece la barra de abajo.
+    expect(find.text('Catálogo'), findsNothing);
   });
 
   testWidgets('sin contraseña temporal entra normal al inicio', (tester) async {

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Http\Requests\Auth\AceptarLegalesRequest;
 use App\Models\AceptacionLegal;
+use App\Models\Distribuidora;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Services\Auth\RestablecerPasswordAction;
@@ -212,6 +213,11 @@ class AuthController extends Controller
             ],
             'rol'              => $rol,
             'distribuidora_id' => $distribuidoraId,
+            // TG-281: la app enseñaba el numero ("Distribuidora: 1"), que no
+            // le dice nada a nadie. Con el nombre, el dato sirve para algo.
+            'distribuidora' => $distribuidoraId === null
+                ? null
+                : Distribuidora::withoutGlobalScopes()->whereKey($distribuidoraId)->value('nombre_comercial'),
             'legales_aceptados' => $legalesAceptados,
             // TG-193: si es true, la app debe mandarla a cambiar su
             // contraseña antes de dejarla usar lo demás.

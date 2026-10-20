@@ -36,7 +36,13 @@ class _ServidorFalso {
 
     if (ruta.endsWith('/auth/me')) {
       return _json({
-        'data': {'usuario': usuario, 'rol': 'revendedor', 'distribuidora_id': 1, 'legales_aceptados': true},
+        'data': {
+          'usuario': usuario,
+          'rol': 'revendedor',
+          'distribuidora_id': 1,
+          'distribuidora': 'Calzados Ramírez',
+          'legales_aceptados': true,
+        },
       }, 200);
     }
 
@@ -67,14 +73,15 @@ void main() {
     });
   });
 
-  /// Abre la app con sesión y entra a "Mi perfil" desde la pantalla de inicio.
+  /// Abre la app con sesión y entra a "Mi perfil" desde el avatar del inicio.
   Future<void> abrirPerfil(WidgetTester tester, _ServidorFalso servidor) async {
     await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: servidor.cliente)));
     await tester.pumpAndSettle();
 
     // En pantallas chicas el inicio se desliza: primero se lleva el botón a la vista.
-    await tester.ensureVisible(find.text('Mi perfil'));
-    await tester.tap(find.text('Mi perfil'));
+    // TG-281: ya no hay tarjeta "Mi perfil" en el inicio; se entra por el
+    // avatar de la barra de arriba.
+    await tester.tap(find.byTooltip('Mi perfil'));
     await tester.pumpAndSettle();
   }
 
@@ -88,8 +95,9 @@ void main() {
     servidor.usuario = {...servidor.usuario, 'telefono': '9630000000'};
 
     // En pantallas chicas el inicio se desliza: primero se lleva el botón a la vista.
-    await tester.ensureVisible(find.text('Mi perfil'));
-    await tester.tap(find.text('Mi perfil'));
+    // TG-281: ya no hay tarjeta "Mi perfil" en el inicio; se entra por el
+    // avatar de la barra de arriba.
+    await tester.tap(find.byTooltip('Mi perfil'));
     await tester.pumpAndSettle();
 
     expect(servidor.pedidas('GET', '/perfil'), hasLength(1));
@@ -110,19 +118,24 @@ void main() {
     final servidor = _ServidorFalso();
     await abrirPerfil(tester, servidor);
 
-    await tester.enterText(campo('Nombre'), '  María López Ruiz ');
+    // Se cambia tambien el nombre de pila, para poder ver si el cambio
+    // llego al resto de la app y no solo a este formulario.
+    await tester.enterText(campo('Nombre'), '  Rosa Pérez ');
     await tester.enterText(campo('Teléfono (opcional)'), '9630001111');
+    await tester.ensureVisible(find.text('Guardar cambios'));
     await tester.tap(find.text('Guardar cambios'));
     await tester.pumpAndSettle();
 
     final patch = servidor.pedidas('PATCH', '/perfil').single;
-    expect(jsonDecode(patch.body), {'nombre': 'María López Ruiz', 'telefono': '9630001111'});
+    expect(jsonDecode(patch.body), {'nombre': 'Rosa Pérez', 'telefono': '9630001111'});
     expect(find.text('Datos actualizados correctamente.'), findsOneWidget);
 
-    // De regreso en inicio, ya con el nombre nuevo.
+    // TG-281: el inicio ya no lista los datos de la cuenta, pero sigue
+    // saludando por el nombre. Si el saludo cambia, el nombre nuevo llego a
+    // la sesion y no se quedo solo en el formulario.
     await tester.pageBack();
     await tester.pumpAndSettle();
-    expect(find.text('María López Ruiz'), findsOneWidget);
+    expect(find.text('Hola, Rosa'), findsOneWidget);
   });
 
   testWidgets('sin nombre no se manda nada al servidor', (tester) async {
@@ -130,6 +143,7 @@ void main() {
     await abrirPerfil(tester, servidor);
 
     await tester.enterText(campo('Nombre'), '   ');
+    await tester.ensureVisible(find.text('Guardar cambios'));
     await tester.tap(find.text('Guardar cambios'));
     await tester.pumpAndSettle();
 
@@ -164,6 +178,7 @@ void main() {
     );
     await abrirPerfil(tester, servidor);
 
+    await tester.ensureVisible(find.text('Guardar cambios'));
     await tester.tap(find.text('Guardar cambios'));
     await tester.pumpAndSettle();
     expect(find.text('El teléfono no puede tener más de 30 caracteres.'), findsOneWidget);
@@ -173,15 +188,32 @@ void main() {
     await tester.pump();
     expect(find.text('El teléfono no puede tener más de 30 caracteres.'), findsNothing);
 
+    await tester.ensureVisible(find.text('Guardar cambios'));
     await tester.tap(find.text('Guardar cambios'));
     await tester.pumpAndSettle();
     expect(servidor.pedidas('PATCH', '/perfil'), hasLength(2));
     expect(find.text('Datos actualizados correctamente.'), findsOneWidget);
   });
 
+  /// TG-281: esto vivia en el Inicio. Se movio aqui, que es donde la gente
+  /// va a buscar sus datos, y el Inicio quedo solo con los accesos.
+  testWidgets('el perfil muestra el rol y la distribuidora por su nombre', (tester) async {
+    await abrirPerfil(tester, _ServidorFalso());
+
+    await tester.ensureVisible(find.text('Tu cuenta'));
+
+    expect(find.text('Rol'), findsOneWidget);
+    expect(find.text('Cliente mayorista'), findsOneWidget);
+    expect(find.text('Distribuidora'), findsOneWidget);
+    // Antes decia "1", que no le dice nada a nadie.
+    expect(find.text('Calzados Ramírez'), findsOneWidget);
+    expect(find.text('1'), findsNothing);
+  });
+
   testWidgets('"Cambiar contraseña" abre su pantalla', (tester) async {
     await abrirPerfil(tester, _ServidorFalso());
 
+    await tester.ensureVisible(find.text('Cambiar contraseña'));
     await tester.tap(find.text('Cambiar contraseña'));
     await tester.pumpAndSettle();
 

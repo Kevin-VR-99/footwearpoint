@@ -25,6 +25,10 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
   late final _pedidos = PedidoService(context.read<AuthProvider>().api);
 
   List<PedidoResumen>? _lista;
+
+  /// TG-281: filtra por folio o por estado. Quien tiene muchos pedidos busca
+  /// uno concreto, y antes habia que recorrerlos todos.
+  String _busqueda = '';
   bool _cargando = true;
   String? _error;
 
@@ -95,26 +99,49 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _cargar,
-      child: lista.isEmpty
-          ? ListView(
-              // ListView para que se pueda deslizar y recargar aunque esté vacío.
-              children: const [
-                SizedBox(height: 80),
-                FpEstadoVacio(
-                  icono: Icons.receipt_long_outlined,
-                  titulo: 'Todavía no tienes pedidos.',
-                  texto: 'Cuando envíes uno desde el catálogo, aparecerá aquí con su estado.',
-                ),
-              ],
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: lista.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (_, i) => _TarjetaPedido(pedido: lista[i], alTocar: () => _abrir(lista[i])),
+    if (lista.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _cargar,
+        child: ListView(
+          // ListView para que se pueda deslizar y recargar aunque esté vacío.
+          children: const [
+            SizedBox(height: 80),
+            FpEstadoVacio(
+              icono: Icons.receipt_long_outlined,
+              titulo: 'Todavía no tienes pedidos.',
+              texto: 'Cuando envíes uno desde el catálogo, aparecerá aquí con su estado.',
             ),
+          ],
+        ),
+      );
+    }
+
+    final encontrados = filtrarPedidos(lista, _busqueda);
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: FpBuscador(
+            texto: 'Buscar por folio o estado',
+            alCambiar: (valor) => setState(() => _busqueda = valor),
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _cargar,
+            child: encontrados.isEmpty
+                ? ListView(children: [FpSinResultados(busqueda: _busqueda, que: 'pedidos')])
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    itemCount: encontrados.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) =>
+                        _TarjetaPedido(pedido: encontrados[i], alTocar: () => _abrir(encontrados[i])),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -208,4 +235,21 @@ class _Dato extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Filtra por folio o por el estado tal como se lee en pantalla.
+///
+/// Se busca por el estado visible ("Listo para entrega") y no por el del
+/// servidor ("listo_entrega"): la persona busca lo que ve.
+List<PedidoResumen> filtrarPedidos(List<PedidoResumen> pedidos, String busqueda) {
+  final palabras = busqueda.toLowerCase().trim().split(RegExp(r'\s+'))
+      ..removeWhere((p) => p.isEmpty);
+
+  if (palabras.isEmpty) return pedidos;
+
+  return pedidos.where((pedido) {
+    final texto = '${pedido.folio} ${EstadoPedido.de(pedido.estado).etiqueta}'.toLowerCase();
+
+    return palabras.every(texto.contains);
+  }).toList();
 }

@@ -513,12 +513,13 @@ class ImagenProducto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colores = Theme.of(context).colorScheme;
-
-    final sinFoto = ColoredBox(
-      color: colores.surfaceContainerHighest,
+    // TG-281: antes era el icono de "imagen rota" sobre gris, y parecia que
+    // algo habia fallado. No fallo nada: ese producto todavia no tiene foto.
+    // Un cuadro liso con el icono de camara lo dice sin alarmar.
+    const sinFoto = ColoredBox(
+      color: FpColores.fondoSuave,
       child: Center(
-        child: Icon(Icons.image_not_supported_outlined, size: 40, color: colores.onSurfaceVariant),
+        child: Icon(Icons.photo_camera_back_outlined, size: 28, color: FpColores.bordeFuerte),
       ),
     );
 

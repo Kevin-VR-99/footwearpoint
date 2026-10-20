@@ -31,4 +31,10 @@ class NotificacionService {
   Future<void> marcarLeida(int id) async {
     await _api.post('notificaciones/$id/marcar-leida');
   }
+
+  /// TG-281: quitar un aviso de la bandeja. El servidor solo deja borrar los
+  /// de quien inició sesión.
+  Future<void> borrar(int id) async {
+    await _api.delete('notificaciones/$id');
+  }
 }

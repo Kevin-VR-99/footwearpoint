@@ -28,6 +28,9 @@ class _ClientesPrivadosScreenState extends State<ClientesPrivadosScreen> {
   bool _cargando = true;
   List<ClientePrivadoRevendedor> _clientes = [];
 
+  /// TG-281: filtra la lista de clientes propios sin ir al servidor.
+  String _busqueda = '';
+
   @override
   void initState() {
     super.initState();
@@ -135,19 +138,36 @@ class _ClientesPrivadosScreenState extends State<ClientesPrivadosScreen> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _cargarClientes,
-      child: ListView.separated(
-        // Espacio abajo para que el botón flotante no tape la última tarjeta.
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-        itemCount: _clientes.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (_, i) => _TarjetaCliente(
-          cliente: _clientes[i],
-          alEditar: () => _abrirFormulario(cliente: _clientes[i]),
-          alEliminar: () => _eliminarCliente(_clientes[i]),
+    final encontrados = filtrarClientes(_clientes, _busqueda);
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: FpBuscador(
+            texto: 'Buscar por nombre, teléfono o producto',
+            alCambiar: (valor) => setState(() => _busqueda = valor),
+          ),
         ),
-      ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _cargarClientes,
+            child: encontrados.isEmpty
+                ? ListView(children: [FpSinResultados(busqueda: _busqueda, que: 'clientes')])
+                : ListView.separated(
+                    // Espacio abajo para que el botón flotante no tape la última tarjeta.
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                    itemCount: encontrados.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) => _TarjetaCliente(
+                      cliente: encontrados[i],
+                      alEditar: () => _abrirFormulario(cliente: encontrados[i]),
+                      alEliminar: () => _eliminarCliente(encontrados[i]),
+                    ),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -643,4 +663,26 @@ class _Campo extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Filtra por nombre, teléfono o lo que le vendió, sin distinguir mayúsculas.
+List<ClientePrivadoRevendedor> filtrarClientes(
+  List<ClientePrivadoRevendedor> clientes,
+  String busqueda,
+) {
+  final palabras = busqueda.toLowerCase().trim().split(RegExp(r'\s+'))
+      ..removeWhere((p) => p.isEmpty);
+
+  if (palabras.isEmpty) return clientes;
+
+  return clientes.where((cliente) {
+    final texto = [
+      cliente.nombre,
+      cliente.telefono ?? '',
+      cliente.producto ?? '',
+      cliente.referencia ?? '',
+    ].join(' ').toLowerCase();
+
+    return palabras.every(texto.contains);
+  }).toList();
 }

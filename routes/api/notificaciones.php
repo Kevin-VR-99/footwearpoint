@@ -18,4 +18,9 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empl
     ->group(function () {
         Route::get('/notificaciones', [NotificacionController::class, 'index']);
         Route::post('/notificaciones/{id}/marcar-leida', [NotificacionController::class, 'marcarLeida']);
+        // TG-281 (E19-11): quitar un aviso de la bandeja deslizandolo en la
+        // app. Es la bandeja de UNA persona (notificaciones.usuario_id), asi
+        // que borrar no le quita el aviso a nadie mas.
+        Route::delete('/notificaciones/{id}', [NotificacionController::class, 'destroy'])
+            ->whereNumber('id');
     });

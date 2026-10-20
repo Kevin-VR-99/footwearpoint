@@ -6,7 +6,7 @@ import 'providers/auth_provider.dart';
 import 'providers/carrito_revendedor_provider.dart';
 import 'screens/aviso_privacidad_screen.dart';
 import 'screens/cambiar_password_screen.dart';
-import 'screens/inicio_screen.dart';
+import 'screens/cascaron_principal.dart';
 import 'screens/login_screen.dart';
 import 'services/api_service.dart';
 import 'tema/fp_tema.dart';
@@ -95,7 +95,9 @@ class _Raiz extends StatelessWidget {
       return const CambiarPasswordScreen(obligatorio: true);
     }
 
-    if (haySesion) return const InicioScreen();
+    // TG-281: el Inicio ya no es la pantalla raiz; lo es el cascaron con la
+    // barra de abajo, que lo lleva dentro como primera pestaña.
+    if (haySesion) return const CascaronPrincipal();
 
     // Esto solo se vuelve a construir cuando cambia alguno de los valores
     // de arriba. Si la sesión se perdió (un 401) con otras pantallas
