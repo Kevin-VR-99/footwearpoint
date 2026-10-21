@@ -1,13 +1,17 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:footwearpoint/models/pagina.dart';
+import 'package:footwearpoint/providers/auth_provider.dart';
+import 'package:footwearpoint/screens/mis_pedidos_screen.dart';
 import 'package:footwearpoint/services/api_service.dart';
 import 'package:footwearpoint/services/pedido_service.dart';
 import 'package:footwearpoint/services/vale_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:provider/provider.dart';
 
 /// Auditoría 21-oct-2026: la API pagina pedidos y vales (data + meta + links).
 http.Response _json(Object cuerpo) => http.Response(
@@ -93,5 +97,37 @@ void main() {
 
     final vales = await ValeService(api: api).listarValesVigentes();
     expect(vales.length, 3);
+  });
+
+  testWidgets('Mis pedidos pide la siguiente página al llegar al final', (tester) async {
+    final paginas = <String>[];
+    final api = ApiService(
+      cliente: MockClient((peticion) async {
+        if (peticion.url.path.endsWith('/pedidos')) {
+          final pagina = int.parse(peticion.url.queryParameters['page'] ?? '1');
+          paginas.add('$pagina');
+          final ids = pagina == 1 ? List.generate(25, (i) => 100 - i) : [1];
+
+          return _json({'data': [for (final id in ids) _pedido(id, 'colocado')], 'meta': _meta(pagina, 2)});
+        }
+        return _json({'message': 'No encontrado.'});
+      }),
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => AuthProvider(api: api),
+        child: const MaterialApp(home: MisPedidosScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(paginas, ['1']);
+
+    await tester.scrollUntilVisible(find.text('PED-1'), 500, scrollable: find.byType(Scrollable).last);
+    await tester.pumpAndSettle();
+
+    expect(paginas, ['1', '2']);
+    expect(find.text('PED-1'), findsOneWidget);
+    expect(find.text('Ver más pedidos'), findsNothing);
   });
 }
