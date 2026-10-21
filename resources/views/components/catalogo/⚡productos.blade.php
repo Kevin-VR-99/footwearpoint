@@ -52,13 +52,13 @@ new class extends Component {
 <div class="space-y-4">
     <x-catalogo.aviso-solo-lectura />
 
-    <div class="fp-tarjeta p-4">
+    <div class="fp-tarjeta p-4 fp-formulario fp-aparecer">
         <x-ui.buscador wire:model.live.debounce.400ms="busqueda"
             placeholder="Buscar por nombre, modelo, código o marca" etiqueta="Buscar productos" />
     </div>
 
-    <div class="overflow-hidden fp-tarjeta">
-        <table class="min-w-full divide-y divide-slate-200 text-sm">
+    <div class="overflow-hidden fp-tarjeta fp-aparecer">
+        <table class="fp-tabla min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-fp-page">
                 <tr class="text-left text-xs font-semibold uppercase tracking-wide text-fp-text-muted">
                     <th class="px-6 py-3">Producto</th>

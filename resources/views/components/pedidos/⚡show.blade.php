@@ -443,23 +443,23 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     @endif
 
     <div class="grid gap-4 sm:grid-cols-2 {{ $this->pedido->tipo === 'cliente_directo' ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} mb-6">
-        <div class="fp-tarjeta p-4">
+        <div class="fp-tarjeta p-4 fp-aparecer">
             <p class="text-xs text-slate-500">Total</p>
             <p class="text-lg font-semibold tabular-nums">${{ number_format((float) $this->pedido->total, 2) }}</p>
         </div>
-        <div class="fp-tarjeta p-4">
+        <div class="fp-tarjeta p-4 fp-aparecer">
             <p class="text-xs text-slate-500">Pagado</p>
             <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['pagado'], 2) }}</p>
             @if ($this->resumen['pagado_con_vales'] > 0)
                 <p class="text-xs text-slate-500 tabular-nums">Incluye ${{ number_format($this->resumen['pagado_con_vales'], 2) }} en vales</p>
             @endif
         </div>
-        <div class="fp-tarjeta p-4">
+        <div class="fp-tarjeta p-4 fp-aparecer">
             <p class="text-xs text-slate-500">Saldo</p>
             <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['saldo'], 2) }}</p>
         </div>
         @if ($this->pedido->tipo === 'cliente_directo')
-            <div class="fp-tarjeta p-4">
+            <div class="fp-tarjeta p-4 fp-aparecer">
                 <p class="text-xs text-slate-500">Anticipo pendiente</p>
                 <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['anticipo_pendiente'], 2) }}</p>
             </div>
@@ -467,7 +467,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     </div>
 
     @if ($this->pedido->estado !== 'borrador')
-        <div class="mb-6 fp-tarjeta p-4">
+        <div class="mb-6 fp-tarjeta p-4 fp-formulario fp-aparecer">
             <h3 class="font-medium text-slate-800 mb-3">Registrar pago</h3>
             <form wire:submit="registrarPago" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-end">
                 <label class="text-sm">
@@ -509,7 +509,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     @endif
 
     @if ($this->pedido->pagos->isNotEmpty())
-        <div class="mb-6 fp-tarjeta overflow-hidden">
+        <div class="mb-6 fp-tarjeta overflow-hidden fp-aparecer">
             <div class="px-4 py-3 border-b border-slate-100 font-medium text-slate-800">Pagos</div>
             <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
@@ -561,7 +561,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         </div>
     @endif
 
-    <div class="fp-tarjeta overflow-hidden">
+    <div class="fp-tarjeta overflow-hidden fp-aparecer">
         <div class="px-4 py-3 border-b border-slate-100 font-medium text-slate-800">Líneas</div>
         <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">

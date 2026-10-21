@@ -422,7 +422,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
         {{-- Buscador de productos --}}
-        <div class="lg:col-span-3 fp-tarjeta overflow-hidden">
+        <div class="lg:col-span-3 fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
             <div class="px-5 py-3 border-b border-slate-100">
                 <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
                        placeholder="Buscar por SKU, código de catálogo, modelo, talla o color…" etiqueta="Buscar productos" />
@@ -482,7 +482,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         </div>
 
         {{-- Venta en curso --}}
-        <div class="lg:col-span-2 fp-tarjeta p-5 h-fit">
+        <div class="lg:col-span-2 fp-tarjeta p-5 h-fit fp-aparecer">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold text-slate-800">Venta en curso</h3>
                 @if ($lineas !== [])
@@ -565,7 +565,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
 
                 <div class="mt-5 space-y-4">
                     {{-- TG-250: vale de cliente directo por folio. --}}
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Vale (opcional)</label>
                         @if ($vale)
                             <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
@@ -586,7 +586,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                     </div>
 
                     @if ($this->porCobrar > 0)
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Método de pago</label>
                         <select wire:model="metodo_pago"
                                 class="w-full rounded-lg text-sm focus:ring-fp-primary">
@@ -599,7 +599,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                     </div>
                     @endif
 
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Cliente (opcional)</label>
                         <select wire:model="cliente_directo_id" @disabled($vale)
                                 class="w-full rounded-lg text-sm focus:ring-fp-primary">

@@ -118,11 +118,11 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
     @endif
 
     {{-- Formulario de emisión --}}
-    <div class="fp-tarjeta p-5 mb-6">
+    <div class="fp-tarjeta p-5 mb-6 fp-formulario fp-aparecer">
         <h3 class="text-sm font-semibold text-slate-800 mb-4">Emitir vale</h3>
 
         <form wire:submit="emitir" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de propietario</label>
                 <select wire:model.live="propietario_tipo"
                         class="w-full rounded-lg text-sm focus:ring-fp-primary">
@@ -131,7 +131,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 </select>
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Propietario</label>
                 @if ($propietario_tipo === 'cliente_directo')
                     <select wire:model="propietario_id"
@@ -156,7 +156,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 @error('propietario_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Monto (MXN)</label>
                 <input type="number" step="0.01" min="0.01" wire:model="monto_original"
                        class="w-full rounded-lg text-sm focus:ring-fp-primary"
@@ -164,7 +164,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 @error('monto_original') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional)</label>
                 <input type="text" wire:model="motivo" maxlength="300"
                        class="w-full rounded-lg text-sm focus:ring-fp-primary"
@@ -181,7 +181,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
     </div>
 
     {{-- Listado --}}
-    <div class="fp-tarjeta overflow-hidden">
+    <div class="fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Vales emitidos</h3>
             <select wire:model.live="filtro_tipo"

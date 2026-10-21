@@ -199,7 +199,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
         <x-panel.alerta tipo="error">{{ $errorMsg }}</x-panel.alerta>
     @endif
 
-    <div class="fp-tarjeta p-4">
+    <div class="fp-tarjeta p-4 fp-formulario fp-aparecer">
         <form wire:submit="guardarDescuento" class="flex flex-wrap items-end gap-3">
             <label class="text-sm">
                 <span class="block font-medium text-slate-700">Descuento general de mayoreo (%)</span>
@@ -210,7 +210,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
         </form>
     </div>
 
-    <div class="fp-tarjeta p-4">
+    <div class="fp-tarjeta p-4 fp-aparecer">
         <h2 class="text-sm font-semibold text-slate-800">Descuento por línea activa</h2>
         <p class="mt-1 text-xs text-fp-text-muted">Cada línea puede tener un porcentaje distinto. Si dejas el campo vacío y guardas, esa línea usa el descuento general.</p>
         @if ($this->lineasActivas->isEmpty())
@@ -231,7 +231,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
         @endif
     </div>
 
-    <div class="flex flex-wrap gap-3 fp-tarjeta p-4">
+    <div class="flex flex-wrap gap-3 fp-tarjeta p-4 fp-formulario fp-aparecer">
         <x-ui.buscador wire:model.live.debounce.400ms="busqueda"
             placeholder="Buscar por nombre, modelo, código o marca" etiqueta="Buscar productos" class="min-w-64 flex-1" />
         <select wire:model.live="filtro" class="rounded-lg text-sm">
@@ -241,8 +241,8 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
         </select>
     </div>
 
-    <div class="overflow-x-auto fp-tarjeta">
-        <table class="min-w-full divide-y divide-slate-200 text-sm">
+    <div class="overflow-x-auto fp-tarjeta fp-aparecer">
+        <table class="fp-tabla min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-fp-page">
                 <tr class="text-left text-xs font-semibold uppercase tracking-wide text-fp-text-muted">
                     <th class="px-4 py-3">Producto</th>
@@ -284,10 +284,10 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
                         </td>
                         <td class="px-4 py-3">
                             @if ($oculto)
-                                <span class="mr-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs">Oculto</span>
+                                <span class="fp-insignia fp-insignia-neutral mr-2">Oculto</span>
                                 <button type="button" wire:click="mostrar({{ $pc->id }})" class="fp-enlace text-sm font-medium">Mostrar</button>
                             @else
-                                <span class="mr-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Visible</span>
+                                <span class="fp-insignia fp-insignia-success mr-2">Visible</span>
                                 <button type="button" wire:click="ocultar({{ $pc->id }})" class="text-sm text-red-600">Ocultar</button>
                             @endif
                         </td>

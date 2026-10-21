@@ -10,7 +10,7 @@ new #[Layout('layouts.panel')] class extends Component {
 
 <div class="space-y-6">
     {{-- Cabecera --}}
-    <section class="relative overflow-hidden fp-tarjeta">
+    <section class="relative overflow-hidden fp-tarjeta fp-aparecer">
         <div class="absolute inset-y-0 left-0 w-1.5 bg-fp-primary" aria-hidden="true"></div>
         <div class="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-fp-primary/10 blur-2xl" aria-hidden="true"></div>
         <div class="absolute -bottom-20 right-10 h-36 w-36 rounded-full bg-fp-primary/5 blur-2xl" aria-hidden="true"></div>

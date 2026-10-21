@@ -306,10 +306,10 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
     @endif
 
     @if (! $pedidoId)
-        <div class="fp-tarjeta p-5 shadow-sm space-y-4 max-w-xl">
+        <div class="fp-tarjeta p-5 shadow-sm space-y-4 max-w-xl fp-formulario fp-aparecer">
             <h3 class="font-semibold text-slate-800">1. Datos del pedido</h3>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm text-slate-600 mb-1">Tipo</label>
                 <select wire:model.live="tipo" class="w-full rounded-lg text-sm">
                     <option value="cliente_directo">Cliente directo</option>
@@ -317,7 +317,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 </select>
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm text-slate-600 mb-1">Propietario</label>
                 @if ($tipo === 'cliente_directo')
                     <select wire:model="propietario_id" class="w-full rounded-lg text-sm">
@@ -338,7 +338,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 @endif
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm text-slate-600 mb-1">Sucursal</label>
                 <select wire:model="sucursal_id" class="w-full rounded-lg text-sm">
                     @foreach ($this->sucursales as $s)
@@ -347,7 +347,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 </select>
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm text-slate-600 mb-1">Observaciones</label>
                 <textarea wire:model="observaciones" rows="2"
                     class="w-full rounded-lg text-sm"></textarea>
@@ -367,14 +367,14 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             <x-panel.boton wire:click="enviar" wire:loading.attr="disabled">Enviar pedido</x-panel.boton>
         </div>
 
-        <div class="fp-tarjeta p-5 shadow-sm space-y-4 mb-6 max-w-2xl">
+        <div class="fp-tarjeta p-5 shadow-sm space-y-4 mb-6 max-w-2xl fp-aparecer">
             <h3 class="font-semibold text-slate-800">2. Agregar del catálogo</h3>
             <p class="text-xs text-slate-500 -mt-2">
                 Solo productos de la <strong>temporada activa</strong>
                 (≈ 6 meses: Primavera-Verano / Otoño-Invierno).
             </p>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm text-slate-600 mb-1">Línea</label>
                 <select wire:model.live="linea_id" class="w-full rounded-lg text-sm">
                     <option value="">— Selecciona una línea —</option>
@@ -399,7 +399,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 @endif
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm text-slate-600 mb-1">Producto</label>
                 <select wire:model.live="producto_campana_id"
                     class="w-full rounded-lg text-sm"
@@ -423,7 +423,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 @endif
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm text-slate-600 mb-1">Variante (talla / color)</label>
                 <select wire:model="variante_id"
                     class="w-full rounded-lg text-sm"
@@ -440,7 +440,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 </select>
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm text-slate-600 mb-1">Cantidad</label>
                 <input type="number" min="1" wire:model="cantidad"
                     class="w-32 rounded-lg text-sm" />
@@ -449,7 +449,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             <x-panel.boton wire:click="agregarLinea" wire:loading.attr="disabled">Agregar producto</x-panel.boton>
         </div>
 
-        <div class="fp-tarjeta overflow-hidden">
+        <div class="fp-tarjeta overflow-hidden fp-aparecer">
             <div class="px-4 py-3 border-b font-medium">Líneas del pedido</div>
             <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">

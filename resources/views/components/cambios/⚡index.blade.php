@@ -117,7 +117,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         <x-panel.alerta tipo="error">{{ $errorMsg }}</x-panel.alerta>
     @endif
 
-    <div class="fp-tarjeta p-4">
+    <div class="fp-tarjeta p-4 fp-formulario fp-aparecer">
         <p class="text-sm font-medium text-slate-800">Cambio de una venta de mostrador</p>
         <p class="text-xs text-slate-500">Los cambios de pedidos se piden desde el detalle del pedido o desde la app del cliente.</p>
         <form wire:submit="buscarVenta" class="mt-3 flex gap-2">
@@ -173,7 +173,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         </select>
     </div>
 
-    <div class="overflow-x-auto fp-tarjeta">
+    <div class="overflow-x-auto fp-tarjeta fp-aparecer">
         <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>

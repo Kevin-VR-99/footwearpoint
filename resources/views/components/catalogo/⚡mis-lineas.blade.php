@@ -142,7 +142,7 @@ new #[Layout('layouts.panel')] #[Title('Mis líneas — FootwearPoint')] class e
         </div>
     @endif
 
-    <table class="w-full rounded-2xl bg-white text-sm">
+    <table class="fp-tarjeta fp-tabla fp-aparecer w-full text-sm">
         <thead>
             <tr class="text-left text-slate-500">
                 <th class="p-3">Línea</th>

@@ -221,7 +221,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
     @endif
 
     @if ($this->detalle === null)
-        <div class="fp-tarjeta p-8 text-center text-slate-500">
+        <div class="fp-tarjeta p-8 text-center text-slate-500 fp-aparecer">
             No hay ningún ciclo de compra para mostrar.
         </div>
     @else
@@ -229,7 +229,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         @php($ciclo = $detalle->ciclo)
 
         {{-- Encabezado del ciclo --}}
-        <div class="fp-tarjeta p-5 mb-6">
+        <div class="fp-tarjeta p-5 mb-6 fp-aparecer">
             <div class="flex flex-wrap items-center gap-3 mb-5">
                 <h3 class="text-lg font-semibold text-slate-900">{{ $ciclo->nombre }}</h3>
                 <x-ui.insignia-estado :estado="$ciclo->estado" />
@@ -301,7 +301,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {{-- Pedidos del ciclo --}}
-            <div class="fp-tarjeta overflow-hidden">
+            <div class="fp-tarjeta overflow-hidden fp-aparecer">
                 <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-800">Pedidos del ciclo</h3>
                     <span class="text-xs text-slate-500">{{ $detalle->pedidos->count() }} en total</span>
@@ -338,7 +338,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
             </div>
 
             {{-- Consolidado para fábrica --}}
-            <div class="fp-tarjeta overflow-hidden">
+            <div class="fp-tarjeta overflow-hidden fp-aparecer">
                 <div class="px-5 py-3 border-b border-slate-100">
                     <h3 class="text-sm font-semibold text-slate-800">Consolidado por variante</h3>
                     <p class="text-xs text-slate-500 mt-0.5">
