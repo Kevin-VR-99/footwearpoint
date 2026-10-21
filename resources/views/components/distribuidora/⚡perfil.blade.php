@@ -138,9 +138,9 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
         <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Logotipo</label>
             @if ($logotipo)
-                <img src="{{ $logotipo->temporaryUrl() }}" class="h-16 w-16 object-cover rounded mb-2">
+                <img src="{{ $logotipo->temporaryUrl() }}" alt="Vista previa del logotipo" loading="lazy" decoding="async" width="64" height="64" class="h-16 w-16 object-cover rounded mb-2">
             @elseif ($logotipo_url_actual)
-                <img src="{{ $logotipo_url_actual }}" class="h-16 w-16 object-cover rounded mb-2">
+                <img src="{{ $logotipo_url_actual }}" alt="Logotipo actual" loading="lazy" decoding="async" width="64" height="64" class="h-16 w-16 object-cover rounded mb-2">
             @endif
             <input type="file" wire:model="logotipo" aria-label="Logotipo" accept="image/png,image/jpeg">
             <p x-show="subiendo" x-cloak class="text-xs text-fp-text-muted mt-1">Subiendo logotipo…</p>

@@ -30,7 +30,7 @@
                     </template>
                     <template x-if="abierto && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(tipo)">
                         <div class="flex h-full items-center justify-center overflow-auto p-4">
-                            <img :src="url" :alt="nombre" class="max-h-full max-w-full rounded-lg shadow-sm">
+                            <img :src="url" :alt="nombre" decoding="async" class="max-h-full max-w-full rounded-lg shadow-sm">
                         </div>
                     </template>
                     <template x-if="abierto && ! ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(tipo)">

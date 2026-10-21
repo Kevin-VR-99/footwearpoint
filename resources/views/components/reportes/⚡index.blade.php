@@ -195,7 +195,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex min-w-0 items-center gap-3">
                 @if ($casa->logotipo_url)
-                    <img src="{{ $casa->logotipo_url }}" alt="Logo de {{ $casa->nombre_comercial }}" class="h-12 w-12 shrink-0 rounded-xl border border-slate-200 bg-white object-contain">
+                    <img src="{{ $casa->logotipo_url }}" alt="Logo de {{ $casa->nombre_comercial }}" loading="lazy" decoding="async" width="48" height="48" class="h-12 w-12 shrink-0 rounded-xl border border-slate-200 bg-white object-contain">
                 @else
                     <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-fp-sidebar text-lg font-semibold text-white" aria-hidden="true">{{ mb_strtoupper(mb_substr($casa->nombre_comercial, 0, 1)) }}</span>
                 @endif
