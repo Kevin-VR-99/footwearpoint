@@ -18,8 +18,9 @@ use Illuminate\Support\Str;
  *    código por las credenciales y las guarda en configuraciones_distribuidora
  *    (el token cifrado con la APP_KEY por el cast 'encrypted').
  *
- * No se guarda el refresh token (no hay columna en Ola 1): el token dura 180
- * días y, al vencer, la distribuidora vuelve a conectar.
+ * También se guardan el refresh token (cifrado) y el vencimiento real
+ * (expires_in); `php artisan mercado-pago:renovar-tokens` los renueva antes
+ * de que venzan.
  */
 class VincularMercadoPagoService
 {
@@ -128,6 +129,9 @@ class VincularMercadoPagoService
                 'mp_public_key'           => $publicKey,
                 'mercado_pago_account_id' => $cuentaId,
                 'mp_conectado_at'         => now(),
+                'mp_refresh_token'        => self::textoONull($datos['refresh_token'] ?? null),
+                'mp_token_expira_en'      => self::expiraEn($datos['expires_in'] ?? null),
+                'mp_aviso_reconexion_at'  => null,
             ]);
 
             // Sin tokens en la bitácora: solo qué cuenta se conectó.
@@ -171,6 +175,18 @@ class VincularMercadoPagoService
             'por_vencer'   => $vence !== null && ! $vencido
                 && $vence->lte(now()->addDays(ConfiguracionDistribuidora::DIAS_AVISO_VENCIMIENTO_MP)),
         ];
+    }
+
+    /** Un texto no vacío o null (para el refresh token). */
+    public static function textoONull(mixed $valor): ?string
+    {
+        return is_string($valor) && $valor !== '' ? $valor : null;
+    }
+
+    /** Fecha de vencimiento a partir de expires_in (segundos), o null si no viene. */
+    public static function expiraEn(mixed $segundos): ?\Illuminate\Support\Carbon
+    {
+        return is_numeric($segundos) && (int) $segundos > 0 ? now()->addSeconds((int) $segundos) : null;
     }
 
     /** code_challenge S256 = base64url(sha256(code_verifier)) sin relleno (RFC 7636). */

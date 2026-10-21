@@ -30,7 +30,8 @@ Sirve para construir las pantallas de la app sin tener que leer el backend.
 
 **Dirección base:** la que esté en `mobile/lib/config.dart`.
 
-- Emulador Android → `http://10.0.2.2:8000/api`
+- Producción (valor por omisión de la app) → `https://footwearpoint.app/api`
+- Emulador Android → `http://10.0.2.2:8000/api` (con `--dart-define=API_URL=...`)
 - Celular físico → `http://<IP-de-tu-computadora>:8000/api`, y Laravel levantado con `php artisan serve --host=0.0.0.0`
 
 **Encabezados que manda la app siempre:**
