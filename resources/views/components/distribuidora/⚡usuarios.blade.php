@@ -47,6 +47,9 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
     public string $revendedor_acceso_password = '';
     public string $revendedor_acceso_password_confirmation = '';
 
+    public string $buscar = '';
+    public string $filtroEstado = '';
+
     public function mount(): void
     {
         if (request()->routeIs('distribuidora.mayoristas')) {
@@ -75,9 +78,53 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         });
     }
 
+    private function consultaRevendedores()
+    {
+        $q = RevendedorDistribuidora::with('revendedor.usuario')->orderBy('id');
+        if ($this->filtroEstado !== '') {
+            $q->where('estado', $this->filtroEstado);
+        }
+        if (trim($this->buscar) !== '') {
+            $t = '%'.addcslashes(trim($this->buscar), '%_\\').'%';
+            $q->where(fn ($w) => $w->where('codigo_interno', 'like', $t)
+                ->orWhereHas('revendedor', fn ($r) => $r->where('nombre', 'like', $t)->orWhere('telefono', 'like', $t)->orWhere('email', 'like', $t)));
+        }
+
+        return $q;
+    }
+
     private function cargarRevendedores(): void
     {
-        $this->revendedores = RevendedorDistribuidora::with('revendedor.usuario')->get();
+        $this->revendedores = $this->consultaRevendedores()->get();
+    }
+
+    public function updatedBuscar(): void
+    {
+        $this->cargarRevendedores();
+    }
+
+    public function updatedFiltroEstado(): void
+    {
+        $this->cargarRevendedores();
+    }
+
+    /** Exporta a .xlsx los clientes mayoristas con la búsqueda y el estado de la pantalla. */
+    public function exportar()
+    {
+        \App\Services\Exportar\ExportarListadoXlsx::exigirPersonal(soloAdministrador: true);
+
+        $filas = $this->consultaRevendedores()->get()->map(fn (RevendedorDistribuidora $a) => [
+            $a->revendedor?->nombre, $a->codigo_interno, $a->revendedor?->telefono,
+            $a->revendedor?->email ?? $a->revendedor?->usuario?->email,
+            ucfirst((string) $a->estado), $a->revendedor?->usuario ? 'Sí' : 'No', $a->fecha_alta?->format('d/m/Y'),
+        ]);
+
+        return app(\App\Services\Exportar\ExportarListadoXlsx::class)->descargar(
+            'clientes-mayoristas-'.now()->format('Ymd-His').'.xlsx', 'Clientes mayoristas',
+            ['Nombre', 'Código', 'Teléfono', 'Correo', 'Estado', 'Cuenta app', 'Alta'],
+            $filas,
+            array_filter(['Búsqueda' => trim($this->buscar) ?: null, 'Estado' => $this->filtroEstado !== '' ? ucfirst($this->filtroEstado) : null]),
+        );
     }
 
     public function toggleEstadoEmpleado(int $id): void
@@ -494,6 +541,22 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     + Afiliar cliente mayorista
                 </button>
             </div>
+        <div class="mb-4 flex flex-wrap items-center gap-2" data-filtros-mayoristas>
+            <input type="search" wire:model.live.debounce.300ms="buscar" placeholder="Buscar nombre, código, teléfono o correo"
+                aria-label="Buscar clientes mayoristas" class="min-w-0 flex-1 rounded-lg text-sm" />
+            <select wire:model.live="filtroEstado" aria-label="Filtrar por estado" class="rounded-lg text-sm">
+                <option value="">Todos los estados</option>
+                <option value="activo">Activo</option>
+                <option value="suspendido">Suspendido</option>
+                    <option value="inactivo">Inactivo</option>
+            </select>
+            <button type="button" wire:click="exportar" data-exportar="clientes-mayoristas" class="fp-btn fp-btn-secundario"
+                wire:loading.attr="disabled" wire:target="exportar">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+                <span wire:loading.remove wire:target="exportar">Exportar Excel</span>
+                <span wire:loading wire:target="exportar">Generando…</span>
+            </button>
+        </div>
             @if (session('aviso_password_temporal'))
                 <div class="mb-4 rounded-lg border border-fp-badge-warning-fg/20 bg-fp-badge-warning-bg px-4 py-3 text-sm text-fp-badge-warning-fg">
                     {{ session('aviso_password_temporal') }}
