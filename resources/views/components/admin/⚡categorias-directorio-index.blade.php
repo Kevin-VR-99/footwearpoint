@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /*
@@ -21,6 +22,7 @@ new #[Layout('layouts.admin')] #[Title('Categorías del directorio — Admin')] 
 {
     public string $mensaje = '';
 
+    #[Locked]
     public ?int $editId = null;
     public string $nombre = '';
     public bool $activa = true;

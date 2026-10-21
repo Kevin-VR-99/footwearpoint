@@ -7,6 +7,7 @@ use App\Services\Catalogo\CatalogoVisible;
 use App\Services\Catalogo\PrecioEfectivo;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -17,6 +18,7 @@ use Livewire\Component;
  * tiene disponibles.
  */
 new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class extends Component {
+    #[Locked]
     public int $productoId;
 
     public function mount(int $producto): void

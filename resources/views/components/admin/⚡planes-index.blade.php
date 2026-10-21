@@ -4,6 +4,7 @@ use App\Models\PlanSuscripcion;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Component
@@ -11,6 +12,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
     public string $mensaje = '';
 
     // Formulario crear/editar
+    #[Locked]
     public ?int $editId = null;
     public string $nombre = '';
     public string $descripcion = '';

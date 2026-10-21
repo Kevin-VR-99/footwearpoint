@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] class extends Component {
@@ -18,6 +19,7 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
     public bool $avisoEnlaceEsError = false;
 
     public $clientesDirectos = [];
+    #[Locked]
     public ?int $clienteEditandoId = null;
     public bool $mostrandoFormularioCliente = false;
     public string $cliente_nombre = '';

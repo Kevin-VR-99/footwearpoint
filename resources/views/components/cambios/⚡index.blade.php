@@ -8,6 +8,7 @@ use App\Support\MensajeError;
 use App\Support\Tenant;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -25,6 +26,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
     public string $estado = '';
 
     public string $folioVenta = '';
+    #[Locked]
     public ?int $ventaId = null;
     public ?int $cambioLineaId = null;
     public string $cambioMotivo = '';

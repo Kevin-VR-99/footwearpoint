@@ -24,6 +24,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extends Component {
@@ -41,6 +42,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     // Asignar suscripción
     public bool $mostrarSuscripcion = false;
+    #[Locked]
     public ?int $distribuidoraSuscripcionId = null;
     public string $distribuidoraSuscripcionNombre = '';
     public string $plan_id = '';
@@ -69,6 +71,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public string $admin_password = '';
 
     // Revisar los datos antes de aprobar o rechazar (TG-195)
+    #[Locked]
     public ?int $distribuidoraDetalleId = null;
 
     // Rechazar con motivo (TG-195)
@@ -77,6 +80,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public string $motivo_rechazo = '';
 
     // Editar distribuidora y su administrador (TG-194)
+    #[Locked]
     public ?int $distribuidoraEdicionId = null;
     public string $distribuidoraEdicionNombre = '';
     public string $editar_nombre_comercial = '';

@@ -15,6 +15,7 @@ use App\Support\Tenant;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] class extends Component {
@@ -43,6 +44,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
     // TG-247: edición y borrado. Un solo panel de edición para las 4 entidades.
     public string $editando_tipo = '';
+    #[Locked]
     public ?int $editando_id = null;
     public string $editar_nombre = '';
     public string $editar_descripcion = '';

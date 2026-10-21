@@ -15,6 +15,7 @@ use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class extends Component
@@ -41,6 +42,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
     public string $errorMsg = '';
 
     /** La venta recién cobrada, para el enlace a su comprobante (E7-02). */
+    #[Locked]
     public ?int $ultimaVentaId = null;
 
     public function mount()

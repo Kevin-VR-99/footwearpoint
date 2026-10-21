@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -34,6 +35,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
     public bool $avisoEnlaceEsError = false;
 
     public $revendedores = [];
+    #[Locked]
     public ?int $revendedorEditandoId = null;
     public bool $mostrandoFormularioRevendedor = false;
     public string $revendedor_nombre = '';
