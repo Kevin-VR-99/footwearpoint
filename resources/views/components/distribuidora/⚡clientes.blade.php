@@ -74,7 +74,8 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
     {
         \App\Services\Exportar\ExportarListadoXlsx::exigirPersonal(soloAdministrador: true);
 
-        $filas = $this->consultaClientes()->get()->map(fn (ClienteDirecto $c) => [
+        $filas = $this->consultaClientes()->with('usuario')
+            ->limit(\App\Services\Exportar\ExportarListadoXlsx::MAX_FILAS + 1)->get()->map(fn (ClienteDirecto $c) => [
             $c->nombre, $c->telefono, $c->email ?? $c->usuario?->email, $c->direccion_contacto,
             ucfirst((string) $c->estado), $c->usuario ? 'Sí' : 'No', $c->created_at?->format('d/m/Y'),
         ]);

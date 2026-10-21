@@ -14,6 +14,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class ExportarListadoXlsx
 {
+    /** Tope de filas por archivo: evita agotar la memoria con listados enormes. */
+    public const MAX_FILAS = 10000;
+
+    /** Por encima de esto no se autoajusta el ancho de columnas (es lento con muchas filas). */
+    private const AUTOAJUSTE_HASTA = 2000;
+
     /**
      * La acción de Livewire no vuelve a pasar por el middleware de la ruta, así
      * que se repite aquí la regla de la pantalla: personal activo de la
@@ -61,13 +67,21 @@ class ExportarListadoXlsx
         $hoja->getStyle("A{$fila}:{$ultima}{$fila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('1E2F52');
         $hoja->freezePane('A'.($fila + 1));
 
+        $escritas = 0;
         foreach ($filas as $datos) {
+            if ($escritas >= self::MAX_FILAS) {
+                $fila += 2;
+                $hoja->setCellValue('A'.$fila, 'Se exportaron las primeras '.number_format(self::MAX_FILAS).' filas. Usa los filtros para acotar el listado.');
+                break;
+            }
             $fila++;
+            $escritas++;
             $hoja->fromArray(array_values($datos), null, 'A'.$fila, true);
         }
 
         foreach (range(1, count($encabezados)) as $i) {
-            $hoja->getColumnDimension(Coordinate::stringFromColumnIndex($i))->setAutoSize(true);
+            $columna = $hoja->getColumnDimension(Coordinate::stringFromColumnIndex($i));
+            $escritas <= self::AUTOAJUSTE_HASTA ? $columna->setAutoSize(true) : $columna->setWidth(22);
         }
 
         return $libro;
@@ -78,7 +92,13 @@ class ExportarListadoXlsx
         $libro = $this->libro($titulo, $encabezados, $filas, $filtros);
 
         return response()->streamDownload(function () use ($libro) {
-            (new Xlsx($libro))->save('php://output');
-        }, $archivo, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+            $escritor = new Xlsx($libro);
+            $escritor->setPreCalculateFormulas(false);
+            $escritor->save('php://output');
+            $libro->disconnectWorksheets();
+        }, $archivo, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'no-store, private',
+        ]);
     }
 }

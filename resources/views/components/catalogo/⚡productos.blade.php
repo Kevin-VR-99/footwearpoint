@@ -53,13 +53,13 @@ new class extends Component {
     <x-catalogo.aviso-solo-lectura />
 
     <div class="relative fp-tarjeta p-4 fp-formulario fp-aparecer">
-        <x-ui.cargando />
+        <x-ui.cargando objetivo="busqueda,gotoPage,nextPage,previousPage" />
         <x-ui.buscador wire:model.live.debounce.400ms="busqueda"
             placeholder="Buscar por nombre, modelo, código o marca" etiqueta="Buscar productos" />
     </div>
 
     <div class="relative overflow-hidden fp-tarjeta fp-aparecer">
-        <x-ui.cargando />
+        <x-ui.cargando objetivo="busqueda,gotoPage,nextPage,previousPage" />
         <table class="fp-tabla min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-fp-page">
                 <tr class="text-left text-xs font-semibold uppercase tracking-wide text-fp-text-muted">

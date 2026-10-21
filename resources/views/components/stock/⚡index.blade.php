@@ -65,7 +65,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 $query->whereRaw('cantidad_disponible < (CASE WHEN stock_minimo > 0 THEN stock_minimo ELSE ? END)', [$general]);
             }
 
-            return $query->with('variante.talla', 'variante.color')->get();
+            return $query->with('variante.talla', 'variante.color', 'variante.producto:id,nombre')->get();
         } catch (OperacionInvalidaException $e) {
             return collect();
         }
@@ -331,7 +331,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 
     {{-- Existencias --}}
     <div class="relative fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
-        <x-ui.cargando />
+        <x-ui.cargando objetivo="busqueda,soloBajo,gotoPage,nextPage,previousPage" />
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Existencias</h3>
             <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">

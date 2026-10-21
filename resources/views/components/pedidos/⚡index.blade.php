@@ -50,7 +50,8 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
     {
         \App\Services\Exportar\ExportarListadoXlsx::exigirPersonal();
 
-        $filas = $this->consulta()->get()->map(fn (Pedido $p) => [
+        $filas = $this->consulta()
+            ->limit(\App\Services\Exportar\ExportarListadoXlsx::MAX_FILAS + 1)->get()->map(fn (Pedido $p) => [
             $p->folio,
             $p->tipo === 'cliente_directo' ? 'Cliente' : 'Cliente mayorista',
             $p->clienteDirecto?->nombre ?? $p->revendedorAfiliacion?->revendedor?->nombre ?? '—',

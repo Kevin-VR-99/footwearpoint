@@ -68,7 +68,7 @@
 </div>
 
 <div class="relative fp-tarjeta fp-tabla fp-aparecer overflow-hidden">
-    <x-ui.cargando />
+    <x-ui.cargando objetivo="buscar,filtro_accion,filtro_area,filtro_desde,filtro_hasta,filtro_entidad,filtro_usuario,gotoPage,nextPage,previousPage" />
     <div class="overflow-x-auto">
         <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">

@@ -182,7 +182,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
 
     {{-- Listado --}}
     <div class="relative fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
-        <x-ui.cargando />
+        <x-ui.cargando objetivo="filtro_tipo,propietario_tipo,gotoPage,nextPage,previousPage" />
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Vales emitidos</h3>
             <select wire:model.live="filtro_tipo" aria-label="Filtrar por tipo de propietario"
