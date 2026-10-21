@@ -193,7 +193,8 @@ class AuthProvider extends ChangeNotifier {
     try {
       final respuesta = await api.post(
         'auth/login',
-        cuerpo: {'email': email, 'password': password},
+        // Auditoría 21-oct-2026: el servidor nombra el token con el dispositivo.
+        cuerpo: {'email': email, 'password': password, 'device_name': 'App FootwearPoint ($_plataformaFcm)'},
       );
 
       final datos = respuesta['data'] as Map<String, dynamic>;

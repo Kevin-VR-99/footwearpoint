@@ -13,6 +13,7 @@ use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 use App\Http\Requests\Auth\AceptarLegalesRequest;
 use App\Models\AceptacionLegal;
 use App\Models\Distribuidora;
@@ -32,6 +33,25 @@ class AuthController extends Controller
      * distribuidora) sigue entrando, y el TenantScope hace que no vea nada.
      */
     private const ROLES_SOLO_WEB = ['admin_general', 'admin_distribuidora', 'empleado'];
+
+    /** Sesiones de la app abiertas a la vez por persona (auditoría 21-oct-2026). */
+    public const MAX_TOKENS_POR_USUARIO = 10;
+
+    public static function nombreDelDispositivo(Request $request): string
+    {
+        $nombre = trim((string) ($request->input('device_name') ?: $request->userAgent()));
+        $nombre = preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $nombre) ?? '';
+
+        return $nombre === '' ? 'app' : Str::limit($nombre, 100, '');
+    }
+
+    /** Borra los tokens más viejos si la persona pasa del tope. */
+    private function recortarTokens(Usuario $usuario): void
+    {
+        $conservar = $usuario->tokens()->orderByDesc('id')->limit(self::MAX_TOKENS_POR_USUARIO)->pluck('id');
+
+        $usuario->tokens()->whereNotIn('id', $conservar)->delete();
+    }
 
     public function login(LoginRequest $request, LimiteIntentosLogin $limite)
     {
@@ -88,8 +108,11 @@ class AuthController extends Controller
             ]);
         }
 
-        // Token Sanctum
-        $token = $usuario->createToken('auth_token')->plainTextToken;
+        // Token Sanctum. Auditoría 21-oct-2026: el nombre es el dispositivo
+        // (device_name que manda la app o, si no viene, el User-Agent) y solo
+        // se conservan los últimos MAX_TOKENS_POR_USUARIO de cada persona.
+        $token = $usuario->createToken(self::nombreDelDispositivo($request))->plainTextToken;
+        $this->recortarTokens($usuario);
 
         return response()->json([
             'data' => [
