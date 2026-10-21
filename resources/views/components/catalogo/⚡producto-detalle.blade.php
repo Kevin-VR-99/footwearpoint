@@ -128,7 +128,7 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
             @if ($pc->imagenes->isNotEmpty())
                 <div class="flex flex-wrap gap-3 border-b border-slate-100 px-6 py-4">
                     @foreach ($pc->imagenes->sortByDesc('es_principal') as $imagen)
-                        <img src="{{ $imagen->url }}" alt="{{ $this->producto->nombre }}"
+                        <img src="{{ $imagen->urlMiniatura() }}" alt="{{ $this->producto->nombre }}" loading="lazy" decoding="async" width="80" height="80"
                             class="h-20 w-20 rounded object-cover {{ $imagen->es_principal ? 'ring-2 ring-fp-primary' : '' }}">
                     @endforeach
                 </div>

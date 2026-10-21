@@ -8,6 +8,10 @@ use Illuminate\Support\Collection;
 /**
  * La foto vive en la temporada (producto_campana), no en la talla.
  * Si hay varias, gana la principal; si no, la de menor orden.
+ *
+ * Auditoría 21-oct-2026: estos mapas se usan para miniaturas en listados,
+ * así que regresan la versión WebP de ~400 px (url_miniatura) cuando existe
+ * y la original cuando la foto es anterior a las variantes.
  */
 class ImagenDeProducto
 {
@@ -28,7 +32,7 @@ class ImagenDeProducto
             ->orderByDesc('es_principal')
             ->orderBy('orden')
             ->orderBy('id')
-            ->get(['producto_campana_id', 'url']);
+            ->get(['producto_campana_id', 'url', 'url_miniatura']);
 
         return $this->primeraUrl($filas, 'producto_campana_id');
     }
@@ -53,7 +57,7 @@ class ImagenDeProducto
             ->orderByDesc('producto_imagenes.es_principal')
             ->orderBy('producto_imagenes.orden')
             ->orderBy('producto_imagenes.id')
-            ->get(['producto_campana.producto_id as producto_id', 'producto_imagenes.url as url']);
+            ->get(['producto_campana.producto_id as producto_id', 'producto_imagenes.url as url', 'producto_imagenes.url_miniatura as url_miniatura']);
 
         return $this->primeraUrl($filas, 'producto_id');
     }
@@ -81,7 +85,7 @@ class ImagenDeProducto
 
         foreach ($filas as $fila) {
             $id = (int) $fila->{$llave};
-            $url = trim((string) $fila->url);
+            $url = trim((string) ($fila->url_miniatura ?: $fila->url));
 
             if ($url === '' || isset($mapa[$id])) {
                 continue;
