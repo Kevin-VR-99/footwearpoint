@@ -166,7 +166,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
         {{-- Entrada de mercancía --}}
-        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5">
+        <div class="fp-tarjeta p-5">
             <h3 class="text-sm font-semibold text-slate-800 mb-4">Registrar entrada</h3>
 
             <form wire:submit="registrarEntrada" class="space-y-4">
@@ -198,14 +198,14 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 </div>
 
                 <button type="submit"
-                        class="rounded-lg bg-fp-primary text-white px-4 py-2 text-sm font-medium hover:bg-fp-primary/90">
+                        class="fp-btn fp-btn-primario">
                     Registrar entrada
                 </button>
             </form>
         </div>
 
         {{-- Ajuste manual --}}
-        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5">
+        <div class="fp-tarjeta p-5">
             <h3 class="text-sm font-semibold text-slate-800 mb-4">Ajuste manual</h3>
 
             <form wire:submit="registrarAjuste" class="space-y-4">
@@ -248,7 +248,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 </div>
 
                 <button type="submit"
-                        class="rounded-lg bg-fp-accent text-white px-4 py-2 text-sm font-medium hover:opacity-90">
+                        class="fp-btn fp-btn-oscuro">
                     Registrar ajuste
                 </button>
             </form>
@@ -256,7 +256,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     </div>
 
     {{-- Existencias --}}
-    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="fp-tarjeta overflow-hidden">
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Existencias</h3>
             <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
@@ -264,7 +264,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         </div>
 
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="text-left font-medium px-4 py-3">SKU</th>
@@ -276,7 +276,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($this->existencias as $existencia)
-                        <tr class="hover:bg-slate-50">
+                        <tr>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2">
                                     <x-ui.miniatura

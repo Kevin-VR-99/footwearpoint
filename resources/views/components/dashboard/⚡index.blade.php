@@ -55,7 +55,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
 
 <div class="space-y-8">
     {{-- Encabezado --}}
-    <div class="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+    <div class="relative overflow-hidden fp-tarjeta">
         <div class="absolute inset-y-0 left-0 w-1.5 bg-fp-primary"></div>
         <div class="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-fp-danger/10"></div>
         <div class="absolute -right-2 top-10 h-16 w-16 rounded-full bg-fp-primary/10"></div>
@@ -84,8 +84,8 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
     </div>
 
     {{-- KPIs --}}
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-fp-primary/35 hover:shadow-md">
+    <div class="fp-escalonado grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="fp-tarjeta-interactiva p-4">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <p class="text-xs font-medium text-fp-text-muted">Pedidos totales</p>
@@ -102,7 +102,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
             </div>
         </div>
 
-        <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md">
+        <div class="fp-tarjeta-interactiva p-4">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <p class="text-xs font-medium text-fp-text-muted">Borradores</p>
@@ -117,7 +117,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
             <p class="mt-3 text-[11px] text-fp-text-muted">Pendientes de colocar</p>
         </div>
 
-        <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-fp-primary/35 hover:shadow-md">
+        <div class="fp-tarjeta-interactiva p-4">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <p class="text-xs font-medium text-fp-text-muted">Colocados</p>
@@ -132,7 +132,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
             <p class="mt-3 text-[11px] text-fp-text-muted">En flujo operativo</p>
         </div>
 
-        <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-fp-danger/30 hover:shadow-md">
+        <div class="fp-tarjeta-interactiva p-4">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <p class="text-xs font-medium text-fp-text-muted">Vales activos</p>
@@ -151,10 +151,10 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
     </div>
 
     {{-- Acciones --}}
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="fp-escalonado grid gap-4 sm:grid-cols-2">
         <a href="{{ route('pedidos.create') }}"
            wire:navigate
-           class="group relative overflow-hidden rounded-2xl bg-fp-primary p-5 text-white shadow-sm transition hover:bg-fp-accent hover:shadow-md">
+           class="group relative overflow-hidden rounded-2xl bg-fp-primary p-5 text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-fp-accent hover:shadow-lg hover:shadow-fp-primary/25 motion-reduce:transform-none">
             <div class="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10"></div>
             <div class="relative flex items-start justify-between gap-3">
                 <div>
@@ -172,7 +172,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
 
         <a href="{{ route('vales.index') }}"
            wire:navigate
-           class="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:border-fp-danger/35 hover:shadow-md">
+           class="group fp-tarjeta-interactiva relative overflow-hidden p-5">
             <div class="absolute inset-y-0 left-0 w-1 bg-fp-danger"></div>
             <div class="relative flex items-start justify-between gap-3 pl-2">
                 <div>
@@ -190,7 +190,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
     </div>
 
     {{-- Pedidos recientes --}}
-    <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+    <div class="overflow-hidden fp-tarjeta">
         <div class="flex items-center justify-between gap-3 bg-gradient-to-r from-fp-sidebar to-fp-accent px-5 py-3.5">
             <div>
                 <h3 class="text-sm font-semibold text-white">Pedidos recientes</h3>
@@ -204,7 +204,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
         </div>
 
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page/80 text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="px-5 py-3 font-semibold">Folio</th>
@@ -219,7 +219,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
                             <td class="px-5 py-3.5">
                                 <a href="{{ route('pedidos.show', $p->id) }}"
                                    wire:navigate
-                                   class="font-medium text-fp-primary hover:underline">
+                                   class="font-medium fp-enlace">
                                     {{ $p->folio }}
                                 </a>
                             </td>
@@ -242,7 +242,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
                                 <p class="mt-1 text-xs text-fp-text-muted">Crea el primero desde Nuevo pedido.</p>
                                 <a href="{{ route('pedidos.create') }}"
                                    wire:navigate
-                                   class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-fp-primary px-3 py-2 text-xs font-semibold text-white hover:bg-fp-accent">
+                                   class="fp-btn fp-btn-primario fp-btn-sm mt-4">
                                     Nuevo pedido
                                 </a>
                             </td>

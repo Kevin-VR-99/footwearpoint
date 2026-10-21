@@ -119,7 +119,7 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
                         </td>
                         <td class="px-4 py-3 text-right">
                             <a href="{{ route('pedidos.show', $p->id) }}"
-                               class="text-fp-primary hover:underline text-sm">
+                               class="fp-enlace text-sm">
                                 Ver
                             </a>
                         </td>

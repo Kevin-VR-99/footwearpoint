@@ -117,12 +117,12 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         <x-panel.alerta tipo="error">{{ $errorMsg }}</x-panel.alerta>
     @endif
 
-    <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+    <div class="fp-tarjeta p-4">
         <p class="text-sm font-medium text-slate-800">Cambio de una venta de mostrador</p>
         <p class="text-xs text-slate-500">Los cambios de pedidos se piden desde el detalle del pedido o desde la app del cliente.</p>
         <form wire:submit="buscarVenta" class="mt-3 flex gap-2">
             <x-ui.buscador wire:model="folioVenta" placeholder="Buscar por folio de la venta (VD-…)" etiqueta="Buscar venta por folio" class="w-full sm:w-80" />
-            <button type="submit" class="rounded-xl bg-fp-primary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-fp-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40">Buscar</button>
+            <button type="submit" class="fp-btn fp-btn-primario rounded-xl">Buscar</button>
         </form>
 
         @if ($this->venta)
@@ -131,7 +131,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                     Venta {{ $this->venta->folio }} · {{ $this->venta->fecha_venta?->format('d/m/Y') }} ·
                     {{ $this->venta->clienteDirecto?->nombre ?? 'Sin cliente' }}
                 </p>
-                <table class="mt-2 min-w-full text-sm">
+                <table class="fp-tabla mt-2 min-w-full text-sm">
                     <tbody class="divide-y divide-slate-100">
                         @foreach ($this->venta->detalle as $l)
                             @php($cambio = $this->cambiosVenta[$l->id] ?? null)
@@ -144,11 +144,11 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                                         @if ($cambioLineaId === $l->id)
                                             <div class="ml-auto max-w-sm space-y-2 text-left">
                                                 <textarea wire:model="cambioMotivo" rows="2" maxlength="300" placeholder="Motivo del cambio" class="w-full rounded-lg text-sm"></textarea>
-                                                <button type="button" wire:click="solicitarCambio" class="rounded-lg bg-fp-primary px-3 py-1.5 text-xs text-white">Enviar solicitud</button>
-                                                <button type="button" wire:click="$set('cambioLineaId', null)" class="text-xs text-slate-600">Cancelar</button>
+                                                <button type="button" wire:click="solicitarCambio" class="fp-btn fp-btn-primario fp-btn-sm">Enviar solicitud</button>
+                                                <button type="button" wire:click="$set('cambioLineaId', null)" class="fp-btn fp-btn-fantasma fp-btn-sm">Cancelar</button>
                                             </div>
                                         @else
-                                            <button type="button" wire:click="abrirCambio({{ $l->id }})" class="text-sm font-medium text-fp-primary">Solicitar cambio</button>
+                                            <button type="button" wire:click="abrirCambio({{ $l->id }})" class="fp-enlace text-sm font-medium">Solicitar cambio</button>
                                             <span class="block text-xs text-slate-500">Hasta {{ \Illuminate\Support\Carbon::parse($cambio['fecha_limite'])->format('d/m/Y') }}</span>
                                         @endif
                                     @else
@@ -173,8 +173,8 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         </select>
     </div>
 
-    <div class="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-        <table class="min-w-full text-sm">
+    <div class="overflow-x-auto fp-tarjeta">
+        <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
                     <th class="px-4 py-2">Solicitud</th>
@@ -198,7 +198,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                         <td class="px-4 py-3">{{ $linea?->producto_nombre }}<span class="block text-xs text-slate-500">{{ $linea?->talla }} · {{ $linea?->color }} ×{{ $linea?->cantidad }}</span></td>
                         <td class="px-4 py-3">
                             @if ($s->pedidoDetalle)
-                                <a href="{{ route('pedidos.show', $s->pedidoDetalle->pedido_id) }}" class="text-fp-primary hover:underline">Pedido {{ $s->pedidoDetalle->pedido?->folio }}</a>
+                                <a href="{{ route('pedidos.show', $s->pedidoDetalle->pedido_id) }}" class="fp-enlace">Pedido {{ $s->pedidoDetalle->pedido?->folio }}</a>
                             @else
                                 Venta {{ $s->ventaDetalle?->ventaDirecta?->folio }}
                             @endif

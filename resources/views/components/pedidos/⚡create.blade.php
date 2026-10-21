@@ -291,7 +291,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
 <div>
     <div class="mb-6">
-        <a href="{{ route('pedidos.index') }}" class="text-sm text-fp-primary hover:underline">← Pedidos</a>
+        <a href="{{ route('pedidos.index') }}" class="text-sm fp-enlace">← Pedidos</a>
         <h2 class="text-2xl font-bold text-fp-sidebar mt-1">Nuevo pedido</h2>
         <p class="text-sm text-slate-500 mt-1">
             Captura borrador, agrega productos de la temporada activa y envía
@@ -306,7 +306,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
     @endif
 
     @if (! $pedidoId)
-        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4 max-w-xl">
+        <div class="fp-tarjeta p-5 shadow-sm space-y-4 max-w-xl">
             <h3 class="font-semibold text-slate-800">1. Datos del pedido</h3>
 
             <div>
@@ -367,7 +367,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             <x-panel.boton wire:click="enviar" wire:loading.attr="disabled">Enviar pedido</x-panel.boton>
         </div>
 
-        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4 mb-6 max-w-2xl">
+        <div class="fp-tarjeta p-5 shadow-sm space-y-4 mb-6 max-w-2xl">
             <h3 class="font-semibold text-slate-800">2. Agregar del catálogo</h3>
             <p class="text-xs text-slate-500 -mt-2">
                 Solo productos de la <strong>temporada activa</strong>
@@ -449,10 +449,10 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             <x-panel.boton wire:click="agregarLinea" wire:loading.attr="disabled">Agregar producto</x-panel.boton>
         </div>
 
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="fp-tarjeta overflow-hidden">
             <div class="px-4 py-3 border-b font-medium">Líneas del pedido</div>
-            <table class="min-w-full text-sm">
-                <thead class="bg-slate-50 text-left text-slate-500">
+            <table class="fp-tabla min-w-full text-sm">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="px-4 py-2">Producto</th>
                         <th class="px-4 py-2">Talla</th>

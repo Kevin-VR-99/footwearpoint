@@ -97,20 +97,20 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
             <div class="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
                 <button type="button" wire:click="$set('filtro', 'todas')"
                     @class([
-                        'rounded-md px-3 py-1.5 text-sm font-medium transition',
+                        'fp-chip rounded-md px-3 py-1.5 text-sm font-medium transition',
                         'bg-fp-primary text-white shadow-sm' => $filtro === 'todas',
                         'text-slate-600 hover:text-slate-900' => $filtro !== 'todas',
                     ])>Todas</button>
                 <button type="button" wire:click="$set('filtro', 'no_leidas')"
                     @class([
-                        'rounded-md px-3 py-1.5 text-sm font-medium transition',
+                        'fp-chip rounded-md px-3 py-1.5 text-sm font-medium transition',
                         'bg-fp-primary text-white shadow-sm' => $filtro === 'no_leidas',
                         'text-slate-600 hover:text-slate-900' => $filtro !== 'no_leidas',
                     ])>Sin leer</button>
             </div>
             @if ($this->noLeidasCount > 0)
                 <button type="button" wire:click="marcarTodasLeidas"
-                    class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+                    class="fp-btn fp-btn-secundario py-1.5">
                     Marcar todas leídas
                 </button>
             @endif
@@ -121,10 +121,10 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
     {{-- TG-196: grupos como en la campana --}}
     <div class="mb-4 flex flex-wrap gap-2" aria-label="Filtrar por grupo">
         <button type="button" wire:click="$set('grupo', '')"
-            @class(['rounded-full px-3.5 py-1.5 text-sm font-medium shadow-sm transition', 'bg-fp-sidebar text-white' => $grupo === '', 'border border-slate-200 bg-white text-slate-700 hover:bg-fp-page' => $grupo !== ''])>Todos</button>
+            @class(['fp-chip rounded-full px-3.5 py-1.5 text-sm font-medium shadow-sm transition', 'bg-fp-sidebar text-white' => $grupo === '', 'border border-slate-200 bg-white text-slate-700 hover:bg-fp-page' => $grupo !== ''])>Todos</button>
         @foreach (\App\Support\GruposNotificacion::GRUPOS as $clave => $meta)
             <button type="button" wire:click="$set('grupo', '{{ $clave }}')"
-                @class(['inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium shadow-sm transition', 'bg-fp-sidebar text-white' => $grupo === $clave, 'border border-slate-200 bg-white text-slate-700 hover:bg-fp-page' => $grupo !== $clave])>
+                @class(['fp-chip inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium shadow-sm transition', 'bg-fp-sidebar text-white' => $grupo === $clave, 'border border-slate-200 bg-white text-slate-700 hover:bg-fp-page' => $grupo !== $clave])>
                 <x-notificaciones.icono-grupo :icono="$meta['icono']" class="h-4 w-4" />
                 {{ $meta['titulo'] }}
             </button>
@@ -137,7 +137,7 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
         </x-panel.alerta>
     @endif
 
-    <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+    <div class="overflow-hidden fp-tarjeta">
         @forelse ($this->notificaciones as $n)
             <div @class([
                 'flex gap-4 border-b border-slate-100 px-5 py-4 last:border-0',
@@ -159,7 +159,7 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
                     <p class="mt-1 text-sm leading-relaxed text-slate-600">{{ $n->mensaje }}</p>
                     @if (! $n->leida_at)
                         <button type="button" wire:click="marcarLeida({{ $n->id }})"
-                            class="mt-3 text-xs font-medium text-fp-primary hover:underline">
+                            class="mt-3 text-xs font-medium fp-enlace">
                             Marcar como leída
                         </button>
                     @endif
