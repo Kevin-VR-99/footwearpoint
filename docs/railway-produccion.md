@@ -83,12 +83,13 @@ Solo nombres de variables, nunca valores.
 - `2026_10_21_110000_agrega_variantes_a_producto_imagenes`: agrega `url_miniatura` y `url_mediana` (nullable)
   a `producto_imagenes`. No toca datos; las fotos viejas siguen usando `url`.
 
-## B. Mercado Pago: la firma ya es obligatoria en producción
-- **`MP_WEBHOOK_SECRET` tiene que estar en `footwearpoint` (web)** antes de desplegar. Sin ella, en producción
-  todos los avisos responden 401 y el log dice `falta MP_WEBHOOK_SECRET en producción`.
-  (Los pagos se siguen aplicando por la página de regreso, pero sin webhook no se enteran los pagos que el
-  cliente cierra sin volver a la página.)
-- Los avisos sin firma (IPN viejo) y los que traen `ts` de hace más de 5 minutos se rechazan con 401.
+## B. Mercado Pago: firma obligatoria cuando hay `MP_WEBHOOK_SECRET`
+- **Recomendado: configura `MP_WEBHOOK_SECRET` en `footwearpoint` (web).** Con ella, la firma del aviso es
+  obligatoria (sin firma, inválida o con `ts` de más de 5 minutos → 401). Sin ella, los avisos se siguen
+  aceptando como antes (el pago se verifica en la API de Mercado Pago) y el log avisa
+  `falta MP_WEBHOOK_SECRET`; los cobros no se rompen, pero conviene configurarla.
+- En ambos casos se descartan avisos repetidos por `data.id`.
+- Si configuras la variable, el panel de MP debe tener la misma clave secreta del webhook.
 - Verificación: en el panel de MP → Webhooks → "Simular notificación" debe responder 200.
 
 ## C. Caché de `/build/*` en Caddy (FrankenPHP de Railpack)
@@ -108,8 +109,7 @@ Verificación: `curl -I https://footwearpoint.app/build/assets/app-XXXX.css` tra
 - Start command: `php artisan sanctum:prune-expired --hours=24`
 - Cron schedule: `30 10 * * *` (10:30 UTC = 4:30 de CDMX). Restart policy: Never.
 - Variables: las mismas `APP_*` y `DB_*` del cron que duplicas.
-- `routes/console.php` lo registra también en el scheduler, pero en Railway no corre `schedule:run`,
-  así que no se duplica.
+- No está en `routes/console.php`: en Railway cada comando es su propio servicio cron.
 
 ## F. `SESSION_ENCRYPT` (solo documentado, no se cambió)
 - `config/session.php` deja `SESSION_ENCRYPT=false`. Con `SESSION_DRIVER=database` el contenido de la sesión
