@@ -293,6 +293,20 @@ class VincularMercadoPagoTest extends TestCase
         $this->assertStringNotContainsString(self::TOKEN, json_encode($auditoria->getAttributes()));
     }
 
+    public function test_el_callback_guarda_el_refresh_token_cifrado_y_el_vencimiento(): void
+    {
+        $this->fingirToken();
+
+        $this->volverDeMercadoPago();
+
+        $configuracion = $this->configuracion();
+        $this->assertSame('TG-refresh-de-prueba', $configuracion->mercadoPagoRefreshToken());
+        $this->assertNotNull($configuracion->mp_token_expira_en);
+        $this->assertTrue($configuracion->mp_token_expira_en->between(now()->addDays(179), now()->addDays(181)));
+        $this->assertStringNotContainsString('TG-refresh-de-prueba', (string) $this->filaConfiguracion()->mp_refresh_token);
+        $this->assertArrayNotHasKey('mp_refresh_token', $configuracion->toArray());
+    }
+
     public function test_el_flujo_completo_desde_conectar_hasta_el_callback(): void
     {
         $this->actingAs($this->admin())->get(route('mercado-pago.conectar'));

@@ -10,7 +10,7 @@ Cómo generar el APK que apunta al servidor en producción (Railway) y cómo com
 
 ## Dirección del servidor
 
-La app toma la dirección de la API de `--dart-define=API_URL=...` (ver `mobile/lib/config.dart`). Sin ese parámetro usa `http://10.0.2.2:8000/api`, que es para el emulador con Laravel local.
+La app toma la dirección de la API de `--dart-define=API_URL=...` (ver `mobile/lib/config.dart`). Sin ese parámetro usa **producción** (`https://footwearpoint.app/api`). Para probar con Laravel local en el emulador: `--dart-define=API_URL=http://10.0.2.2:8000/api`.
 
 Para producción:
 

@@ -31,9 +31,11 @@ class ImportacionCatalogo extends Model
         'iniciada_por_usuario_id',
         'revisada_por_usuario_id',
         'mensaje_error',
+        'procesamiento_iniciado_at',
     ];
 
     protected $casts = [
+        'procesamiento_iniciado_at' => 'datetime',
         'paginas' => 'integer',
         'tokens_entrada' => 'integer',
         'tokens_salida' => 'integer',

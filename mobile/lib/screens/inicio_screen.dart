@@ -38,6 +38,9 @@ class _InicioScreenState extends State<InicioScreen> {
   List<PedidoResumen>? _pedidos;
   List<Vale>? _vales;
 
+  /// True mientras de verdad se esta pidiendo el resumen.
+  bool _cargandoResumen = true;
+
   @override
   void initState() {
     super.initState();
@@ -69,6 +72,8 @@ class _InicioScreenState extends State<InicioScreen> {
     } catch (_) {
       // Igual.
     }
+
+    if (mounted) setState(() => _cargandoResumen = false);
   }
 
   void _abrir(BuildContext context, Widget pantalla) {
@@ -150,7 +155,11 @@ class _InicioScreenState extends State<InicioScreen> {
               // Antes solo tenia botones para ir a otro lado; ahora de un
               // vistazo se sabe como van los pedidos y los vales.
               const FpTituloSeccion('Tu resumen'),
-              _Cifras(pedidos: _pedidos, vales: _vales),
+              _Cifras(
+                pedidos: _pedidos,
+                vales: _vales,
+                cargando: _cargandoResumen,
+              ),
               const SizedBox(height: 20),
               // Solo lo que NO esta en la barra de abajo.
               const FpTituloSeccion('Accesos'),
@@ -189,10 +198,20 @@ class _InicioScreenState extends State<InicioScreen> {
 /// Mientras no llegan los datos se enseña un guion en vez de un cero: un
 /// cero dice "no tienes nada", y eso todavia no se sabe.
 class _Cifras extends StatelessWidget {
-  const _Cifras({required this.pedidos, required this.vales});
+  const _Cifras({
+    required this.pedidos,
+    required this.vales,
+    required this.cargando,
+  });
 
   final List<PedidoResumen>? pedidos;
   final List<Vale>? vales;
+
+  /// Si ya se intento y no se pudo, se dice. No se deja un "Cargando..."
+  /// puesto para siempre: sin internet eso no se quita nunca y es mentira.
+  final bool cargando;
+
+  String get _sinDato => cargando ? 'Cargando…' : 'No se pudo cargar';
 
   /// Los que todavia estan en curso. Un borrador no cuenta: no se ha
   /// enviado. Un entregado o rechazado tampoco: ya se acabaron.
@@ -224,7 +243,7 @@ class _Cifras extends StatelessWidget {
             child: FpDato(
               etiqueta: 'Pedidos en curso',
               valor: enCurso == null ? '—' : '${enCurso.length}',
-              nota: enCurso == null ? 'Cargando…' : 'Sin contar los entregados',
+              nota: enCurso == null ? _sinDato : 'Sin contar los entregados',
             ),
           ),
           const SizedBox(width: 10),
@@ -232,7 +251,7 @@ class _Cifras extends StatelessWidget {
             child: FpDato(
               etiqueta: 'Te falta pagar',
               valor: porPagar == null ? '—' : formatoPrecio(porPagar),
-              nota: porPagar == null ? 'Cargando…' : 'De tus pedidos en curso',
+              nota: porPagar == null ? _sinDato : 'De tus pedidos en curso',
               colorValor: (porPagar ?? 0) > 0
                   ? FpColores.peligro
                   : FpColores.sidebar,
@@ -244,7 +263,7 @@ class _Cifras extends StatelessWidget {
               etiqueta: 'Tus vales',
               valor: saldoVales == null ? '—' : formatoPrecio(saldoVales),
               nota: vales == null
-                  ? 'Cargando…'
+                  ? _sinDato
                   : vales!.length == 1
                   ? '1 vale vigente'
                   : '${vales!.length} vales vigentes',

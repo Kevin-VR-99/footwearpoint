@@ -7,6 +7,7 @@ use App\Models\DistribuidoraStaff;
 use App\Models\Notificacion;
 use App\Models\Pedido;
 use App\Services\Notificacion\Push\EnviadorPush;
+use App\Support\Estados;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -23,12 +24,15 @@ class NotificarCambioEstadoPedidoAction
             return;
         }
 
-        $titulo = 'Pedido '.$pedido->folio.' → '.$estadoNuevo;
+        // TG-281: con los nombres como se leen, no como los guarda la base.
+        // Antes decia "Pedido PED-015 -> listo_entrega" y "cambio de
+        // «colocado» a «listo_entrega»". El personal lee esto todos los dias.
+        $titulo = 'Pedido '.$pedido->folio.': '.Estados::etiqueta($estadoNuevo);
         $mensaje = sprintf(
             'El pedido %s cambió de «%s» a «%s».',
             $pedido->folio,
-            $estadoAnterior,
-            $estadoNuevo
+            Estados::etiqueta($estadoAnterior),
+            Estados::etiqueta($estadoNuevo)
         );
 
         // TG-125: el personal tiene que decidir qué hacer con él.
@@ -60,6 +64,86 @@ class NotificarCambioEstadoPedidoAction
         if (in_array($estadoNuevo, ['recibido_distribuidora', 'listo_entrega'], true)) {
             $this->notificarLlegadaAlDueno($pedido, $estadoNuevo);
         }
+
+        // TG-281: al cliente tambien hay que decirle que se le paso el plazo.
+        //
+        // Hasta ahora esto solo se le avisaba al personal: el cliente perdia
+        // el plazo y su anticipo quedaba en el aire sin que nadie se lo
+        // dijera. Es dinero suyo.
+        if ($estadoNuevo === 'vencido_recoleccion') {
+            $this->notificarRecoleccionVencidaAlDueno($pedido);
+        }
+
+        // TG-281: y que le rechazaron el pedido, que hasta ahora tampoco se
+        // le decia.
+        if ($estadoNuevo === 'rechazado') {
+            $this->notificarRechazoAlDueno($pedido);
+        }
+    }
+
+    /** TG-281: se le paso el plazo para recoger. */
+    protected function notificarRecoleccionVencidaAlDueno(Pedido $pedido): void
+    {
+        $usuarioId = $this->duenoDe($pedido);
+
+        if ($usuarioId === null) {
+            return;
+        }
+
+        $titulo = 'Se venció el plazo para recoger tu pedido '.$pedido->folio;
+        $mensaje = 'No se recogió el pedido '.$pedido->folio
+            .($pedido->fecha_limite_recoleccion
+                ? ' antes del '.self::fecha($pedido->fecha_limite_recoleccion)
+                : '')
+            .'. Comunícate con tu distribuidora para ver qué sigue con tu anticipo.';
+
+        $this->crear(
+            $usuarioId,
+            (int) $pedido->distribuidora_id,
+            'recoleccion_vencida',
+            $titulo,
+            $mensaje,
+            $pedido->id
+        );
+
+        $this->mandarPush($usuarioId, $titulo, $mensaje, $pedido);
+    }
+
+    /** TG-281: le rechazaron el pedido. */
+    protected function notificarRechazoAlDueno(Pedido $pedido): void
+    {
+        $usuarioId = $this->duenoDe($pedido);
+
+        if ($usuarioId === null) {
+            return;
+        }
+
+        $titulo = 'Tu pedido '.$pedido->folio.' fue rechazado';
+        $mensaje = 'La distribuidora rechazó el pedido '.$pedido->folio
+            .'. Comunícate con ella para saber por qué y qué sigue.';
+
+        $this->crear(
+            $usuarioId,
+            (int) $pedido->distribuidora_id,
+            'pedido_rechazado',
+            $titulo,
+            $mensaje,
+            $pedido->id
+        );
+
+        $this->mandarPush($usuarioId, $titulo, $mensaje, $pedido);
+    }
+
+    /** La cuenta del dueño del pedido, o null si todavía no tiene. */
+    protected function duenoDe(Pedido $pedido): ?int
+    {
+        $pedido->loadMissing(['clienteDirecto', 'revendedorAfiliacion.revendedor']);
+
+        $usuarioId = $pedido->tipo === 'cliente_directo'
+            ? $pedido->clienteDirecto?->usuario_id
+            : $pedido->revendedorAfiliacion?->revendedor?->usuario_id;
+
+        return $usuarioId !== null ? (int) $usuarioId : null;
     }
 
     protected function notificarLlegadaAlDueno(Pedido $pedido, string $estadoNuevo): void

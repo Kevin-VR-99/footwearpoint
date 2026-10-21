@@ -42,6 +42,20 @@ return [
     | (9-oct-2026). Si cambia el modelo, hay que cambiarlos aqui tambien.
     |
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Topes de gasto
+    |--------------------------------------------------------------------------
+    | Cada lectura cuesta dinero de verdad. Si se pasa un tope, no se manda a
+    | procesar y la persona ve por qué. 0 = sin tope.
+    |  - max_paginas: páginas por archivo (un catálogo normal anda en 120).
+    |  - max_importaciones_por_dia: por persona que subió el catálogo.
+    |  - max_usd_por_mes: suma de costo_usd de lo procesado en el mes.
+    */
+    'max_paginas' => (int) env('IA_MAX_PAGINAS', 150),
+    'max_importaciones_por_dia' => (int) env('IA_MAX_IMPORTACIONES_DIA', 10),
+    'max_usd_por_mes' => (float) env('IA_MAX_USD_MES', 150),
+
     'precios' => [
         'entrada'         => (float) env('IA_PRECIO_ENTRADA', 4.00),
         'salida'          => (float) env('IA_PRECIO_SALIDA', 20.00),

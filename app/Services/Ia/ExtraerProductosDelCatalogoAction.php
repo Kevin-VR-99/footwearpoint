@@ -31,6 +31,7 @@ class ExtraerProductosDelCatalogoAction
         private LectorDeCatalogos $lector,
         private ContarPaginasPdf $contador,
         private RegistrarAuditoriaAction $auditoria,
+        private LimitesDeGastoIa $limites,
     ) {
     }
 
@@ -39,11 +40,23 @@ class ExtraerProductosDelCatalogoAction
         $archivoIa = null;
 
         try {
+            // Topes de gasto: se revisan aquí también por si se mandó a la
+            // cola por otro camino que no los revisó.
+            if (($motivo = $this->limites->motivoPorGastoDelMes()) !== null) {
+                throw new RuntimeException($motivo);
+            }
+
             $contenido = $this->contenidoDelArchivo($importacion);
             $paginas = $this->contador->contar($contenido);
 
             if ($paginas < 1) {
                 throw new RuntimeException('No se pudo leer cuántas páginas tiene el archivo. Puede estar dañado o protegido.');
+            }
+
+            if (($motivo = $this->limites->motivoPorPaginas($paginas)) !== null) {
+                $importacion->update(['paginas' => $paginas]);
+
+                throw new RuntimeException($motivo);
             }
 
             $importacion->update(['estado' => 'procesando', 'paginas' => $paginas, 'mensaje_error' => null]);

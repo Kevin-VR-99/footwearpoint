@@ -6,30 +6,10 @@
 ])
 
 @php
-    $mapaEstado = [
-        // Pedidos / genericos
-        'borrador' => ['neutral', 'Borrador'],
-        'descartado' => ['neutral', 'Descartado'],
-        'colocado' => ['info', 'Colocado'],
-        'en_revision' => ['info', 'En revisión'],
-        'confirmado' => ['info', 'Confirmado'],
-        'incluido_en_ciclo' => ['info', 'En ciclo'],
-        'solicitado_fabrica' => ['info', 'Solicitado fábrica'],
-        'en_transito' => ['info', 'En tránsito'],
-        'recibido_distribuidora' => ['info', 'Recibido'],
-        'parcialmente_disponible' => ['warning', 'Parc. disponible'],
-        'listo_entrega' => ['warning', 'Listo entrega'],
-        'vencido_recoleccion' => ['danger', 'Recolección vencida'],
-        'no_surtido' => ['warning', 'No surtido'],
-        'entregado' => ['success', 'Entregado'],
-        'rechazado' => ['danger', 'Rechazado'],
-        'cancelado' => ['danger', 'Cancelado'],
-        // Campañas (B)
-        'en_importacion' => ['info', 'En importación'],
-        'activa' => ['success', 'Activa'],
-        'cerrada' => ['neutral', 'Cerrada'],
-        'pausada' => ['warning', 'Pausada'],
-    ];
+    // TG-281: el mapa vive en App\Support\Estados para que los avisos que
+    // le llegan al personal usen los mismos nombres que se leen aqui. Antes
+    // decian "listo_entrega", con guion bajo.
+    $mapaEstado = \App\Support\Estados::MAPA;
 
     if ($estado !== null && isset($mapaEstado[$estado])) {
         [$varianteResolvida, $textoResuelto] = $mapaEstado[$estado];

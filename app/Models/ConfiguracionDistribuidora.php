@@ -35,6 +35,9 @@ class ConfiguracionDistribuidora extends Model
         'mp_access_token',
         'mp_public_key',
         'mp_conectado_at',
+        'mp_refresh_token',
+        'mp_token_expira_en',
+        'mp_aviso_reconexion_at',
         'stock_minimo_general',
     ];
 
@@ -44,6 +47,7 @@ class ConfiguracionDistribuidora extends Model
      */
     protected $hidden = [
         'mp_access_token',
+        'mp_refresh_token',
     ];
 
     protected $casts = [
@@ -53,6 +57,9 @@ class ConfiguracionDistribuidora extends Model
         // y solo se ve descifrado desde el código (TG-208).
         'mp_access_token' => 'encrypted',
         'mp_conectado_at' => 'datetime',
+        'mp_refresh_token' => 'encrypted',
+        'mp_token_expira_en' => 'datetime',
+        'mp_aviso_reconexion_at' => 'datetime',
     ];
 
     public function distribuidora()
@@ -90,9 +97,34 @@ class ConfiguracionDistribuidora extends Model
         return $this->mp_conectado_at !== null && $this->mercadoPagoAccessToken() !== null;
     }
 
-    /** TG-225 (G6): vencimiento aproximado del token (conexión + 180 días). */
+    /**
+     * Vencimiento del token: el que dio Mercado Pago (expires_in) o, en las
+     * conexiones anteriores a guardar ese dato, conexión + 180 días.
+     */
     public function mercadoPagoVenceAprox(): ?Carbon
     {
+        if ($this->mp_token_expira_en !== null) {
+            return $this->mp_token_expira_en->copy();
+        }
+
         return $this->mp_conectado_at?->copy()->addDays(self::DIAS_VIGENCIA_TOKEN_MP);
+    }
+
+    /** El refresh token ya descifrado, o null si no hay o no se puede leer. */
+    public function mercadoPagoRefreshToken(): ?string
+    {
+        if (blank($this->getRawOriginal('mp_refresh_token'))) {
+            return null;
+        }
+
+        try {
+            $token = $this->mp_refresh_token;
+        } catch (DecryptException $e) {
+            report($e);
+
+            return null;
+        }
+
+        return filled($token) ? $token : null;
     }
 }

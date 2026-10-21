@@ -26,6 +26,12 @@ class ApiException implements Exception {
   String toString() => mensaje;
 }
 
+/// Lo que se le dice a la persona cuando el teléfono no alcanza el servidor.
+///
+/// Es el mismo texto siempre, venga de donde venga el fallo de red, para que
+/// no haya dos formas de decir lo mismo.
+const sinConexion = 'No hay conexión. Revisa tu internet e inténtalo de nuevo.';
+
 /// El único lugar de la app que habla con Laravel.
 ///
 /// Ninguna pantalla debe llamar al paquete http directamente (convención 1.4
@@ -130,15 +136,12 @@ class ApiService {
     try {
       respuesta = await peticion().timeout(_tiempoLimite);
     } on SocketException {
-      // El error más común del equipo mientras prueba, por eso el mensaje
-      // dice qué revisar en vez de solo "fallo la conexión".
-      throw ApiException(
-        'No se pudo conectar con el servidor.\n\n'
-        'Revisa que Laravel esté corriendo con:\n'
-        'php artisan serve --host=0.0.0.0\n\n'
-        'Y que la dirección en lib/config.dart sea la correcta '
-        '(10.0.2.2 para emulador, la IP de tu computadora para celular físico).',
-      );
+      // TG-281: antes aqui venian instrucciones para el equipo ("corre
+      // php artisan serve...", "revisa lib/config.dart"). Eso le servia a
+      // quien programa, pero en el telefono de un cliente no significa nada
+      // y asusta. El mensaje dice solo lo que le toca saber: no hay
+      // conexion.
+      throw ApiException(sinConexion);
     } on TimeoutException {
       throw ApiException('El servidor tardó demasiado en responder.');
     }
