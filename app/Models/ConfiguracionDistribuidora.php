@@ -21,6 +21,16 @@ class ConfiguracionDistribuidora extends Model
 
     public const DIAS_AVISO_VENCIMIENTO_MP = 15;
 
+    /**
+     * El negocio siempre opera en pesos mexicanos y hora de la Ciudad de
+     * México. Las columnas moneda / zona_horaria se conservan (y la API las
+     * sigue exponiendo para la app móvil), pero ya no son editables: no están
+     * en $fillable y siempre se leen con estos valores fijos.
+     */
+    public const MONEDA = 'MXN';
+
+    public const ZONA_HORARIA = 'America/Mexico_City';
+
     protected $fillable = [
         'distribuidora_id',
         'anticipo_por_producto',
@@ -28,8 +38,6 @@ class ConfiguracionDistribuidora extends Model
         'dias_gestion_devolucion',
         'dias_vigencia_vale',
         'dias_maximos_recoleccion',
-        'moneda',
-        'zona_horaria',
         'descuento_mayorista_pct',
         'mercado_pago_account_id',
         'mp_access_token',
@@ -61,6 +69,16 @@ class ConfiguracionDistribuidora extends Model
         'mp_token_expira_en' => 'datetime',
         'mp_aviso_reconexion_at' => 'datetime',
     ];
+
+    public function getMonedaAttribute(): string
+    {
+        return self::MONEDA;
+    }
+
+    public function getZonaHorariaAttribute(): string
+    {
+        return self::ZONA_HORARIA;
+    }
 
     public function distribuidora()
     {

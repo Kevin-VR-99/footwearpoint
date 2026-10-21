@@ -256,7 +256,7 @@ class NotificarCambioEstadoPedidoAction
     /** Fecha corta en hora de México: 15/10/2026. */
     public static function fecha(\DateTimeInterface $fecha): string
     {
-        return \Illuminate\Support\Carbon::instance($fecha)->timezone('America/Mexico_City')->format('d/m/Y');
+        return \Illuminate\Support\Carbon::instance($fecha)->timezone(\App\Models\ConfiguracionDistribuidora::ZONA_HORARIA)->format('d/m/Y');
     }
 
     protected function crear(
