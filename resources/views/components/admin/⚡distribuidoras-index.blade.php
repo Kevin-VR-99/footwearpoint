@@ -667,7 +667,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     @php
         $resumen = $this->resumen;
     @endphp
-    <div class="fp-escalonado mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-metricas-admin>
+    <div class="fp-escalonado mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" data-metricas-admin>
         <x-panel.metrica titulo="Distribuidoras" :valor="$resumen['total']" detalle="Registradas en FootwearPoint"
             icono="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" :progreso="100" />
         <x-panel.metrica titulo="Solicitudes pendientes" :valor="$resumen['pendiente']" tono="aviso" detalle="Esperan aprobación o rechazo"
@@ -691,62 +691,62 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="fp-campo md:col-span-2">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Nombre comercial *</label>
-                    <input type="text" wire:model.live="nuevo_nombre_comercial"
+                    <label for="distribuidoras-index-nuevo-nombre-comercial" class="block text-sm font-medium mb-1 text-slate-700">Nombre comercial *</label>
+                    <input id="distribuidoras-index-nuevo-nombre-comercial" type="text" wire:model.live="nuevo_nombre_comercial"
                         class="w-full rounded-lg text-sm">
                     @error('nuevo_nombre_comercial')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Razón social</label>
-                    <input type="text" wire:model="nuevo_razon_social"
+                    <label for="distribuidoras-index-nuevo-razon-social" class="block text-sm font-medium mb-1 text-slate-700">Razón social</label>
+                    <input id="distribuidoras-index-nuevo-razon-social" type="text" wire:model="nuevo_razon_social"
                         class="w-full rounded-lg text-sm">
                 </div>
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">RFC</label>
-                    <input type="text" wire:model="nuevo_rfc" class="w-full rounded-lg text-sm">
+                    <label for="distribuidoras-index-nuevo-rfc" class="block text-sm font-medium mb-1 text-slate-700">RFC</label>
+                    <input id="distribuidoras-index-nuevo-rfc" type="text" wire:model="nuevo_rfc" class="w-full rounded-lg text-sm">
                     @error('nuevo_rfc')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Slug * (URL interna)</label>
-                    <input type="text" wire:model="nuevo_slug" class="w-full rounded-lg text-sm">
+                    <label for="distribuidoras-index-nuevo-slug" class="block text-sm font-medium mb-1 text-slate-700">Slug * (URL interna)</label>
+                    <input id="distribuidoras-index-nuevo-slug" type="text" wire:model="nuevo_slug" class="w-full rounded-lg text-sm">
                     @error('nuevo_slug')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Subdominio</label>
-                    <input type="text" wire:model="nuevo_subdominio"
+                    <label for="distribuidoras-index-nuevo-subdominio" class="block text-sm font-medium mb-1 text-slate-700">Subdominio</label>
+                    <input id="distribuidoras-index-nuevo-subdominio" type="text" wire:model="nuevo_subdominio"
                         class="w-full rounded-lg text-sm" placeholder="calzados-ejemplo">
                     @error('nuevo_subdominio')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Email público</label>
-                    <input type="email" wire:model="nuevo_email_publico"
+                    <label for="distribuidoras-index-nuevo-email-publico" class="block text-sm font-medium mb-1 text-slate-700">Email público</label>
+                    <input id="distribuidoras-index-nuevo-email-publico" type="email" wire:model="nuevo_email_publico"
                         class="w-full rounded-lg text-sm">
                 </div>
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Teléfono público</label>
-                    <input type="text" wire:model="nuevo_telefono_publico"
+                    <label for="distribuidoras-index-nuevo-telefono-publico" class="block text-sm font-medium mb-1 text-slate-700">Teléfono público</label>
+                    <input id="distribuidoras-index-nuevo-telefono-publico" type="text" wire:model="nuevo_telefono_publico"
                         class="w-full rounded-lg text-sm">
                 </div>
                 <div class="fp-campo md:col-span-2">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Dirección pública</label>
-                    <input type="text" wire:model="nuevo_direccion_publica"
+                    <label for="distribuidoras-index-nuevo-direccion-publica" class="block text-sm font-medium mb-1 text-slate-700">Dirección pública</label>
+                    <input id="distribuidoras-index-nuevo-direccion-publica" type="text" wire:model="nuevo_direccion_publica"
                         class="w-full rounded-lg text-sm">
                 </div>
                 <div class="fp-campo md:col-span-2">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Descripción pública</label>
-                    <textarea wire:model="nuevo_descripcion_publica" rows="2" class="w-full rounded-lg text-sm"></textarea>
+                    <label for="distribuidoras-index-nuevo-descripcion-publica" class="block text-sm font-medium mb-1 text-slate-700">Descripción pública</label>
+                    <textarea id="distribuidoras-index-nuevo-descripcion-publica" wire:model="nuevo_descripcion_publica" rows="2" class="w-full rounded-lg text-sm"></textarea>
                 </div>
                 <div class="fp-campo md:col-span-2">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Horario público</label>
-                    <input type="text" wire:model="nuevo_horario_publico"
+                    <label for="distribuidoras-index-nuevo-horario-publico" class="block text-sm font-medium mb-1 text-slate-700">Horario público</label>
+                    <input id="distribuidoras-index-nuevo-horario-publico" type="text" wire:model="nuevo_horario_publico"
                         class="w-full rounded-lg text-sm" placeholder="Lunes a sábado 9:00–19:00">
                 </div>
             </div>
@@ -766,24 +766,24 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 <h4 class="text-sm font-semibold text-slate-700 mb-2">Administrador de la tienda</h4>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium mb-1 text-slate-700">Nombre *</label>
-                        <input type="text" wire:model="admin_nombre"
+                        <label for="distribuidoras-index-admin-nombre" class="block text-sm font-medium mb-1 text-slate-700">Nombre *</label>
+                        <input id="distribuidoras-index-admin-nombre" type="text" wire:model="admin_nombre"
                             class="w-full rounded-lg text-sm">
                         @error('admin_nombre')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium mb-1 text-slate-700">Email login *</label>
-                        <input type="email" wire:model="admin_email"
+                        <label for="distribuidoras-index-admin-email" class="block text-sm font-medium mb-1 text-slate-700">Email login *</label>
+                        <input id="distribuidoras-index-admin-email" type="email" wire:model="admin_email"
                             class="w-full rounded-lg text-sm">
                         @error('admin_email')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium mb-1 text-slate-700">Contraseña * (mínimo 8)</label>
-                        <input type="password" wire:model="admin_password"
+                        <label for="distribuidoras-index-admin-password" class="block text-sm font-medium mb-1 text-slate-700">Contraseña * (mínimo 8)</label>
+                        <input id="distribuidoras-index-admin-password" type="password" wire:model="admin_password"
                             class="w-full rounded-lg text-sm">
                         @error('admin_password')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
@@ -810,8 +810,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
             <form wire:submit="guardarSuscripcion" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Plan</label>
-                    <select wire:model="plan_id" class="w-full rounded-lg">
+                    <label for="distribuidoras-index-plan-id" class="block text-sm font-medium mb-1 text-slate-700">Plan</label>
+                    <select id="distribuidoras-index-plan-id" wire:model="plan_id" class="w-full rounded-lg">
                         <option value="">Selecciona un plan</option>
                         @foreach ($this->planesActivos as $plan)
                             <option value="{{ $plan->id }}">
@@ -826,8 +826,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 </div>
 
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Líneas extra</label>
-                    <input type="number" min="0" wire:model="lineas_extra_contratadas"
+                    <label for="distribuidoras-index-lineas-extra-contratadas" class="block text-sm font-medium mb-1 text-slate-700">Líneas extra</label>
+                    <input id="distribuidoras-index-lineas-extra-contratadas" type="number" min="0" wire:model="lineas_extra_contratadas"
                         class="w-full rounded-lg">
                     @error('lineas_extra_contratadas')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
@@ -835,8 +835,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 </div>
 
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Meses</label>
-                    <input type="number" min="1" max="24" wire:model="meses"
+                    <label for="distribuidoras-index-meses" class="block text-sm font-medium mb-1 text-slate-700">Meses</label>
+                    <input id="distribuidoras-index-meses" type="number" min="1" max="24" wire:model="meses"
                         class="w-full rounded-lg">
                     @error('meses')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
@@ -1128,7 +1128,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         @endforeach
     </div>
 
-    <div class="fp-tarjeta fp-tabla overflow-hidden">
+    <div class="relative fp-tarjeta fp-tabla overflow-hidden">
+        <x-ui.cargando />
         <table class="w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>

@@ -148,7 +148,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
     </x-panel.encabezado>
 
     @php($resumen = $this->resumen)
-    <div class="fp-escalonado mb-6 grid gap-4 sm:grid-cols-3" data-metricas-admin>
+    <div class="fp-escalonado mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4" data-metricas-admin>
         <x-panel.metrica titulo="Planes activos" :valor="$resumen['activos'].' / '.$resumen['total']" tono="exito"
             icono="M3 7h18v10H3zM3 11h18" :progreso="$resumen['total'] ? $resumen['activos'] / $resumen['total'] * 100 : 0" />
         <x-panel.metrica titulo="Suscripciones activas" :valor="$resumen['suscripciones']" detalle="Distribuidoras con plan vigente"
@@ -168,28 +168,28 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
             <h3 class="mb-4 text-lg font-semibold text-fp-sidebar">{{ $editId ? 'Editar plan' : 'Nuevo plan' }}</h3>
             <form wire:submit="guardar" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Nombre</label>
-                    <input type="text" wire:model="nombre" class="w-full rounded-lg">
+                    <label for="planes-index-nombre" class="block text-sm font-medium mb-1 text-slate-700">Nombre</label>
+                    <input id="planes-index-nombre" type="text" wire:model="nombre" class="w-full rounded-lg">
                     @error('nombre') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Líneas incluidas</label>
-                    <input type="number" wire:model="lineas_incluidas" class="w-full rounded-lg">
+                    <label for="planes-index-lineas-incluidas" class="block text-sm font-medium mb-1 text-slate-700">Líneas incluidas</label>
+                    <input id="planes-index-lineas-incluidas" type="number" wire:model="lineas_incluidas" class="w-full rounded-lg">
                     @error('lineas_incluidas') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Precio base mensual</label>
-                    <input type="number" step="0.01" wire:model="precio_base_mensual" class="w-full rounded-lg">
+                    <label for="planes-index-precio-base-mensual" class="block text-sm font-medium mb-1 text-slate-700">Precio base mensual</label>
+                    <input id="planes-index-precio-base-mensual" type="number" step="0.01" wire:model="precio_base_mensual" class="w-full rounded-lg">
                     @error('precio_base_mensual') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Precio línea extra</label>
-                    <input type="number" step="0.01" wire:model="precio_linea_extra" class="w-full rounded-lg">
+                    <label for="planes-index-precio-linea-extra" class="block text-sm font-medium mb-1 text-slate-700">Precio línea extra</label>
+                    <input id="planes-index-precio-linea-extra" type="number" step="0.01" wire:model="precio_linea_extra" class="w-full rounded-lg">
                     @error('precio_linea_extra') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div class="fp-campo md:col-span-2">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Descripción</label>
-                    <textarea wire:model="descripcion" rows="2" class="w-full rounded-lg"></textarea>
+                    <label for="planes-index-descripcion" class="block text-sm font-medium mb-1 text-slate-700">Descripción</label>
+                    <textarea id="planes-index-descripcion" wire:model="descripcion" rows="2" class="w-full rounded-lg"></textarea>
                 </div>
                 <div class="md:col-span-2 flex items-center gap-2">
                     <input type="checkbox" wire:model="activo" class="rounded text-fp-primary">
@@ -235,7 +235,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
                         <td class="px-4 py-3 whitespace-nowrap">
                             <button wire:click="editar({{ $plan->id }})" class="fp-accion fp-accion-primaria">Editar</button>
                             @if ($plan->activo)
-                                <button wire:click="desactivar({{ $plan->id }})" class="fp-accion fp-accion-peligro">Desactivar</button>
+                                <button type="button" wire:click="desactivar({{ $plan->id }})" wire:confirm="¿Desactivar el plan {{ $plan->nombre }}? Ya no se podrá asignar a nuevas distribuidoras." class="fp-accion fp-accion-peligro">Desactivar</button>
                             @else
                                 <button wire:click="activar({{ $plan->id }})" class="fp-accion fp-accion-exito">Activar</button>
                             @endif

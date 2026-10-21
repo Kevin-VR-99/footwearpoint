@@ -171,8 +171,8 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 
             <form wire:submit="registrarEntrada" class="space-y-4">
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Variante</label>
-                    <select wire:model="entrada_variante_id"
+                    <label for="index-entrada-variante-id" class="block text-sm font-medium text-slate-700 mb-1">Variante</label>
+                    <select id="index-entrada-variante-id" wire:model="entrada_variante_id"
                             class="w-full rounded-lg text-sm focus:ring-fp-primary">
                         <option value="">— Seleccionar variante —</option>
                         @foreach ($this->variantes as $variante)
@@ -183,16 +183,16 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 </div>
 
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Cantidad</label>
-                    <input type="number" min="1" step="1" wire:model="entrada_cantidad"
+                    <label for="index-entrada-cantidad" class="block text-sm font-medium text-slate-700 mb-1">Cantidad</label>
+                    <input id="index-entrada-cantidad" type="number" min="1" step="1" wire:model="entrada_cantidad"
                            class="w-full rounded-lg text-sm focus:ring-fp-primary"
                            placeholder="10">
                     @error('entrada_cantidad') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional)</label>
-                    <input type="text" maxlength="300" wire:model="entrada_motivo"
+                    <label for="index-entrada-motivo" class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional)</label>
+                    <input id="index-entrada-motivo" type="text" maxlength="300" wire:model="entrada_motivo"
                            class="w-full rounded-lg text-sm focus:ring-fp-primary"
                            placeholder="Ej. compra a fábrica">
                 </div>
@@ -210,8 +210,8 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 
             <form wire:submit="registrarAjuste" class="space-y-4">
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Variante</label>
-                    <select wire:model="ajuste_variante_id"
+                    <label for="index-ajuste-variante-id" class="block text-sm font-medium text-slate-700 mb-1">Variante</label>
+                    <select id="index-ajuste-variante-id" wire:model="ajuste_variante_id"
                             class="w-full rounded-lg text-sm focus:ring-fp-primary">
                         <option value="">— Seleccionar variante —</option>
                         @foreach ($this->variantes as $variante)
@@ -223,16 +223,16 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 
                 <div class="grid grid-cols-2 gap-3">
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Tipo</label>
-                        <select wire:model="ajuste_tipo"
+                        <label for="index-ajuste-tipo" class="block text-sm font-medium text-slate-700 mb-1">Tipo</label>
+                        <select id="index-ajuste-tipo" wire:model="ajuste_tipo"
                                 class="w-full rounded-lg text-sm focus:ring-fp-primary">
                             <option value="ajuste_negativo">Descontar</option>
                             <option value="ajuste_positivo">Agregar</option>
                         </select>
                     </div>
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Cantidad</label>
-                        <input type="number" min="1" step="1" wire:model="ajuste_cantidad"
+                        <label for="index-ajuste-cantidad" class="block text-sm font-medium text-slate-700 mb-1">Cantidad</label>
+                        <input id="index-ajuste-cantidad" type="number" min="1" step="1" wire:model="ajuste_cantidad"
                                class="w-full rounded-lg text-sm focus:ring-fp-primary"
                                placeholder="1">
                         @error('ajuste_cantidad') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
@@ -240,8 +240,8 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 </div>
 
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Motivo</label>
-                    <input type="text" maxlength="300" wire:model="ajuste_motivo"
+                    <label for="index-ajuste-motivo" class="block text-sm font-medium text-slate-700 mb-1">Motivo</label>
+                    <input id="index-ajuste-motivo" type="text" maxlength="300" wire:model="ajuste_motivo"
                            class="w-full rounded-lg text-sm focus:ring-fp-primary"
                            placeholder="Ej. merma, corrección de conteo">
                     @error('ajuste_motivo') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
@@ -256,7 +256,8 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     </div>
 
     {{-- Existencias --}}
-    <div class="fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
+    <div class="relative fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
+        <x-ui.cargando />
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Existencias</h3>
             <x-ui.buscador wire:model.live.debounce.300ms="busqueda"

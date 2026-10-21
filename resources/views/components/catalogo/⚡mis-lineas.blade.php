@@ -164,7 +164,7 @@ new #[Layout('layouts.panel')] #[Title('Mis líneas — FootwearPoint')] class e
                     </td>
                     <td class="p-3 text-right">
                         @if ($mia?->activa)
-                            <button type="button" wire:click="desactivar({{ $linea->id }})" class="text-sm text-red-600">Desactivar</button>
+                            <button type="button" wire:click="desactivar({{ $linea->id }})" wire:confirm="¿Desactivar esta línea? Sus productos dejarán de mostrarse a tus clientes." class="fp-accion fp-accion-peligro">Desactivar</button>
                         @else
                             <button type="button" wire:click="activar({{ $linea->id }})" class="fp-btn fp-btn-primario px-3 py-1.5">Activar</button>
                         @endif

@@ -371,16 +371,16 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         </p>
         <form wire:submit="completarEnLote" class="flex flex-wrap items-end gap-3">
             <div>
-                <label class="mb-1 block text-sm font-medium">Campo</label>
-                <select wire:model="campoEnLote" class="rounded-lg text-sm">
+                <label for="revisar-catalogo-campoEnLote" class="mb-1 block text-sm font-medium">Campo</label>
+                <select id="revisar-catalogo-campoEnLote" wire:model="campoEnLote" class="rounded-lg text-sm">
                     @foreach (\App\Services\Ia\CamposDelProductoImportado::RELLENABLES_EN_LOTE as $campo)
                         <option value="{{ $campo }}">{{ $nombresDeCampos[$campo] }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="min-w-[14rem] flex-1">
-                <label class="mb-1 block text-sm font-medium">Valor</label>
-                <input type="text" wire:model="valorEnLote" placeholder="Por ejemplo: 8 Days"
+                <label for="revisar-catalogo-valorEnLote" class="mb-1 block text-sm font-medium">Valor</label>
+                <input id="revisar-catalogo-valorEnLote" type="text" wire:model="valorEnLote" placeholder="Por ejemplo: 8 Days"
                     class="w-full rounded-lg text-sm">
                 @error('valorEnLote') <p class="mt-1 text-xs text-fp-danger">{{ $message }}</p> @enderror
             </div>
@@ -435,8 +435,8 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
 
         <div class="grid gap-4 sm:grid-cols-3">
             <div>
-                <label class="mb-1 block text-sm font-medium">Temporada</label>
-                <select wire:model="campanaId" class="w-full rounded-lg text-sm">
+                <label for="revisar-catalogo-campanaId" class="mb-1 block text-sm font-medium">Temporada</label>
+                <select id="revisar-catalogo-campanaId" wire:model="campanaId" class="w-full rounded-lg text-sm">
                     <option value="">Elige la temporada</option>
                     @foreach ($this->temporadas as $temporada)
                         <option value="{{ $temporada->id }}">{{ $temporada->nombre }}</option>
@@ -446,8 +446,8 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
             </div>
 
             <div>
-                <label class="mb-1 block text-sm font-medium">Categoría por omisión</label>
-                <select wire:model="categoriaPorOmision" class="w-full rounded-lg text-sm">
+                <label for="revisar-catalogo-categoriaPorOmision" class="mb-1 block text-sm font-medium">Categoría por omisión</label>
+                <select id="revisar-catalogo-categoriaPorOmision" wire:model="categoriaPorOmision" class="w-full rounded-lg text-sm">
                     <option value="">Elige la categoría</option>
                     @foreach ($this->categorias as $categoria)
                         <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
@@ -458,8 +458,8 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
             </div>
 
             <div>
-                <label class="mb-1 block text-sm font-medium">Marca por omisión</label>
-                <select wire:model="marcaPorOmision" class="w-full rounded-lg text-sm">
+                <label for="revisar-catalogo-marcaPorOmision" class="mb-1 block text-sm font-medium">Marca por omisión</label>
+                <select id="revisar-catalogo-marcaPorOmision" wire:model="marcaPorOmision" class="w-full rounded-lg text-sm">
                     <option value="">Elige la marca</option>
                     @foreach ($this->marcas as $marca)
                         <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
