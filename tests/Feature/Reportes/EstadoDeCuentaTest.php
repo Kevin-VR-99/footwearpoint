@@ -64,7 +64,9 @@ class EstadoDeCuentaTest extends TestCase
             ->assertSee('https://ejemplo.test/logo-ramirez.png')
             ->assertSee('EC-PANTALLA')
             ->assertSee('$200.00')
-            ->assertSee('Imprimir');
+            ->assertSee('Descargar PDF')
+            ->assertSee('Descargar Excel')
+            ->assertDontSee('window.print()', false);
     }
 
     private function pago(string $folio, string $tipo, string $direccion, float $monto, string $fecha, int $staffId): void

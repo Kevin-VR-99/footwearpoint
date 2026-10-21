@@ -163,7 +163,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         default => 'Todos los movimientos',
     })
 
-    <header id="estado-cuenta" class="mb-6 fp-tarjeta p-5">
+    <header id="estado-cuenta" class="mb-6 fp-tarjeta p-5 fp-aparecer">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="flex min-w-0 items-center gap-4">
                 @if ($casa->logotipo_url)
@@ -180,9 +180,17 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                     </p>
                 </div>
             </div>
-            <button type="button" onclick="window.print()" class="no-imprimir rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                Imprimir
-            </button>
+            @php($filtrosDescarga = array_filter(['desde' => $desde, 'hasta' => $hasta, 'estado' => $estado, 'ciclo' => $cicloId, 'temporada' => $demandaCampanaId, 'marca' => $demandaMarcaId], fn ($v) => $v !== ''))
+            <div class="no-imprimir flex flex-wrap gap-2" data-descargas-reporte>
+                <a href="{{ route('reportes.descargar', ['formato' => 'pdf'] + $filtrosDescarga) }}" class="fp-btn fp-btn-oscuro" data-descargar="pdf">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" /></svg>
+                    Descargar PDF
+                </a>
+                <a href="{{ route('reportes.descargar', ['formato' => 'xlsx'] + $filtrosDescarga) }}" class="fp-btn fp-btn-secundario" data-descargar="xlsx">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18v14H3zM3 10h18M9 5v14" /></svg>
+                    Descargar Excel
+                </a>
+            </div>
         </div>
         <dl class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div class="rounded-xl bg-fp-page px-3 py-2">
@@ -213,15 +221,15 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     </nav>
 
     <div class="no-imprimir mb-6 flex flex-wrap gap-3 items-end">
-        <div>
+        <div class="fp-campo">
             <label class="block text-xs text-slate-500 mb-1">Desde</label>
             <input type="date" wire:model.live="desde" class="rounded-lg text-sm" />
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="block text-xs text-slate-500 mb-1">Hasta</label>
             <input type="date" wire:model.live="hasta" class="rounded-lg text-sm" />
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="block text-xs text-slate-500 mb-1">Ciclo</label>
             <select wire:model.live="cicloId" class="rounded-lg text-sm">
                 <option value="">Todos</option>
@@ -230,7 +238,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                 @endforeach
             </select>
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="block text-xs text-slate-500 mb-1">Estado del pedido</label>
             <select wire:model.live="estado" class="rounded-lg text-sm">
                 <option value="">Todos</option>
@@ -243,7 +251,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div class="overflow-x-auto fp-tarjeta">
+    <div class="overflow-x-auto fp-tarjeta fp-aparecer">
         <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
@@ -274,21 +282,21 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     </div>
 
     <div id="operacion" class="solo-pantalla mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-        <div class="fp-tarjeta p-4 shadow-sm">
+        <div class="fp-tarjeta p-4 shadow-sm fp-aparecer">
             <p class="text-xs text-slate-500">Pedidos</p>
             <p class="text-2xl font-semibold">{{ $this->resumen['pedidos']['total'] }}</p>
             <p class="text-xs text-slate-500 mt-1">
                 ${{ number_format($this->resumen['pedidos']['monto_total'], 2) }}
             </p>
         </div>
-        <div class="fp-tarjeta p-4 shadow-sm">
+        <div class="fp-tarjeta p-4 shadow-sm fp-aparecer">
             <p class="text-xs text-slate-500">Ventas directas</p>
             <p class="text-2xl font-semibold">{{ $this->resumen['ventas_directas']['total'] }}</p>
             <p class="text-xs text-slate-500 mt-1">
                 ${{ number_format($this->resumen['ventas_directas']['monto_total'], 2) }}
             </p>
         </div>
-        <div class="fp-tarjeta p-4 shadow-sm">
+        <div class="fp-tarjeta p-4 shadow-sm fp-aparecer">
             <p class="text-xs text-slate-500">Vales activos</p>
             <p class="text-2xl font-semibold">{{ $this->resumen['vales']['activos'] }}</p>
             <p class="text-xs text-slate-500 mt-1">
@@ -538,7 +546,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             </span>
         </div>
         <div class="flex flex-wrap gap-3 px-4 pb-3">
-            <div>
+            <div class="fp-campo">
                 <label class="block text-xs text-slate-500 mb-1">Temporada</label>
                 <select wire:model.live="demandaCampanaId" class="rounded-lg text-sm">
                     <option value="">Todas</option>
@@ -547,7 +555,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                     @endforeach
                 </select>
             </div>
-            <div>
+            <div class="fp-campo">
                 <label class="block text-xs text-slate-500 mb-1">Marca</label>
                 <select wire:model.live="demandaMarcaId" class="rounded-lg text-sm">
                     <option value="">Todas</option>
