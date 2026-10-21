@@ -23,7 +23,7 @@ class ActualizarPerfilDistribuidoraRequest extends FormRequest
     {
         return [
             'nombre_comercial'    => ['sometimes', 'required', 'string', 'max:150'],
-            'descripcion_publica' => ['nullable', 'string'],
+            'descripcion_publica' => ['nullable', 'string', 'max:2000'],
             'direccion_publica'   => ['nullable', 'string', 'max:300'],
             'telefono_publico'    => ['nullable', 'string', 'max:30'],
             'email_publico'       => ['nullable', 'email', 'max:190'],
@@ -32,6 +32,13 @@ class ActualizarPerfilDistribuidoraRequest extends FormRequest
             // logo (sí lo hacen para imágenes de producto: 5MB). 2MB es un valor
             // conservador propio, ajústalo si el equipo define otro.
             'logotipo'            => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'descripcion_publica.max' => 'La descripción pública no puede tener más de 2000 caracteres.',
         ];
     }
 }

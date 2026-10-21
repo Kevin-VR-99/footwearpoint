@@ -15,14 +15,16 @@ class ResetPasswordRequest extends FormRequest
     {
         return [
             'email'                 => ['required', 'email'],
-            'token'                 => ['required', 'string'],
-            'password'              => ['required', 'string', 'min:8', 'confirmed'],
+            'token'                 => ['required', 'string', 'max:255'],
+            'password'              => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
         ];
     }
 
     public function messages(): array
     {
         return [
+            'token.max' => 'El token no es válido.',
+            'password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'email.required'     => 'El correo es obligatorio.',
             'email.email'        => 'El correo no es válido.',
             'token.required'     => 'El token es obligatorio.',

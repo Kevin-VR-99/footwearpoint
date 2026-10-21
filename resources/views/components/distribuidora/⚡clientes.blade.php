@@ -187,8 +187,9 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
             'cliente_direccion_contacto' => ['nullable', 'string', 'max:300'],
             // E3-07: opcionales, pero si se llena uno se exige el otro.
             'cliente_acceso_email' => ['nullable', 'required_with:cliente_acceso_password', 'email', 'max:190'],
-            'cliente_acceso_password' => ['nullable', 'required_with:cliente_acceso_email', 'string', 'min:8', 'same:cliente_acceso_password_confirmation'],
+            'cliente_acceso_password' => ['nullable', 'required_with:cliente_acceso_email', 'string', 'min:8', 'max:255', 'same:cliente_acceso_password_confirmation'],
         ], [
+            'cliente_acceso_password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'cliente_acceso_email.required_with' => 'Para dar acceso a la app escribe también el correo.',
             'cliente_acceso_password.required_with' => 'Para dar acceso a la app escribe también la contraseña.',
             'cliente_acceso_password.min' => 'La contraseña debe tener al menos 8 caracteres.',

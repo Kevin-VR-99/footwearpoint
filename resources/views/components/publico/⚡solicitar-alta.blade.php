@@ -228,7 +228,7 @@ class extends Component
             'plan_id' => ['required', Rule::exists('planes_suscripcion', 'id')->where('activo', true)],
             'admin_nombre' => ['required', 'string', 'max:150'],
             'admin_email' => ['required', 'email', 'max:190', Rule::unique('usuarios', 'email')],
-            'admin_password' => ['required', 'string', 'min:8', 'confirmed'],
+            'admin_password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
             'acepta_legales' => ['accepted'],
         ];
     }
@@ -236,6 +236,7 @@ class extends Component
     private function mensajes(): array
     {
         return [
+            'admin_password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'nombre_comercial.required' => 'El nombre de tu distribuidora es obligatorio.',
             'nombre_comercial.max' => 'El nombre no puede pasar de 150 caracteres.',
             'razon_social.max' => 'La razón social no puede pasar de 200 caracteres.',

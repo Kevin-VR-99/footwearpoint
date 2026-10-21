@@ -130,6 +130,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             'editar_categoria_id.required' => 'Elige la categoría.',
             'editar_modelo.required' => 'El modelo es obligatorio.',
             'editar_estado.in' => 'Ese estado no existe.',
+            'editar_descripcion.max' => 'La descripción no puede tener más de :max caracteres.',
         ];
 
         $datos = $this->validate(match ($tipo) {
@@ -148,7 +149,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             ],
             'producto' => [
                 'editar_nombre' => ['required', 'string', 'max:200'],
-                'editar_descripcion' => ['nullable', 'string'],
+                'editar_descripcion' => ['nullable', 'string', 'max:2000'],
                 'editar_marca_id' => ['required', 'exists:marcas,id'],
                 'editar_categoria_id' => ['required', 'exists:categorias_producto,id'],
                 'editar_modelo' => ['required', 'string', 'max:120'],

@@ -44,7 +44,7 @@ new #[Layout('layouts.guest')] #[Title('Registrar empleado — FootwearPoint')] 
         return [
             'nombre'   => ['required', 'string', 'max:150'],
             'email'    => ['required', 'email', 'max:190', 'unique:usuarios,email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
             'telefono' => ['nullable', 'string', 'max:30'],
         ];
     }
@@ -52,6 +52,7 @@ new #[Layout('layouts.guest')] #[Title('Registrar empleado — FootwearPoint')] 
     protected function messages(): array
     {
         return [
+            'password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'nombre.required'    => 'El nombre es obligatorio.',
             'email.required'     => 'El correo es obligatorio.',
             'email.unique'       => 'Ese correo ya está registrado.',

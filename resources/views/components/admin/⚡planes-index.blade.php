@@ -76,11 +76,13 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
     {
         $this->validate([
             'nombre'              => 'required|string|max:100',
-            'descripcion'         => 'nullable|string',
+            'descripcion'         => 'nullable|string|max:2000',
             'precio_base_mensual' => 'required|numeric|min:0',
             'lineas_incluidas'    => 'required|integer|min:0',
             'precio_linea_extra'  => 'required|numeric|min:0',
             'activo'              => 'boolean',
+        ], [
+            'descripcion.max' => 'La descripción no puede tener más de 2000 caracteres.',
         ]);
 
         $data = [

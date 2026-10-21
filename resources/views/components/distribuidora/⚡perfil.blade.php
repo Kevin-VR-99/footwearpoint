@@ -46,12 +46,14 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
     {
         $datos = $this->validate([
             'nombre_comercial' => ['required', 'string', 'max:150'],
-            'descripcion_publica' => ['nullable', 'string'],
+            'descripcion_publica' => ['nullable', 'string', 'max:2000'],
             'direccion_publica' => ['nullable', 'string', 'max:300'],
             'telefono_publico' => ['nullable', 'string', 'max:30'],
             'email_publico' => ['nullable', 'email', 'max:190'],
             'horario_publico' => ['nullable', 'string', 'max:300'],
             'logotipo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+        ], [
+            'descripcion_publica.max' => 'La descripción pública no puede tener más de 2000 caracteres.',
         ]);
 
         $distribuidora = Distribuidora::findOrFail(Tenant::id());

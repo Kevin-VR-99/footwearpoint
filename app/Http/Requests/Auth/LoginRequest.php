@@ -15,13 +15,14 @@ class LoginRequest extends FormRequest
     {
         return [
             'email'    => ['required', 'email'],
-            'password' => ['required', 'string'],
+            'password' => ['required', 'string', 'max:255'],
         ];
     }
 
     public function messages(): array
     {
         return [
+            'password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'email.required'    => 'El correo es obligatorio.',
             'email.email'       => 'El correo no es válido.',
             'password.required' => 'La contraseña es obligatoria.',

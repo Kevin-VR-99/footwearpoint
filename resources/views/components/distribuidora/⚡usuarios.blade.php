@@ -142,8 +142,9 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             'empleado_nombre' => ['required', 'string', 'max:150'],
             'empleado_email' => ['required', 'email', 'max:190', 'unique:usuarios,email'],
             'empleado_telefono' => ['nullable', 'string', 'max:30'],
-            'empleado_password' => ['required', 'string', 'min:8', 'same:empleado_password_confirmation'],
+            'empleado_password' => ['required', 'string', 'min:8', 'max:255', 'same:empleado_password_confirmation'],
         ], [
+            'empleado_password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'empleado_nombre.required' => 'El nombre es obligatorio.',
             'empleado_email.required' => 'El correo es obligatorio.',
             'empleado_email.unique' => 'Ese correo ya está registrado.',
@@ -315,8 +316,9 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             'revendedor_email' => ['nullable', 'email', 'max:190'],
             'revendedor_codigo_interno' => ['nullable', 'string', 'max:60'],
             'revendedor_acceso_email' => ['nullable', 'required_with:revendedor_acceso_password', 'email', 'max:190'],
-            'revendedor_acceso_password' => ['nullable', 'required_with:revendedor_acceso_email', 'string', 'min:8', 'same:revendedor_acceso_password_confirmation'],
+            'revendedor_acceso_password' => ['nullable', 'required_with:revendedor_acceso_email', 'string', 'min:8', 'max:255', 'same:revendedor_acceso_password_confirmation'],
         ], [
+            'revendedor_acceso_password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'revendedor_acceso_email.required_with' => 'Para dar acceso a la app escribe también el correo.',
             'revendedor_acceso_password.required_with' => 'Para dar acceso a la app escribe también la contraseña.',
             'revendedor_acceso_password.min' => 'La contraseña debe tener al menos 8 caracteres.',

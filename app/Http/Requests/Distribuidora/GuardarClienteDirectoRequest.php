@@ -21,19 +21,21 @@ class GuardarClienteDirectoRequest extends FormRequest
             'telefono'           => ['nullable', 'string', 'max:30'],
             'email'              => ['nullable', 'email', 'max:190'],
             'direccion_contacto' => ['nullable', 'string', 'max:300'],
-            'notas'              => ['nullable', 'string'],
+            'notas'              => ['nullable', 'string', 'max:2000'],
             'estado'             => ['sometimes', Rule::in(['activo', 'inactivo'])],
 
             // E3-07 (TG-133): cuenta de acceso a la app, opcional. Se puede
             // mandar al crear o después, en el PATCH. Los dos van juntos.
             'acceso_email'       => ['nullable', 'required_with:acceso_password', 'email', 'max:190'],
-            'acceso_password'    => ['nullable', 'required_with:acceso_email', 'string', 'min:8', 'confirmed'],
+            'acceso_password'    => ['nullable', 'required_with:acceso_email', 'string', 'min:8', 'max:255', 'confirmed'],
         ];
     }
 
     public function messages(): array
     {
         return [
+            'notas.max' => 'Las notas no pueden tener más de 2000 caracteres.',
+            'acceso_password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'acceso_email.required_with'    => 'Para dar acceso a la app escribe también el correo.',
             'acceso_password.required_with' => 'Para dar acceso a la app escribe también la contraseña.',
             'acceso_password.min'           => 'La contraseña debe tener al menos 8 caracteres.',
