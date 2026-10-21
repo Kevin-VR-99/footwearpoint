@@ -78,45 +78,48 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
 };
 ?>
 
-<div class="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
+<div class="fp-acceso-tarjeta p-8">
+    <div class="fp-acceso-logo mb-4 flex justify-center">
+        <img src="{{ asset('brand/logo-full-160.png') }}" alt="Footwear Point" class="h-16 w-auto object-contain">
+    </div>
     <div class="text-center mb-8">
         <h1 class="text-2xl font-bold text-slate-900">Nueva contraseña</h1>
         <p class="text-sm text-slate-500 mt-1">Define tu nueva contraseña de acceso</p>
     </div>
 
     <form wire:submit="resetPassword" class="space-y-5">
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
             <input
                 type="email"
                 wire:model="email"
-                class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600"
+                class="w-full rounded-lg"
                 placeholder="correo@ejemplo.com"
             >
             @error('email')
-                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                <p class="text-sm text-fp-danger mt-1">{{ $message }}</p>
             @enderror
         </div>
 
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Nueva contraseña</label>
             <input
                 type="password"
                 wire:model="password"
-                class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600"
+                class="w-full rounded-lg"
                 placeholder="Mínimo 8 caracteres"
             >
             @error('password')
-                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                <p class="text-sm text-fp-danger mt-1">{{ $message }}</p>
             @enderror
         </div>
 
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
             <input
                 type="password"
                 wire:model="password_confirmation"
-                class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600"
+                class="w-full rounded-lg"
                 placeholder="Repite la contraseña"
             >
         </div>
@@ -131,7 +134,7 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
         </button>
 
         <div class="text-center">
-            <a href="{{ route('login') }}" class="text-sm text-blue-700 hover:underline">
+            <a href="{{ route('login') }}" class="fp-enlace text-sm">
                 Volver al login
             </a>
         </div>

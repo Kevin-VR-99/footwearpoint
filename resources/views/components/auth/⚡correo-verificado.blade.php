@@ -53,10 +53,13 @@ new #[Layout('layouts.guest')] #[Title('Confirmar correo — FootwearPoint')] cl
 };
 ?>
 
-<div class="bg-white rounded-xl shadow-lg border border-slate-200 p-8 text-center">
+<div class="fp-acceso-tarjeta p-8 text-center">
+    <div class="fp-acceso-logo mb-4 flex justify-center">
+        <img src="{{ asset('brand/logo-full-160.png') }}" alt="Footwear Point" class="h-16 w-auto object-contain">
+    </div>
     @if ($resultado === 'listo')
-        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
-            <span class="text-3xl font-bold text-emerald-700" aria-hidden="true">&check;</span>
+        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-fp-badge-success-bg fp-emerger">
+            <span class="text-3xl font-bold text-fp-badge-success-fg" aria-hidden="true">&check;</span>
         </div>
         <h1 class="text-2xl font-bold text-slate-900">Correo confirmado</h1>
     @elseif ($resultado === 'ya_estaba')
@@ -69,7 +72,7 @@ new #[Layout('layouts.guest')] #[Title('Confirmar correo — FootwearPoint')] cl
 
     <p class="mt-6 text-sm text-slate-500">Puedes cerrar esta página y volver a la app.</p>
 
-    <a href="{{ route('login') }}" class="mt-4 inline-block text-sm text-blue-700 hover:underline">
+    <a href="{{ route('login') }}" class="mt-4 inline-block fp-enlace text-sm">
         Ir al inicio de sesión
     </a>
 </div>
