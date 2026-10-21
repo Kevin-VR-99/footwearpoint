@@ -23,7 +23,8 @@ class MejorasDisenoWebTest extends TestCase
             $this->assertStringContainsString($clase, $css, "Falta la clase {$clase}");
         }
 
-        $reducido = substr($css, strrpos($css, '@media (prefers-reduced-motion: reduce)'));
+        // Hay varios bloques reduced-motion (sitio, admin, acceso): se revisan todos juntos.
+        $reducido = implode("\n", array_slice(explode('@media (prefers-reduced-motion: reduce)', $css), 1));
         $this->assertStringContainsString('animation: none', $reducido);
         $this->assertStringContainsString('.fp-tarjeta-interactiva:hover', $reducido);
     }
