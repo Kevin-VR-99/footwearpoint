@@ -113,6 +113,46 @@ class ClienteMercadoPago
         return $datos;
     }
 
+    /**
+     * Renueva el token OAuth de una distribuidora con su refresh token.
+     *
+     * @return array respuesta de Mercado Pago (access_token, refresh_token, expires_in...).
+     *
+     * @throws MercadoPagoException si Mercado Pago no responde o lo rechaza.
+     */
+    public function renovarToken(string $refreshToken): array
+    {
+        try {
+            $respuesta = Http::acceptJson()
+                ->asJson()
+                ->timeout((int) $this->config('timeout', 10))
+                ->post($this->config('url_api') . '/oauth/token', [
+                    'client_id'     => (string) $this->config('client_id'),
+                    'client_secret' => (string) $this->config('client_secret'),
+                    'grant_type'    => 'refresh_token',
+                    'refresh_token' => $refreshToken,
+                ]);
+        } catch (ConnectionException) {
+            throw MercadoPagoException::con(MercadoPagoException::SIN_RESPUESTA);
+        }
+
+        if ($respuesta->failed()) {
+            $codigoError = is_string($respuesta->json('error')) ? $respuesta->json('error') : 'sin_codigo';
+
+            throw new MercadoPagoException(
+                "Mercado Pago rechazó la renovación del token (HTTP {$respuesta->status()}, error: {$codigoError})."
+            );
+        }
+
+        $datos = $respuesta->json();
+
+        if (! is_array($datos) || ! is_string($datos['access_token'] ?? null) || $datos['access_token'] === '') {
+            throw new MercadoPagoException('Mercado Pago respondió la renovación sin access_token.');
+        }
+
+        return $datos;
+    }
+
     // ---------------------------------------------------------------
     // TG-226 (G7) — Checkout Pro con el token de la distribuidora.
     //

@@ -130,9 +130,19 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
             return;
         }
 
+        // Topes de gasto de la IA (config/ia.php): se avisa antes de gastar.
+        $motivo = app(\App\Services\Ia\LimitesDeGastoIa::class)->motivoParaNoProcesar($importacion);
+
+        if ($motivo !== null) {
+            $this->mensaje = $motivo;
+            $this->esError = true;
+
+            return;
+        }
+
         // Si se reintenta, se limpia lo que habia quedado del intento anterior.
         $importacion->productosStaging()->delete();
-        $importacion->update(['estado' => 'procesando', 'mensaje_error' => null]);
+        $importacion->update(['estado' => 'procesando', 'mensaje_error' => null, 'procesamiento_iniciado_at' => now()]);
 
         ProcesarCatalogoConIa::dispatch($importacion->id);
 

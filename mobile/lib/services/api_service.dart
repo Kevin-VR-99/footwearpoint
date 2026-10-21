@@ -132,12 +132,11 @@ class ApiService {
     } on SocketException {
       // El error más común del equipo mientras prueba, por eso el mensaje
       // dice qué revisar en vez de solo "fallo la conexión".
+      // Lo ve la gente en la app publicada: nada de instrucciones de
+      // desarrollo. Para pruebas locales, ver lib/config.dart.
       throw ApiException(
-        'No se pudo conectar con el servidor.\n\n'
-        'Revisa que Laravel esté corriendo con:\n'
-        'php artisan serve --host=0.0.0.0\n\n'
-        'Y que la dirección en lib/config.dart sea la correcta '
-        '(10.0.2.2 para emulador, la IP de tu computadora para celular físico).',
+        'No se pudo conectar con el servidor. '
+        'Revisa tu conexión a internet e inténtalo de nuevo.',
       );
     } on TimeoutException {
       throw ApiException('El servidor tardó demasiado en responder.');
