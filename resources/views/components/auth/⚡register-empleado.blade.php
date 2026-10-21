@@ -107,62 +107,65 @@ new #[Layout('layouts.guest')] #[Title('Registrar empleado — FootwearPoint')] 
 };
 ?>
 
-<div class="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
+<div class="fp-acceso-tarjeta p-8">
+    <div class="fp-acceso-logo mb-4 flex justify-center">
+        <img src="{{ asset('brand/logo-full-160.png') }}" alt="Footwear Point" class="h-16 w-auto object-contain">
+    </div>
     <div class="text-center mb-8">
         <h1 class="text-2xl font-bold text-slate-900">Registrar empleado</h1>
         <p class="text-sm text-slate-500 mt-1">Alta de personal de la distribuidora</p>
     </div>
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg bg-green-50 text-green-700 text-sm p-3">
+        <div class="fp-emerger mb-4 rounded-xl border border-fp-badge-success-fg/20 bg-fp-badge-success-bg p-3 text-sm text-fp-badge-success-fg" role="status">
             {{ $mensaje }}
         </div>
     @endif
 
     <form wire:submit="registrar" class="space-y-4">
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
             <input type="text" wire:model="nombre"
-                   class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600">
-            @error('nombre') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                   class="w-full rounded-lg">
+            @error('nombre') <p class="text-sm text-fp-danger mt-1">{{ $message }}</p> @enderror
         </div>
 
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
             <input type="email" wire:model="email"
-                   class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600">
-            @error('email') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                   class="w-full rounded-lg">
+            @error('email') <p class="text-sm text-fp-danger mt-1">{{ $message }}</p> @enderror
         </div>
 
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
             <input type="text" wire:model="telefono"
-                   class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600">
-            @error('telefono') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                   class="w-full rounded-lg">
+            @error('telefono') <p class="text-sm text-fp-danger mt-1">{{ $message }}</p> @enderror
         </div>
 
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
             <input type="password" wire:model="password"
-                   class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600">
-            @error('password') <p class="text-sm text-red-600 mt-1">{{ $message }}</p> @enderror
+                   class="w-full rounded-lg">
+            @error('password') <p class="text-sm text-fp-danger mt-1">{{ $message }}</p> @enderror
         </div>
 
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
             <input type="password" wire:model="password_confirmation"
-                   class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600">
+                   class="w-full rounded-lg">
         </div>
 
         <button type="submit"
-                class="w-full rounded-lg bg-[#111E38] text-white font-medium py-2.5 hover:bg-[#1E2F52] transition"
+                class="fp-btn fp-btn-oscuro w-full py-2.5"
                 wire:loading.attr="disabled">
             <span wire:loading.remove>Registrar empleado</span>
             <span wire:loading>Guardando...</span>
         </button>
 
         <div class="text-center">
-            <a href="{{ route('dashboard') }}" class="text-sm text-blue-700 hover:underline">
+            <a href="{{ route('dashboard') }}" class="fp-enlace text-sm">
                 Volver al dashboard
             </a>
         </div>

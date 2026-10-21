@@ -68,14 +68,14 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
 };
 ?>
 
-<div class="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
+<div class="fp-acceso-tarjeta p-8">
     <div class="text-center mb-8">
         <h1 class="text-2xl font-bold text-slate-900">Documentos legales</h1>
         <p class="text-sm text-slate-500 mt-1">Acepta los documentos para continuar</p>
     </div>
 
     @if ($mensaje)
-        <div class="mb-4 rounded-lg bg-green-50 text-green-700 text-sm p-3">
+        <div class="fp-emerger mb-4 rounded-xl border border-fp-badge-success-fg/20 bg-fp-badge-success-bg p-3 text-sm text-fp-badge-success-fg" role="status">
             {{ $mensaje }}
         </div>
     @endif
@@ -92,7 +92,7 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
             </label>
 
             <details class="border-t border-slate-200 bg-slate-50">
-                <summary class="px-4 py-2 text-sm text-blue-700 cursor-pointer hover:underline">
+                <summary class="px-4 py-2 fp-enlace cursor-pointer text-sm">
                     Ver aviso de privacidad completo
                 </summary>
                 <div class="px-4 pb-4 text-sm text-slate-600 space-y-2 max-h-48 overflow-y-auto">
@@ -102,7 +102,7 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
             </details>
         </div>
         @error('aviso')
-            <p class="text-sm text-red-600">{{ $message }}</p>
+            <p class="text-sm text-fp-danger">{{ $message }}</p>
         @enderror
 
         {{-- Términos y condiciones --}}
@@ -116,7 +116,7 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
             </label>
 
             <details class="border-t border-slate-200 bg-slate-50">
-                <summary class="px-4 py-2 text-sm text-blue-700 cursor-pointer hover:underline">
+                <summary class="px-4 py-2 fp-enlace cursor-pointer text-sm">
                     Ver términos y condiciones completos
                 </summary>
                 <div class="px-4 pb-4 text-sm text-slate-600 space-y-2 max-h-48 overflow-y-auto">
@@ -127,14 +127,14 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
         </div>
 
         <button type="submit"
-                class="w-full rounded-lg bg-[#111E38] text-white font-medium py-2.5 hover:bg-[#1E2F52] transition"
+                class="fp-btn fp-btn-oscuro w-full py-2.5"
                 wire:loading.attr="disabled">
             <span wire:loading.remove>Aceptar documentos</span>
             <span wire:loading>Guardando...</span>
         </button>
 
         <div class="text-center">
-            <a href="{{ route('dashboard') }}" class="text-sm text-blue-700 hover:underline">
+            <a href="{{ route('dashboard') }}" class="fp-enlace text-sm">
                 Volver al dashboard
             </a>
         </div>

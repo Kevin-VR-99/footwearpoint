@@ -221,7 +221,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
     @endif
 
     @if ($this->detalle === null)
-        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-8 text-center text-slate-500">
+        <div class="fp-tarjeta p-8 text-center text-slate-500 fp-aparecer">
             No hay ningún ciclo de compra para mostrar.
         </div>
     @else
@@ -229,7 +229,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         @php($ciclo = $detalle->ciclo)
 
         {{-- Encabezado del ciclo --}}
-        <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 mb-6">
+        <div class="fp-tarjeta p-5 mb-6 fp-aparecer">
             <div class="flex flex-wrap items-center gap-3 mb-5">
                 <h3 class="text-lg font-semibold text-slate-900">{{ $ciclo->nombre }}</h3>
                 <x-ui.insignia-estado :estado="$ciclo->estado" />
@@ -282,7 +282,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
             @if ($this->accion)
                 <div class="mt-5 pt-5 border-t border-slate-100 flex flex-wrap items-center gap-4">
                     <button type="button" wire:click="{{ $this->accion[0] }}" wire:loading.attr="disabled"
-                            class="rounded-lg bg-fp-primary text-white px-4 py-2 text-sm font-medium hover:bg-fp-primary/90 disabled:opacity-50">
+                            class="fp-btn fp-btn-primario">
                         {{ $this->accion[1] }}
                     </button>
                     <p class="text-xs text-slate-500 flex-1 min-w-[16rem]">{{ $this->accion[2] }}</p>
@@ -301,14 +301,14 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {{-- Pedidos del ciclo --}}
-            <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+            <div class="fp-tarjeta overflow-hidden fp-aparecer">
                 <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-800">Pedidos del ciclo</h3>
                     <span class="text-xs text-slate-500">{{ $detalle->pedidos->count() }} en total</span>
                 </div>
 
                 <div class="overflow-x-auto max-h-96 overflow-y-auto">
-                    <table class="min-w-full text-sm">
+                    <table class="fp-tabla min-w-full text-sm">
                         <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted sticky top-0">
                             <tr>
                                 <th class="text-left font-medium px-4 py-3">Folio</th>
@@ -319,7 +319,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @forelse ($detalle->pedidos as $pedido)
-                                <tr class="hover:bg-slate-50" wire:key="pedido-{{ $pedido->id }}">
+                                <tr wire:key="pedido-{{ $pedido->id }}">
                                     <td class="px-4 py-3 font-mono text-xs">{{ $pedido->folio }}</td>
                                     <td class="px-4 py-3 text-slate-700">
                                         {{ $pedido->tipo === 'revendedor' ? 'Cliente mayorista' : 'Cliente directo' }}
@@ -338,7 +338,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
             </div>
 
             {{-- Consolidado para fábrica --}}
-            <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+            <div class="fp-tarjeta overflow-hidden fp-aparecer">
                 <div class="px-5 py-3 border-b border-slate-100">
                     <h3 class="text-sm font-semibold text-slate-800">Consolidado por variante</h3>
                     <p class="text-xs text-slate-500 mt-0.5">
@@ -347,7 +347,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
                 </div>
 
                 <div class="overflow-x-auto max-h-96 overflow-y-auto">
-                    <table class="min-w-full text-sm">
+                    <table class="fp-tabla min-w-full text-sm">
                         <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted sticky top-0">
                             <tr>
                                 <th class="text-left font-medium px-4 py-3">Producto</th>
@@ -358,7 +358,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @forelse ($detalle->consolidado as $renglon)
-                                <tr class="hover:bg-slate-50" wire:key="cons-{{ $renglon['variante_id'] }}">
+                                <tr wire:key="cons-{{ $renglon['variante_id'] }}">
                                     <td class="px-4 py-3">
                                         <div class="text-slate-900">{{ $renglon['producto_nombre'] }}</div>
                                         <div class="text-xs text-slate-500">{{ $renglon['modelo'] }}</div>

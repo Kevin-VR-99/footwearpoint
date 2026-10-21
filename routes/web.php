@@ -210,6 +210,11 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
     Route::livewire('/reportes', 'reportes.index')
         ->name('reportes.index');
 
+    // Descarga del reporte en PDF o Excel con los filtros de la pantalla.
+    Route::get('/reportes/descargar/{formato}', \App\Http\Controllers\ReporteExportController::class)
+        ->whereIn('formato', ['pdf', 'xlsx'])
+        ->name('reportes.descargar');
+
     // TG-160 — bitácora de auditoría (solo admin_distribuidora)
     Route::livewire('/auditoria', 'auditoria.index')
         ->name('auditoria.index')

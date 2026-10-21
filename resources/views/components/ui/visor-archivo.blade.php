@@ -37,7 +37,7 @@
                         <div class="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
                             <p class="text-sm text-fp-text-muted">Este tipo de archivo no se puede ver aquí.</p>
                             <a :href="url" download
-                                class="rounded-xl bg-fp-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-fp-primary/90">Descargar archivo</a>
+                                class="fp-btn fp-btn-primario rounded-xl">Descargar archivo</a>
                         </div>
                     </template>
                 </div>

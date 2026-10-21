@@ -422,15 +422,15 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
         {{-- Buscador de productos --}}
-        <div class="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="lg:col-span-3 fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
             <div class="px-5 py-3 border-b border-slate-100">
                 <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
                        placeholder="Buscar por SKU, código de catálogo, modelo, talla o color…" etiqueta="Buscar productos" />
             </div>
 
             <div class="overflow-x-auto max-h-[28rem] overflow-y-auto">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-slate-50 text-slate-600 sticky top-0">
+                <table class="fp-tabla min-w-full text-sm">
+                    <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted sticky top-0">
                         <tr>
                             <th class="text-left font-medium px-4 py-3">SKU</th>
                             <th class="text-left font-medium px-4 py-3">Producto</th>
@@ -443,7 +443,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($this->disponibles as $fila)
-                            <tr class="hover:bg-slate-50" wire:key="disp-{{ $fila['clave'] }}">
+                            <tr wire:key="disp-{{ $fila['clave'] }}">
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-2">
                                         <x-ui.miniatura :url="$fila['imagen'] ?: null" :alt="$fila['nombre'] !== '' ? $fila['nombre'] : 'Producto'" />
@@ -464,7 +464,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                                 <td class="px-4 py-3 text-right text-slate-600">{{ $fila['disponible'] }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <button type="button" wire:click="agregar('{{ $fila['clave'] }}')"
-                                            class="rounded-lg bg-fp-primary text-white px-3 py-1.5 text-xs font-medium hover:bg-fp-primary/90">
+                                            class="fp-btn fp-btn-primario fp-btn-sm">
                                         Agregar
                                     </button>
                                 </td>
@@ -482,12 +482,12 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         </div>
 
         {{-- Venta en curso --}}
-        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-5 h-fit">
+        <div class="lg:col-span-2 fp-tarjeta p-5 h-fit fp-aparecer">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold text-slate-800">Venta en curso</h3>
                 @if ($lineas !== [])
                     <button type="button" wire:click="limpiar"
-                            class="text-xs text-slate-500 hover:text-red-600">Vaciar</button>
+                            class="text-xs text-slate-500 hover:text-fp-danger transition-colors">Vaciar</button>
                 @endif
             </div>
 
@@ -526,7 +526,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                                     ${{ number_format($linea['precio'] * $linea['cantidad'], 2) }}
                                 </p>
                                 <button type="button" wire:click="quitar('{{ $clave }}')"
-                                        class="text-xs text-slate-400 hover:text-red-600">Quitar</button>
+                                        class="text-xs text-slate-400 hover:text-fp-danger transition-colors">Quitar</button>
                             </div>
                         </div>
                     @endforeach
@@ -565,7 +565,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
 
                 <div class="mt-5 space-y-4">
                     {{-- TG-250: vale de cliente directo por folio. --}}
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Vale (opcional)</label>
                         @if ($vale)
                             <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
@@ -580,13 +580,13 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                             <div class="flex gap-2">
                                 <input type="text" wire:model="valeFolio" wire:keydown.enter="aplicarVale" placeholder="Folio del vale"
                                        class="w-full rounded-lg text-sm focus:ring-fp-primary">
-                                <button type="button" wire:click="aplicarVale" class="rounded-lg border border-fp-primary px-3 text-sm text-fp-primary">Aplicar</button>
+                                <button type="button" wire:click="aplicarVale" class="fp-btn fp-btn-contorno px-3">Aplicar</button>
                             </div>
                         @endif
                     </div>
 
                     @if ($this->porCobrar > 0)
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Método de pago</label>
                         <select wire:model="metodo_pago"
                                 class="w-full rounded-lg text-sm focus:ring-fp-primary">
@@ -599,7 +599,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                     </div>
                     @endif
 
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Cliente (opcional)</label>
                         <select wire:model="cliente_directo_id" @disabled($vale)
                                 class="w-full rounded-lg text-sm focus:ring-fp-primary">
@@ -611,7 +611,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                     </div>
 
                     <button type="button" wire:click="cobrar" wire:loading.attr="disabled"
-                            class="w-full rounded-lg bg-fp-primary text-white px-4 py-2.5 text-sm font-medium hover:bg-fp-primary/90 disabled:opacity-50">
+                            class="fp-btn fp-btn-primario w-full py-2.5">
                         <span wire:loading.remove wire:target="cobrar">
                             @if ($this->porCobrar > 0)
                                 Cobrar ${{ number_format($this->porCobrar, 2) }}

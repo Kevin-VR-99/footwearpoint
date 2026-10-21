@@ -163,7 +163,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         default => 'Todos los movimientos',
     })
 
-    <header id="estado-cuenta" class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+    <header id="estado-cuenta" class="mb-6 fp-tarjeta p-5 fp-aparecer">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="flex min-w-0 items-center gap-4">
                 @if ($casa->logotipo_url)
@@ -180,9 +180,17 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                     </p>
                 </div>
             </div>
-            <button type="button" onclick="window.print()" class="no-imprimir rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                Imprimir
-            </button>
+            @php($filtrosDescarga = array_filter(['desde' => $desde, 'hasta' => $hasta, 'estado' => $estado, 'ciclo' => $cicloId, 'temporada' => $demandaCampanaId, 'marca' => $demandaMarcaId], fn ($v) => $v !== ''))
+            <div class="no-imprimir flex flex-wrap gap-2" data-descargas-reporte>
+                <a href="{{ route('reportes.descargar', ['formato' => 'pdf'] + $filtrosDescarga) }}" class="fp-btn fp-btn-oscuro" data-descargar="pdf">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" /></svg>
+                    Descargar PDF
+                </a>
+                <a href="{{ route('reportes.descargar', ['formato' => 'xlsx'] + $filtrosDescarga) }}" class="fp-btn fp-btn-secundario" data-descargar="xlsx">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18v14H3zM3 10h18M9 5v14" /></svg>
+                    Descargar Excel
+                </a>
+            </div>
         </div>
         <dl class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div class="rounded-xl bg-fp-page px-3 py-2">
@@ -213,15 +221,15 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     </nav>
 
     <div class="no-imprimir mb-6 flex flex-wrap gap-3 items-end">
-        <div>
+        <div class="fp-campo">
             <label class="block text-xs text-slate-500 mb-1">Desde</label>
             <input type="date" wire:model.live="desde" class="rounded-lg text-sm" />
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="block text-xs text-slate-500 mb-1">Hasta</label>
             <input type="date" wire:model.live="hasta" class="rounded-lg text-sm" />
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="block text-xs text-slate-500 mb-1">Ciclo</label>
             <select wire:model.live="cicloId" class="rounded-lg text-sm">
                 <option value="">Todos</option>
@@ -230,7 +238,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                 @endforeach
             </select>
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="block text-xs text-slate-500 mb-1">Estado del pedido</label>
             <select wire:model.live="estado" class="rounded-lg text-sm">
                 <option value="">Todos</option>
@@ -243,8 +251,8 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div class="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-        <table class="min-w-full text-sm">
+    <div class="overflow-x-auto fp-tarjeta fp-aparecer">
+        <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
                     <th class="px-4 py-2">Fecha</th>
@@ -274,21 +282,21 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     </div>
 
     <div id="operacion" class="solo-pantalla mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div class="fp-tarjeta p-4 shadow-sm fp-aparecer">
             <p class="text-xs text-slate-500">Pedidos</p>
             <p class="text-2xl font-semibold">{{ $this->resumen['pedidos']['total'] }}</p>
             <p class="text-xs text-slate-500 mt-1">
                 ${{ number_format($this->resumen['pedidos']['monto_total'], 2) }}
             </p>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div class="fp-tarjeta p-4 shadow-sm fp-aparecer">
             <p class="text-xs text-slate-500">Ventas directas</p>
             <p class="text-2xl font-semibold">{{ $this->resumen['ventas_directas']['total'] }}</p>
             <p class="text-xs text-slate-500 mt-1">
                 ${{ number_format($this->resumen['ventas_directas']['monto_total'], 2) }}
             </p>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div class="fp-tarjeta p-4 shadow-sm fp-aparecer">
             <p class="text-xs text-slate-500">Vales activos</p>
             <p class="text-2xl font-semibold">{{ $this->resumen['vales']['activos'] }}</p>
             <p class="text-xs text-slate-500 mt-1">
@@ -297,9 +305,9 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div class="solo-pantalla rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="solo-pantalla fp-tarjeta overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">Pedidos por estado</div>
-        <table class="min-w-full text-sm">
+        <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
                     <th class="px-4 py-2">Estado</th>
@@ -321,9 +329,9 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </table>
     </div>
 
-    <div class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="solo-pantalla mt-6 fp-tarjeta overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">Pedidos por ciclo</div>
-        <table class="min-w-full text-sm">
+        <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
                     <th class="px-4 py-2">Ciclo</th>
@@ -346,7 +354,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     </div>
 
     {{-- TG-251 (E14-05): quiénes compran más. --}}
-    <div id="por-cobrar" class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div id="por-cobrar" class="solo-pantalla mt-6 fp-tarjeta overflow-hidden">
         @php($mayoristas = $this->porClienteMayorista)
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Pedidos por cliente mayorista
@@ -358,7 +366,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             <x-panel.alerta tipo="error" class="m-4">{{ $errorMayoristas }}</x-panel.alerta>
         @endif
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="px-4 py-2">Cliente mayorista</th>
@@ -398,7 +406,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
 
     {{-- TG-252 (E14-03): cuánto falta por cobrar y vales vigentes. --}}
     @php($pendientes = $this->montosPendientes)
-    <div class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="solo-pantalla mt-6 fp-tarjeta overflow-hidden">
         <div class="px-4 py-3 font-medium text-slate-800">
             Montos pendientes
             <span class="block text-xs font-normal text-slate-500">
@@ -410,7 +418,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         @endif
         <div class="overflow-x-auto border-t border-slate-100">
             <p class="px-4 pt-3 text-sm font-medium text-slate-700">Clientes</p>
-            <table class="min-w-full text-sm">
+            <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="px-4 py-2">Cliente</th>
@@ -451,7 +459,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
         <div class="overflow-x-auto border-t border-slate-100">
             <p class="px-4 pt-3 text-sm font-medium text-slate-700">Clientes mayoristas</p>
-            <table class="min-w-full text-sm">
+            <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="px-4 py-2">Cliente mayorista</th>
@@ -492,7 +500,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="solo-pantalla mt-6 fp-tarjeta overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Vales vigentes
             <span class="text-xs font-normal text-slate-500">
@@ -500,7 +508,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             </span>
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="px-4 py-2">Folio</th>
@@ -530,7 +538,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
 
     {{-- TG-253 (E14-04): qué se pide más, para orientar compras a fábrica. --}}
     @php($demanda = $this->demanda)
-    <div id="demanda" class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div id="demanda" class="solo-pantalla mt-6 fp-tarjeta overflow-hidden">
         <div class="px-4 py-3 font-medium text-slate-800">
             Demanda por temporada y marca
             <span class="block text-xs font-normal text-slate-500">
@@ -538,7 +546,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             </span>
         </div>
         <div class="flex flex-wrap gap-3 px-4 pb-3">
-            <div>
+            <div class="fp-campo">
                 <label class="block text-xs text-slate-500 mb-1">Temporada</label>
                 <select wire:model.live="demandaCampanaId" class="rounded-lg text-sm">
                     <option value="">Todas</option>
@@ -547,7 +555,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                     @endforeach
                 </select>
             </div>
-            <div>
+            <div class="fp-campo">
                 <label class="block text-xs text-slate-500 mb-1">Marca</label>
                 <select wire:model.live="demandaMarcaId" class="rounded-lg text-sm">
                     <option value="">Todas</option>
@@ -566,7 +574,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         @endif
         <div class="overflow-x-auto border-t border-slate-100">
             <p class="px-4 pt-3 text-sm font-medium text-slate-700">Marcas</p>
-            <table class="min-w-full text-sm">
+            <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr><th class="px-4 py-2">Marca</th><th class="px-4 py-2 text-right">Piezas</th><th class="px-4 py-2 text-right">Pedidos</th><th class="px-4 py-2 text-right">Modelos</th><th class="px-4 py-2 text-right">Monto</th></tr>
                 </thead>
@@ -581,7 +589,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
         <div class="overflow-x-auto border-t border-slate-100">
             <p class="px-4 pt-3 text-sm font-medium text-slate-700">Productos más solicitados <span class="text-xs font-normal text-slate-500">(los 20 con más piezas)</span></p>
-            <table class="min-w-full text-sm">
+            <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr><th class="px-4 py-2">Producto</th><th class="px-4 py-2">Marca</th><th class="px-4 py-2">Temporada</th><th class="px-4 py-2 text-right">Piezas</th><th class="px-4 py-2 text-right">Pedidos</th><th class="px-4 py-2 text-right">Monto</th></tr>
                 </thead>
@@ -596,7 +604,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
         <div class="overflow-x-auto border-t border-slate-100">
             <p class="px-4 pt-3 text-sm font-medium text-slate-700">Temporadas</p>
-            <table class="min-w-full text-sm">
+            <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr><th class="px-4 py-2">Temporada</th><th class="px-4 py-2">Línea</th><th class="px-4 py-2 text-right">Piezas</th><th class="px-4 py-2 text-right">Pedidos</th><th class="px-4 py-2 text-right">Monto</th></tr>
                 </thead>
@@ -611,13 +619,13 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div id="movimientos" class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div id="movimientos" class="solo-pantalla mt-6 fp-tarjeta overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Detalle de pedidos
             <span class="text-xs font-normal text-slate-500">(máx. 100 del periodo)</span>
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="px-4 py-2">Folio</th>
@@ -673,13 +681,13 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </div>
     </div>
 
-    <div class="solo-pantalla mt-6 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="solo-pantalla mt-6 fp-tarjeta overflow-hidden">
         <div class="px-4 py-3 border-b font-medium text-slate-800">
             Detalle de ventas (venta local)
             <span class="text-xs font-normal text-slate-500">(máx. 100 del periodo)</span>
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="px-4 py-2">Folio</th>
@@ -696,7 +704,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                             <td class="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">
                                 {{ $venta['folio'] ?? '#' . $venta['id'] }}
                                 <a href="{{ route('ventas-directas.comprobante', $venta['id']) }}" target="_blank"
-                                    class="block text-xs font-normal text-fp-primary hover:underline">Ver comprobante</a>
+                                    class="block text-xs font-normal fp-enlace">Ver comprobante</a>
                             </td>
                             <td class="px-4 py-3">
                                 <div class="text-slate-800">{{ $venta['quien'] }}</div>

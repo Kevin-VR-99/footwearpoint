@@ -38,6 +38,20 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
         return PlanSuscripcion::orderBy('precio_base_mensual')->get();
     }
 
+    /** Métricas de la cabecera: planes y suscripciones activas por plan. */
+    public function getResumenProperty(): array
+    {
+        $planes = $this->planes;
+        $suscripciones = \App\Models\Suscripcion::withoutGlobalScopes()->where('estado', 'activa')->count();
+
+        return [
+            'activos' => $planes->where('activo', true)->count(),
+            'total' => $planes->count(),
+            'suscripciones' => $suscripciones,
+            'desde' => $planes->where('activo', true)->min('precio_base_mensual'),
+        ];
+    }
+
     public function nuevo()
     {
         $this->resetForm();
@@ -127,11 +141,21 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
             <p class="mt-1 text-sm text-fp-text-muted">Precios base y línea extra ($150)</p>
         <x-slot:acciones>
         <button wire:click="nuevo"
-                class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
+                class="fp-btn fp-btn-primario">
             Nuevo plan
         </button>
         </x-slot:acciones>
     </x-panel.encabezado>
+
+    @php($resumen = $this->resumen)
+    <div class="fp-escalonado mb-6 grid gap-4 sm:grid-cols-3" data-metricas-admin>
+        <x-panel.metrica titulo="Planes activos" :valor="$resumen['activos'].' / '.$resumen['total']" tono="exito"
+            icono="M3 7h18v10H3zM3 11h18" :progreso="$resumen['total'] ? $resumen['activos'] / $resumen['total'] * 100 : 0" />
+        <x-panel.metrica titulo="Suscripciones activas" :valor="$resumen['suscripciones']" detalle="Distribuidoras con plan vigente"
+            icono="M9 12l2 2 4-4M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z" />
+        <x-panel.metrica titulo="Plan más económico" :valor="$resumen['desde'] !== null ? '$'.number_format((float) $resumen['desde'], 2) : '—'" tono="neutral" detalle="Precio base mensual"
+            icono="M12 8c-2 0-3 .9-3 2s1 2 3 2 3 .9 3 2-1 2-3 2m0-8V6m0 10v2" />
+    </div>
 
     @if ($mensaje)
         <x-panel.alerta tipo="exito" class="mb-4">
@@ -140,31 +164,31 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
     @endif
 
     @if ($mostrarForm)
-        <div class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <h3 class="font-semibold mb-4">{{ $editId ? 'Editar plan' : 'Nuevo plan' }}</h3>
+        <div class="fp-formulario fp-aparecer mb-6 p-5">
+            <h3 class="mb-4 text-lg font-semibold text-fp-sidebar">{{ $editId ? 'Editar plan' : 'Nuevo plan' }}</h3>
             <form wire:submit="guardar" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Nombre</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Nombre</label>
                     <input type="text" wire:model="nombre" class="w-full rounded-lg">
                     @error('nombre') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Líneas incluidas</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Líneas incluidas</label>
                     <input type="number" wire:model="lineas_incluidas" class="w-full rounded-lg">
                     @error('lineas_incluidas') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Precio base mensual</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Precio base mensual</label>
                     <input type="number" step="0.01" wire:model="precio_base_mensual" class="w-full rounded-lg">
                     @error('precio_base_mensual') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Precio línea extra</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Precio línea extra</label>
                     <input type="number" step="0.01" wire:model="precio_linea_extra" class="w-full rounded-lg">
                     @error('precio_linea_extra') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1">Descripción</label>
+                <div class="fp-campo md:col-span-2">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Descripción</label>
                     <textarea wire:model="descripcion" rows="2" class="w-full rounded-lg"></textarea>
                 </div>
                 <div class="md:col-span-2 flex items-center gap-2">
@@ -172,10 +196,10 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
                     <span class="text-sm">Plan activo</span>
                 </div>
                 <div class="md:col-span-2 flex gap-2">
-                    <button type="submit" class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
+                    <button type="submit" class="fp-btn fp-btn-primario">
                         Guardar
                     </button>
-                    <button type="button" wire:click="cancelar" class="rounded-lg border border-slate-200 text-sm px-4 py-2">
+                    <button type="button" wire:click="cancelar" class="fp-btn fp-btn-secundario">
                         Cancelar
                     </button>
                 </div>
@@ -183,7 +207,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
         </div>
     @endif
 
-    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="fp-tarjeta fp-tabla overflow-hidden">
         <table class="w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
@@ -196,7 +220,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-                @foreach ($this->planes as $plan)
+                @forelse ($this->planes as $plan)
                     <tr>
                         <td class="px-4 py-3">
                             <div class="font-medium">{{ $plan->nombre }}</div>
@@ -206,20 +230,20 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
                         <td class="px-4 py-3">{{ $plan->lineas_incluidas }}</td>
                         <td class="px-4 py-3">${{ number_format($plan->precio_linea_extra, 2) }}</td>
                         <td class="px-4 py-3">
-                            <span class="text-xs px-2 py-0.5 rounded-full {{ $plan->activo ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
-                                {{ $plan->activo ? 'Activo' : 'Inactivo' }}
-                            </span>
+                            <x-panel.insignia :variante="$plan->activo ? 'success' : 'neutral'" punto>{{ $plan->activo ? 'Activo' : 'Inactivo' }}</x-panel.insignia>
                         </td>
-                        <td class="px-4 py-3 space-x-2">
-                            <button wire:click="editar({{ $plan->id }})" class="text-xs text-fp-primary hover:underline">Editar</button>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <button wire:click="editar({{ $plan->id }})" class="fp-accion fp-accion-primaria">Editar</button>
                             @if ($plan->activo)
-                                <button wire:click="desactivar({{ $plan->id }})" class="text-xs text-fp-danger hover:underline">Desactivar</button>
+                                <button wire:click="desactivar({{ $plan->id }})" class="fp-accion fp-accion-peligro">Desactivar</button>
                             @else
-                                <button wire:click="activar({{ $plan->id }})" class="text-xs text-fp-badge-success-fg hover:underline">Activar</button>
+                                <button wire:click="activar({{ $plan->id }})" class="fp-accion fp-accion-exito">Activar</button>
                             @endif
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <x-panel.vacio colspan="6" mensaje="Aún no hay planes. Crea el primero con «Nuevo plan»." />
+                @endforelse
             </tbody>
         </table>
     </div>

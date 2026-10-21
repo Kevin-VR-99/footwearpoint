@@ -47,8 +47,8 @@ new class extends Component {
         </div>
     @endif
 
-    <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-        <table class="min-w-full divide-y divide-slate-200 text-sm">
+    <div class="overflow-hidden fp-tarjeta fp-aparecer">
+        <table class="fp-tabla min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-fp-page">
                 <tr class="text-left text-xs font-semibold uppercase tracking-wide text-fp-text-muted">
                     <th class="px-6 py-3">Línea</th>
@@ -72,7 +72,7 @@ new class extends Component {
                             @endforelse
                         </td>
                         <td class="px-6 py-3.5">
-                            <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $linea->activa ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">
+                            <span class=\"fp-insignia {{ $linea->activa ? 'fp-insignia-success' : 'fp-insignia-neutral' }}\">
                                 {{ $linea->activa ? 'Activa' : 'Inactiva' }}
                             </span>
                         </td>

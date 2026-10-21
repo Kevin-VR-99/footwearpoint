@@ -12,14 +12,14 @@
 @endphp
 
 {{-- TG-267 (U7): filtros y tabla compartidos por la auditoría de la distribuidora y la del admin general. --}}
-<div class="mb-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+<div class="fp-formulario fp-aparecer mb-4 p-4">
     <div class="flex flex-wrap items-end gap-3">
-        <div class="min-w-[10rem] flex-1">
+        <div class="fp-campo min-w-[10rem] flex-1">
             <label class="mb-1 block text-xs text-fp-text-muted">Buscar</label>
             <x-ui.buscador wire:model.live.debounce.300ms="buscar"
                 placeholder="Buscar por usuario, acción o IP…" etiqueta="Buscar en la auditoría" />
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="mb-1 block text-xs text-fp-text-muted">Área</label>
             <select wire:model.live="filtro_area" class="rounded-lg text-sm">
                 <option value="">Todas</option>
@@ -28,7 +28,7 @@
                 @endforeach
             </select>
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="mb-1 block text-xs text-fp-text-muted">Acción</label>
             <select wire:model.live="filtro_accion" class="rounded-lg text-sm">
                 <option value="">Todas</option>
@@ -37,7 +37,7 @@
                 @endforeach
             </select>
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="mb-1 block text-xs text-fp-text-muted">Entidad</label>
             <select wire:model.live="filtro_entidad" class="rounded-lg text-sm">
                 <option value="">Todas</option>
@@ -46,7 +46,7 @@
                 @endforeach
             </select>
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="mb-1 block text-xs text-fp-text-muted">Usuario</label>
             <select wire:model.live="filtro_usuario" class="rounded-lg text-sm">
                 <option value="">Todos</option>
@@ -55,11 +55,11 @@
                 @endforeach
             </select>
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="mb-1 block text-xs text-fp-text-muted">Desde</label>
             <input type="date" wire:model.live="filtro_desde" class="rounded-lg text-sm" />
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="mb-1 block text-xs text-fp-text-muted">Hasta</label>
             <input type="date" wire:model.live="filtro_hasta" class="rounded-lg text-sm" />
         </div>
@@ -67,9 +67,9 @@
     </div>
 </div>
 
-<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+<div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
                     <th class="px-4 py-3 font-medium">Fecha</th>
@@ -92,9 +92,7 @@
                         </td>
                         <td class="px-4 py-3">
                             <div class="text-[11px] uppercase tracking-wide text-fp-text-muted">{{ EtiquetasAuditoria::area($row->accion) }}</div>
-                            <span class="inline-flex rounded-full bg-fp-badge-info-bg px-2 py-0.5 text-xs font-medium text-fp-primary">
-                                {{ EtiquetasAuditoria::etiqueta($row->accion) }}
-                            </span>
+                            <x-panel.insignia variante="info">{{ EtiquetasAuditoria::etiqueta($row->accion) }}</x-panel.insignia>
                             <div class="mt-0.5 font-mono text-[11px] text-slate-400">{{ $row->accion }}</div>
                         </td>
                         <td class="px-4 py-3 text-slate-700">
@@ -106,13 +104,13 @@
                         <td class="px-4 py-3 text-xs tabular-nums text-slate-500">{{ $row->ip_origen ?? '—' }}</td>
                         <td class="px-4 py-3 text-right">
                             <button type="button" wire:click="toggleDetalle({{ $row->id }})"
-                                class="text-xs font-medium text-fp-primary hover:underline">
+                                class="fp-accion fp-accion-primaria" aria-expanded="{{ $detalleId === $row->id ? 'true' : 'false' }}">
                                 {{ $detalleId === $row->id ? 'Ocultar' : 'Detalle' }}
                             </button>
                         </td>
                     </tr>
                     @if ($detalleId === $row->id)
-                        <tr class="bg-slate-50/60" wire:key="aud-det-{{ $row->id }}">
+                        <tr class="fp-desvanecer bg-slate-50/60" wire:key="aud-det-{{ $row->id }}">
                             <td colspan="6" class="px-4 py-4">
                                 <div class="grid gap-4 md:grid-cols-2">
                                     <div>
@@ -128,11 +126,7 @@
                         </tr>
                     @endif
                 @empty
-                    <tr>
-                        <td colspan="6" class="px-4 py-12 text-center text-slate-500">
-                            No hay registros de auditoría con estos filtros.
-                        </td>
-                    </tr>
+                    <x-panel.vacio colspan="6" mensaje="No hay registros de auditoría con estos filtros." icono="M9 12l2 2 4-4M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z" />
                 @endforelse
             </tbody>
         </table>

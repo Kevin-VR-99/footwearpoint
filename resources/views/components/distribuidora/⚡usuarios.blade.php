@@ -386,12 +386,12 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
 
     {{-- Empleados: listado o formulario inline --}}
     @if ($seccion === 'empleados')
-    <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
+    <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl fp-formulario fp-aparecer">
         @if (! $mostrandoFormularioEmpleado)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Empleados</h2>
                 <button type="button" wire:click="abrirFormularioInvitarEmpleado"
-                    class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
+                    class="fp-btn fp-btn-primario">
                     + Invitar empleado
                 </button>
             </div>
@@ -448,33 +448,33 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             <form wire:submit="guardarEmpleado" class="space-y-4">
                 <h2 class="text-sm font-semibold text-slate-700">Invitar empleado</h2>
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
                         <input type="text" wire:model="empleado_nombre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @error('empleado_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
                         <input type="email" wire:model="empleado_email" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @error('empleado_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
                         <input type="text" wire:model="empleado_telefono" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                     </div>
                     <div></div>
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
                         <input type="password" wire:model="empleado_password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @error('empleado_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
                         <input type="password" wire:model="empleado_password_confirmation" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar</button>
+                    <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled">Guardar</button>
                     <button type="button" wire:click="cancelarFormularioEmpleado" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>
@@ -484,12 +484,12 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
 
     {{-- Revendedores --}}
     @if ($seccion === 'mayoristas')
-    <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
+    <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl fp-formulario fp-aparecer">
         @if (! $mostrandoFormularioRevendedor)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Clientes mayoristas</h2>
                 <button type="button" wire:click="abrirFormularioAfiliarRevendedor"
-                    class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
+                    class="fp-btn fp-btn-primario">
                     + Afiliar cliente mayorista
                 </button>
             </div>
@@ -569,20 +569,20 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     {{ $revendedorEditandoId ? 'Editar cliente mayorista' : 'Afiliar nuevo cliente mayorista' }}
                 </h2>
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
                         <input type="text" wire:model="revendedor_nombre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @error('revendedor_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Código interno</label>
                         <input type="text" wire:model="revendedor_codigo_interno" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                     </div>
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
                         <input type="text" wire:model="revendedor_telefono" placeholder="+52 55 1234 5678" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                     </div>
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
                         @if ($revendedor_cuenta_email_actual !== null)
                             <input type="email" value="{{ $revendedor_cuenta_email_actual }}" disabled
@@ -609,12 +609,12 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                                 <input type="email" wire:model="revendedor_acceso_email" autocomplete="off" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                                 @error('revendedor_acceso_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                             </div>
-                            <div>
+                            <div class="fp-campo">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
                                 <input type="password" wire:model="revendedor_acceso_password" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                                 @error('revendedor_acceso_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                             </div>
-                            <div>
+                            <div class="fp-campo">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
                                 <input type="password" wire:model="revendedor_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                             </div>
@@ -622,7 +622,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     @endif
                 </div>
                 @if ($revendedorEditandoId)
-                    <div>
+                    <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
                         <select wire:model="revendedor_estado" class="w-full rounded-md max-w-xs">
                             <option value="activo">Activo</option>
@@ -632,7 +632,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     </div>
                 @endif
                 <div class="flex gap-2">
-                    <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar</button>
+                    <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled">Guardar</button>
                     <button type="button" wire:click="cancelarFormularioRevendedor" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>

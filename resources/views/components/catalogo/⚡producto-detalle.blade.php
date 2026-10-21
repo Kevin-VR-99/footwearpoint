@@ -96,7 +96,7 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
 <div class="space-y-6">
     <div>
         @if ($this->esAdmin)
-            <a href="{{ route('distribuidora.catalogo') }}" class="text-sm text-fp-primary hover:underline">← Catálogo</a>
+            <a href="{{ route('distribuidora.catalogo') }}" class="text-sm fp-enlace">← Catálogo</a>
         @endif
         <h1 class="mt-1 text-2xl font-bold tracking-tight text-fp-sidebar">{{ $this->producto->nombre }}</h1>
         <p class="mt-1 text-sm text-fp-text-muted">
@@ -110,7 +110,7 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
 
     {{-- En qué temporadas lo vende --}}
     @forelse ($this->publicaciones as $pc)
-        <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+        <section class="overflow-hidden fp-tarjeta fp-aparecer">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wide text-fp-text-muted">
@@ -177,11 +177,11 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
     @endforelse
 
     {{-- Todas sus tallas en el catálogo --}}
-    <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+    <section class="overflow-hidden fp-tarjeta fp-aparecer">
         <div class="border-b border-slate-100 px-6 py-4">
             <p class="font-semibold text-slate-900">Tallas del producto en el catálogo</p>
         </div>
-        <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <table class="fp-tabla min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-fp-page">
                 <tr class="text-left text-xs font-semibold uppercase tracking-wide text-fp-text-muted">
                     <th class="px-6 py-3">SKU</th>
@@ -199,7 +199,7 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
                             {{ $variante->nombre_color_comercial ?? $variante->color?->nombre }}
                         </td>
                         <td class="px-6 py-3">
-                            <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $variante->activa ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">
+                            <span class=\"fp-insignia {{ $variante->activa ? 'fp-insignia-success' : 'fp-insignia-neutral' }}\">
                                 {{ $variante->activa ? 'Activa' : 'Inactiva' }}
                             </span>
                         </td>

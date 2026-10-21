@@ -265,7 +265,7 @@ class extends Component
 <div class="max-w-3xl mx-auto">
     @if ($enviada)
         {{-- Pantalla de confirmación: qué sigue --}}
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center">
+        <div class="fp-tarjeta p-8 text-center">
             <h1 class="text-2xl font-bold text-slate-900">Recibimos tu solicitud</h1>
 
             <div class="mt-4 text-slate-600 space-y-3 text-left max-w-xl mx-auto">
@@ -277,7 +277,7 @@ class extends Component
 
             <div class="mt-8 flex flex-wrap justify-center gap-3">
                 <a href="{{ route('inicio') }}"
-                    class="px-5 py-2.5 rounded-lg bg-[#111E38] text-white font-medium hover:bg-[#1E2F52] transition">
+                    class="fp-btn fp-btn-oscuro px-5 py-2.5">
                     Volver al inicio
                 </a>
                 <a href="{{ route('marketplace') }}"
@@ -331,7 +331,7 @@ class extends Component
             </div>
 
             {{-- Tu distribuidora --}}
-            <section class="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+            <section class="fp-tarjeta p-6 space-y-4">
                 <h2 class="font-semibold text-slate-900">Tu distribuidora</h2>
 
                 <div>
@@ -382,7 +382,7 @@ class extends Component
             </section>
 
             {{-- Preferencia de plan: no se cobra ni se activa hasta que la solicitud se acepte. --}}
-            <section class="bg-white rounded-xl border border-slate-200 p-6">
+            <section class="fp-tarjeta p-6">
                 <h2 class="font-semibold text-slate-900">Plan que te gustaría si te aceptamos <span class="text-red-600">*</span></h2>
                 <p class="mt-1 text-sm text-slate-500">Todavía no se cobra ni queda activo. Si aceptamos tu solicitud, este es el plan con el que te gustaría empezar. Después se puede cambiar. Precios en pesos mexicanos, por mes.</p>
 
@@ -418,7 +418,7 @@ class extends Component
             </section>
 
             {{-- Tu cuenta --}}
-            <section class="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+            <section class="fp-tarjeta p-6 space-y-4">
                 <h2 class="font-semibold text-slate-900">Tu cuenta de administrador</h2>
                 <p class="text-sm text-slate-500">Con esto entrarás al panel cuando aprobemos tu solicitud.</p>
 
@@ -477,7 +477,7 @@ class extends Component
             </div>
 
             <button type="submit"
-                class="w-full rounded-lg bg-[#111E38] text-white font-medium py-3 hover:bg-[#1E2F52] transition"
+                class="fp-btn fp-btn-oscuro w-full py-3"
                 wire:loading.attr="disabled">
                 <span wire:loading.remove wire:target="enviar">Enviar mi solicitud</span>
                 <span wire:loading wire:target="enviar">Enviando...</span>

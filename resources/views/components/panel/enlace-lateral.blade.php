@@ -1,7 +1,7 @@
 {{-- TG-234: opción de la barra lateral con icono, igual que en layouts/panel. --}}
 @props(['href', 'activo' => false, 'icono'])
 <a href="{{ $href }}" {{ $attributes->class([
-    'group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition',
+    'fp-nav-item group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition',
     'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' => $activo,
     'text-white/80 hover:bg-white/10 hover:text-white' => ! $activo,
 ]) }} @if ($activo) aria-current="page" @endif data-enlace-lateral>

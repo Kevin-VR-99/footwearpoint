@@ -365,7 +365,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         <x-slot:acciones>
         @if ($this->pedido->estado === 'borrador')
             <button type="button" wire:click="enviar"
-                class="rounded-lg bg-fp-accent px-4 py-2 text-sm font-medium text-white hover:bg-fp-primary">
+                class="fp-btn fp-btn-oscuro">
                 Enviar pedido
             </button>
         @endif
@@ -375,7 +375,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 @if ($this->pedido->estado === 'recibido_distribuidora')
                     <button type="button" wire:click="marcarListo"
                         wire:confirm="¿Marcar listo para entrega? Se le avisará al cliente para que pase a recoger."
-                        class="rounded-lg border border-fp-accent px-4 py-2 text-sm font-medium text-fp-accent hover:bg-slate-50">
+                        class="fp-btn fp-btn-secundario">
                         Marcar listo para entrega
                     </button>
                 @endif
@@ -383,7 +383,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     wire:confirm="¿Confirmar que el cliente se llevó su pedido?"
                     @disabled($this->resumen['saldo'] > 0)
                     @if ($this->resumen['saldo'] > 0) title="Cobra el saldo antes de entregar" @endif
-                    class="rounded-lg bg-fp-accent px-4 py-2 text-sm font-medium text-white hover:bg-fp-primary disabled:cursor-not-allowed disabled:opacity-50">
+                    class="fp-btn fp-btn-oscuro disabled:cursor-not-allowed disabled:opacity-50">
                     Marcar entregado
                 </button>
             </div>
@@ -395,7 +395,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         <x-panel.alerta tipo="aviso" class="mb-4">
             Este pedido sigue en borrador.
             <a href="{{ route('pedidos.create') }}?continuar={{ $this->pedido->id }}"
-                class="font-medium text-fp-primary hover:underline">Continuar editando</a>
+                class="font-medium fp-enlace">Continuar editando</a>
         </x-panel.alerta>
     @endif
 
@@ -443,23 +443,23 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     @endif
 
     <div class="grid gap-4 sm:grid-cols-2 {{ $this->pedido->tipo === 'cliente_directo' ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} mb-6">
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <div class="fp-tarjeta p-4 fp-aparecer">
             <p class="text-xs text-slate-500">Total</p>
             <p class="text-lg font-semibold tabular-nums">${{ number_format((float) $this->pedido->total, 2) }}</p>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <div class="fp-tarjeta p-4 fp-aparecer">
             <p class="text-xs text-slate-500">Pagado</p>
             <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['pagado'], 2) }}</p>
             @if ($this->resumen['pagado_con_vales'] > 0)
                 <p class="text-xs text-slate-500 tabular-nums">Incluye ${{ number_format($this->resumen['pagado_con_vales'], 2) }} en vales</p>
             @endif
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <div class="fp-tarjeta p-4 fp-aparecer">
             <p class="text-xs text-slate-500">Saldo</p>
             <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['saldo'], 2) }}</p>
         </div>
         @if ($this->pedido->tipo === 'cliente_directo')
-            <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <div class="fp-tarjeta p-4 fp-aparecer">
                 <p class="text-xs text-slate-500">Anticipo pendiente</p>
                 <p class="text-lg font-semibold tabular-nums">${{ number_format($this->resumen['anticipo_pendiente'], 2) }}</p>
             </div>
@@ -467,7 +467,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     </div>
 
     @if ($this->pedido->estado !== 'borrador')
-        <div class="mb-6 bg-white rounded-xl border border-slate-200 p-4">
+        <div class="mb-6 fp-tarjeta p-4 fp-formulario fp-aparecer">
             <h3 class="font-medium text-slate-800 mb-3">Registrar pago</h3>
             <form wire:submit="registrarPago" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-end">
                 <label class="text-sm">
@@ -500,7 +500,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                 </label>
                 <div class="sm:col-span-2 lg:col-span-4">
                     <button type="submit"
-                        class="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-fp-accent">
+                        class="fp-btn fp-btn-primario">
                         Registrar pago
                     </button>
                 </div>
@@ -509,10 +509,10 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     @endif
 
     @if ($this->pedido->pagos->isNotEmpty())
-        <div class="mb-6 bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div class="mb-6 fp-tarjeta overflow-hidden fp-aparecer">
             <div class="px-4 py-3 border-b border-slate-100 font-medium text-slate-800">Pagos</div>
-            <table class="min-w-full text-sm">
-                <thead class="bg-slate-50 text-left text-slate-500">
+            <table class="fp-tabla min-w-full text-sm">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="px-4 py-2 font-medium">Folio</th>
                         <th class="px-4 py-2 font-medium">Tipo</th>
@@ -548,7 +548,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                                             placeholder="N.º de pago (opcional)" aria-label="Número de pago de Mercado Pago (opcional)"
                                             class="w-40 rounded-lg px-2 py-1 text-xs" />
                                         <button type="button" wire:click="verificarMercadoPago" wire:loading.attr="disabled"
-                                            class="text-xs font-medium text-fp-primary hover:underline">
+                                            class="text-xs font-medium fp-enlace">
                                             Verificar con Mercado Pago
                                         </button>
                                     </div>
@@ -561,10 +561,10 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         </div>
     @endif
 
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="fp-tarjeta overflow-hidden fp-aparecer">
         <div class="px-4 py-3 border-b border-slate-100 font-medium text-slate-800">Líneas</div>
-        <table class="min-w-full text-sm">
-            <thead class="bg-slate-50 text-left text-slate-500">
+        <table class="fp-tabla min-w-full text-sm">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
                     <th class="px-4 py-2 font-medium">Producto</th>
                     <th class="px-4 py-2 font-medium">Talla</th>
@@ -614,11 +614,11 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                                     <p class="mt-2 text-xs font-medium text-slate-700">¿Qué prefiere el cliente?</p>
                                     <div class="mt-1 flex flex-wrap gap-2">
                                         <button type="button" wire:click="registrarDecision({{ $l->id }}, 'sustitucion')"
-                                            class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-fp-page">
+                                            class="fp-btn fp-btn-secundario fp-btn-sm">
                                             Cambiarlo por otro
                                         </button>
                                         <button type="button" wire:click="registrarDecision({{ $l->id }}, 'reembolso_anticipo')"
-                                            class="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-fp-page">
+                                            class="fp-btn fp-btn-secundario fp-btn-sm">
                                             Devolverle su anticipo
                                         </button>
                                     </div>
@@ -632,7 +632,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                                         </p>
                                         <button type="button" wire:click="entregarReembolso({{ $l->id }})"
                                             wire:confirm="¿Ya le entregaste el efectivo al cliente? Esto lo deja registrado."
-                                            class="mt-1 rounded-lg bg-fp-primary px-2.5 py-1 text-xs font-medium text-white">
+                                            class="fp-btn fp-btn-primario fp-btn-sm mt-1">
                                             Registrar que ya se le entregó
                                         </button>
                                     @else
@@ -646,14 +646,14 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                                             placeholder="¿Por qué no se surtió?" class="w-full rounded-lg text-sm"></textarea>
                                         <div class="flex gap-2">
                                             <button type="button" wire:click="marcarNoSurtido"
-                                                class="rounded-lg bg-fp-danger px-3 py-1.5 text-xs text-white">Marcar no surtido</button>
+                                                class="fp-btn fp-btn-peligro fp-btn-sm">Marcar no surtido</button>
                                             <button type="button" wire:click="cancelarNoSurtido"
-                                                class="text-xs text-slate-600">Cancelar</button>
+                                                class="fp-btn fp-btn-fantasma fp-btn-sm">Cancelar</button>
                                         </div>
                                     </div>
                                 @else
                                     <button type="button" wire:click="abrirNoSurtido({{ $l->id }})"
-                                        class="text-xs font-medium text-fp-danger">No surtido</button>
+                                        class="text-xs font-medium text-fp-danger transition-colors hover:text-fp-danger/80 hover:underline">No surtido</button>
                                 @endif
                             @else
                                 <span class="text-xs text-slate-400">—</span>
@@ -670,12 +670,12 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                                             <textarea wire:model="cambioMotivo" rows="2" maxlength="300" placeholder="Motivo del cambio"
                                                 class="w-full rounded-lg text-sm"></textarea>
                                             <div class="flex gap-2">
-                                                <button type="button" wire:click="solicitarCambio" class="rounded-lg bg-fp-primary px-3 py-1.5 text-xs text-white">Enviar solicitud</button>
-                                                <button type="button" wire:click="cancelarCambio" class="text-xs text-slate-600">Cancelar</button>
+                                                <button type="button" wire:click="solicitarCambio" class="fp-btn fp-btn-primario fp-btn-sm">Enviar solicitud</button>
+                                                <button type="button" wire:click="cancelarCambio" class="fp-btn fp-btn-fantasma fp-btn-sm">Cancelar</button>
                                             </div>
                                         </div>
                                     @else
-                                        <button type="button" wire:click="abrirCambio({{ $l->id }})" class="text-sm font-medium text-fp-primary">Solicitar cambio</button>
+                                        <button type="button" wire:click="abrirCambio({{ $l->id }})" class="fp-enlace text-sm font-medium">Solicitar cambio</button>
                                         <span class="block text-xs text-slate-500">Hasta {{ \Illuminate\Support\Carbon::parse($cambio['fecha_limite'])->format('d/m/Y') }}</span>
                                     @endif
                                 @else

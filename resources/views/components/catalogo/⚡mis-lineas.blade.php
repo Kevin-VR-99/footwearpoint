@@ -136,13 +136,13 @@ new #[Layout('layouts.panel')] #[Title('Mis líneas — FootwearPoint')] class e
         <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <p>{{ $avisoCargo }}</p>
             <div class="mt-3 flex gap-2">
-                <button type="button" wire:click="confirmarExtra" class="rounded-lg bg-fp-primary px-3 py-2 text-sm text-white">Confirmar y activar</button>
+                <button type="button" wire:click="confirmarExtra" class="fp-btn fp-btn-primario px-3">Confirmar y activar</button>
                 <button type="button" wire:click="cancelarExtra" class="rounded-lg px-3 py-2 text-sm text-slate-600">Cancelar</button>
             </div>
         </div>
     @endif
 
-    <table class="w-full rounded-2xl bg-white text-sm">
+    <table class="fp-tarjeta fp-tabla fp-aparecer w-full text-sm">
         <thead>
             <tr class="text-left text-slate-500">
                 <th class="p-3">Línea</th>
@@ -166,7 +166,7 @@ new #[Layout('layouts.panel')] #[Title('Mis líneas — FootwearPoint')] class e
                         @if ($mia?->activa)
                             <button type="button" wire:click="desactivar({{ $linea->id }})" class="text-sm text-red-600">Desactivar</button>
                         @else
-                            <button type="button" wire:click="activar({{ $linea->id }})" class="rounded-lg bg-fp-primary px-3 py-1.5 text-sm text-white">Activar</button>
+                            <button type="button" wire:click="activar({{ $linea->id }})" class="fp-btn fp-btn-primario px-3 py-1.5">Activar</button>
                         @endif
                     </td>
                 </tr>

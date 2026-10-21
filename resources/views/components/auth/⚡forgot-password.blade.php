@@ -101,30 +101,33 @@ new #[Layout('layouts.guest')] #[Title('Recuperar contraseña — FootwearPoint'
 };
 ?>
 
-<div class="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
+<div class="fp-acceso-tarjeta p-8">
+    <div class="fp-acceso-logo mb-4 flex justify-center">
+        <img src="{{ asset('brand/logo-full-160.png') }}" alt="Footwear Point" class="h-16 w-auto object-contain">
+    </div>
     <div class="text-center mb-8">
         <h1 class="text-2xl font-bold text-slate-900">Recuperar contraseña</h1>
         <p class="text-sm text-slate-500 mt-1">Te enviaremos un enlace de restablecimiento</p>
     </div>
 
     @if ($status)
-        <div class="mb-4 rounded-lg bg-green-50 text-green-700 text-sm p-3">
+        <div class="fp-emerger mb-4 rounded-xl border border-fp-badge-success-fg/20 bg-fp-badge-success-bg p-3 text-sm text-fp-badge-success-fg" role="status">
             {{ $status }}
         </div>
     @endif
 
     <form wire:submit="sendResetLink" class="space-y-5">
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
             <input
                 type="email"
                 wire:model="email"
-                class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600"
+                class="w-full rounded-lg"
                 placeholder="correo@ejemplo.com"
                 autofocus
             >
             @error('email')
-                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                <p class="text-sm text-fp-danger mt-1">{{ $message }}</p>
             @enderror
         </div>
 
@@ -145,7 +148,7 @@ new #[Layout('layouts.guest')] #[Title('Recuperar contraseña — FootwearPoint'
         >
             <button
                 type="submit"
-                class="w-full rounded-lg bg-[#111E38] text-white font-medium py-2.5 hover:bg-[#1E2F52] transition disabled:opacity-60 disabled:cursor-not-allowed"
+                class="fp-btn fp-btn-oscuro w-full py-2.5"
                 wire:loading.attr="disabled"
                 x-bind:disabled="faltan > 0"
                 @disabled($espera > 0)
@@ -160,12 +163,12 @@ new #[Layout('layouts.guest')] #[Title('Recuperar contraseña — FootwearPoint'
                 <span wire:loading>Enviando...</span>
             </button>
             <div x-show="faltan > 0" @if ($espera <= 0) style="display:none" @endif class="mt-2 h-1 w-full overflow-hidden rounded bg-slate-200" role="progressbar" aria-label="Tiempo para reenviar">
-                <div class="h-full bg-blue-600 transition-all duration-1000 ease-linear" x-bind:style="'width:' + (faltan / total * 100) + '%'"></div>
+                <div class="h-full bg-fp-primary transition-all duration-1000 ease-linear" x-bind:style="'width:' + (faltan / total * 100) + '%'"></div>
             </div>
         </div>
 
         <div class="text-center">
-            <a href="{{ route('login') }}" class="text-sm text-blue-700 hover:underline">
+            <a href="{{ route('login') }}" class="fp-enlace text-sm">
                 Volver al login
             </a>
         </div>

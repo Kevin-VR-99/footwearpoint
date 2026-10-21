@@ -82,7 +82,7 @@
 
                 <nav class="flex-1 space-y-1 overflow-y-auto p-3">
                     <a href="{{ route('dashboard') }}" wire:navigate
-                        class="group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('dashboard') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                        class="fp-nav-item group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition {{ request()->routeIs('dashboard') ? 'bg-fp-primary/25 font-semibold text-white shadow-sm ring-1 ring-fp-primary/30' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
                         <span
                             class="flex h-7 w-7 items-center justify-center rounded-lg {{ request()->routeIs('dashboard') ? 'bg-fp-primary text-white' : 'bg-white/10 text-white/70 group-hover:bg-white/15 group-hover:text-white' }}">
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -118,18 +118,18 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
-                            <div x-show="openCatalogo" x-cloak
+                            <div x-show="openCatalogo" x-cloak x-transition.opacity.duration.200ms
                                 class="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
                                 <a href="{{ route('distribuidora.catalogo') }}" wire:navigate
-                                    class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
+                                    class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
                                     Temporadas y productos
                                 </a>
                                 <a href="{{ route('catalogo.mis-lineas') }}" wire:navigate
-                                    class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('catalogo.mis-lineas') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
+                                    class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('catalogo.mis-lineas') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
                                     Mis líneas
                                 </a>
                                 <a href="{{ route('catalogo.precios') }}" wire:navigate
-                                    class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('catalogo.precios') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
+                                    class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('catalogo.precios') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
                                     Precios y publicación
                                 </a>
                             </div>
@@ -159,25 +159,25 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
-                        <div x-show="openOperacion" x-cloak
+                        <div x-show="openOperacion" x-cloak x-transition.opacity.duration.200ms
                             class="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
                             <a href="{{ route('stock.index') }}" wire:navigate
-                                class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('stock.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Stock</a>
+                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('stock.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Stock</a>
                             <a href="{{ route('punto-venta.index') }}" wire:navigate
-                                class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('punto-venta.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Venta
+                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('punto-venta.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Venta
                                 local</a>
                             <a href="{{ route('ciclo.index') }}" wire:navigate
-                                class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('ciclo.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Ciclo
+                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('ciclo.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Ciclo
                                 de compra</a>
                             <a href="{{ route('pedidos.index') }}" wire:navigate
-                                class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('pedidos.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Pedidos</a>
+                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('pedidos.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Pedidos</a>
                             <a href="{{ route('vales.index') }}" wire:navigate
-                                class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('vales.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Vales</a>
+                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('vales.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Vales</a>
                             <a href="{{ route('cambios.index') }}" wire:navigate
-                                class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('cambios.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Cambios</a>
+                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('cambios.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Cambios</a>
                             @if ($puedeReportesFinancieros)
                                 <a href="{{ route('reportes.index') }}" wire:navigate
-                                    class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('reportes.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Reportes</a>
+                                    class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('reportes.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Reportes</a>
                             @endif
                         </div>
                     </div>
@@ -204,10 +204,10 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
-                        <div x-show="openMas" x-cloak class="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
+                        <div x-show="openMas" x-cloak x-transition.opacity.duration.200ms class="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
                             @if ($esAdminDistribuidora)
                                 <a href="{{ route('auditoria.index') }}" wire:navigate
-                                    class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('auditoria.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Auditoría</a>
+                                    class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('auditoria.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Auditoría</a>
                             @endif
                         </div>
                     </div>
@@ -239,10 +239,10 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
-                            <div x-show="openSistema" x-cloak
+                            <div x-show="openSistema" x-cloak x-transition.opacity.duration.200ms
                                 class="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
                                 <a href="{{ route('distribuidora.configuracion') }}" wire:navigate
-                                    class="block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('distribuidora.configuracion') ? 'bg-white/15 font-medium text-white ring-1 ring-fp-danger/40' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
+                                    class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('distribuidora.configuracion') ? 'bg-white/15 font-medium text-white ring-1 ring-fp-danger/40' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">
                                     <span class="flex items-center justify-between gap-2">
                                         <span>Configuración</span>
                                         <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-fp-danger"></span>
@@ -307,7 +307,7 @@
                 </div>
             </header>
 
-            <main class="flex-1 p-4 sm:p-6 overflow-auto">
+            <main class="fp-contenido flex-1 p-4 sm:p-6 overflow-auto">
                 {{ $slot }}
             </main>
         </div>

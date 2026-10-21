@@ -146,8 +146,8 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
 };
 ?>
 
-<div class="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
-        <div class="text-center mb-8">
+<div class="fp-acceso-tarjeta p-8">
+    <div class="fp-acceso-logo text-center mb-8">
         <img
             src="{{ asset('brand/logo-full-160.png') }}"
             alt="Footwear Point"
@@ -158,53 +158,53 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
 
     {{-- TG-184: a quien no es personal se le explica que entre por la app. --}}
     @if (session('aviso_acceso'))
-        <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div class="fp-emerger mb-6 rounded-xl border border-fp-badge-warning-fg/20 bg-fp-badge-warning-bg px-4 py-3 text-sm text-fp-badge-warning-fg" role="status">
             {{ session('aviso_acceso') }}
         </div>
     @endif
 
     <form wire:submit="login" class="space-y-5">
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
             <input type="email" wire:model="email"
-                class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600"
+                class="w-full rounded-lg"
                 placeholder="correo@ejemplo.com" autofocus>
             @error('email')
-                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                <p class="text-sm text-fp-danger mt-1">{{ $message }}</p>
             @enderror
         </div>
 
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
             <input type="password" wire:model="password"
-                class="w-full rounded-lg focus:border-blue-600 focus:ring-blue-600"
+                class="w-full rounded-lg"
                 placeholder="••••••••">
             @error('password')
-                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                <p class="text-sm text-fp-danger mt-1">{{ $message }}</p>
             @enderror
         </div>
 
         <div class="flex items-center justify-between">
             <label class="flex items-center gap-2 text-sm text-slate-600">
                 <input type="checkbox" wire:model="remember"
-                    class="rounded text-blue-600 focus:ring-blue-600">
+                    class="rounded">
                 Recordarme
             </label>
 
-            <a href="{{ route('password.request') }}" class="text-sm text-blue-700 hover:underline">
+            <a href="{{ route('password.request') }}" class="fp-enlace text-sm">
                 ¿Olvidaste tu contraseña?
             </a>
         </div>
 
         <button type="submit"
-            class="w-full rounded-lg bg-[#111E38] text-white font-medium py-2.5 hover:bg-[#1E2F52] transition"
+            class="fp-btn fp-btn-oscuro w-full py-2.5"
             wire:loading.attr="disabled">
             <span wire:loading.remove>Entrar</span>
             <span wire:loading>Entrando...</span>
         </button>
 
         <a href="{{ route('inicio') }}"
-            class="flex w-full items-center justify-center rounded-lg border border-slate-300 bg-white py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+            class="fp-btn fp-btn-secundario w-full py-2.5">
             Volver al inicio
         </a>
     </form>

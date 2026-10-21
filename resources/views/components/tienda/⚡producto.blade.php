@@ -47,11 +47,11 @@ new class extends Component {
 ?>
 
 <div class="space-y-6">
-    <a href="{{ app(\App\Services\Tienda\EnlaceTienda::class)->url($distribuidora) }}" class="text-sm text-fp-primary hover:underline">
+    <a href="{{ app(\App\Services\Tienda\EnlaceTienda::class)->url($distribuidora) }}" class="text-sm fp-enlace">
         ← Volver a la tienda
     </a>
 
-    <article class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden grid md:grid-cols-2">
+    <article class="fp-tarjeta overflow-hidden grid md:grid-cols-2">
         <div class="bg-slate-100">
             @if ($producto['imagen'])
                 <img src="{{ $producto['imagen'] }}" alt="{{ $producto['nombre'] }}" class="w-full aspect-square object-cover">

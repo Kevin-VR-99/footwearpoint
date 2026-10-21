@@ -411,48 +411,57 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 ?>
 
 <div class="space-y-6">
-    <div>
-        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-fp-primary">Catálogo maestro</p>
-        <h1 class="mt-1 text-2xl font-bold text-fp-sidebar">Líneas, marcas, temporadas y productos</h1>
-        <p class="mt-1 text-sm text-slate-500">Solo el admin general puede crearlos, editarlos y eliminarlos. Son los mismos para todas las distribuidoras.</p>
+    <x-panel.encabezado eyebrow="Catálogo maestro" titulo="Líneas, marcas, temporadas y productos" nivel="h1"
+        subtitulo="Solo el admin general puede crearlos, editarlos y eliminarlos. Son los mismos para todas las distribuidoras." />
+
+    <div class="fp-escalonado grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-metricas-admin>
+        <x-panel.metrica titulo="Líneas" :valor="$this->lineas->count()" :detalle="$this->lineas->where('activa', true)->count().' activas'"
+            icono="M4 6h16M4 12h16M4 18h10" />
+        <x-panel.metrica titulo="Marcas" :valor="$this->marcas->count()" tono="exito" :detalle="$this->marcas->where('activa', true)->count().' activas'"
+            icono="M7 7h.01M7 3h5l9 9-7 7-9-9V3z" />
+        <x-panel.metrica titulo="Temporadas" :valor="$this->temporadas->count()" tono="aviso" :detalle="$this->temporadas->where('estado', 'activa')->count().' activas'"
+            icono="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z" />
+        <x-panel.metrica titulo="Productos recientes" :valor="$this->productos->count()" tono="neutral" detalle="Últimas 50 publicaciones"
+            icono="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
     </div>
 
     <div x-data="{ visible: false, mensaje: '' }"
         x-on:guardado.window="mensaje = $event.detail.mensaje; visible = true; setTimeout(() => visible = false, 3000)"
         x-show="visible" x-cloak
-        class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+        x-transition.opacity.duration.200ms role="status"
+        class="fp-emerger rounded-xl border border-fp-badge-success-fg/20 bg-fp-badge-success-bg px-4 py-3 text-sm text-fp-badge-success-fg">
         <span x-text="mensaje"></span>
     </div>
 
     @if ($errorMsg !== '')
-        <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700" role="alert">{{ $errorMsg }}</div>
+        <x-panel.alerta tipo="error">{{ $errorMsg }}</x-panel.alerta>
     @endif
 
     @if ($editando_tipo !== '')
         @php
             $titulos = ['linea' => 'Editar línea', 'marca' => 'Editar marca', 'temporada' => 'Editar temporada', 'producto' => 'Editar producto'];
         @endphp
-        <form wire:submit="guardarEdicion" class="grid max-w-xl grid-cols-1 gap-3 rounded-2xl border border-fp-primary/40 bg-white p-4">
-            <h2 class="text-sm font-semibold text-fp-sidebar">{{ $titulos[$editando_tipo] ?? 'Editar' }}</h2>
+        <form wire:submit="guardarEdicion" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5" data-edicion-catalogo>
+            <h2 class="text-base font-semibold text-fp-sidebar">{{ $titulos[$editando_tipo] ?? 'Editar' }}</h2>
             <input type="text" wire:model="editar_nombre" placeholder="Nombre" class="rounded-lg text-sm">
-            @error('editar_nombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('editar_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             @if ($editando_tipo === 'producto')
                 <input type="text" wire:model="editar_modelo" placeholder="Modelo" class="rounded-lg text-sm">
-                @error('editar_modelo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                @error('editar_modelo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
                 <select wire:model="editar_marca_id" class="rounded-lg text-sm">
                     <option value="">Marca</option>
                     @foreach ($this->marcas as $marca)
                         <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
                     @endforeach
                 </select>
-                @error('editar_marca_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                @error('editar_marca_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
                 <select wire:model="editar_categoria_id" class="rounded-lg text-sm">
                     <option value="">Categoría</option>
                     @foreach ($this->categorias as $categoria)
                         <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
                     @endforeach
                 </select>
-                @error('editar_categoria_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                @error('editar_categoria_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             @endif
             @if ($editando_tipo === 'temporada')
                 <select wire:model="editar_estado" class="rounded-lg text-sm">
@@ -461,187 +470,192 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                     @endforeach
                 </select>
                 <span class="text-xs text-slate-500">El estado solo avanza un paso a la vez.</span>
-                @error('editar_estado') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                @error('editar_estado') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             @endif
             <input type="text" wire:model="editar_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
-            @error('editar_descripcion') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('editar_descripcion') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <div class="flex gap-2">
-                <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Guardar cambios</button>
-                <button type="button" wire:click="cancelarEdicion" class="w-fit rounded-lg bg-slate-100 px-4 py-2 text-sm text-slate-600">Cancelar</button>
+                <button class="fp-btn fp-btn-primario w-fit">Guardar cambios</button>
+                <button type="button" wire:click="cancelarEdicion" class="fp-btn fp-btn-secundario w-fit">Cancelar</button>
             </div>
         </form>
     @endif
 
-    <div class="flex flex-wrap gap-2">
-        <button type="button" wire:click="$set('pestana', 'lineas')" class="rounded-lg px-3 py-2 text-sm {{ $pestana === 'lineas' ? 'bg-fp-primary text-white' : 'bg-white text-slate-600' }}">Líneas</button>
-        <button type="button" wire:click="$set('pestana', 'marcas')" class="rounded-lg px-3 py-2 text-sm {{ $pestana === 'marcas' ? 'bg-fp-primary text-white' : 'bg-white text-slate-600' }}">Marcas</button>
-        <button type="button" wire:click="$set('pestana', 'temporadas')" class="rounded-lg px-3 py-2 text-sm {{ $pestana === 'temporadas' ? 'bg-fp-primary text-white' : 'bg-white text-slate-600' }}">Temporadas</button>
-        <button type="button" wire:click="$set('pestana', 'productos')" class="rounded-lg px-3 py-2 text-sm {{ $pestana === 'productos' ? 'bg-fp-primary text-white' : 'bg-white text-slate-600' }}">Productos</button>
+    <div class="fp-pestanas" role="tablist" aria-label="Secciones del catálogo">
+        <button type="button" role="tab" wire:click="$set('pestana', 'lineas')" aria-selected="{{ $pestana === 'lineas' ? 'true' : 'false' }}" class="fp-pestana">Líneas</button>
+        <button type="button" role="tab" wire:click="$set('pestana', 'marcas')" aria-selected="{{ $pestana === 'marcas' ? 'true' : 'false' }}" class="fp-pestana">Marcas</button>
+        <button type="button" role="tab" wire:click="$set('pestana', 'temporadas')" aria-selected="{{ $pestana === 'temporadas' ? 'true' : 'false' }}" class="fp-pestana">Temporadas</button>
+        <button type="button" role="tab" wire:click="$set('pestana', 'productos')" aria-selected="{{ $pestana === 'productos' ? 'true' : 'false' }}" class="fp-pestana">Productos</button>
     </div>
 
     @if ($pestana === 'lineas')
-        <form wire:submit="guardarLinea" class="grid max-w-xl grid-cols-1 gap-3 rounded-2xl border bg-white p-4">
+        <form wire:submit="guardarLinea" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
             <input type="text" wire:model="linea_nombre" placeholder="Nombre de la línea" class="rounded-lg text-sm">
-            @error('linea_nombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('linea_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <input type="text" wire:model="linea_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
-            <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Crear línea</button>
+            <button class="fp-btn fp-btn-primario w-fit">Crear línea</button>
         </form>
-        <table class="w-full rounded-2xl bg-white text-sm">
-            <thead><tr class="text-left text-slate-500"><th class="p-3">Nombre</th><th class="p-3">Temporadas</th><th class="p-3">Estado</th><th class="p-3">Acciones</th></tr></thead>
+        <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
+            <thead><tr><th class="px-4 py-3 font-semibold">Nombre</th><th class="px-4 py-3 font-semibold">Temporadas</th><th class="px-4 py-3 font-semibold">Estado</th><th class="px-4 py-3 font-semibold">Acciones</th></tr></thead>
             <tbody>
-                @foreach ($this->lineas as $linea)
-                    <tr class="border-t">
-                        <td class="p-3">{{ $linea->nombre }}</td>
-                        <td class="p-3">{{ $linea->campanas_count }}</td>
-                        <td class="p-3">{{ $linea->activa ? 'Activa' : 'Inactiva' }}</td>
-                        <td class="p-3 whitespace-nowrap text-xs">
-                            <button type="button" wire:click="editar('linea', {{ $linea->id }})" class="text-fp-primary hover:underline">Editar</button>
-                            <button type="button" wire:click="alternarActivo('linea', {{ $linea->id }})" class="text-slate-600 hover:underline">{{ $linea->activa ? 'Desactivar' : 'Activar' }}</button>
-                            <button type="button" wire:click="eliminar('linea', {{ $linea->id }})" wire:confirm="¿Eliminar la línea «{{ $linea->nombre }}»? Esta acción no se puede deshacer." class="text-red-600 hover:underline">Eliminar</button>
+                @forelse ($this->lineas as $linea)
+                    <tr class="border-t border-slate-100">
+                        <td class="px-4 py-3">{{ $linea->nombre }}</td>
+                        <td class="px-4 py-3">{{ $linea->campanas_count }}</td>
+                        <td class="px-4 py-3"><x-panel.insignia :variante="$linea->activa ? 'success' : 'neutral'" punto>{{ $linea->activa ? 'Activa' : 'Inactiva' }}</x-panel.insignia></td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <button type="button" wire:click="editar('linea', {{ $linea->id }})" class="fp-accion fp-accion-primaria">Editar</button>
+                            <button type="button" wire:click="alternarActivo('linea', {{ $linea->id }})" class="fp-accion fp-accion-neutra">{{ $linea->activa ? 'Desactivar' : 'Activar' }}</button>
+                            <button type="button" wire:click="eliminar('linea', {{ $linea->id }})" wire:confirm="¿Eliminar la línea «{{ $linea->nombre }}»? Esta acción no se puede deshacer." class="fp-accion fp-accion-peligro">Eliminar</button>
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <x-panel.vacio colspan="4" mensaje="Aún no hay líneas." />
+                @endforelse
             </tbody>
-        </table>
+        </table></div></div>
     @elseif ($pestana === 'marcas')
-        <form wire:submit="guardarMarca" class="grid max-w-xl grid-cols-1 gap-3 rounded-2xl border bg-white p-4">
+        <form wire:submit="guardarMarca" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
             <input type="text" wire:model="marca_nombre" placeholder="Nombre de la marca" class="rounded-lg text-sm">
-            @error('marca_nombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('marca_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <input type="text" wire:model="marca_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
-            <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Crear marca</button>
+            <button class="fp-btn fp-btn-primario w-fit">Crear marca</button>
         </form>
-        <table class="w-full rounded-2xl bg-white text-sm">
-            <thead><tr class="text-left text-slate-500"><th class="p-3">Nombre</th><th class="p-3">Productos</th><th class="p-3">Estado</th><th class="p-3">Acciones</th></tr></thead>
+        <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
+            <thead><tr><th class="px-4 py-3 font-semibold">Nombre</th><th class="px-4 py-3 font-semibold">Productos</th><th class="px-4 py-3 font-semibold">Estado</th><th class="px-4 py-3 font-semibold">Acciones</th></tr></thead>
             <tbody>
-                @foreach ($this->marcas as $marca)
-                    <tr class="border-t">
-                        <td class="p-3">{{ $marca->nombre }}</td>
-                        <td class="p-3">{{ $marca->productos_count }}</td>
-                        <td class="p-3">{{ $marca->activa ? 'Activa' : 'Inactiva' }}</td>
-                        <td class="p-3 whitespace-nowrap text-xs">
-                            <button type="button" wire:click="editar('marca', {{ $marca->id }})" class="text-fp-primary hover:underline">Editar</button>
-                            <button type="button" wire:click="alternarActivo('marca', {{ $marca->id }})" class="text-slate-600 hover:underline">{{ $marca->activa ? 'Desactivar' : 'Activar' }}</button>
-                            <button type="button" wire:click="eliminar('marca', {{ $marca->id }})" wire:confirm="¿Eliminar la marca «{{ $marca->nombre }}»? Esta acción no se puede deshacer." class="text-red-600 hover:underline">Eliminar</button>
+                @forelse ($this->marcas as $marca)
+                    <tr class="border-t border-slate-100">
+                        <td class="px-4 py-3">{{ $marca->nombre }}</td>
+                        <td class="px-4 py-3">{{ $marca->productos_count }}</td>
+                        <td class="px-4 py-3"><x-panel.insignia :variante="$marca->activa ? 'success' : 'neutral'" punto>{{ $marca->activa ? 'Activa' : 'Inactiva' }}</x-panel.insignia></td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <button type="button" wire:click="editar('marca', {{ $marca->id }})" class="fp-accion fp-accion-primaria">Editar</button>
+                            <button type="button" wire:click="alternarActivo('marca', {{ $marca->id }})" class="fp-accion fp-accion-neutra">{{ $marca->activa ? 'Desactivar' : 'Activar' }}</button>
+                            <button type="button" wire:click="eliminar('marca', {{ $marca->id }})" wire:confirm="¿Eliminar la marca «{{ $marca->nombre }}»? Esta acción no se puede deshacer." class="fp-accion fp-accion-peligro">Eliminar</button>
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <x-panel.vacio colspan="4" mensaje="Aún no hay marcas." />
+                @endforelse
             </tbody>
-        </table>
+        </table></div></div>
     @elseif ($pestana === 'temporadas')
-        <form wire:submit="guardarTemporada" class="grid max-w-xl grid-cols-1 gap-3 rounded-2xl border bg-white p-4">
+        <form wire:submit="guardarTemporada" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
             <select wire:model="temporada_linea_id" class="rounded-lg text-sm">
                 <option value="">Línea</option>
                 @foreach ($this->lineas as $linea)
                     <option value="{{ $linea->id }}">{{ $linea->nombre }}</option>
                 @endforeach
             </select>
-            @error('temporada_linea_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('temporada_linea_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <input type="text" wire:model="temporada_nombre" placeholder="Nombre de la temporada" class="rounded-lg text-sm">
-            @error('temporada_nombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('temporada_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <select wire:model="temporada_estado" class="rounded-lg text-sm">
                 <option value="borrador">Borrador</option>
                 <option value="activa">Activa</option>
                 <option value="cerrada">Cerrada</option>
             </select>
-            @error('estado') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Crear temporada</button>
+            @error('estado') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+            <button class="fp-btn fp-btn-primario w-fit">Crear temporada</button>
         </form>
-        <table class="w-full rounded-2xl bg-white text-sm">
-            <thead><tr class="text-left text-slate-500"><th class="p-3">Temporada</th><th class="p-3">Línea</th><th class="p-3">Productos</th><th class="p-3">Estado</th><th class="p-3">Acciones</th></tr></thead>
+        <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
+            <thead><tr><th class="px-4 py-3 font-semibold">Temporada</th><th class="px-4 py-3 font-semibold">Línea</th><th class="px-4 py-3 font-semibold">Productos</th><th class="px-4 py-3 font-semibold">Estado</th><th class="px-4 py-3 font-semibold">Acciones</th></tr></thead>
             <tbody>
-                @foreach ($this->temporadas as $temporada)
-                    <tr class="border-t">
-                        <td class="p-3">{{ $temporada->nombre }}</td>
-                        <td class="p-3">{{ $temporada->linea?->nombre }}</td>
-                        <td class="p-3">{{ $temporada->productos_campana_count }}</td>
-                        <td class="p-3">{{ ucfirst(str_replace('_', ' ', $temporada->estado)) }}</td>
-                        <td class="p-3 whitespace-nowrap text-xs">
-                            <button type="button" wire:click="editar('temporada', {{ $temporada->id }})" class="text-fp-primary hover:underline">Editar</button>
-                            <button type="button" wire:click="pedirEliminarTemporada({{ $temporada->id }})" class="text-red-600 hover:underline">Eliminar</button>
+                @forelse ($this->temporadas as $temporada)
+                    <tr class="border-t border-slate-100">
+                        <td class="px-4 py-3">{{ $temporada->nombre }}</td>
+                        <td class="px-4 py-3">{{ $temporada->linea?->nombre }}</td>
+                        <td class="px-4 py-3">{{ $temporada->productos_campana_count }}</td>
+                        <td class="px-4 py-3"><x-ui.insignia-estado :estado="$temporada->estado" /></td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <button type="button" wire:click="editar('temporada', {{ $temporada->id }})" class="fp-accion fp-accion-primaria">Editar</button>
+                            <button type="button" wire:click="pedirEliminarTemporada({{ $temporada->id }})" class="fp-accion fp-accion-peligro">Eliminar</button>
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <x-panel.vacio colspan="5" mensaje="Aún no hay temporadas." />
+                @endforelse
             </tbody>
-        </table>
+        </table></div></div>
 
         @if ($temporadaPorEliminar)
-            <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-labelledby="titulo-eliminar-temporada">
-                <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-                    <h2 id="titulo-eliminar-temporada" class="text-lg font-semibold text-slate-900">Eliminar temporada</h2>
-                    <p class="mt-2 text-sm text-slate-600">
-                        ¿Eliminar la temporada «{{ $temporadaPorEliminarNombre }}»? Esta acción no se puede deshacer.
-                    </p>
-                    <div class="mt-5 flex justify-end gap-2">
-                        <button type="button" wire:click="cancelarEliminarTemporada" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancelar</button>
-                        <button type="button" wire:click="confirmarEliminarTemporada" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">Eliminar</button>
-                    </div>
-                </div>
-            </div>
+            <x-panel.modal titulo="Eliminar temporada" ancho="max-w-md" cerrar="cancelarEliminarTemporada">
+                <p class="text-sm text-slate-600">
+                    ¿Eliminar la temporada «{{ $temporadaPorEliminarNombre }}»? Esta acción no se puede deshacer.
+                </p>
+                <x-slot:pie>
+                    <button type="button" wire:click="cancelarEliminarTemporada" class="fp-btn fp-btn-secundario">Cancelar</button>
+                    <button type="button" wire:click="confirmarEliminarTemporada" class="fp-btn fp-btn-peligro">Eliminar</button>
+                </x-slot:pie>
+            </x-panel.modal>
         @endif
     @else
-        <form wire:submit="guardarProducto" class="grid max-w-xl grid-cols-1 gap-3 rounded-2xl border bg-white p-4">
+        <form wire:submit="guardarProducto" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
             <select wire:model="producto_marca_id" class="rounded-lg text-sm">
                 <option value="">Marca</option>
                 @foreach ($this->marcas as $marca)
                     <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
                 @endforeach
             </select>
-            @error('producto_marca_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('producto_marca_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <select wire:model="producto_categoria_id" class="rounded-lg text-sm">
                 <option value="">Categoría</option>
                 @foreach ($this->categorias as $categoria)
                     <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
                 @endforeach
             </select>
-            @error('producto_categoria_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('producto_categoria_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <input type="text" wire:model="producto_modelo" placeholder="Modelo" class="rounded-lg text-sm">
-            @error('producto_modelo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('producto_modelo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <input type="text" wire:model="producto_nombre" placeholder="Nombre" class="rounded-lg text-sm">
-            @error('producto_nombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('producto_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <select wire:model="producto_campana_id" class="rounded-lg text-sm">
                 <option value="">Temporada</option>
                 @foreach ($this->temporadas as $temporada)
                     <option value="{{ $temporada->id }}">{{ $temporada->linea?->nombre }} — {{ $temporada->nombre }}</option>
                 @endforeach
             </select>
-            @error('producto_campana_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('producto_campana_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <input type="text" wire:model="producto_codigo" placeholder="Código de catálogo" class="rounded-lg text-sm">
-            @error('producto_codigo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('producto_codigo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <input type="number" step="0.01" wire:model="producto_precio" placeholder="Precio de menudeo" class="rounded-lg text-sm">
-            @error('producto_precio') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Publicar producto</button>
+            @error('producto_precio') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+            <button class="fp-btn fp-btn-primario w-fit">Publicar producto</button>
         </form>
-        <table class="w-full rounded-2xl bg-white text-sm">
+        <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead>
-                <tr class="text-left text-slate-500">
-                    <th class="p-3">Producto</th>
-                    <th class="p-3">Marca</th>
-                    <th class="p-3">Temporada</th>
-                    <th class="p-3">Código</th>
-                    <th class="p-3">Menudeo</th>
-                    <th class="p-3">Estado</th>
-                    <th class="p-3">Acciones</th>
+                <tr>
+                    <th class="px-4 py-3 font-semibold">Producto</th>
+                    <th class="px-4 py-3 font-semibold">Marca</th>
+                    <th class="px-4 py-3 font-semibold">Temporada</th>
+                    <th class="px-4 py-3 font-semibold">Código</th>
+                    <th class="px-4 py-3 font-semibold">Menudeo</th>
+                    <th class="px-4 py-3 font-semibold">Estado</th>
+                    <th class="px-4 py-3 font-semibold">Acciones</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach ($this->productos as $fila)
-                    <tr class="border-t">
-                        <td class="p-3">{{ $fila->producto?->nombre }} <span class="text-slate-400">{{ $fila->producto?->modelo }}</span></td>
-                        <td class="p-3">{{ $fila->producto?->marca?->nombre }}</td>
-                        <td class="p-3">{{ $fila->campana?->linea?->nombre }} — {{ $fila->campana?->nombre }}</td>
-                        <td class="p-3">{{ $fila->codigo_catalogo }}</td>
-                        <td class="p-3">${{ number_format((float) $fila->precio_publico, 2) }}</td>
-                        <td class="p-3">{{ $fila->producto?->activo ? 'Activo' : 'Inactivo' }}</td>
-                        <td class="p-3 whitespace-nowrap text-xs">
+                @forelse ($this->productos as $fila)
+                    <tr class="border-t border-slate-100">
+                        <td class="px-4 py-3">{{ $fila->producto?->nombre }} <span class="text-slate-400">{{ $fila->producto?->modelo }}</span></td>
+                        <td class="px-4 py-3">{{ $fila->producto?->marca?->nombre }}</td>
+                        <td class="px-4 py-3">{{ $fila->campana?->linea?->nombre }} — {{ $fila->campana?->nombre }}</td>
+                        <td class="px-4 py-3">{{ $fila->codigo_catalogo }}</td>
+                        <td class="px-4 py-3">${{ number_format((float) $fila->precio_publico, 2) }}</td>
+                        <td class="px-4 py-3"><x-panel.insignia :variante="$fila->producto?->activo ? 'success' : 'neutral'" punto>{{ $fila->producto?->activo ? 'Activo' : 'Inactivo' }}</x-panel.insignia></td>
+                        <td class="px-4 py-3 whitespace-nowrap">
                             @if ($fila->producto)
-                                <button type="button" wire:click="editar('producto', {{ $fila->producto->id }})" class="text-fp-primary hover:underline">Editar</button>
-                                <button type="button" wire:click="alternarActivo('producto', {{ $fila->producto->id }})" class="text-slate-600 hover:underline">{{ $fila->producto->activo ? 'Desactivar' : 'Activar' }}</button>
-                                <button type="button" wire:click="eliminar('producto', {{ $fila->producto->id }})" wire:confirm="¿Eliminar el producto «{{ $fila->producto->nombre }}» de todo el catálogo, con sus tallas y publicaciones? Esta acción no se puede deshacer." class="text-red-600 hover:underline">Eliminar</button>
+                                <button type="button" wire:click="editar('producto', {{ $fila->producto->id }})" class="fp-accion fp-accion-primaria">Editar</button>
+                                <button type="button" wire:click="alternarActivo('producto', {{ $fila->producto->id }})" class="fp-accion fp-accion-neutra">{{ $fila->producto->activo ? 'Desactivar' : 'Activar' }}</button>
+                                <button type="button" wire:click="eliminar('producto', {{ $fila->producto->id }})" wire:confirm="¿Eliminar el producto «{{ $fila->producto->nombre }}» de todo el catálogo, con sus tallas y publicaciones? Esta acción no se puede deshacer." class="fp-accion fp-accion-peligro">Eliminar</button>
                             @endif
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <x-panel.vacio colspan="7" mensaje="Aún no hay productos publicados." />
+                @endforelse
             </tbody>
-        </table>
+        </table></div></div>
     @endif
 </div>

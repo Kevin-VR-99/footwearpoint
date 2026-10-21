@@ -106,7 +106,7 @@
                     </x-panel.menu-usuario>
                 </div>
             </header>
-            <main class="flex-1 p-6 lg:p-8 overflow-auto">
+            <main class="fp-contenido flex-1 p-6 lg:p-8 overflow-auto">
                 {{ $slot }}
             </main>
         </div>

@@ -168,24 +168,25 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
 ?>
 
 <div class="space-y-6">
-    <div>
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Administración</p>
-        <h1 class="text-2xl font-bold text-slate-900">Catálogos para importar</h1>
-        <p class="text-sm text-slate-500 mt-1">
-            Sube el catálogo de la fábrica en PDF o imagen. Después la IA propone los productos y tú los revisas
-            antes de que entren al catálogo.
-        </p>
+    <x-panel.encabezado eyebrow="Administración" titulo="Catálogos para importar" nivel="h1"
+        subtitulo="Sube el catálogo de la fábrica en PDF o imagen. Después la IA propone los productos y tú los revisas antes de que entren al catálogo." />
+
+    @php($porEstado = $this->importaciones->countBy('estado'))
+    <div class="fp-escalonado grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-metricas-admin>
+        <x-panel.metrica titulo="Catálogos subidos" :valor="$this->importaciones->count()" icono="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+        <x-panel.metrica titulo="Leyendo con IA" :valor="$porEstado['procesando'] ?? 0" tono="primario" detalle="Se actualiza sola"
+            icono="M9.75 3.1v5.7a2.25 2.25 0 01-.66 1.6L5 14.5M14.25 3.1v5.7c0 .6.24 1.17.66 1.6L19 14.5M5 14.5l-1.4 4.2A1 1 0 004.6 20h14.8a1 1 0 00.95-1.3L19 14.5M5 14.5h14" />
+        <x-panel.metrica titulo="Por revisar" :valor="$porEstado['requiere_revision'] ?? 0" tono="aviso" icono="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.5 12C3.8 7.9 7.6 5 12 5s8.2 2.9 9.5 7c-1.3 4.1-5.1 7-9.5 7S3.8 16.1 2.5 12z" />
+        <x-panel.metrica titulo="Aprobados" :valor="$porEstado['aprobado'] ?? 0" tono="exito" icono="M5 13l4 4L19 7" />
     </div>
 
     @if ($mensaje)
-        <div class="rounded-lg border px-4 py-3 text-sm {{ $esError ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800' }}">
-            {{ $mensaje }}
-        </div>
+        <x-panel.alerta :tipo="$esError ? 'error' : 'exito'">{{ $mensaje }}</x-panel.alerta>
     @endif
 
-    <form wire:submit="subir" class="rounded-xl border border-slate-200 bg-white p-5 sm:p-6 space-y-4 max-w-2xl">
+    <form wire:submit="subir" class="fp-formulario fp-aparecer p-5 sm:p-6 space-y-4 max-w-2xl">
         <div class="grid gap-4 sm:grid-cols-2">
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Línea</label>
                 <select wire:model.live="linea_id" class="w-full rounded-lg text-sm">
                     <option value="">Elige la línea</option>
@@ -193,10 +194,10 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                         <option value="{{ $linea->id }}">{{ $linea->nombre }}</option>
                     @endforeach
                 </select>
-                @error('linea_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                @error('linea_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">
                     Temporada <span class="text-slate-400 font-normal">(opcional)</span>
                 </label>
@@ -206,21 +207,21 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                         <option value="{{ $temporada->id }}">{{ $temporada->nombre }}</option>
                     @endforeach
                 </select>
-                @error('campana_id') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                @error('campana_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             </div>
         </div>
 
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Archivo del catálogo</label>
             <input type="file" wire:model="archivo" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm">
             <p class="mt-1 text-xs text-slate-500">PDF, JPG o PNG. Hasta 40 MB.</p>
-            @error('archivo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+            @error('archivo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
 
             <div wire:loading wire:target="archivo" class="mt-2 text-xs text-slate-500">Subiendo el archivo…</div>
         </div>
 
         <button type="submit" wire:loading.attr="disabled"
-            class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
+            class="fp-btn fp-btn-primario">
             Subir catálogo
         </button>
     </form>
@@ -232,82 +233,81 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
          consulta pasa por la sesión y la mantiene viva SOLO mientras hay un
          análisis en curso; al terminar se quita el poll y la sesión vuelve a
          caducar por inactividad como siempre. --}}
-    <div class="rounded-xl border border-slate-200 bg-white p-5 sm:p-6"
+    <div class="fp-tarjeta fp-aparecer p-5 sm:p-6"
         @if ($this->hayTrabajo) wire:poll.5s.keep-alive data-mantiene-sesion @endif>
         <h2 class="text-sm font-semibold text-slate-700 mb-3">Catálogos subidos</h2>
 
         @if ($this->hayTrabajo)
-            <p class="mb-3 text-sm text-blue-800">
+            <p class="mb-3 flex items-start gap-2 rounded-xl bg-fp-badge-info-bg px-3 py-2 text-sm text-fp-badge-info-fg"><span class="fp-insignia-viva mt-1.5 inline-flex"><span class="fp-insignia-punto" aria-hidden="true"></span></span><span>
                 La IA está leyendo un catálogo. Va de {{ config('ia.paginas_por_bloque') }} en
                 {{ config('ia.paginas_por_bloque') }} páginas y puede tardar varios minutos; esta página se actualiza sola.
-            </p>
+            </span></p>
         @endif
 
         @if ($this->importaciones->isEmpty())
-            <p class="text-sm text-slate-500">Todavía no se ha subido ningún catálogo.</p>
+            <x-panel.vacio mensaje="Todavía no se ha subido ningún catálogo." icono="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
         @else
-            <table class="w-full text-sm">
+            <div class="fp-tabla -mx-5 overflow-x-auto sm:-mx-6"><table class="w-full text-sm">
                 <thead>
-                    <tr class="text-left text-slate-500 border-b">
-                        <th class="py-2">#</th>
-                        <th class="py-2">Línea</th>
-                        <th class="py-2">Temporada</th>
-                        <th class="py-2">Estado</th>
-                        <th class="py-2">Páginas</th>
-                        <th class="py-2">Productos</th>
-                        <th class="py-2">Costo</th>
-                        <th class="py-2">Subido por</th>
-                        <th class="py-2"></th>
+                    <tr>
+                        <th class="px-4 py-3 font-semibold">#</th>
+                        <th class="px-4 py-3 font-semibold">Línea</th>
+                        <th class="px-4 py-3 font-semibold">Temporada</th>
+                        <th class="px-4 py-3 font-semibold">Estado</th>
+                        <th class="px-4 py-3 font-semibold">Páginas</th>
+                        <th class="px-4 py-3 font-semibold">Productos</th>
+                        <th class="px-4 py-3 font-semibold">Costo</th>
+                        <th class="px-4 py-3 font-semibold">Subido por</th>
+                        <th class="px-4 py-3 font-semibold"></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($this->importaciones as $importacion)
-                        <tr class="border-b last:border-0">
-                            <td class="py-2">{{ $importacion->id }}</td>
-                            <td class="py-2">{{ $importacion->linea?->nombre }}</td>
-                            <td class="py-2">{{ $importacion->campana?->nombre ?? '—' }}</td>
-                            <td class="py-2">
-                                <span @class([
-                                    'rounded-full px-2 py-0.5 text-xs font-medium',
-                                    'bg-slate-100 text-slate-700' => $importacion->estado === 'cargado',
-                                    'bg-blue-100 text-blue-800' => $importacion->estado === 'procesando',
-                                    'bg-amber-100 text-amber-900' => $importacion->estado === 'requiere_revision',
-                                    'bg-emerald-100 text-emerald-800' => $importacion->estado === 'aprobado',
-                                    'bg-red-100 text-red-800' => in_array($importacion->estado, ['error', 'rechazado'], true),
-                                ])>{{ str_replace('_', ' ', $importacion->estado) }}</span>
+                        <tr class="border-t border-slate-100">
+                            <td class="px-4 py-3">{{ $importacion->id }}</td>
+                            <td class="px-4 py-3">{{ $importacion->linea?->nombre }}</td>
+                            <td class="px-4 py-3">{{ $importacion->campana?->nombre ?? '—' }}</td>
+                            <td class="px-4 py-3">
+                                <x-panel.insignia :variante="match ($importacion->estado) {
+                                        'procesando' => 'info',
+                                        'requiere_revision' => 'warning',
+                                        'aprobado' => 'success',
+                                        'error', 'rechazado' => 'danger',
+                                        default => 'neutral',
+                                    }" :viva="$importacion->estado === 'procesando'" punto>{{ str_replace('_', ' ', $importacion->estado) }}</x-panel.insignia>
                                 @if ($importacion->mensaje_error)
-                                    <p class="mt-1 text-xs text-red-600">{{ $importacion->mensaje_error }}</p>
+                                    <p class="mt-1 text-xs text-fp-danger">{{ $importacion->mensaje_error }}</p>
                                 @endif
                             </td>
-                            <td class="py-2">{{ $importacion->paginas ?? '—' }}</td>
-                            <td class="py-2">{{ $importacion->productos_staging_count ?: '—' }}</td>
-                            <td class="py-2">{{ $importacion->costo_usd ? '$'.number_format((float) $importacion->costo_usd, 2).' USD' : '—' }}</td>
-                            <td class="py-2">{{ $importacion->iniciadaPor?->nombreVisible() }}</td>
-                            <td class="py-2 text-right">
+                            <td class="px-4 py-3">{{ $importacion->paginas ?? '—' }}</td>
+                            <td class="px-4 py-3">{{ $importacion->productos_staging_count ?: '—' }}</td>
+                            <td class="px-4 py-3">{{ $importacion->costo_usd ? '$'.number_format((float) $importacion->costo_usd, 2).' USD' : '—' }}</td>
+                            <td class="px-4 py-3">{{ $importacion->iniciadaPor?->nombreVisible() }}</td>
+                            <td class="px-4 py-3 text-right whitespace-nowrap">
                                 @if (in_array($importacion->estado, ['cargado', 'error'], true))
                                     <button type="button" wire:click="procesar({{ $importacion->id }})"
                                         wire:loading.attr="disabled"
-                                        class="text-fp-primary text-xs font-semibold mr-3">
+                                        class="fp-accion fp-accion-primaria">
                                         {{ $importacion->estado === 'error' ? 'Reintentar con IA' : 'Procesar con IA' }}
                                     </button>
                                 @endif
                                 @if ($importacion->productos_staging_count > 0)
                                     <a href="{{ route('admin.catalogos.revisar', $importacion->id) }}"
-                                        class="text-fp-primary text-xs font-semibold mr-3">Revisar</a>
+                                        class="fp-accion fp-accion-primaria">Revisar</a>
                                 @endif
                                 <button type="button" data-ver-archivo
                                     x-on:click="$dispatch('abrir-visor', @js(['url' => route('admin.catalogos.archivo', $importacion->id), 'tipo' => $importacion->tipo_archivo, 'nombre' => 'Catálogo #'.$importacion->id]))"
-                                    class="text-fp-primary text-xs font-medium mr-3 hover:underline">Ver archivo</button>
+                                    class="fp-accion">Ver archivo</button>
                                 @if (in_array($importacion->estado, ['cargado', 'error'], true))
                                     <button type="button" wire:click="eliminar({{ $importacion->id }})"
                                         wire:confirm="¿Quitar este catálogo? Se borra el archivo."
-                                        class="text-red-600 text-xs font-medium">Quitar</button>
+                                        class="fp-accion fp-accion-peligro">Quitar</button>
                                 @endif
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
-            </table>
+            </table></div>
         @endif
     </div>
 

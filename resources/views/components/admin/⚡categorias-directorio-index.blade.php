@@ -139,7 +139,7 @@ new #[Layout('layouts.admin')] #[Title('Categorías del directorio — Admin')] 
             </p>
         <x-slot:acciones>
         <button wire:click="nuevo"
-                class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
+                class="fp-btn fp-btn-primario">
             Nueva categoría
         </button>
         </x-slot:acciones>
@@ -152,11 +152,11 @@ new #[Layout('layouts.admin')] #[Title('Categorías del directorio — Admin')] 
     @endif
 
     @if ($mostrarForm)
-        <div class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm max-w-xl">
-            <h3 class="font-semibold mb-4">{{ $editId ? 'Editar categoría' : 'Nueva categoría' }}</h3>
+        <div class="fp-formulario fp-aparecer mb-6 p-5 max-w-xl">
+            <h3 class="mb-4 text-lg font-semibold text-fp-sidebar">{{ $editId ? 'Editar categoría' : 'Nueva categoría' }}</h3>
             <form wire:submit="guardar" class="space-y-4">
-                <div>
-                    <label for="nombre-categoria" class="block text-sm font-medium mb-1">Nombre</label>
+                <div class="fp-campo">
+                    <label for="nombre-categoria" class="block text-sm font-medium mb-1 text-slate-700">Nombre</label>
                     <input id="nombre-categoria" type="text" wire:model="nombre"
                         maxlength="{{ \App\Models\CategoriaDirectorio::LARGO_MAXIMO_NOMBRE }}"
                         placeholder="Por ejemplo: Calzado infantil"
@@ -168,10 +168,10 @@ new #[Layout('layouts.admin')] #[Title('Categorías del directorio — Admin')] 
                     Activa (se muestra en el marketplace)
                 </label>
                 <div class="flex gap-2">
-                    <button type="submit" class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90" wire:loading.attr="disabled">
+                    <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled">
                         Guardar
                     </button>
-                    <button type="button" wire:click="cancelar" class="rounded-lg border border-slate-200 text-sm px-4 py-2">
+                    <button type="button" wire:click="cancelar" class="fp-btn fp-btn-secundario">
                         Cancelar
                     </button>
                 </div>
@@ -179,7 +179,7 @@ new #[Layout('layouts.admin')] #[Title('Categorías del directorio — Admin')] 
         </div>
     @endif
 
-    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="fp-tarjeta fp-tabla overflow-hidden">
         <table class="w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
@@ -195,27 +195,21 @@ new #[Layout('layouts.admin')] #[Title('Categorías del directorio — Admin')] 
                         <td class="px-4 py-3 font-medium">{{ $categoria->nombre }}</td>
                         <td class="px-4 py-3">{{ $categoria->distribuidoras_count }}</td>
                         <td class="px-4 py-3">
-                            <span class="text-xs px-2 py-0.5 rounded-full {{ $categoria->activa ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
-                                {{ $categoria->activa ? 'Activa' : 'Inactiva' }}
-                            </span>
+                            <x-panel.insignia :variante="$categoria->activa ? 'success' : 'neutral'" punto>{{ $categoria->activa ? 'Activa' : 'Inactiva' }}</x-panel.insignia>
                         </td>
-                        <td class="px-4 py-3 space-x-2">
-                            <button wire:click="editar({{ $categoria->id }})" class="text-xs text-fp-primary hover:underline">Editar</button>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <button wire:click="editar({{ $categoria->id }})" class="fp-accion fp-accion-primaria">Editar</button>
                             @if ($categoria->activa)
                                 <button wire:click="desactivar({{ $categoria->id }})"
                                     wire:confirm="Dejará de mostrarse en el marketplace. Sus distribuidoras la conservan por si la activas de nuevo. ¿Continuar?"
-                                    class="text-xs text-fp-danger hover:underline">Desactivar</button>
+                                    class="fp-accion fp-accion-peligro">Desactivar</button>
                             @else
-                                <button wire:click="activar({{ $categoria->id }})" class="text-xs text-fp-badge-success-fg hover:underline">Activar</button>
+                                <button wire:click="activar({{ $categoria->id }})" class="fp-accion fp-accion-exito">Activar</button>
                             @endif
                         </td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="4" class="px-4 py-10 text-center text-fp-text-muted">
-                            Aún no hay categorías. Crea la primera con «Nueva categoría».
-                        </td>
-                    </tr>
+                    <x-panel.vacio colspan="4" mensaje="Aún no hay categorías. Crea la primera con «Nueva categoría»." />
                 @endforelse
             </tbody>
         </table>

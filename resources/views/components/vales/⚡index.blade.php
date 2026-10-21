@@ -118,11 +118,11 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
     @endif
 
     {{-- Formulario de emisión --}}
-    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-5 mb-6">
+    <div class="fp-tarjeta p-5 mb-6 fp-formulario fp-aparecer">
         <h3 class="text-sm font-semibold text-slate-800 mb-4">Emitir vale</h3>
 
         <form wire:submit="emitir" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de propietario</label>
                 <select wire:model.live="propietario_tipo"
                         class="w-full rounded-lg text-sm focus:ring-fp-primary">
@@ -131,7 +131,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 </select>
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Propietario</label>
                 @if ($propietario_tipo === 'cliente_directo')
                     <select wire:model="propietario_id"
@@ -156,7 +156,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 @error('propietario_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Monto (MXN)</label>
                 <input type="number" step="0.01" min="0.01" wire:model="monto_original"
                        class="w-full rounded-lg text-sm focus:ring-fp-primary"
@@ -164,7 +164,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 @error('monto_original') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
             </div>
 
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional)</label>
                 <input type="text" wire:model="motivo" maxlength="300"
                        class="w-full rounded-lg text-sm focus:ring-fp-primary"
@@ -173,7 +173,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
 
             <div class="md:col-span-2">
                 <button type="submit"
-                        class="rounded-lg bg-fp-primary text-white px-4 py-2 text-sm font-medium hover:bg-fp-primary/90">
+                        class="fp-btn fp-btn-primario">
                     Emitir vale
                 </button>
             </div>
@@ -181,7 +181,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
     </div>
 
     {{-- Listado --}}
-    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Vales emitidos</h3>
             <select wire:model.live="filtro_tipo"
@@ -194,7 +194,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
         </div>
 
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                     <tr>
                         <th class="text-left font-medium px-4 py-3">Folio</th>
@@ -207,7 +207,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($this->vales as $vale)
-                        <tr class="hover:bg-slate-50">
+                        <tr>
                             <td class="px-4 py-3 font-mono text-xs">{{ $vale->folio }}</td>
                             <td class="px-4 py-3">
                                 <div class="font-medium text-slate-900">
