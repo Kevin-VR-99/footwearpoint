@@ -54,7 +54,7 @@ class FilaProducto extends StatelessWidget {
                 child: SizedBox(
                   width: 84,
                   height: 84,
-                  child: ImagenProducto(url: producto.imagenPrincipal?.url),
+                  child: ImagenProducto(url: producto.imagenPrincipal?.miniatura),
                 ),
               ),
               const SizedBox(width: 12),
