@@ -88,12 +88,28 @@ new class extends Component {
 
 <div class="space-y-5">
     <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-            <h2 class="text-lg font-semibold text-slate-900">Mercado Pago</h2>
+        <div class="flex items-start gap-4">
+            <span class="fp-aparecer flex h-14 w-20 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none" data-logo-mercado-pago>
+                <x-ui.logo-mercado-pago class="h-10 w-auto" />
+            </span>
+            <div>
+            <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-lg font-semibold text-slate-900">Mercado Pago</h2>
+                @if ($conectado && $vencido)
+                    <x-panel.insignia variante="danger" punto data-estado-mp="vencida">Conexión vencida</x-panel.insignia>
+                @elseif ($conectado)
+                    <x-panel.insignia variante="success" viva data-estado-mp="conectada">Conectada</x-panel.insignia>
+                @elseif ($ilegible)
+                    <x-panel.insignia variante="warning" punto data-estado-mp="renovar">Por renovar</x-panel.insignia>
+                @else
+                    <x-panel.insignia variante="neutral" punto data-estado-mp="desconectada">Desconectada</x-panel.insignia>
+                @endif
+            </div>
             <p class="mt-1 max-w-2xl text-sm text-slate-500">
                 Conecta tu propia cuenta de Mercado Pago para cobrar los anticipos y saldos de tus clientes.
                 El dinero llega directo a tu cuenta; FootwearPoint no lo concentra.
             </p>
+            </div>
         </div>
         @if ($modoPrueba)
             <span class="inline-flex items-center self-start rounded-full bg-fp-badge-warning-bg px-2.5 py-1 text-[11px] font-medium text-fp-badge-warning-fg">
@@ -103,21 +119,21 @@ new class extends Component {
     </div>
 
     @if ($exito !== '')
-        <div class="rounded-lg border border-fp-badge-success-fg/20 bg-fp-badge-success-bg px-4 py-3 text-sm text-fp-badge-success-fg">
+        <div class="fp-emerger rounded-lg border border-fp-badge-success-fg/20 bg-fp-badge-success-bg px-4 py-3 text-sm text-fp-badge-success-fg">
             {{ $exito }}
         </div>
     @endif
 
     @if ($error !== '')
-        <div class="rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-danger">
+        <div class="fp-emerger rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-danger">
             {{ $error }}
         </div>
     @endif
 
     @if ($conectado)
-        <div class="rounded-lg border border-slate-200 p-4">
+        <div class="fp-tarjeta fp-tarjeta-interactiva fp-aparecer p-4">
             <div class="flex items-center gap-2">
-                <span class="h-2 w-2 rounded-full bg-fp-badge-success-fg"></span>
+                <span class="fp-insignia-viva inline-flex"><span class="fp-insignia-punto text-fp-badge-success-fg"></span></span>
                 <span class="text-sm font-semibold text-slate-900">Cuenta conectada</span>
             </div>
             <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
@@ -137,7 +153,7 @@ new class extends Component {
         </div>
 
         @if ($vencido)
-            <div class="rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-danger">
+            <div class="fp-emerger rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-danger">
                 La conexión con Mercado Pago venció. Vuelve a conectar tu cuenta para seguir cobrando.
             </div>
         @elseif ($porVencer)
@@ -150,7 +166,7 @@ new class extends Component {
             Hay que renovar la conexión con Mercado Pago. Vuelve a conectar tu cuenta.
         </div>
     @else
-        <div class="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-600">
+        <div class="fp-desvanecer flex items-center gap-3 rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600"><svg class="fp-vacio-icono h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
             Todavía no has conectado una cuenta de Mercado Pago.
         </div>
     @endif
@@ -164,7 +180,8 @@ new class extends Component {
     <div class="flex flex-wrap items-center gap-2">
         @if ($configurado)
             <a href="{{ route('mercado-pago.conectar') }}"
-                class="fp-btn fp-btn-primario">
+                class="fp-btn fp-btn-primario inline-flex items-center gap-2" data-conectar-mp>
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
                 {{ $conectado || $ilegible ? 'Volver a conectar' : 'Conectar con Mercado Pago' }}
             </a>
         @endif
@@ -173,7 +190,7 @@ new class extends Component {
             <button type="button" wire:click="desconectar"
                 wire:confirm="¿Desconectar tu cuenta de Mercado Pago? Ya no podrás cobrar con Mercado Pago hasta que la vuelvas a conectar."
                 wire:loading.attr="disabled"
-                class="rounded-lg border border-fp-danger/30 px-4 py-2 text-sm font-medium text-fp-danger transition hover:bg-fp-danger-soft">
+                class="fp-btn fp-btn-peligro">
                 Desconectar
             </button>
         @endif

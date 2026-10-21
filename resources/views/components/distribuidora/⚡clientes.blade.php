@@ -257,7 +257,7 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
     <x-panel.encabezado eyebrow="Distribuidora" titulo="Clientes directos" nivel="h1"
         subtitulo="Personas que compran en mostrador o en la app." class="mb-6" />
     @if (! $mostrandoFormularioCliente)
-        <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl">
+        <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl fp-formulario fp-aparecer">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Clientes Directos</h2>
                 <button type="button" wire:click="abrirFormularioCrearCliente"
@@ -331,21 +331,21 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
             </table>
         </div>
     @else
-        <form wire:submit="guardarCliente" class="fp-tarjeta p-5 sm:p-6 space-y-4 max-w-2xl">
+        <form wire:submit="guardarCliente" class="fp-tarjeta p-5 sm:p-6 space-y-4 max-w-2xl fp-formulario fp-aparecer">
             <h2 class="text-sm font-semibold text-slate-700">
                 {{ $clienteEditandoId ? 'Editar cliente directo' : 'Nuevo cliente directo' }}
             </h2>
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
                 <input type="text" wire:model="cliente_nombre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 @error('cliente_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
             </div>
             <div class="grid grid-cols-2 gap-4">
-                <div>
+                <div class="fp-campo">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
                     <input type="text" wire:model="cliente_telefono" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 </div>
-                <div>
+                <div class="fp-campo">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
                     @if ($cliente_cuenta_email_actual !== null)
                         <input type="email" value="{{ $cliente_cuenta_email_actual }}" disabled
@@ -356,7 +356,7 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                     @endif
                 </div>
             </div>
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Dirección de contacto</label>
                 <input type="text" wire:model="cliente_direccion_contacto" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
@@ -377,12 +377,12 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                             <input type="email" wire:model="cliente_acceso_email" autocomplete="off" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                             @error('cliente_acceso_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                         </div>
-                        <div>
+                        <div class="fp-campo">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
                             <input type="password" wire:model="cliente_acceso_password" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                             @error('cliente_acceso_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                         </div>
-                        <div>
+                        <div class="fp-campo">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
                             <input type="password" wire:model="cliente_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         </div>
@@ -390,7 +390,7 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                 @endif
             </div>
             @if ($clienteEditandoId)
-                <div>
+                <div class="fp-campo">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
                     <select wire:model="cliente_estado" class="w-full rounded-md max-w-xs">
                         <option value="activo">Activo</option>

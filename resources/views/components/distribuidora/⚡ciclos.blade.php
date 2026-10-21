@@ -101,7 +101,7 @@ new class extends Component {
 
 <div>
     @if (! $mostrandoFormularioCiclo)
-        <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl">
+        <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl fp-formulario fp-aparecer">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Configuraciones de ciclo</h2>
                 <button type="button" wire:click="abrirFormularioCrearCiclo" class="fp-btn fp-btn-primario">+ Nueva configuración</button>
@@ -138,10 +138,10 @@ new class extends Component {
             </table>
         </div>
     @else
-        <form wire:submit="guardarCiclo" class="fp-tarjeta p-5 sm:p-6 space-y-4 max-w-2xl">
+        <form wire:submit="guardarCiclo" class="fp-tarjeta p-5 sm:p-6 space-y-4 max-w-2xl fp-formulario fp-aparecer">
             <h2 class="text-sm font-semibold text-slate-700">{{ $cicloEditandoId ? 'Editar configuración de ciclo' : 'Nueva configuración de ciclo' }}</h2>
             <div class="grid grid-cols-2 gap-4">
-                <div>
+                <div class="fp-campo">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Día de cierre</label>
                     <select wire:model="ciclo_dia_cierre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @foreach ($diasSemanaNombres as $numero => $nombre)
@@ -149,11 +149,11 @@ new class extends Component {
                         @endforeach
                     </select>
                 </div>
-                <div>
+                <div class="fp-campo">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Hora de cierre</label>
                     <input type="time" wire:model="ciclo_hora_cierre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 </div>
-                <div>
+                <div class="fp-campo">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Día de solicitud a fábrica</label>
                     <select wire:model="ciclo_dia_solicitud_fabrica" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @foreach ($diasSemanaNombres as $numero => $nombre)
@@ -161,12 +161,12 @@ new class extends Component {
                         @endforeach
                     </select>
                 </div>
-                <div>
+                <div class="fp-campo">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Días estimados de llegada</label>
                     <input type="number" wire:model="ciclo_dias_estimados_llegada" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 </div>
             </div>
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-2">Días de recepción</label>
                 <div class="flex gap-3 flex-wrap">
                     @foreach ($diasSemanaNombres as $numero => $nombre)

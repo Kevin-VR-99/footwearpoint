@@ -104,36 +104,36 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
         x-on:livewire-upload-finish="subiendo = false"
         x-on:livewire-upload-cancel="subiendo = false"
         x-on:livewire-upload-error="subiendo = false"
-        class="fp-tarjeta p-5 sm:p-6 space-y-4 max-w-2xl">
-        <div>
+        class="fp-tarjeta p-5 sm:p-6 space-y-4 max-w-2xl fp-formulario fp-aparecer">
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Nombre Comercial</label>
             <input type="text" wire:model="nombre_comercial" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             @error('nombre_comercial') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
             <textarea wire:model="descripcion_publica" rows="3" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary"></textarea>
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Dirección</label>
             <input type="text" wire:model="direccion_publica" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             <p class="mt-1 text-xs text-slate-500">Escribe calle, número, colonia y ciudad: con ella se muestra el mapa de tu tienda.</p>
         </div>
         <div class="grid grid-cols-2 gap-4">
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
                 <input type="text" wire:model="telefono_publico" placeholder="+52 55 1234 5678" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
-            <div>
+            <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
                 <input type="email" wire:model="email_publico" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Horario</label>
             <input type="text" wire:model="horario_publico" placeholder="Lunes a sábado, 9:00 a 19:00" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
         </div>
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Logotipo</label>
             @if ($logotipo)
                 <img src="{{ $logotipo->temporaryUrl() }}" class="h-16 w-16 object-cover rounded mb-2">
@@ -150,7 +150,7 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
 
     {{-- TG-232 (E3-02): subdominio de la tienda pública. --}}
     <form wire:submit="guardarSubdominio" class="mt-6 fp-tarjeta p-5 sm:p-6 space-y-3 max-w-2xl">
-        <div>
+        <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Subdominio de tu tienda</label>
             <div class="flex items-center gap-2">
                 <input type="text" wire:model="subdominio" maxlength="63" autocomplete="off"

@@ -344,7 +344,7 @@ new class extends Component {
     </div>
 
     @if ($exito !== '')
-        <div class="rounded-lg border border-fp-badge-success-fg/20 bg-fp-badge-success-bg px-4 py-3 text-sm text-fp-badge-success-fg">
+        <div class="fp-emerger rounded-lg border border-fp-badge-success-fg/20 bg-fp-badge-success-bg px-4 py-3 text-sm text-fp-badge-success-fg">
             {{ $exito }}
         </div>
     @endif
@@ -356,13 +356,13 @@ new class extends Component {
     @endif
 
     @if ($error !== '')
-        <div class="rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-danger">
+        <div class="fp-emerger rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-danger">
             {{ $error }}
         </div>
     @endif
 
     @if ($suscripcion !== null)
-        <div class="rounded-lg border border-slate-200 p-4">
+        <div class="fp-tarjeta fp-tarjeta-interactiva fp-aparecer p-4">
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-slate-900">Plan {{ $suscripcion['plan'] }}</span>
                 @if ($suscripcion['vencida'])
@@ -412,7 +412,7 @@ new class extends Component {
     @endif
 
     @if ($motivo !== null)
-        <div class="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-600">
+        <div class="fp-desvanecer rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">
             {{ $motivo }}
         </div>
     @endif
@@ -433,7 +433,7 @@ new class extends Component {
 
         @if ($pendiente !== null && $configurado)
             <button type="button" wire:click="verificar" wire:loading.attr="disabled"
-                class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                class="fp-btn fp-btn-secundario">
                 Ya pagué, verificar
             </button>
         @endif
@@ -451,7 +451,7 @@ new class extends Component {
         </p>
     @endif
 
-    <div class="rounded-lg border border-slate-200 p-4">
+    <div class="fp-tarjeta fp-tarjeta-interactiva fp-aparecer p-4">
         <h3 class="text-sm font-semibold text-slate-900">Línea extra</h3>
         <p class="mt-1 max-w-2xl text-sm text-slate-500">
             Si necesitas una línea más, se cobran ${{ number_format($precioLineaExtra, 2) }} MXN ahora, solo por esa línea.
@@ -475,7 +475,7 @@ new class extends Component {
 
             @if ($pendienteLineaExtra !== null && $configurado)
                 <button type="button" wire:click="verificarLineaExtra" wire:loading.attr="disabled"
-                    class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                    class="fp-btn fp-btn-secundario">
                     Ya pagué la línea extra, verificar
                 </button>
             @endif
