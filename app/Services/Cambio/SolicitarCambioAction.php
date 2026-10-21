@@ -9,6 +9,8 @@ use App\Models\VentaDirectaDetalle;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
+use App\Services\Notificacion\NotificarCambioSolicitadoAction;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -102,7 +104,31 @@ class SolicitarCambioAction
                 'fecha_limite_solicitud' => $limite->toDateString(),
             ]);
 
-            return $solicitud->fresh();
+            $completa = $solicitud->fresh();
+
+            // TG-281: avisarle al personal. Hasta ahora no se enteraba nadie:
+            // la solicitud se quedaba esperando a que alguien entrara a mirar
+            // la pantalla correcta, y el plazo con la fabrica corre igual.
+            //
+            // Con afterCommit para no avisar de una solicitud que al final no
+            // exista, y sin dejar que el aviso tumbe la solicitud: lo que
+            // importa es que quede registrada.
+            DB::afterCommit(function () use ($completa, $linea) {
+                try {
+                    app(NotificarCambioSolicitadoAction::class)->ejecutar(
+                        $completa,
+                        (string) $linea->producto_nombre,
+                        $this->quienPide($completa),
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('No se pudo avisar de la solicitud de cambio.', [
+                        'solicitud_id' => $completa->id,
+                        'error'        => $e->getMessage(),
+                    ]);
+                }
+            });
+
+            return $completa;
         });
     }
 
@@ -142,6 +168,20 @@ class SolicitarCambioAction
     }
 
     /** @return array{0: ?int, 1: ?int} [cliente_directo_id, revendedor_distribuidora_id] */
+    /**
+     * Quién pidió el cambio, para que el aviso al personal diga de quién es
+     * sin tener que entrar a buscarlo.
+     */
+    private function quienPide(SolicitudCambio $solicitud): string
+    {
+        $solicitud->loadMissing(['clienteDirecto', 'revendedorAfiliacion.revendedor']);
+
+        $nombre = $solicitud->clienteDirecto?->nombre
+            ?? $solicitud->revendedorAfiliacion?->revendedor?->nombre;
+
+        return $nombre !== null && trim($nombre) !== '' ? trim($nombre) : 'Un cliente';
+    }
+
     private function duenio(PedidoDetalle|VentaDirectaDetalle $linea): array
     {
         if ($linea instanceof VentaDirectaDetalle) {
