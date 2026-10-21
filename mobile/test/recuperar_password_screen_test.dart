@@ -125,7 +125,9 @@ void main() {
 
     await enviar(tester, 'maria@ejemplo.com');
 
-    expect(find.textContaining('No se pudo conectar con el servidor'), findsOneWidget);
+    // TG-281: el mensaje ya no trae instrucciones para el equipo.
+    expect(find.textContaining('No hay conexión'), findsOneWidget);
+    expect(find.textContaining('lib/config.dart'), findsNothing);
     expect(find.text('Enviar enlace'), findsOneWidget);
     expect(find.text('Revisa tu bandeja'), findsNothing);
   });

@@ -229,7 +229,9 @@ void main() {
       return _json({'data': _catalogo()}, 200);
     });
 
-    expect(find.textContaining('No se pudo conectar con el servidor'), findsOneWidget);
+    // TG-281: el mensaje ya no trae instrucciones para el equipo.
+    expect(find.textContaining('No hay conexión'), findsOneWidget);
+    expect(find.textContaining('artisan serve'), findsNothing);
 
     hayRed = true;
     await tester.tap(find.text('Reintentar'));

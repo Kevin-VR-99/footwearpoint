@@ -125,8 +125,11 @@ class _SinConexionScreen extends StatelessWidget {
 
     return _AvisoScreen(
       icono: Icons.wifi_off_rounded,
-      titulo: 'No se pudo conectar con el servidor',
-      texto: auth.error,
+      titulo: 'No hay conexión',
+      // TG-281: antes aqui salia el detalle tecnico del error. A quien esta
+      // del otro lado no le dice nada; solo necesita saber que es su
+      // internet y que puede volver a intentar.
+      texto: 'Revisa tu internet e inténtalo de nuevo.',
       acciones: [
         FilledButton.icon(
           onPressed: auth.reintentar,
