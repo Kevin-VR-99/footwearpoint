@@ -23,3 +23,16 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Auditoría 21-oct-2026: los archivos de /build llevan hash en el nombre, así
+# que el navegador los puede guardar un año sin volver a preguntar. (Solo
+# aplica con Apache; en Railway los sirve Caddy/FrankenPHP: ver
+# docs/railway-produccion.md, CADDY_SERVER_EXTRA_DIRECTIVES.)
+<IfModule mod_headers.c>
+    <If "%{REQUEST_URI} =~ m#^/build/#">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </If>
+    <If "%{REQUEST_URI} =~ m#^/brand/#">
+        Header set Cache-Control "public, max-age=604800"
+    </If>
+</IfModule>
