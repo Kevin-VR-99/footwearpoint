@@ -6,6 +6,7 @@ use App\Models\CicloCompra;
 use App\Models\Distribuidora;
 use App\Support\Tenant;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -36,6 +37,18 @@ class ExportarReporteDistribuidora
         $pendientes = app(MontosPendientesAction::class)->ejecutar($ciclo);
         $demanda = app(DemandaPorTemporadaMarcaAction::class)->ejecutar($f['temporada'] ?? null, $f['marca'] ?? null, $desde, $hasta, $ciclo);
 
+        $secciones = $this->armarSecciones($f, $cuenta, $resumen, $mayoristas, $pendientes, $demanda);
+
+        // Ninguna celda puede llegar al PDF/Excel como arreglo u objeto.
+        return array_map(function (array $s) {
+            $s['filas'] = array_map(fn ($fila) => array_map(fn ($valor) => self::celda($valor), array_values((array) $fila)), $s['filas']);
+
+            return $s;
+        }, $secciones);
+    }
+
+    private function armarSecciones(array $f, array $cuenta, array $resumen, array $mayoristas, array $pendientes, array $demanda): array
+    {
         $clientes = fn (array $grupo) => array_map(fn ($r) => [$r['nombre'], $r['pedidos'], $r['monto'], $r['pagado'], $r['pendiente']], $grupo['filas']);
 
         return [
@@ -54,7 +67,7 @@ class ExportarReporteDistribuidora
             ['titulo' => 'Por cobrar: clientes directos', 'encabezados' => ['Cliente', 'Pedidos', 'Monto', 'Pagado', 'Pendiente'], 'filas' => $clientes($pendientes['clientes_directos'])],
             ['titulo' => 'Por cobrar: clientes mayoristas', 'encabezados' => ['Cliente', 'Pedidos', 'Monto', 'Pagado', 'Pendiente'], 'filas' => $clientes($pendientes['revendedores'])],
             ['titulo' => 'Vales vigentes', 'encabezados' => ['Folio', 'Propietario', 'Saldo', 'Vence'],
-                'filas' => array_map(fn ($v) => [$v['folio'], $v['propietario'], $v['saldo'], $v['fecha_vencimiento'] ?? '—'], $pendientes['vales_vigentes']['filas'])],
+                'filas' => array_map(fn ($v) => [$v['folio'], $this->propietario($v['propietario'] ?? null), $v['saldo'], $v['fecha_vencimiento'] ?? '—'], $pendientes['vales_vigentes']['filas'])],
             ['titulo' => 'Demanda por marca', 'encabezados' => ['Marca', 'Piezas', 'Pedidos', 'Modelos', 'Monto'],
                 'filas' => array_map(fn ($r) => [$r['nombre'], $r['piezas'], $r['pedidos'], $r['modelos'], $r['monto']], $demanda['por_marca'])],
             ['titulo' => 'Demanda por producto', 'encabezados' => ['Producto', 'Modelo', 'Marca', 'Temporada', 'Piezas', 'Pedidos', 'Monto'],
@@ -62,11 +75,45 @@ class ExportarReporteDistribuidora
         ];
     }
 
+    /** El propietario de un vale llega como ['tipo' => ..., 'nombre' => ...]. */
+    private function propietario(mixed $p): string
+    {
+        if (! is_array($p)) {
+            return self::celda($p);
+        }
+        $nombre = trim((string) ($p['nombre'] ?? '')) ?: '—';
+        $tipo = match ($p['tipo'] ?? null) {
+            'cliente_directo' => 'Cliente',
+            'revendedor' => 'Cliente mayorista',
+            default => null,
+        };
+
+        return $tipo ? $nombre.' ('.$tipo.')' : $nombre;
+    }
+
+    /** Convierte cualquier valor en algo imprimible: texto, entero o flotante. */
+    public static function celda(mixed $valor): string|int|float
+    {
+        return match (true) {
+            $valor === null => '—',
+            is_int($valor), is_float($valor), is_string($valor) => $valor,
+            is_bool($valor) => $valor ? 'Sí' : 'No',
+            $valor instanceof \BackedEnum => (string) $valor->value,
+            $valor instanceof \UnitEnum => $valor->name,
+            $valor instanceof \DateTimeInterface => $valor->format('d/m/Y'),
+            $valor instanceof \Stringable => (string) $valor,
+            is_array($valor) => isset($valor['nombre']) && ! is_array($valor['nombre'])
+                ? (string) $valor['nombre']
+                : implode(', ', array_map(fn ($v) => (string) self::celda($v), array_values($valor))),
+            default => '—',
+        };
+    }
+
     /** Texto del periodo y filtros, para el encabezado de los archivos. */
     public function descripcionFiltros(array $f): string
     {
         $partes = [];
-        $fecha = fn (string $d) => \Illuminate\Support\Carbon::parse($d)->format('d/m/Y');
+        $fecha = fn (string $d) => Carbon::parse($d)->format('d/m/Y');
         if (! empty($f['desde']) || ! empty($f['hasta'])) {
             $partes[] = 'Periodo: '.(! empty($f['desde']) ? $fecha($f['desde']) : 'inicio').' al '.(! empty($f['hasta']) ? $fecha($f['hasta']) : 'hoy');
         } else {
