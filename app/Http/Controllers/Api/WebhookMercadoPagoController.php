@@ -20,6 +20,11 @@ use Illuminate\Support\Facades\Log;
  *     Mercado Pago no lo repita.
  * Sin firma (formato IPN) se procesa igual: el pago siempre se consulta en
  * la API de Mercado Pago antes de aplicarlo.
+ *
+ * Auditoría 21-oct-2026: en producción la firma es obligatoria. Si el aviso
+ * no trae firma, si falta MP_WEBHOOK_SECRET o si el ts tiene más de 5
+ * minutos, responde 401 sin consultar a Mercado Pago. El modo sin firma
+ * (IPN) queda solo para local y pruebas.
  */
 class WebhookMercadoPagoController extends Controller
 {
@@ -37,6 +42,22 @@ class WebhookMercadoPagoController extends Controller
 
         if ($revision === FirmaWebhookMercadoPago::INVALIDA) {
             Log::warning('Mercado Pago: aviso con firma inválida; se rechaza.', ['data_id' => $dataId]);
+
+            return response()->json(['message' => 'La firma del aviso no es válida.'], 401);
+        }
+
+        if ($revision === FirmaWebhookMercadoPago::VENCIDA) {
+            Log::warning('Mercado Pago: aviso con firma vencida (ts de hace más de 5 minutos); se rechaza.', ['data_id' => $dataId]);
+
+            return response()->json(['message' => 'La firma del aviso no es válida.'], 401);
+        }
+
+        if (app()->isProduction() && $revision !== FirmaWebhookMercadoPago::VALIDA) {
+            if ((string) config('services.mercadopago.webhook_secret', '') === '') {
+                Log::warning('Mercado Pago: falta MP_WEBHOOK_SECRET en producción; se rechazan todos los avisos hasta configurarla.');
+            } else {
+                Log::warning('Mercado Pago: aviso sin firma en producción; se rechaza.', ['data_id' => $dataId]);
+            }
 
             return response()->json(['message' => 'La firma del aviso no es válida.'], 401);
         }

@@ -29,6 +29,12 @@ class FirmaWebhookMercadoPago
     /** Trae firma, pero FootwearPoint no tiene la clave configurada. */
     public const SIN_CLAVE = 'sin_clave';
 
+    /** La firma cuadra (o no se pudo revisar), pero su ts es de hace más de 5 minutos: posible repetición. */
+    public const VENCIDA = 'vencida';
+
+    /** Cuánto puede tener de antigüedad (o de adelanto) el ts de la firma. */
+    public const TOLERANCIA_SEGUNDOS = 300;
+
     public function revisar(?string $firma, ?string $requestId, ?string $dataId): string
     {
         if ($firma === null || trim($firma) === '') {
@@ -50,13 +56,28 @@ class FirmaWebhookMercadoPago
         $ts = $partes['ts'] ?? '';
         $v1 = strtolower($partes['v1'] ?? '');
 
-        if ($ts === '' || $v1 === '') {
+        if ($ts === '' || $v1 === '' || ! ctype_digit($ts)) {
             return self::INVALIDA;
         }
 
         $esperada = hash_hmac('sha256', self::manifiesto($dataId, $requestId, $ts), $clave);
 
-        return hash_equals($esperada, $v1) ? self::VALIDA : self::INVALIDA;
+        if (! hash_equals($esperada, $v1)) {
+            return self::INVALIDA;
+        }
+
+        return self::tsVigente($ts) ? self::VALIDA : self::VENCIDA;
+    }
+
+    /**
+     * Mercado Pago manda ts en milisegundos (a veces en segundos). Se acepta
+     * si está a menos de 5 minutos de la hora actual, hacia atrás o adelante.
+     */
+    public static function tsVigente(string $ts): bool
+    {
+        $segundos = strlen($ts) > 11 ? intdiv((int) $ts, 1000) : (int) $ts;
+
+        return abs(now()->getTimestamp() - $segundos) <= self::TOLERANCIA_SEGUNDOS;
     }
 
     /** El texto que firma Mercado Pago. */
