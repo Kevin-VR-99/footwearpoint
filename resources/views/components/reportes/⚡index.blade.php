@@ -36,6 +36,11 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     public array $seleccionDeudores = [];
     public array $porEnviar = [];
 
+    /** Filtros favoritos: nombre para guardar y el que se está renombrando. */
+    public string $nombreFavorito = '';
+    public ?int $renombrandoFavoritoId = null;
+    public string $nombreRenombrar = '';
+
     public function mount()
     {
         if (! Auth::check()) {
@@ -59,6 +64,103 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         $this->reset('desde', 'hasta', 'estado', 'cicloId', 'demandaCampanaId', 'demandaMarcaId');
     }
 
+
+    /** Campos de filtro que se guardan en un favorito. */
+    private const CAMPOS_FAVORITO = ['desde', 'hasta', 'estado', 'cicloId', 'demandaCampanaId', 'demandaMarcaId'];
+
+    private const MAX_FAVORITOS = 20;
+
+    private function filtrosActuales(): array
+    {
+        return collect(self::CAMPOS_FAVORITO)->mapWithKeys(fn ($c) => [$c => (string) $this->{$c}])->all();
+    }
+
+    private function favorito(int $id): \App\Models\FiltroFavorito
+    {
+        return \App\Models\FiltroFavorito::query()->delUsuario((int) Auth::id())->findOrFail($id);
+    }
+
+    public function getFavoritosProperty()
+    {
+        return \App\Models\FiltroFavorito::query()->delUsuario((int) Auth::id())->orderBy('nombre')->get();
+    }
+
+    public function guardarFavorito(): void
+    {
+        $this->nombreFavorito = trim($this->nombreFavorito);
+        $this->validate(['nombreFavorito' => ['required', 'string', 'max:60']], [], ['nombreFavorito' => 'nombre']);
+
+        $existentes = \App\Models\FiltroFavorito::query()->delUsuario((int) Auth::id());
+        if ((clone $existentes)->where('nombre', $this->nombreFavorito)->exists()) {
+            $this->addError('nombreFavorito', 'Ya tienes un favorito con ese nombre.');
+
+            return;
+        }
+        if ((clone $existentes)->count() >= self::MAX_FAVORITOS) {
+            $this->addError('nombreFavorito', 'Puedes guardar hasta '.self::MAX_FAVORITOS.' favoritos.');
+
+            return;
+        }
+
+        \App\Models\FiltroFavorito::create([
+            'usuario_id' => Auth::id(), 'pantalla' => 'reportes',
+            'nombre' => $this->nombreFavorito, 'filtros' => $this->filtrosActuales(),
+        ]);
+        $this->dispatch('guardado', mensaje: 'Filtro «'.$this->nombreFavorito.'» guardado.');
+        $this->nombreFavorito = '';
+    }
+
+    public function aplicarFavorito(int $id): void
+    {
+        $filtros = $this->favorito($id)->filtros ?? [];
+        foreach (self::CAMPOS_FAVORITO as $campo) {
+            $this->{$campo} = isset($filtros[$campo]) && is_scalar($filtros[$campo]) ? (string) $filtros[$campo] : '';
+        }
+    }
+
+    public function renombrarFavorito(int $id): void
+    {
+        $this->renombrandoFavoritoId = $this->favorito($id)->id;
+        $this->nombreRenombrar = $this->favorito($id)->nombre;
+        $this->resetErrorBag('nombreRenombrar');
+    }
+
+    public function cancelarRenombre(): void
+    {
+        $this->reset('renombrandoFavoritoId', 'nombreRenombrar');
+    }
+
+    public function guardarRenombre(): void
+    {
+        if ($this->renombrandoFavoritoId === null) {
+            return;
+        }
+        $favorito = $this->favorito($this->renombrandoFavoritoId);
+        $this->nombreRenombrar = trim($this->nombreRenombrar);
+        $this->validate(['nombreRenombrar' => ['required', 'string', 'max:60']], [], ['nombreRenombrar' => 'nombre']);
+
+        $repetido = \App\Models\FiltroFavorito::query()->delUsuario((int) Auth::id())
+            ->where('nombre', $this->nombreRenombrar)->whereKeyNot($favorito->id)->exists();
+        if ($repetido) {
+            $this->addError('nombreRenombrar', 'Ya tienes un favorito con ese nombre.');
+
+            return;
+        }
+
+        $favorito->update(['nombre' => $this->nombreRenombrar]);
+        $this->cancelarRenombre();
+    }
+
+    public function eliminarFavorito(int $id): void
+    {
+        $favorito = $this->favorito($id);
+        $nombre = $favorito->nombre;
+        $favorito->delete();
+        if ($this->renombrandoFavoritoId === $id) {
+            $this->cancelarRenombre();
+        }
+        $this->dispatch('guardado', mensaje: 'Favorito «'.$nombre.'» eliminado.');
+    }
 
     private function autorizarCobro(): void
     {
@@ -395,6 +497,55 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                     <button type="button" wire:click="limpiarFiltros" class="fp-accion fp-accion-neutra" data-limpiar-filtros>Limpiar</button>
                 @endif
             </div>
+        </div>
+        {{-- Filtros favoritos del usuario: aplicar con un clic, renombrar, eliminar y guardar los actuales. --}}
+        @php
+            $actuales = collect(['desde', 'hasta', 'estado', 'cicloId', 'demandaCampanaId', 'demandaMarcaId'])->mapWithKeys(fn ($c) => [$c => (string) $this->{$c}])->all();
+        @endphp
+        <div class="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-3" data-favoritos x-data="{ guardando: false }">
+            <span class="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
+                <svg class="h-3.5 w-3.5 text-fp-primary" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M9.05 2.93c.3-.92 1.6-.92 1.9 0l1.07 3.3a1 1 0 00.95.69h3.47c.97 0 1.37 1.24.59 1.81l-2.81 2.04a1 1 0 00-.36 1.12l1.07 3.3c.3.92-.75 1.69-1.54 1.12l-2.8-2.04a1 1 0 00-1.18 0l-2.8 2.04c-.8.57-1.84-.2-1.55-1.12l1.07-3.3a1 1 0 00-.36-1.12L2.97 8.73c-.78-.57-.38-1.81.59-1.81h3.47a1 1 0 00.95-.69z"/></svg>
+                Favoritos
+            </span>
+            @forelse ($this->favoritos as $fav)
+                @php
+                    $activo = array_merge(array_fill_keys(array_keys($actuales), ''), array_map('strval', array_filter((array) $fav->filtros, 'is_scalar'))) == $actuales;
+                @endphp
+                @if ($renombrandoFavoritoId === $fav->id)
+                    <form wire:submit="guardarRenombre" class="inline-flex items-center gap-1 fp-aparecer" data-renombrar-favorito="{{ $fav->id }}">
+                        <label for="renombrar-favorito" class="sr-only">Nuevo nombre</label>
+                        <input id="renombrar-favorito" type="text" wire:model="nombreRenombrar" maxlength="60" class="h-8 w-40 rounded-lg text-xs" x-init="$el.focus()" @keydown.escape="$wire.cancelarRenombre()" />
+                        <button type="submit" class="fp-accion fp-accion-primaria text-xs">Guardar</button>
+                        <button type="button" wire:click="cancelarRenombre" class="fp-accion fp-accion-neutra text-xs">Cancelar</button>
+                        @error('nombreRenombrar') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                    </form>
+                @else
+                    <span class="group inline-flex items-center overflow-hidden rounded-full border text-xs transition-colors motion-reduce:transition-none {{ $activo ? 'border-fp-primary bg-fp-badge-info-bg text-fp-badge-info-fg' : 'border-slate-200 bg-white text-slate-700 hover:border-fp-primary/50' }}" data-favorito="{{ $fav->nombre }}">
+                        <button type="button" wire:click="aplicarFavorito({{ $fav->id }})" class="px-3 py-1 font-medium" aria-pressed="{{ $activo ? 'true' : 'false' }}" title="Aplicar «{{ $fav->nombre }}»">{{ $fav->nombre }}</button>
+                        <button type="button" wire:click="renombrarFavorito({{ $fav->id }})" class="px-1.5 py-1 text-slate-400 hover:text-fp-primary" aria-label="Renombrar {{ $fav->nombre }}">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.2 5.2l3.6 3.6M4 20l4.5-1 10.3-10.3a2.5 2.5 0 00-3.5-3.5L5 15.5z"/></svg>
+                        </button>
+                        <button type="button" wire:click="eliminarFavorito({{ $fav->id }})" wire:confirm="¿Eliminar el favorito «{{ $fav->nombre }}»?" class="py-1 pl-0.5 pr-2 text-slate-400 hover:text-fp-danger" aria-label="Eliminar {{ $fav->nombre }}">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg>
+                        </button>
+                    </span>
+                @endif
+            @empty
+                <span class="text-xs text-fp-text-muted">Aún no guardas combinaciones de filtros.</span>
+            @endforelse
+
+            <div class="ml-auto flex items-center gap-2">
+                <button type="button" x-show="!guardando" @click="guardando = true; $nextTick(() => $refs.nombreFav.focus())" class="fp-accion fp-accion-primaria text-xs" data-guardar-favorito>
+                    + Guardar filtros actuales
+                </button>
+                <form x-show="guardando" x-cloak x-transition.opacity wire:submit="guardarFavorito" @guardado.window="guardando = false" class="flex items-center gap-1">
+                    <label for="nombre-favorito" class="sr-only">Nombre del favorito</label>
+                    <input id="nombre-favorito" x-ref="nombreFav" type="text" wire:model="nombreFavorito" maxlength="60" placeholder="Nombre, p. ej. «Mes actual»" class="h-8 w-48 rounded-lg text-xs" @keydown.escape="guardando = false" />
+                    <button type="submit" class="fp-btn fp-btn-primario px-3 py-1 text-xs">Guardar</button>
+                    <button type="button" @click="guardando = false" class="fp-accion fp-accion-neutra text-xs">Cancelar</button>
+                </form>
+            </div>
+            @error('nombreFavorito') <p class="w-full text-right text-xs text-fp-danger" x-init="guardando = true">{{ $message }}</p> @enderror
         </div>
         <div id="filtros-reporte" x-show="abierto" x-collapse.duration.200ms x-cloak class="border-t border-slate-100">
             <div class="grid grid-cols-2 gap-3 p-4 md:grid-cols-3 xl:grid-cols-6">
