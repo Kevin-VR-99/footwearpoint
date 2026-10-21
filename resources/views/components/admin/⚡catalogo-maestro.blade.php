@@ -466,17 +466,17 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             <input type="text" wire:model="editar_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
             @error('editar_descripcion') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
             <div class="flex gap-2">
-                <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Guardar cambios</button>
+                <button class="fp-btn fp-btn-primario w-fit">Guardar cambios</button>
                 <button type="button" wire:click="cancelarEdicion" class="w-fit rounded-lg bg-slate-100 px-4 py-2 text-sm text-slate-600">Cancelar</button>
             </div>
         </form>
     @endif
 
     <div class="flex flex-wrap gap-2">
-        <button type="button" wire:click="$set('pestana', 'lineas')" class="rounded-lg px-3 py-2 text-sm {{ $pestana === 'lineas' ? 'bg-fp-primary text-white' : 'bg-white text-slate-600' }}">Líneas</button>
-        <button type="button" wire:click="$set('pestana', 'marcas')" class="rounded-lg px-3 py-2 text-sm {{ $pestana === 'marcas' ? 'bg-fp-primary text-white' : 'bg-white text-slate-600' }}">Marcas</button>
-        <button type="button" wire:click="$set('pestana', 'temporadas')" class="rounded-lg px-3 py-2 text-sm {{ $pestana === 'temporadas' ? 'bg-fp-primary text-white' : 'bg-white text-slate-600' }}">Temporadas</button>
-        <button type="button" wire:click="$set('pestana', 'productos')" class="rounded-lg px-3 py-2 text-sm {{ $pestana === 'productos' ? 'bg-fp-primary text-white' : 'bg-white text-slate-600' }}">Productos</button>
+        <button type="button" wire:click="$set('pestana', 'lineas')" class="fp-chip rounded-lg px-3 py-2 text-sm {{ $pestana === 'lineas' ? 'bg-fp-primary text-white' : 'bg-white text-slate-600' }}">Líneas</button>
+        <button type="button" wire:click="$set('pestana', 'marcas')" class="fp-chip rounded-lg px-3 py-2 text-sm {{ $pestana === 'marcas' ? 'bg-fp-primary text-white' : 'bg-white text-slate-600' }}">Marcas</button>
+        <button type="button" wire:click="$set('pestana', 'temporadas')" class="fp-chip rounded-lg px-3 py-2 text-sm {{ $pestana === 'temporadas' ? 'bg-fp-primary text-white' : 'bg-white text-slate-600' }}">Temporadas</button>
+        <button type="button" wire:click="$set('pestana', 'productos')" class="fp-chip rounded-lg px-3 py-2 text-sm {{ $pestana === 'productos' ? 'bg-fp-primary text-white' : 'bg-white text-slate-600' }}">Productos</button>
     </div>
 
     @if ($pestana === 'lineas')
@@ -484,7 +484,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             <input type="text" wire:model="linea_nombre" placeholder="Nombre de la línea" class="rounded-lg text-sm">
             @error('linea_nombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
             <input type="text" wire:model="linea_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
-            <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Crear línea</button>
+            <button class="fp-btn fp-btn-primario w-fit">Crear línea</button>
         </form>
         <table class="w-full rounded-2xl bg-white text-sm">
             <thead><tr class="text-left text-slate-500"><th class="p-3">Nombre</th><th class="p-3">Temporadas</th><th class="p-3">Estado</th><th class="p-3">Acciones</th></tr></thead>
@@ -495,7 +495,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         <td class="p-3">{{ $linea->campanas_count }}</td>
                         <td class="p-3">{{ $linea->activa ? 'Activa' : 'Inactiva' }}</td>
                         <td class="p-3 whitespace-nowrap text-xs">
-                            <button type="button" wire:click="editar('linea', {{ $linea->id }})" class="text-fp-primary hover:underline">Editar</button>
+                            <button type="button" wire:click="editar('linea', {{ $linea->id }})" class="fp-enlace">Editar</button>
                             <button type="button" wire:click="alternarActivo('linea', {{ $linea->id }})" class="text-slate-600 hover:underline">{{ $linea->activa ? 'Desactivar' : 'Activar' }}</button>
                             <button type="button" wire:click="eliminar('linea', {{ $linea->id }})" wire:confirm="¿Eliminar la línea «{{ $linea->nombre }}»? Esta acción no se puede deshacer." class="text-red-600 hover:underline">Eliminar</button>
                         </td>
@@ -508,7 +508,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             <input type="text" wire:model="marca_nombre" placeholder="Nombre de la marca" class="rounded-lg text-sm">
             @error('marca_nombre') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
             <input type="text" wire:model="marca_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
-            <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Crear marca</button>
+            <button class="fp-btn fp-btn-primario w-fit">Crear marca</button>
         </form>
         <table class="w-full rounded-2xl bg-white text-sm">
             <thead><tr class="text-left text-slate-500"><th class="p-3">Nombre</th><th class="p-3">Productos</th><th class="p-3">Estado</th><th class="p-3">Acciones</th></tr></thead>
@@ -519,7 +519,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         <td class="p-3">{{ $marca->productos_count }}</td>
                         <td class="p-3">{{ $marca->activa ? 'Activa' : 'Inactiva' }}</td>
                         <td class="p-3 whitespace-nowrap text-xs">
-                            <button type="button" wire:click="editar('marca', {{ $marca->id }})" class="text-fp-primary hover:underline">Editar</button>
+                            <button type="button" wire:click="editar('marca', {{ $marca->id }})" class="fp-enlace">Editar</button>
                             <button type="button" wire:click="alternarActivo('marca', {{ $marca->id }})" class="text-slate-600 hover:underline">{{ $marca->activa ? 'Desactivar' : 'Activar' }}</button>
                             <button type="button" wire:click="eliminar('marca', {{ $marca->id }})" wire:confirm="¿Eliminar la marca «{{ $marca->nombre }}»? Esta acción no se puede deshacer." class="text-red-600 hover:underline">Eliminar</button>
                         </td>
@@ -544,7 +544,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 <option value="cerrada">Cerrada</option>
             </select>
             @error('estado') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Crear temporada</button>
+            <button class="fp-btn fp-btn-primario w-fit">Crear temporada</button>
         </form>
         <table class="w-full rounded-2xl bg-white text-sm">
             <thead><tr class="text-left text-slate-500"><th class="p-3">Temporada</th><th class="p-3">Línea</th><th class="p-3">Productos</th><th class="p-3">Estado</th><th class="p-3">Acciones</th></tr></thead>
@@ -556,7 +556,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         <td class="p-3">{{ $temporada->productos_campana_count }}</td>
                         <td class="p-3">{{ ucfirst(str_replace('_', ' ', $temporada->estado)) }}</td>
                         <td class="p-3 whitespace-nowrap text-xs">
-                            <button type="button" wire:click="editar('temporada', {{ $temporada->id }})" class="text-fp-primary hover:underline">Editar</button>
+                            <button type="button" wire:click="editar('temporada', {{ $temporada->id }})" class="fp-enlace">Editar</button>
                             <button type="button" wire:click="pedirEliminarTemporada({{ $temporada->id }})" class="text-red-600 hover:underline">Eliminar</button>
                         </td>
                     </tr>
@@ -565,8 +565,8 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         </table>
 
         @if ($temporadaPorEliminar)
-            <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-labelledby="titulo-eliminar-temporada">
-                <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div class="fp-desvanecer fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="titulo-eliminar-temporada">
+                <div class="fp-emerger w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
                     <h2 id="titulo-eliminar-temporada" class="text-lg font-semibold text-slate-900">Eliminar temporada</h2>
                     <p class="mt-2 text-sm text-slate-600">
                         ¿Eliminar la temporada «{{ $temporadaPorEliminarNombre }}»? Esta acción no se puede deshacer.
@@ -609,7 +609,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             @error('producto_codigo') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
             <input type="number" step="0.01" wire:model="producto_precio" placeholder="Precio de menudeo" class="rounded-lg text-sm">
             @error('producto_precio') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
-            <button class="w-fit rounded-lg bg-fp-primary px-4 py-2 text-sm text-white">Publicar producto</button>
+            <button class="fp-btn fp-btn-primario w-fit">Publicar producto</button>
         </form>
         <table class="w-full rounded-2xl bg-white text-sm">
             <thead>
@@ -634,7 +634,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         <td class="p-3">{{ $fila->producto?->activo ? 'Activo' : 'Inactivo' }}</td>
                         <td class="p-3 whitespace-nowrap text-xs">
                             @if ($fila->producto)
-                                <button type="button" wire:click="editar('producto', {{ $fila->producto->id }})" class="text-fp-primary hover:underline">Editar</button>
+                                <button type="button" wire:click="editar('producto', {{ $fila->producto->id }})" class="fp-enlace">Editar</button>
                                 <button type="button" wire:click="alternarActivo('producto', {{ $fila->producto->id }})" class="text-slate-600 hover:underline">{{ $fila->producto->activo ? 'Desactivar' : 'Activar' }}</button>
                                 <button type="button" wire:click="eliminar('producto', {{ $fila->producto->id }})" wire:confirm="¿Eliminar el producto «{{ $fila->producto->nombre }}» de todo el catálogo, con sus tallas y publicaciones? Esta acción no se puede deshacer." class="text-red-600 hover:underline">Eliminar</button>
                             @endif

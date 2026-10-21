@@ -640,7 +640,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         <x-slot:acciones>
         @if (!$mostrandoFormularioCrear)
             <button type="button" wire:click="abrirFormularioCrear"
-                class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
+                class="fp-btn fp-btn-primario">
                 + Nueva distribuidora
             </button>
         @endif
@@ -655,7 +655,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     @if ($mostrandoFormularioCrear)
         <form wire:submit="crearDistribuidora"
-            class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-4 max-w-3xl">
+            class="mb-6 fp-tarjeta p-5 space-y-4 max-w-3xl">
             <h3 class="font-semibold text-slate-800">Nueva distribuidora</h3>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -762,7 +762,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             </div>
 
             <div class="flex gap-2">
-                <button type="submit" class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
+                <button type="submit" class="fp-btn fp-btn-primario">
                     Crear distribuidora
                 </button>
                 <button type="button" wire:click="cancelarCrear" class="text-sm text-slate-600 px-4 py-2">
@@ -773,7 +773,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     @endif
 
     @if ($mostrarSuscripcion)
-        <div class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div class="mb-6 fp-tarjeta p-5">
             <h3 class="font-semibold mb-1">Asignar plan</h3>
             <p class="text-sm text-slate-500 mb-4">{{ $distribuidoraSuscripcionNombre }}</p>
 
@@ -819,7 +819,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 </div>
 
                 <div class="md:col-span-2 flex gap-2">
-                    <button type="submit" class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
+                    <button type="submit" class="fp-btn fp-btn-primario">
                         Asignar
                     </button>
                     <button type="button" wire:click="cancelarSuscripcion"
@@ -853,7 +853,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 'Fecha de aprobación' => $fecha($detalle['fecha_aprobacion']),
             ];
         @endphp
-        <div class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div class="mb-6 fp-tarjeta p-5">
             <div class="flex items-start justify-between gap-4 mb-4">
                 <div>
                     <h3 class="font-semibold text-slate-800">{{ $detalle['nombre_comercial'] }}</h3>
@@ -908,7 +908,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             @if ($detalle['estado'] === 'pendiente')
                 <div class="mt-5 flex gap-2">
                     <button type="button" wire:click="aprobar({{ $detalle['id'] }})"
-                        class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
+                        class="fp-btn fp-btn-primario">
                         Aprobar
                     </button>
                     <button type="button" wire:click="abrirRechazo({{ $detalle['id'] }})"
@@ -922,8 +922,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     {{-- TG-194: editar distribuidora y su administrador --}}
     @if ($distribuidoraEdicionId)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <form wire:submit="guardarEdicion" class="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 p-6 space-y-4">
+        <div class="fp-desvanecer fixed inset-0 z-50 flex items-center justify-center bg-fp-sidebar/50 p-4 backdrop-blur-[2px]">
+            <form wire:submit="guardarEdicion" class="fp-emerger w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 space-y-4">
                 <div>
                     <h3 class="font-semibold text-slate-900">Editar distribuidora</h3>
                     <p class="text-sm text-slate-500 mt-1">«{{ $distribuidoraEdicionNombre }}»</p>
@@ -1048,7 +1048,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         class="rounded-lg border border-slate-200 text-sm px-4 py-2">
                         Cancelar
                     </button>
-                    <button type="submit" class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
+                    <button type="submit" class="fp-btn fp-btn-primario">
                         Guardar cambios
                     </button>
                 </div>
@@ -1058,8 +1058,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     {{-- TG-195: rechazar con motivo --}}
     @if ($distribuidoraRechazoId)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <form wire:submit="rechazar" class="w-full max-w-lg bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+        <div class="fp-desvanecer fixed inset-0 z-50 flex items-center justify-center bg-fp-sidebar/50 p-4 backdrop-blur-[2px]">
+            <form wire:submit="rechazar" class="fp-emerger w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6">
                 <h3 class="font-semibold text-slate-900">Rechazar distribuidora</h3>
                 <p class="text-sm text-slate-500 mt-1">
                     «{{ $distribuidoraRechazoNombre }}» no podrá usar FootwearPoint. El rechazo es definitivo.
@@ -1099,18 +1099,18 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     <div class="mb-4 flex gap-2 flex-wrap">
         <button wire:click="$set('filtroEstado', '')"
-            class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === '' ? 'bg-fp-primary text-white shadow-sm' : 'bg-white border border-slate-200' }}">
+            class="fp-chip px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === '' ? 'bg-fp-primary text-white shadow-sm' : 'bg-white border border-slate-200' }}">
             Todas
         </button>
         @foreach ($this->estadosFiltrables as $estado)
             <button wire:click="$set('filtroEstado', '{{ $estado }}')"
-                class="px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === $estado ? 'bg-fp-primary text-white shadow-sm' : 'bg-white border border-slate-200' }}">
+                class="fp-chip px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === $estado ? 'bg-fp-primary text-white shadow-sm' : 'bg-white border border-slate-200' }}">
                 {{ ucfirst($estado) }}
             </button>
         @endforeach
     </div>
 
-    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="fp-tarjeta overflow-hidden">
         <table class="w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
@@ -1160,7 +1160,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                             <button wire:click="verDatos({{ $d->id }})"
                                 class="text-xs text-slate-700 hover:underline">Ver datos</button>
                             <button wire:click="abrirEdicion({{ $d->id }})"
-                                class="text-xs text-fp-primary hover:underline">Editar</button>
+                                class="text-xs fp-enlace">Editar</button>
                             @if ($d->estado === 'pendiente')
                                 <button wire:click="aprobar({{ $d->id }})"
                                     class="text-xs text-fp-badge-success-fg hover:underline">Aprobar</button>
@@ -1174,7 +1174,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                             @endif
                             @if ($d->estado === 'suspendida')
                                 <button wire:click="reactivar({{ $d->id }})"
-                                    class="text-xs text-fp-primary hover:underline">Reactivar</button>
+                                    class="text-xs fp-enlace">Reactivar</button>
                             @endif
                             @if (in_array($d->estado, ['activa', 'suspendida']))
                                 @php

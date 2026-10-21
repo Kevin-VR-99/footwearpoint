@@ -220,7 +220,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         </div>
 
         <button type="submit" wire:loading.attr="disabled"
-            class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
+            class="fp-btn fp-btn-primario">
             Subir catálogo
         </button>
     </form>

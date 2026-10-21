@@ -6,11 +6,11 @@
 @endphp
 
 <a href="{{ app(\App\Services\Tienda\EnlaceTienda::class)->producto($distribuidora, (int) $producto['id']) }}"
-   class="group h-full bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-fp-sidebar/10 hover:border-fp-primary/30">
+   class="group h-full fp-tarjeta-interactiva overflow-hidden flex flex-col">
     <div class="aspect-square bg-slate-100 flex items-center justify-center overflow-hidden">
         @if ($producto['imagen'])
             <img src="{{ $producto['imagen'] }}" alt="{{ $producto['nombre'] }}" loading="lazy"
-                 class="h-full w-full object-cover group-hover:scale-105 transition">
+                 class="h-full w-full object-cover transition duration-500 group-hover:scale-105 motion-reduce:transform-none">
         @else
             <span class="text-slate-400 text-sm px-4 text-center">{{ $producto['marca'] ?? 'Sin foto' }}</span>
         @endif

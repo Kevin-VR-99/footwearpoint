@@ -164,7 +164,7 @@ new class extends Component {
     <div class="flex flex-wrap items-center gap-2">
         @if ($configurado)
             <a href="{{ route('mercado-pago.conectar') }}"
-                class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
+                class="fp-btn fp-btn-primario">
                 {{ $conectado || $ilegible ? 'Volver a conectar' : 'Conectar con Mercado Pago' }}
             </a>
         @endif

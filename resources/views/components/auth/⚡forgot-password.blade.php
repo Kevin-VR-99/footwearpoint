@@ -89,7 +89,7 @@ new #[Layout('layouts.guest')] #[Title('Recuperar contraseña — FootwearPoint'
 
         <button
             type="submit"
-            class="w-full rounded-lg bg-[#111E38] text-white font-medium py-2.5 hover:bg-[#1E2F52] transition"
+            class="fp-btn fp-btn-oscuro w-full py-2.5"
             wire:loading.attr="disabled"
         >
             <span wire:loading.remove>Enviar enlace</span>

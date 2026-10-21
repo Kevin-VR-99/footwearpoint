@@ -104,7 +104,7 @@ class extends Component
                 ['Recibes pedidos', 'Tus clientes y tus clientes mayoristas piden desde la app; tu personal captura en mostrador.'],
                 ['Cobras y entregas', 'Cobras el anticipo, haces el pedido a fábrica y entregas en tu sucursal.'],
             ] as $i => [$titulo, $texto])
-                <li class="group rounded-2xl border border-slate-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 relative p-6" data-revelar style="--retraso: {{ $i * 100 }}ms">
+                <li class="group fp-tarjeta transition duration-300 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 relative p-6" data-revelar style="--retraso: {{ $i * 100 }}ms">
                     <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-fp-badge-info-bg font-bold text-fp-badge-info-fg transition duration-300 group-hover:bg-gradient-to-br group-hover:from-fp-primary group-hover:to-fp-accent group-hover:text-white">
                         {{ $i + 1 }}
                     </span>
@@ -131,7 +131,7 @@ class extends Component
                 ['Tus precios son tuyos', 'El precio de mayoreo lo pone cada distribuidora; nadie ve el de las demás.'],
                 ['Pagos en línea', 'Tus clientes pagan su anticipo con Mercado Pago desde la app.'],
             ] as $i => [$titulo, $texto])
-                <article class="group rounded-2xl border border-slate-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 p-6" data-revelar style="--retraso: {{ ($i % 3) * 100 }}ms">
+                <article class="group fp-tarjeta transition duration-300 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 p-6" data-revelar style="--retraso: {{ ($i % 3) * 100 }}ms">
                     <span class="mb-4 block h-1 w-10 rounded-full bg-gradient-to-r from-fp-primary to-fp-accent transition-all duration-300 group-hover:w-16"></span>
                     <h4 class="font-semibold text-fp-sidebar">{{ $titulo }}</h4>
                     <p class="mt-1 text-sm text-slate-600">{{ $texto }}</p>
@@ -156,7 +156,7 @@ class extends Component
         @else
             <div class="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($planes as $plan)
-                    <article class="group rounded-2xl border border-slate-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 flex flex-col overflow-hidden" data-revelar style="--retraso: {{ ($loop->index % 3) * 100 }}ms">
+                    <article class="group fp-tarjeta transition duration-300 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 flex flex-col overflow-hidden" data-revelar style="--retraso: {{ ($loop->index % 3) * 100 }}ms">
                         <div class="h-1 bg-gradient-to-r from-fp-primary via-fp-accent to-fp-sidebar"></div>
                         <div class="flex flex-1 flex-col p-6">
                         <h4 class="text-lg font-semibold text-fp-sidebar">{{ $plan->nombre }}</h4>

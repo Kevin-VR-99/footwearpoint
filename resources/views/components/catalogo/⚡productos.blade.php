@@ -52,12 +52,12 @@ new class extends Component {
 <div class="space-y-4">
     <x-catalogo.aviso-solo-lectura />
 
-    <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+    <div class="fp-tarjeta p-4">
         <x-ui.buscador wire:model.live.debounce.400ms="busqueda"
             placeholder="Buscar por nombre, modelo, código o marca" etiqueta="Buscar productos" />
     </div>
 
-    <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+    <div class="overflow-hidden fp-tarjeta">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-fp-page">
                 <tr class="text-left text-xs font-semibold uppercase tracking-wide text-fp-text-muted">
@@ -89,7 +89,7 @@ new class extends Component {
                         </td>
                         <td class="px-6 py-3.5 text-right">
                             <a href="{{ route('catalogo.producto.detalle', $pc->producto_id) }}"
-                                class="text-sm font-medium text-fp-primary hover:underline">Ver variantes</a>
+                                class="text-sm font-medium fp-enlace">Ver variantes</a>
                         </td>
                     </tr>
                 @empty

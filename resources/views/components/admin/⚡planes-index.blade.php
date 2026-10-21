@@ -127,7 +127,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
             <p class="mt-1 text-sm text-fp-text-muted">Precios base y línea extra ($150)</p>
         <x-slot:acciones>
         <button wire:click="nuevo"
-                class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
+                class="fp-btn fp-btn-primario">
             Nuevo plan
         </button>
         </x-slot:acciones>
@@ -140,7 +140,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
     @endif
 
     @if ($mostrarForm)
-        <div class="mb-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <div class="mb-6 fp-tarjeta p-5">
             <h3 class="font-semibold mb-4">{{ $editId ? 'Editar plan' : 'Nuevo plan' }}</h3>
             <form wire:submit="guardar" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -172,7 +172,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
                     <span class="text-sm">Plan activo</span>
                 </div>
                 <div class="md:col-span-2 flex gap-2">
-                    <button type="submit" class="rounded-lg bg-fp-primary text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-primary/90">
+                    <button type="submit" class="fp-btn fp-btn-primario">
                         Guardar
                     </button>
                     <button type="button" wire:click="cancelar" class="rounded-lg border border-slate-200 text-sm px-4 py-2">
@@ -183,7 +183,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
         </div>
     @endif
 
-    <div class="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+    <div class="fp-tarjeta overflow-hidden">
         <table class="w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
@@ -211,7 +211,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
                             </span>
                         </td>
                         <td class="px-4 py-3 space-x-2">
-                            <button wire:click="editar({{ $plan->id }})" class="text-xs text-fp-primary hover:underline">Editar</button>
+                            <button wire:click="editar({{ $plan->id }})" class="text-xs fp-enlace">Editar</button>
                             @if ($plan->activo)
                                 <button wire:click="desactivar({{ $plan->id }})" class="text-xs text-fp-danger hover:underline">Desactivar</button>
                             @else

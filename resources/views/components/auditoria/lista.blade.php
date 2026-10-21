@@ -12,7 +12,7 @@
 @endphp
 
 {{-- TG-267 (U7): filtros y tabla compartidos por la auditoría de la distribuidora y la del admin general. --}}
-<div class="mb-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+<div class="mb-4 fp-tarjeta p-4">
     <div class="flex flex-wrap items-end gap-3">
         <div class="min-w-[10rem] flex-1">
             <label class="mb-1 block text-xs text-fp-text-muted">Buscar</label>
@@ -69,7 +69,7 @@
 
 <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
     <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
                     <th class="px-4 py-3 font-medium">Fecha</th>
@@ -106,7 +106,7 @@
                         <td class="px-4 py-3 text-xs tabular-nums text-slate-500">{{ $row->ip_origen ?? '—' }}</td>
                         <td class="px-4 py-3 text-right">
                             <button type="button" wire:click="toggleDetalle({{ $row->id }})"
-                                class="text-xs font-medium text-fp-primary hover:underline">
+                                class="text-xs font-medium fp-enlace">
                                 {{ $detalleId === $row->id ? 'Ocultar' : 'Detalle' }}
                             </button>
                         </td>

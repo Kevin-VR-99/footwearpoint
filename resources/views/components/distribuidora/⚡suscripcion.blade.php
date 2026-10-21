@@ -420,7 +420,7 @@ new class extends Component {
     <div class="flex flex-wrap items-center gap-2">
         @if ($configurado && $motivo === null)
             <button type="button" wire:click="pagar" wire:loading.attr="disabled"
-                class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
+                class="fp-btn fp-btn-primario">
                 Pagar mensualidad con Mercado Pago
             </button>
         @else
@@ -493,8 +493,8 @@ new class extends Component {
     </div>
 
     @if ($confirmarLineaExtra)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-labelledby="titulo-linea-extra" wire:click.self="cancelarLineaExtra">
-            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+        <div class="fp-desvanecer fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="titulo-linea-extra" wire:click.self="cancelarLineaExtra">
+            <div class="fp-emerger w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
                 <h2 id="titulo-linea-extra" class="text-lg font-semibold text-slate-900">Solicitar línea extra</h2>
                 <p class="mt-2 text-sm text-slate-600">
                     Vas a pagar <strong>${{ number_format($precioLineaExtra, 2) }} MXN</strong> ahora, solo por esta línea.
@@ -506,7 +506,7 @@ new class extends Component {
                 </p>
                 <div class="mt-5 flex justify-end gap-2">
                     <button type="button" wire:click="cancelarLineaExtra" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Cancelar</button>
-                    <button type="button" wire:click="pagarLineaExtra" wire:loading.attr="disabled" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white hover:bg-fp-primary/90">
+                    <button type="button" wire:click="pagarLineaExtra" wire:loading.attr="disabled" class="fp-btn fp-btn-primario">
                         Pagar ${{ number_format($precioLineaExtra, 2) }} y continuar
                     </button>
                 </div>

@@ -386,12 +386,12 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
 
     {{-- Empleados: listado o formulario inline --}}
     @if ($seccion === 'empleados')
-    <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
+    <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioEmpleado)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Empleados</h2>
                 <button type="button" wire:click="abrirFormularioInvitarEmpleado"
-                    class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
+                    class="fp-btn fp-btn-primario">
                     + Invitar empleado
                 </button>
             </div>
@@ -474,7 +474,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar</button>
+                    <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled">Guardar</button>
                     <button type="button" wire:click="cancelarFormularioEmpleado" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>
@@ -484,12 +484,12 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
 
     {{-- Revendedores --}}
     @if ($seccion === 'mayoristas')
-    <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
+    <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl">
         @if (! $mostrandoFormularioRevendedor)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Clientes mayoristas</h2>
                 <button type="button" wire:click="abrirFormularioAfiliarRevendedor"
-                    class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">
+                    class="fp-btn fp-btn-primario">
                     + Afiliar cliente mayorista
                 </button>
             </div>
@@ -632,7 +632,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     </div>
                 @endif
                 <div class="flex gap-2">
-                    <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar</button>
+                    <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled">Guardar</button>
                     <button type="button" wire:click="cancelarFormularioRevendedor" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
                 </div>
             </form>

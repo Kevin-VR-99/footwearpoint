@@ -257,11 +257,11 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
     <x-panel.encabezado eyebrow="Distribuidora" titulo="Clientes directos" nivel="h1"
         subtitulo="Personas que compran en mostrador o en la app." class="mb-6" />
     @if (! $mostrandoFormularioCliente)
-        <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 max-w-3xl">
+        <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Clientes Directos</h2>
                 <button type="button" wire:click="abrirFormularioCrearCliente"
-                    class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90">+ Nuevo cliente</button>
+                    class="fp-btn fp-btn-primario">+ Nuevo cliente</button>
             </div>
             {{-- TG-192: resultado del envio del enlace de restablecimiento. --}}
             {{-- La contrasena temporal se saca de la sesion, no de una propiedad
@@ -331,7 +331,7 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
             </table>
         </div>
     @else
-        <form wire:submit="guardarCliente" class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 space-y-4 max-w-2xl">
+        <form wire:submit="guardarCliente" class="fp-tarjeta p-5 sm:p-6 space-y-4 max-w-2xl">
             <h2 class="text-sm font-semibold text-slate-700">
                 {{ $clienteEditandoId ? 'Editar cliente directo' : 'Nuevo cliente directo' }}
             </h2>
@@ -399,7 +399,7 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                 </div>
             @endif
             <div class="flex gap-2">
-                <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar</button>
+                <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled">Guardar</button>
                 <button type="button" wire:click="cancelarFormularioCliente" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
             </div>
         </form>

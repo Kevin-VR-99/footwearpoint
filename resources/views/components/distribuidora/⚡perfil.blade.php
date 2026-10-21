@@ -104,7 +104,7 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
         x-on:livewire-upload-finish="subiendo = false"
         x-on:livewire-upload-cancel="subiendo = false"
         x-on:livewire-upload-error="subiendo = false"
-        class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 space-y-4 max-w-2xl">
+        class="fp-tarjeta p-5 sm:p-6 space-y-4 max-w-2xl">
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Nombre Comercial</label>
             <input type="text" wire:model="nombre_comercial" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
@@ -145,11 +145,11 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
             @error('logotipo') <span class="block text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
             <p class="text-xs text-fp-text-muted mt-1">PNG o JPG, hasta 2MB.</p>
         </div>
-        <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled" wire:target="logotipo,guardarPerfil" x-bind:disabled="subiendo">Guardar Cambios</button>
+        <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled" wire:target="logotipo,guardarPerfil" x-bind:disabled="subiendo">Guardar Cambios</button>
     </form>
 
     {{-- TG-232 (E3-02): subdominio de la tienda pública. --}}
-    <form wire:submit="guardarSubdominio" class="mt-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 space-y-3 max-w-2xl">
+    <form wire:submit="guardarSubdominio" class="mt-6 fp-tarjeta p-5 sm:p-6 space-y-3 max-w-2xl">
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Subdominio de tu tienda</label>
             <div class="flex items-center gap-2">
@@ -162,9 +162,9 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
             @error('subdominio') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
             <p class="text-xs text-fp-text-muted mt-1">De 3 a 63 caracteres: letras minúsculas, números y guiones.</p>
             @if ($urlTienda)
-                <p class="text-xs text-fp-text-muted mt-1">Tu tienda: <a href="{{ $urlTienda }}" target="_blank" rel="noopener" class="text-fp-primary hover:underline">{{ $urlTienda }}</a></p>
+                <p class="text-xs text-fp-text-muted mt-1">Tu tienda: <a href="{{ $urlTienda }}" target="_blank" rel="noopener" class="fp-enlace">{{ $urlTienda }}</a></p>
             @endif
         </div>
-        <button type="submit" class="rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-fp-primary/90" wire:loading.attr="disabled">Guardar subdominio</button>
+        <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled">Guardar subdominio</button>
     </form>
 </div>

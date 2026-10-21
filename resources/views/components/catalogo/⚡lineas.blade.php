@@ -47,7 +47,7 @@ new class extends Component {
         </div>
     @endif
 
-    <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+    <div class="overflow-hidden fp-tarjeta">
         <table class="min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-fp-page">
                 <tr class="text-left text-xs font-semibold uppercase tracking-wide text-fp-text-muted">

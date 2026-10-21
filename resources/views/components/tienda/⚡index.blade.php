@@ -100,7 +100,7 @@ new class extends Component {
 
 <div class="space-y-8">
     {{-- Datos de la distribuidora --}}
-    <section class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col md:flex-row gap-6">
+    <section class="fp-tarjeta p-6 flex flex-col md:flex-row gap-6">
         <div class="flex-1">
             <h2 class="text-2xl font-bold text-slate-900">{{ $distribuidora->nombre_comercial }}</h2>
             @if ($distribuidora->descripcion_publica)
@@ -122,7 +122,7 @@ new class extends Component {
             @if ($distribuidora->telefono_publico)
                 <li class="flex gap-2">
                     <span class="text-fp-primary shrink-0 font-medium">Teléfono:</span>
-                    <a href="tel:{{ $distribuidora->telefono_publico }}" class="text-fp-primary hover:underline">
+                    <a href="tel:{{ $distribuidora->telefono_publico }}" class="fp-enlace">
                         {{ $distribuidora->telefono_publico }}
                     </a>
                 </li>
@@ -130,7 +130,7 @@ new class extends Component {
             @if ($distribuidora->email_publico)
                 <li class="flex gap-2">
                     <span class="text-fp-primary shrink-0 font-medium">Correo:</span>
-                    <a href="mailto:{{ $distribuidora->email_publico }}" class="text-fp-primary hover:underline break-all">
+                    <a href="mailto:{{ $distribuidora->email_publico }}" class="fp-enlace break-all">
                         {{ $distribuidora->email_publico }}
                     </a>
                 </li>
@@ -153,7 +153,7 @@ new class extends Component {
                     <p class="mt-1 text-sm text-fp-text-muted">{{ $direccionMapa }}</p>
                 </div>
                 <a href="{{ \App\Support\MapaUbicacion::urlComoLlegar($distribuidora) }}" target="_blank" rel="noopener"
-                   class="inline-flex items-center justify-center rounded-lg bg-fp-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-fp-primary/90">
+                   class="fp-btn fp-btn-primario">
                     Cómo llegar
                 </a>
             </div>
@@ -170,7 +170,7 @@ new class extends Component {
     @if ($destacados->isNotEmpty())
         <section aria-labelledby="titulo-destacados">
             <h2 id="titulo-destacados" class="text-xl font-bold text-slate-900 mb-4">Destacados</h2>
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div class="fp-escalonado grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 @foreach ($destacados as $producto)
                     <div wire:key="destacado-{{ $producto['id'] }}">
                         <x-tienda.tarjeta-producto :producto="$producto" :distribuidora="$distribuidora" />
@@ -186,12 +186,12 @@ new class extends Component {
             <h2 id="titulo-marcas" class="text-xl font-bold text-slate-900 mb-4">Marcas</h2>
             <div class="flex flex-wrap gap-2" aria-label="Filtrar por marca">
                 <button type="button" wire:click="filtrarMarca"
-                    class="px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $marcaId === null ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+                    class="fp-chip px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $marcaId === null ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
                     Todas
                 </button>
                 @foreach ($marcas as $marca)
                     <button type="button" wire:click="filtrarMarca({{ $marca['id'] }})"
-                        class="px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $marcaId === $marca['id'] ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+                        class="fp-chip px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $marcaId === $marca['id'] ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
                         {{ $marca['nombre'] }}
                     </button>
                 @endforeach
@@ -214,12 +214,12 @@ new class extends Component {
         @if ($lineas->count() > 1)
             <div class="mb-6 flex flex-wrap gap-2" aria-label="Filtrar por línea">
                 <button type="button" wire:click="filtrarLinea"
-                    class="px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $lineaId === null ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+                    class="fp-chip px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $lineaId === null ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
                     Todas las líneas
                 </button>
                 @foreach ($lineas as $linea)
                     <button type="button" wire:click="filtrarLinea({{ $linea['id'] }})"
-                        class="px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $lineaId === $linea['id'] ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+                        class="fp-chip px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $lineaId === $linea['id'] ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
                         {{ $linea['nombre'] }}
                     </button>
                 @endforeach
@@ -230,7 +230,7 @@ new class extends Component {
             <div class="bg-white rounded-2xl border border-slate-200/80 p-10 text-center text-slate-500">
                 @if ($filtrando)
                     No encontramos productos con esos filtros.
-                    <button type="button" wire:click="limpiarFiltros" class="block mx-auto mt-3 text-sm text-fp-primary hover:underline">
+                    <button type="button" wire:click="limpiarFiltros" class="block mx-auto mt-3 text-sm fp-enlace">
                         Ver todo el catálogo
                     </button>
                 @else
@@ -238,7 +238,7 @@ new class extends Component {
                 @endif
             </div>
         @else
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div class="fp-escalonado grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 @foreach ($productos as $producto)
                     <div wire:key="producto-{{ $producto['id'] }}">
                         <x-tienda.tarjeta-producto :producto="$producto" :distribuidora="$distribuidora" />

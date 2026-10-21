@@ -16,7 +16,7 @@ new #[Layout('layouts.public')] #[Title('Términos y condiciones — FootwearPoi
 };
 ?>
 
-<article class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8 max-w-3xl mx-auto">
+<article class="fp-tarjeta p-6 sm:p-8 max-w-3xl mx-auto">
     <h1 class="text-2xl font-bold text-slate-900">Términos y condiciones</h1>
     <p class="text-sm text-slate-500 mt-1">Versión 1.0</p>
 
