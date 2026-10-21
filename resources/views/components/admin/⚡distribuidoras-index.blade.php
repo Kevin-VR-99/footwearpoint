@@ -263,6 +263,23 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         return $query->get();
     }
 
+    /** Cuántas hay por estado, para las tarjetas de métricas. */
+    public function getResumenProperty(): array
+    {
+        $porEstado = Distribuidora::query()
+            ->selectRaw('estado, COUNT(*) as total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
+        return [
+            'total' => (int) $porEstado->sum(),
+            'pendiente' => (int) ($porEstado['pendiente'] ?? 0),
+            'activa' => (int) ($porEstado['activa'] ?? 0),
+            'suspendida' => (int) ($porEstado['suspendida'] ?? 0),
+            'visibles' => (int) Distribuidora::query()->where('estado', 'activa')->where('marketplace_visible', true)->count(),
+        ];
+    }
+
     /** Los mismos que acepta el filtro, para pintar los botones. */
     public function getEstadosFiltrablesProperty(): array
     {
@@ -647,6 +664,20 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         </x-slot:acciones>
     </x-panel.encabezado>
 
+    @php
+        $resumen = $this->resumen;
+    @endphp
+    <div class="fp-escalonado mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-metricas-admin>
+        <x-panel.metrica titulo="Distribuidoras" :valor="$resumen['total']" detalle="Registradas en FootwearPoint"
+            icono="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" :progreso="100" />
+        <x-panel.metrica titulo="Solicitudes pendientes" :valor="$resumen['pendiente']" tono="aviso" detalle="Esperan aprobación o rechazo"
+            icono="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" :progreso="$resumen['total'] ? $resumen['pendiente'] / $resumen['total'] * 100 : 0" />
+        <x-panel.metrica titulo="Activas" :valor="$resumen['activa']" tono="exito" :detalle="$resumen['visibles'].' visibles en el marketplace'"
+            icono="M5 13l4 4L19 7" :progreso="$resumen['total'] ? $resumen['activa'] / $resumen['total'] * 100 : 0" />
+        <x-panel.metrica titulo="Suspendidas" :valor="$resumen['suspendida']" tono="peligro" detalle="Sin acceso hasta reactivarlas"
+            icono="M18.364 5.636l-12.728 12.728M5.636 5.636a9 9 0 1012.728 12.728A9 9 0 005.636 5.636z" :progreso="$resumen['total'] ? $resumen['suspendida'] / $resumen['total'] * 100 : 0" />
+    </div>
+
     @if ($mensaje)
         <x-panel.alerta tipo="exito" class="mb-4">
             {{ $mensaje }}
@@ -655,66 +686,66 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     @if ($mostrandoFormularioCrear)
         <form wire:submit="crearDistribuidora"
-            class="mb-6 fp-tarjeta p-5 space-y-4 max-w-3xl">
-            <h3 class="font-semibold text-slate-800">Nueva distribuidora</h3>
+            class="fp-formulario fp-aparecer mb-6 p-5 space-y-4 max-w-3xl">
+            <h3 class="text-lg font-semibold text-fp-sidebar">Nueva distribuidora</h3>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1">Nombre comercial *</label>
+                <div class="fp-campo md:col-span-2">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Nombre comercial *</label>
                     <input type="text" wire:model.live="nuevo_nombre_comercial"
                         class="w-full rounded-lg text-sm">
                     @error('nuevo_nombre_comercial')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Razón social</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Razón social</label>
                     <input type="text" wire:model="nuevo_razon_social"
                         class="w-full rounded-lg text-sm">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">RFC</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">RFC</label>
                     <input type="text" wire:model="nuevo_rfc" class="w-full rounded-lg text-sm">
                     @error('nuevo_rfc')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Slug * (URL interna)</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Slug * (URL interna)</label>
                     <input type="text" wire:model="nuevo_slug" class="w-full rounded-lg text-sm">
                     @error('nuevo_slug')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Subdominio</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Subdominio</label>
                     <input type="text" wire:model="nuevo_subdominio"
                         class="w-full rounded-lg text-sm" placeholder="calzados-ejemplo">
                     @error('nuevo_subdominio')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                     @enderror
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Email público</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Email público</label>
                     <input type="email" wire:model="nuevo_email_publico"
                         class="w-full rounded-lg text-sm">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Teléfono público</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Teléfono público</label>
                     <input type="text" wire:model="nuevo_telefono_publico"
                         class="w-full rounded-lg text-sm">
                 </div>
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1">Dirección pública</label>
+                <div class="fp-campo md:col-span-2">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Dirección pública</label>
                     <input type="text" wire:model="nuevo_direccion_publica"
                         class="w-full rounded-lg text-sm">
                 </div>
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1">Descripción pública</label>
+                <div class="fp-campo md:col-span-2">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Descripción pública</label>
                     <textarea wire:model="nuevo_descripcion_publica" rows="2" class="w-full rounded-lg text-sm"></textarea>
                 </div>
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1">Horario público</label>
+                <div class="fp-campo md:col-span-2">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Horario público</label>
                     <input type="text" wire:model="nuevo_horario_publico"
                         class="w-full rounded-lg text-sm" placeholder="Lunes a sábado 9:00–19:00">
                 </div>
@@ -734,24 +765,24 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             <div class="border-t pt-4">
                 <h4 class="text-sm font-semibold text-slate-700 mb-2">Administrador de la tienda</h4>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Nombre *</label>
+                    <div class="fp-campo">
+                        <label class="block text-sm font-medium mb-1 text-slate-700">Nombre *</label>
                         <input type="text" wire:model="admin_nombre"
                             class="w-full rounded-lg text-sm">
                         @error('admin_nombre')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Email login *</label>
+                    <div class="fp-campo">
+                        <label class="block text-sm font-medium mb-1 text-slate-700">Email login *</label>
                         <input type="email" wire:model="admin_email"
                             class="w-full rounded-lg text-sm">
                         @error('admin_email')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Contraseña * (mínimo 8)</label>
+                    <div class="fp-campo">
+                        <label class="block text-sm font-medium mb-1 text-slate-700">Contraseña * (mínimo 8)</label>
                         <input type="password" wire:model="admin_password"
                             class="w-full rounded-lg text-sm">
                         @error('admin_password')
@@ -765,7 +796,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 <button type="submit" class="fp-btn fp-btn-primario">
                     Crear distribuidora
                 </button>
-                <button type="button" wire:click="cancelarCrear" class="text-sm text-slate-600 px-4 py-2">
+                <button type="button" wire:click="cancelarCrear" class="fp-btn fp-btn-fantasma">
                     Cancelar
                 </button>
             </div>
@@ -773,13 +804,13 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     @endif
 
     @if ($mostrarSuscripcion)
-        <div class="mb-6 fp-tarjeta p-5">
-            <h3 class="font-semibold mb-1">Asignar plan</h3>
+        <div class="fp-formulario fp-aparecer mb-6 p-5">
+            <h3 class="mb-1 text-lg font-semibold text-fp-sidebar">Asignar plan</h3>
             <p class="text-sm text-slate-500 mb-4">{{ $distribuidoraSuscripcionNombre }}</p>
 
             <form wire:submit="guardarSuscripcion" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Plan</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Plan</label>
                     <select wire:model="plan_id" class="w-full rounded-lg">
                         <option value="">Selecciona un plan</option>
                         @foreach ($this->planesActivos as $plan)
@@ -794,8 +825,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     @enderror
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium mb-1">Líneas extra</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Líneas extra</label>
                     <input type="number" min="0" wire:model="lineas_extra_contratadas"
                         class="w-full rounded-lg">
                     @error('lineas_extra_contratadas')
@@ -803,8 +834,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     @enderror
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium mb-1">Meses</label>
+                <div class="fp-campo">
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Meses</label>
                     <input type="number" min="1" max="24" wire:model="meses"
                         class="w-full rounded-lg">
                     @error('meses')
@@ -823,7 +854,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         Asignar
                     </button>
                     <button type="button" wire:click="cancelarSuscripcion"
-                        class="rounded-lg border border-slate-200 text-sm px-4 py-2">
+                        class="fp-btn fp-btn-secundario">
                         Cancelar
                     </button>
                 </div>
@@ -853,13 +884,13 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 'Fecha de aprobación' => $fecha($detalle['fecha_aprobacion']),
             ];
         @endphp
-        <div class="mb-6 fp-tarjeta p-5">
+        <div class="fp-tarjeta fp-aparecer mb-6 p-5" data-detalle-distribuidora>
             <div class="flex items-start justify-between gap-4 mb-4">
                 <div>
                     <h3 class="font-semibold text-slate-800">{{ $detalle['nombre_comercial'] }}</h3>
-                    <p class="text-sm text-slate-500">Estado: {{ ucfirst($detalle['estado']) }}</p>
+                    <p class="mt-1 text-sm text-slate-500">Estado: <x-panel.insignia :variante="['activa' => 'success', 'pendiente' => 'warning', 'suspendida' => 'danger'][$detalle['estado']] ?? 'neutral'" :viva="$detalle['estado'] === 'pendiente'" punto>{{ ucfirst($detalle['estado']) }}</x-panel.insignia></p>
                 </div>
-                <button type="button" wire:click="cerrarDatos" class="text-sm text-slate-600 hover:underline">
+                <button type="button" wire:click="cerrarDatos" class="fp-btn fp-btn-fantasma fp-btn-sm">
                     Cerrar
                 </button>
             </div>
@@ -883,13 +914,9 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                                 <span>{{ $admin['nombre'] }} · {{ $admin['email'] }}</span>
                                 {{-- TG-220 (A11): avisa si nadie confirmó ese correo. --}}
                                 @if ($admin['correo_confirmado'])
-                                    <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
-                                        Correo confirmado
-                                    </span>
+                                    <x-panel.insignia variante="success" punto>Correo confirmado</x-panel.insignia>
                                 @else
-                                    <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                                        Correo sin confirmar
-                                    </span>
+                                    <x-panel.insignia variante="warning" punto>Correo sin confirmar</x-panel.insignia>
                                 @endif
                             </div>
                         @empty
@@ -912,7 +939,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         Aprobar
                     </button>
                     <button type="button" wire:click="abrirRechazo({{ $detalle['id'] }})"
-                        class="rounded-lg border border-fp-danger/30 text-fp-danger text-sm px-4 py-2 hover:bg-fp-danger-soft">
+                        class="fp-btn fp-btn-secundario text-fp-danger hover:!text-fp-danger hover:!border-fp-danger/40">
                         Rechazar
                     </button>
                 </div>
@@ -922,79 +949,75 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     {{-- TG-194: editar distribuidora y su administrador --}}
     @if ($distribuidoraEdicionId)
-        <div class="fp-desvanecer fixed inset-0 z-50 flex items-center justify-center bg-fp-sidebar/50 p-4 backdrop-blur-[2px]">
-            <form wire:submit="guardarEdicion" class="fp-emerger w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 space-y-4">
-                <div>
-                    <h3 class="font-semibold text-slate-900">Editar distribuidora</h3>
-                    <p class="text-sm text-slate-500 mt-1">«{{ $distribuidoraEdicionNombre }}»</p>
-                </div>
+        <x-panel.modal titulo="Editar distribuidora" :subtitulo="'«'.$distribuidoraEdicionNombre.'»'" ancho="max-w-3xl"
+            formulario="guardarEdicion" cerrar="cancelarEdicion" class="space-y-4">
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="md:col-span-2">
-                        <label for="editar_nombre_comercial" class="block text-sm font-medium mb-1">Nombre comercial *</label>
+                    <div class="fp-campo md:col-span-2">
+                        <label for="editar_nombre_comercial" class="block text-sm font-medium mb-1 text-slate-700">Nombre comercial *</label>
                         <input id="editar_nombre_comercial" type="text" wire:model="editar_nombre_comercial" class="w-full rounded-lg text-sm">
                         @error('editar_nombre_comercial')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div>
-                        <label for="editar_razon_social" class="block text-sm font-medium mb-1">Razón social</label>
+                    <div class="fp-campo">
+                        <label for="editar_razon_social" class="block text-sm font-medium mb-1 text-slate-700">Razón social</label>
                         <input id="editar_razon_social" type="text" wire:model="editar_razon_social" class="w-full rounded-lg text-sm">
                         @error('editar_razon_social')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div>
-                        <label for="editar_rfc" class="block text-sm font-medium mb-1">RFC</label>
+                    <div class="fp-campo">
+                        <label for="editar_rfc" class="block text-sm font-medium mb-1 text-slate-700">RFC</label>
                         <input id="editar_rfc" type="text" wire:model="editar_rfc" class="w-full rounded-lg text-sm">
                         @error('editar_rfc')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div>
-                        <label for="editar_slug" class="block text-sm font-medium mb-1">Slug * (URL interna)</label>
+                    <div class="fp-campo">
+                        <label for="editar_slug" class="block text-sm font-medium mb-1 text-slate-700">Slug * (URL interna)</label>
                         <input id="editar_slug" type="text" wire:model="editar_slug" class="w-full rounded-lg text-sm">
                         @error('editar_slug')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div>
-                        <label for="editar_subdominio" class="block text-sm font-medium mb-1">Subdominio</label>
+                    <div class="fp-campo">
+                        <label for="editar_subdominio" class="block text-sm font-medium mb-1 text-slate-700">Subdominio</label>
                         <input id="editar_subdominio" type="text" wire:model="editar_subdominio" class="w-full rounded-lg text-sm">
                         @error('editar_subdominio')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div>
-                        <label for="editar_email_publico" class="block text-sm font-medium mb-1">Email público</label>
+                    <div class="fp-campo">
+                        <label for="editar_email_publico" class="block text-sm font-medium mb-1 text-slate-700">Email público</label>
                         <input id="editar_email_publico" type="email" wire:model="editar_email_publico" class="w-full rounded-lg text-sm">
                         @error('editar_email_publico')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div>
-                        <label for="editar_telefono_publico" class="block text-sm font-medium mb-1">Teléfono público</label>
+                    <div class="fp-campo">
+                        <label for="editar_telefono_publico" class="block text-sm font-medium mb-1 text-slate-700">Teléfono público</label>
                         <input id="editar_telefono_publico" type="text" wire:model="editar_telefono_publico" class="w-full rounded-lg text-sm">
                         @error('editar_telefono_publico')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div class="md:col-span-2">
-                        <label for="editar_direccion_publica" class="block text-sm font-medium mb-1">Dirección pública</label>
+                    <div class="fp-campo md:col-span-2">
+                        <label for="editar_direccion_publica" class="block text-sm font-medium mb-1 text-slate-700">Dirección pública</label>
                         <input id="editar_direccion_publica" type="text" wire:model="editar_direccion_publica" class="w-full rounded-lg text-sm">
                         @error('editar_direccion_publica')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div class="md:col-span-2">
-                        <label for="editar_descripcion_publica" class="block text-sm font-medium mb-1">Descripción pública</label>
+                    <div class="fp-campo md:col-span-2">
+                        <label for="editar_descripcion_publica" class="block text-sm font-medium mb-1 text-slate-700">Descripción pública</label>
                         <textarea id="editar_descripcion_publica" wire:model="editar_descripcion_publica" rows="2" class="w-full rounded-lg text-sm"></textarea>
                         @error('editar_descripcion_publica')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div class="md:col-span-2">
-                        <label for="editar_horario_publico" class="block text-sm font-medium mb-1">Horario público</label>
+                    <div class="fp-campo md:col-span-2">
+                        <label for="editar_horario_publico" class="block text-sm font-medium mb-1 text-slate-700">Horario público</label>
                         <input id="editar_horario_publico" type="text" wire:model="editar_horario_publico" class="w-full rounded-lg text-sm">
                         @error('editar_horario_publico')
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
@@ -1006,29 +1029,29 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     <h4 class="font-semibold text-slate-800 text-sm">Administrador de la distribuidora</h4>
                     @if ($editarTieneAdmin)
                         <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="editar_admin_nombre" class="block text-sm font-medium mb-1">Nombre *</label>
+                            <div class="fp-campo">
+                                <label for="editar_admin_nombre" class="block text-sm font-medium mb-1 text-slate-700">Nombre *</label>
                                 <input id="editar_admin_nombre" type="text" wire:model="editar_admin_nombre" class="w-full rounded-lg text-sm">
                                 @error('editar_admin_nombre')
                                     <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
-                            <div>
-                                <label for="editar_admin_email" class="block text-sm font-medium mb-1">Correo *</label>
+                            <div class="fp-campo">
+                                <label for="editar_admin_email" class="block text-sm font-medium mb-1 text-slate-700">Correo *</label>
                                 <input id="editar_admin_email" type="email" wire:model="editar_admin_email" class="w-full rounded-lg text-sm">
                                 @error('editar_admin_email')
                                     <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
-                            <div>
-                                <label for="editar_admin_password" class="block text-sm font-medium mb-1">Nueva contraseña</label>
+                            <div class="fp-campo">
+                                <label for="editar_admin_password" class="block text-sm font-medium mb-1 text-slate-700">Nueva contraseña</label>
                                 <input id="editar_admin_password" type="password" wire:model="editar_admin_password" autocomplete="new-password" class="w-full rounded-lg text-sm">
                                 @error('editar_admin_password')
                                     <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
-                            <div>
-                                <label for="editar_admin_password_confirmation" class="block text-sm font-medium mb-1">Confirmar nueva contraseña</label>
+                            <div class="fp-campo">
+                                <label for="editar_admin_password_confirmation" class="block text-sm font-medium mb-1 text-slate-700">Confirmar nueva contraseña</label>
                                 <input id="editar_admin_password_confirmation" type="password" wire:model="editar_admin_password_confirmation" autocomplete="new-password" class="w-full rounded-lg text-sm">
                                 @error('editar_admin_password_confirmation')
                                     <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
@@ -1045,28 +1068,24 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
                 <div class="flex justify-end gap-2">
                     <button type="button" wire:click="cancelarEdicion"
-                        class="rounded-lg border border-slate-200 text-sm px-4 py-2">
+                        class="fp-btn fp-btn-secundario">
                         Cancelar
                     </button>
                     <button type="submit" class="fp-btn fp-btn-primario">
                         Guardar cambios
                     </button>
                 </div>
-            </form>
-        </div>
+        </x-panel.modal>
     @endif
 
     {{-- TG-195: rechazar con motivo --}}
     @if ($distribuidoraRechazoId)
-        <div class="fp-desvanecer fixed inset-0 z-50 flex items-center justify-center bg-fp-sidebar/50 p-4 backdrop-blur-[2px]">
-            <form wire:submit="rechazar" class="fp-emerger w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6">
-                <h3 class="font-semibold text-slate-900">Rechazar distribuidora</h3>
-                <p class="text-sm text-slate-500 mt-1">
-                    «{{ $distribuidoraRechazoNombre }}» no podrá usar FootwearPoint. El rechazo es definitivo.
-                </p>
+        <x-panel.modal titulo="Rechazar distribuidora"
+            :subtitulo="'«'.$distribuidoraRechazoNombre.'» no podrá usar FootwearPoint. El rechazo es definitivo.'"
+            formulario="rechazar" cerrar="cancelarRechazo">
 
                 <div class="mt-4" x-data="{ largo: {{ mb_strlen($motivo_rechazo) }} }">
-                    <label for="motivo_rechazo" class="block text-sm font-medium mb-1">Motivo del rechazo *</label>
+                    <label for="motivo_rechazo" class="block text-sm font-medium mb-1 text-slate-700">Motivo del rechazo *</label>
                     <textarea id="motivo_rechazo" wire:model="motivo_rechazo" rows="4"
                         maxlength="{{ \App\Services\Distribuidora\RechazarDistribuidoraAction::LARGO_MAXIMO_MOTIVO }}"
                         x-on:input="largo = $el.value.length"
@@ -1086,31 +1105,30 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
                 <div class="mt-5 flex justify-end gap-2">
                     <button type="button" wire:click="cancelarRechazo"
-                        class="rounded-lg border border-slate-200 text-sm px-4 py-2">
+                        class="fp-btn fp-btn-secundario">
                         Cancelar
                     </button>
-                    <button type="submit" class="rounded-lg bg-fp-danger text-white text-sm font-medium px-4 py-2 shadow-sm hover:bg-fp-danger/90">
+                    <button type="submit" class="fp-btn fp-btn-peligro">
                         Rechazar
                     </button>
                 </div>
-            </form>
-        </div>
+        </x-panel.modal>
     @endif
 
-    <div class="mb-4 flex gap-2 flex-wrap">
-        <button wire:click="$set('filtroEstado', '')"
-            class="fp-chip px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === '' ? 'bg-fp-primary text-white shadow-sm' : 'bg-white border border-slate-200' }}">
+    <div class="fp-pestanas mb-4" role="tablist" aria-label="Filtrar por estado">
+        <button type="button" role="tab" wire:click="$set('filtroEstado', '')" aria-selected="{{ $filtroEstado === '' ? 'true' : 'false' }}"
+            class="fp-pestana">
             Todas
         </button>
         @foreach ($this->estadosFiltrables as $estado)
-            <button wire:click="$set('filtroEstado', '{{ $estado }}')"
-                class="fp-chip px-3 py-1.5 rounded-lg text-sm {{ $filtroEstado === $estado ? 'bg-fp-primary text-white shadow-sm' : 'bg-white border border-slate-200' }}">
+            <button type="button" role="tab" wire:click="$set('filtroEstado', '{{ $estado }}')" aria-selected="{{ $filtroEstado === $estado ? 'true' : 'false' }}"
+                class="fp-pestana">
                 {{ ucfirst($estado) }}
             </button>
         @endforeach
     </div>
 
-    <div class="fp-tarjeta overflow-hidden">
+    <div class="fp-tarjeta fp-tabla overflow-hidden">
         <table class="w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>
@@ -1131,57 +1149,50 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                             @if ($d->categoriasDirectorio->isNotEmpty())
                                 <div class="mt-1 flex flex-wrap gap-1">
                                     @foreach ($d->categoriasDirectorio as $categoria)
-                                        <span class="text-[11px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{{ $categoria->nombre }}</span>
+                                        <x-panel.insignia class="text-[11px]">{{ $categoria->nombre }}</x-panel.insignia>
                                     @endforeach
                                 </div>
                             @endif
                         </td>
                         <td class="px-4 py-3">
-                            <span
-                                class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium
-                                {{ $d->estado === 'activa' ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : '' }}
-                                {{ $d->estado === 'pendiente' ? 'bg-fp-badge-warning-bg text-fp-badge-warning-fg' : '' }}
-                                {{ $d->estado === 'suspendida' ? 'bg-fp-badge-danger-bg text-fp-badge-danger-fg' : '' }}
-                                {{ $d->estado === 'rechazada' ? 'bg-slate-100 text-slate-600' : '' }}
-                            ">
-                                {{ ucfirst($d->estado) }}
-                            </span>
+                            <x-panel.insignia :variante="['activa' => 'success', 'pendiente' => 'warning', 'suspendida' => 'danger'][$d->estado] ?? 'neutral'"
+                                :viva="$d->estado === 'pendiente'" punto>{{ ucfirst($d->estado) }}</x-panel.insignia>
                             @if ($d->estado === 'rechazada' && $d->motivo_rechazo)
                                 <div class="text-xs text-slate-500 mt-1 max-w-xs">Motivo: {{ $d->motivo_rechazo }}</div>
                             @endif
                         </td>
                         <td class="px-4 py-3">
                             <button wire:click="toggleMarketplace({{ $d->id }})"
-                                class="text-xs {{ $d->marketplace_visible ? 'text-fp-badge-success-fg' : 'text-slate-400' }}">
+                                class="fp-accion {{ $d->marketplace_visible ? 'fp-accion-exito' : 'fp-accion-neutra' }}" aria-pressed="{{ $d->marketplace_visible ? 'true' : 'false' }}">
                                 {{ $d->marketplace_visible ? 'Visible' : 'Oculta' }}
                             </button>
                         </td>
-                        <td class="px-4 py-3 space-x-2">
+                        <td class="px-4 py-3"><div class="flex flex-wrap gap-1">
                             <button wire:click="verDatos({{ $d->id }})"
-                                class="text-xs text-slate-700 hover:underline">Ver datos</button>
+                                class="fp-accion">Ver datos</button>
                             <button wire:click="abrirEdicion({{ $d->id }})"
-                                class="text-xs fp-enlace">Editar</button>
+                                class="fp-accion fp-accion-primaria">Editar</button>
                             @if ($d->estado === 'pendiente')
                                 <button wire:click="aprobar({{ $d->id }})"
-                                    class="text-xs text-fp-badge-success-fg hover:underline">Aprobar</button>
+                                    class="fp-accion fp-accion-exito">Aprobar</button>
                                 <button wire:click="abrirRechazo({{ $d->id }})"
-                                    class="text-xs text-fp-danger hover:underline">Rechazar</button>
+                                    class="fp-accion fp-accion-peligro">Rechazar</button>
                             @endif
                             @if ($d->estado === 'activa')
                                 <button wire:click="suspender({{ $d->id }})"
                                     wire:confirm="Su personal, clientes mayoristas y clientes no podrán usar FootwearPoint hasta reactivarla. Su información se conserva. ¿Continuar?"
-                                    class="text-xs text-fp-danger hover:underline">Suspender</button>
+                                    class="fp-accion fp-accion-peligro">Suspender</button>
                             @endif
                             @if ($d->estado === 'suspendida')
                                 <button wire:click="reactivar({{ $d->id }})"
-                                    class="text-xs fp-enlace">Reactivar</button>
+                                    class="fp-accion fp-accion-primaria">Reactivar</button>
                             @endif
                             @if (in_array($d->estado, ['activa', 'suspendida']))
                                 @php
                                     $tienePlan = $d->suscripciones->where('estado', 'activa')->isNotEmpty();
                                 @endphp
                                 <button wire:click="abrirSuscripcion({{ $d->id }})"
-                                    class="text-xs text-fp-accent hover:underline">
+                                    class="fp-accion">
                                     @if ($tienePlan)
                                         Cambiar plan
                                     @else
@@ -1189,14 +1200,10 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                                     @endif
                                 </button>
                             @endif
-                        </td>
+                        </div></td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="5" class="px-4 py-10 text-center text-fp-text-muted">
-                            No hay distribuidoras con este filtro.
-                        </td>
-                    </tr>
+                    <x-panel.vacio colspan="5" mensaje="No hay distribuidoras con este filtro." />
                 @endforelse
             </tbody>
         </table>

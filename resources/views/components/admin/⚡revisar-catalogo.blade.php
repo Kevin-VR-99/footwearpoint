@@ -509,18 +509,14 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
     </x-panel.tarjeta>
 
     {{-- Filtros --}}
-    <div class="flex flex-wrap gap-2">
+    <div class="fp-pestanas" role="tablist" aria-label="Filtrar productos">
         @foreach ([
             'por_revisar' => 'Por revisar ('.$this->resumen['por_revisar'].')',
             'todos' => 'Todos ('.($this->resumen['total'] - $this->resumen['descartados']).')',
             'descartados' => 'Descartados ('.$this->resumen['descartados'].')',
         ] as $clave => $titulo)
-            <button type="button" wire:click="cambiarFiltro('{{ $clave }}')"
-                @class([
-                    'rounded-lg px-3 py-1.5 text-xs font-medium transition',
-                    'bg-fp-primary text-white shadow-sm' => $filtro === $clave,
-                    'border border-slate-200 bg-white text-fp-accent hover:bg-fp-page' => $filtro !== $clave,
-                ])>{{ $titulo }}</button>
+            <button type="button" role="tab" wire:click="cambiarFiltro('{{ $clave }}')"
+                aria-selected="{{ $filtro === $clave ? 'true' : 'false' }}" class="fp-pestana text-xs">{{ $titulo }}</button>
         @endforeach
     </div>
 
@@ -571,9 +567,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
 
                 <td class="px-4 py-3">
                     @if ($dudosos)
-                        <span class="rounded-full bg-fp-badge-warning-bg px-2 py-0.5 text-xs font-medium text-fp-badge-warning-fg">
-                            {{ count($dudosos) }}
-                        </span>
+                        <x-panel.insignia variante="warning" punto>{{ count($dudosos) }}</x-panel.insignia>
                         <p class="mt-1 text-xs text-fp-text-muted">
                             {{ collect($dudosos)->map(fn ($c) => $nombresDeCampos[$c] ?? $c)->join(', ') }}
                         </p>
@@ -585,13 +579,13 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                     @if ($producto->estado === 'descartado')
                         <button type="button" wire:click="recuperar({{ $producto->id }})"
-                            class="text-xs font-medium text-fp-primary">Recuperar</button>
+                            class="fp-accion fp-accion-primaria">Recuperar</button>
                     @else
                         <button type="button" wire:click="editar({{ $producto->id }})"
-                            class="mr-3 text-xs font-semibold text-fp-primary">Corregir</button>
+                            class="fp-accion fp-accion-primaria">Corregir</button>
                         <button type="button" wire:click="descartar({{ $producto->id }})"
                             wire:confirm="¿Descartar este producto? No entrará al catálogo."
-                            class="text-xs font-medium text-fp-danger">Descartar</button>
+                            class="fp-accion fp-accion-peligro">Descartar</button>
                     @endif
                 </td>
             </tr>
