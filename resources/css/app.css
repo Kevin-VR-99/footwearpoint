@@ -31,10 +31,13 @@
     --color-fp-badge-danger-fg: #991B1B;
 }
 /* TG-234: entrada al hacer scroll en la página de inicio. */
-[data-revelar] {
+/* Solo se oculta si el JS ya arrancó (html.fp-js); sin JS o si falla, queda visible. */
+html.fp-js [data-revelar]:not(.revelado) {
     opacity: 0;
+}
+[data-revelar] {
     transform: translateY(1.25rem);
-    transition: opacity .6s ease-out, transform .6s ease-out;
+    transition: opacity .25s ease-out, transform .25s ease-out;
     transition-delay: var(--retraso, 0ms);
 }
 [data-revelar].revelado {
@@ -201,21 +204,21 @@
 
 @layer components {
     /* Aparición con desvanecido. */
-    .fp-aparecer { animation: fp-aparecer .45s cubic-bezier(.22, .8, .36, 1) both; }
-    .fp-desvanecer { animation: fp-desvanecer .35s ease-out both; }
-    .fp-emerger { animation: fp-emerger .2s ease-out both; }
+    .fp-aparecer { animation: fp-aparecer .25s cubic-bezier(.22, .8, .36, 1) backwards; }
+    .fp-desvanecer { animation: fp-desvanecer .2s ease-out backwards; }
+    .fp-emerger { animation: fp-emerger .2s ease-out backwards; }
 
     /* Hijos que aparecen uno tras otro (rejillas de tarjetas, KPIs). */
-    .fp-escalonado > * { animation: fp-aparecer .45s cubic-bezier(.22, .8, .36, 1) both; }
-    .fp-escalonado > :nth-child(2) { animation-delay: 50ms; }
-    .fp-escalonado > :nth-child(3) { animation-delay: 100ms; }
-    .fp-escalonado > :nth-child(4) { animation-delay: 150ms; }
-    .fp-escalonado > :nth-child(5) { animation-delay: 200ms; }
-    .fp-escalonado > :nth-child(6) { animation-delay: 250ms; }
-    .fp-escalonado > :nth-child(n+7) { animation-delay: 300ms; }
+    .fp-escalonado > * { animation: fp-aparecer .25s cubic-bezier(.22, .8, .36, 1) backwards; }
+    .fp-escalonado > :nth-child(2) { animation-delay: 30ms; }
+    .fp-escalonado > :nth-child(3) { animation-delay: 60ms; }
+    .fp-escalonado > :nth-child(4) { animation-delay: 90ms; }
+    .fp-escalonado > :nth-child(5) { animation-delay: 120ms; }
+    .fp-escalonado > :nth-child(6) { animation-delay: 150ms; }
+    .fp-escalonado > :nth-child(n+7) { animation-delay: 150ms; }
 
     /* Contenido principal de cada layout: entra suave al navegar. */
-    .fp-contenido > * { animation: fp-aparecer .4s cubic-bezier(.22, .8, .36, 1) both; }
+    .fp-contenido > * { animation: fp-aparecer .22s cubic-bezier(.22, .8, .36, 1) backwards; }
     .fp-contenido > :nth-child(2) { animation-delay: 40ms; }
     .fp-contenido > :nth-child(n+3) { animation-delay: 80ms; }
 
@@ -332,7 +335,7 @@
     .fp-metrica:hover .fp-metrica-valor { color: var(--color-fp-primary); }
     .fp-metrica-icono { transition: transform .3s cubic-bezier(.22, .8, .36, 1), background-color .25s ease; }
     .fp-metrica:hover .fp-metrica-icono { transform: scale(1.1) rotate(-4deg); }
-    .fp-metrica-barra { transform-origin: left; animation: fp-barra .8s cubic-bezier(.22, .8, .36, 1) .15s both; }
+    .fp-metrica-barra { transform-origin: left; animation: fp-barra .25s cubic-bezier(.22, .8, .36, 1) backwards; }
 
     /* Acciones de texto en filas de tabla (Editar, Activar, Eliminar…). */
     .fp-accion {
@@ -376,7 +379,7 @@
         height: 3px;
         background: linear-gradient(to right, var(--color-fp-primary), var(--color-fp-accent));
         transform-origin: left;
-        animation: fp-barra .6s cubic-bezier(.22, .8, .36, 1) both;
+        animation: fp-barra .25s cubic-bezier(.22, .8, .36, 1) backwards;
     }
     .fp-formulario:focus-within {
         border-color: color-mix(in oklab, var(--color-fp-primary) 35%, transparent);
@@ -392,7 +395,7 @@
         border: 1px solid color-mix(in oklab, var(--color-slate-200) 80%, transparent);
         background-color: #fff;
         box-shadow: 0 25px 50px -12px rgb(17 30 56 / 0.35);
-        animation: fp-emerger .25s cubic-bezier(.22, .8, .36, 1) both;
+        animation: fp-emerger .25s cubic-bezier(.22, .8, .36, 1) backwards;
     }
 
     /* Insignias (x-panel.insignia) con punto que late en estados vivos. */
@@ -495,14 +498,14 @@
         background-color: rgb(255 255 255 / .92);
         backdrop-filter: blur(8px);
         box-shadow: 0 24px 48px -20px rgb(17 30 56 / .28), 0 2px 6px -2px rgb(17 30 56 / .08);
-        animation: fp-acceso-entrada .55s cubic-bezier(.22, .8, .36, 1) both;
+        animation: fp-acceso-entrada .55s cubic-bezier(.22, .8, .36, 1) backwards;
         transition: box-shadow .3s ease;
     }
     .fp-acceso-tarjeta:focus-within { box-shadow: 0 28px 56px -20px rgb(17 30 56 / .32), 0 0 0 1px color-mix(in oklab, var(--color-fp-primary) 25%, transparent); }
     .fp-acceso-logo { animation: fp-acceso-logo .6s cubic-bezier(.22, .8, .36, 1) .1s both; }
     .fp-acceso-logo img { animation: fp-acceso-flotar 5s ease-in-out .8s infinite; }
     /* Los campos y bloques del formulario aparecen escalonados. */
-    .fp-acceso-tarjeta form > * { animation: fp-aparecer .45s cubic-bezier(.22, .8, .36, 1) both; }
+    .fp-acceso-tarjeta form > * { animation: fp-aparecer .25s cubic-bezier(.22, .8, .36, 1) backwards; }
     .fp-acceso-tarjeta form > :nth-child(1) { animation-delay: .15s; }
     .fp-acceso-tarjeta form > :nth-child(2) { animation-delay: .22s; }
     .fp-acceso-tarjeta form > :nth-child(3) { animation-delay: .29s; }
@@ -588,7 +591,7 @@ form[data-loading] button[type=submit]:not(:has([wire\:loading]))::before {
 /* Toast global animado. */
 @keyframes fp-toast-entrar { from { opacity: 0; transform: translateY(12px) scale(.96); } to { opacity: 1; transform: none; } }
 @keyframes fp-toast-tiempo { from { transform: scaleX(1); } to { transform: scaleX(0); } }
-.fp-toast { animation: fp-toast-entrar .25s cubic-bezier(.22, .8, .36, 1) both; }
+.fp-toast { animation: fp-toast-entrar .25s cubic-bezier(.22, .8, .36, 1) backwards; }
 .fp-toast-tiempo { transform-origin: left; animation: fp-toast-tiempo 3.5s linear forwards; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -607,3 +610,10 @@ form[data-loading] button[type=submit]:not(:has([wire\:loading]))::before {
 /* Variación de KPIs: la flecha entra con un pequeño desplazamiento (solo con motion-safe). */
 @keyframes fp-sube { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes fp-baja { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* Capa "Cargando…" (x-ui.cargando): oculta por defecto aunque falte el style inline;
+   Livewire la muestra con display:flex en línea solo mientras dura la petición. */
+[data-cargando] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+    [data-cargando] { animation: none !important; backdrop-filter: none; }
+}

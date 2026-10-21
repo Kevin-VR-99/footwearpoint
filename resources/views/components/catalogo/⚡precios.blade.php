@@ -232,7 +232,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
     </div>
 
     <div class="relative flex flex-wrap gap-3 fp-tarjeta p-4 fp-formulario fp-aparecer">
-        <x-ui.cargando />
+        <x-ui.cargando objetivo="busqueda,filtro,gotoPage,nextPage,previousPage" />
         <x-ui.buscador wire:model.live.debounce.400ms="busqueda"
             placeholder="Buscar por nombre, modelo, código o marca" etiqueta="Buscar productos" class="min-w-64 flex-1" />
         <select wire:model.live="filtro" aria-label="Filtrar productos" class="rounded-lg text-sm">
@@ -243,7 +243,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
     </div>
 
     <div class="relative overflow-x-auto fp-tarjeta fp-aparecer">
-        <x-ui.cargando />
+        <x-ui.cargando objetivo="busqueda,filtro,guardarPrecio,quitarPrecio,ocultar,mostrar,gotoPage,nextPage,previousPage" />
         <table class="fp-tabla min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-fp-page">
                 <tr class="text-left text-xs font-semibold uppercase tracking-wide text-fp-text-muted">

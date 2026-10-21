@@ -71,7 +71,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
     public function getDisponiblesProperty()
     {
         $existencias = StockLocal::query()
-            ->with('variante')
+            ->with('variante.producto:id,nombre')
             ->where('cantidad_disponible', '>', 0)
             ->get()
             ->filter(fn ($e) => $e->variante !== null);
@@ -423,7 +423,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
 
         {{-- Buscador de productos --}}
         <div class="relative lg:col-span-3 fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
-            <x-ui.cargando />
+            <x-ui.cargando objetivo="busqueda,agregar,gotoPage,nextPage,previousPage" />
             <div class="px-5 py-3 border-b border-slate-100">
                 <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
                        placeholder="Buscar por SKU, código de catálogo, modelo, talla o color…" etiqueta="Buscar productos" />

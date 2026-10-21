@@ -114,7 +114,8 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
     {
         \App\Services\Exportar\ExportarListadoXlsx::exigirPersonal(soloAdministrador: true);
 
-        $filas = $this->consultaRevendedores()->get()->map(fn (RevendedorDistribuidora $a) => [
+        $filas = $this->consultaRevendedores()->with('revendedor.usuario')
+            ->limit(\App\Services\Exportar\ExportarListadoXlsx::MAX_FILAS + 1)->get()->map(fn (RevendedorDistribuidora $a) => [
             $a->revendedor?->nombre, $a->codigo_interno, $a->revendedor?->telefono,
             $a->revendedor?->email ?? $a->revendedor?->usuario?->email,
             ucfirst((string) $a->estado), $a->revendedor?->usuario ? 'Sí' : 'No', $a->fecha_alta?->format('d/m/Y'),
@@ -435,7 +436,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
     {{-- Empleados: listado o formulario inline --}}
     @if ($seccion === 'empleados')
     <div class="relative fp-tarjeta p-5 sm:p-6 max-w-3xl fp-formulario fp-aparecer">
-        <x-ui.cargando />
+        <x-ui.cargando objetivo="guardarPermisos,toggleEstadoEmpleado,gotoPage,nextPage,previousPage" />
         @if (! $mostrandoFormularioEmpleado)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Empleados</h2>

@@ -12,7 +12,8 @@ class CapaCargandoTest extends TestCase
     {
         $html = Blade::render('<x-ui.cargando />');
 
-        $this->assertStringContainsString('wire:loading.delay.flex', $html);
+        $this->assertStringContainsString('wire:loading.delay.long.flex', $html);
         $this->assertStringContainsString('style="display: none"', $html);
+        $this->assertStringContainsString('pointer-events-none', $html);
     }
 }
