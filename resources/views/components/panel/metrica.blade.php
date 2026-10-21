@@ -40,4 +40,7 @@
     @if ($detalle)
         <p class="mt-3 text-[11px] text-fp-text-muted">{{ $detalle }}</p>
     @endif
+    @if (trim((string) $slot) !== '')
+        <div class="mt-2">{{ $slot }}</div>
+    @endif
 </div>

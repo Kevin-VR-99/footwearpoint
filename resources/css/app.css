@@ -603,3 +603,7 @@ form[data-loading] button[type=submit]:not(:has([wire\:loading]))::before {
 }
 /* Folios y códigos no se parten en dos renglones dentro de las tablas. */
 .fp-tabla td.font-mono, .fp-tabla td .font-mono { white-space: nowrap; }
+
+/* Variación de KPIs: la flecha entra con un pequeño desplazamiento (solo con motion-safe). */
+@keyframes fp-sube { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes fp-baja { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }

@@ -231,6 +231,68 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
      * TG-253 (E14-04): demanda por temporada y marca. Usa las fechas y el
      * ciclo de la pantalla, más sus filtros de temporada y marca.
      */
+    /**
+     * Periodo anterior de la misma duración que el rango Desde–Hasta. Sin ambas
+     * fechas no hay "misma duración" que comparar y las tarjetas muestran "—".
+     *
+     * @return array{desde: string, hasta: string}|null
+     */
+    public function getPeriodoAnteriorProperty(): ?array
+    {
+        if ($this->desde === '' || $this->hasta === '') {
+            return null;
+        }
+
+        try {
+            $desde = \Illuminate\Support\Carbon::parse($this->desde)->startOfDay();
+            $hasta = \Illuminate\Support\Carbon::parse($this->hasta)->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+        if ($hasta->lt($desde)) {
+            return null;
+        }
+
+        $dias = (int) $desde->diffInDays($hasta) + 1;
+
+        return [
+            'desde' => $desde->copy()->subDays($dias)->toDateString(),
+            'hasta' => $desde->copy()->subDay()->toDateString(),
+        ];
+    }
+
+    /** Valores de las tarjetas en el periodo anterior (mismos filtros de estado y ciclo). */
+    public function getComparacionProperty(): ?array
+    {
+        $periodo = $this->periodoAnterior;
+        if ($periodo === null) {
+            return null;
+        }
+
+        $estado = $this->estado !== '' ? $this->estado : null;
+        $ciclo = $this->cicloId !== '' ? (int) $this->cicloId : null;
+
+        try {
+            $cuenta = app(EstadoDeCuentaAction::class)->ejecutar($periodo['desde'], $periodo['hasta'], $estado, $ciclo);
+            $resumen = app(ResumenOperativoAction::class)->ejecutar($periodo['desde'], $periodo['hasta'], $estado, $ciclo);
+            $demanda = app(DemandaPorTemporadaMarcaAction::class)->ejecutar(
+                $this->demandaCampanaId !== '' ? (int) $this->demandaCampanaId : null,
+                $this->demandaMarcaId !== '' ? (int) $this->demandaMarcaId : null,
+                $periodo['desde'], $periodo['hasta'], $ciclo,
+            );
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return [
+            'etiqueta' => 'vs '.\Illuminate\Support\Carbon::parse($periodo['desde'])->format('d/m').'–'.\Illuminate\Support\Carbon::parse($periodo['hasta'])->format('d/m'),
+            'abonos' => (float) $cuenta['abonos'],
+            'pedidos' => (float) $resumen['pedidos']['total'],
+            'ventas' => (float) $resumen['ventas_directas']['total'],
+            'piezas' => (float) $demanda['totales']['piezas'],
+        ];
+    }
+
     public function getDemandaProperty(): array
     {
         $this->errorDemanda = '';
@@ -260,6 +322,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         $mayoristas = $this->porClienteMayorista;
         $pendientes = $this->montosPendientes;
         $demanda = $this->demanda;
+        $comparacion = $this->comparacion;
         $periodo = match (true) {
             $desde !== '' && $hasta !== '' => \Illuminate\Support\Carbon::parse($desde)->format('d/m/Y').' al '.\Illuminate\Support\Carbon::parse($hasta)->format('d/m/Y'),
             $desde !== '' => 'Desde el '.\Illuminate\Support\Carbon::parse($desde)->format('d/m/Y'),
@@ -386,18 +449,33 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     {{-- KPIs animados. --}}
     <div class="fp-escalonado mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6" data-kpis-reporte>
         <x-panel.metrica titulo="Saldo" :valor="$dinero($cuenta['saldo'])" :detalle="'Abonos '.$dinero($cuenta['abonos']).' · Cargos '.$dinero($cuenta['cargos'])"
-            tono="primario" icono="M12 8c-2 0-3 .9-3 2s1 2 3 2 3 .9 3 2-1 2-3 2m0-8V6m0 10v2M4 12a8 8 0 1016 0 8 8 0 00-16 0z" />
+            tono="primario" icono="M12 8c-2 0-3 .9-3 2s1 2 3 2 3 .9 3 2-1 2-3 2m0-8V6m0 10v2M4 12a8 8 0 1016 0 8 8 0 00-16 0z" >
+            <x-ui.variacion data-kpi="abonos" :actual="$cuenta['abonos']" :anterior="$comparacion['abonos'] ?? null" :etiqueta="($comparacion['etiqueta'] ?? 'vs periodo anterior').' (abonos)'" />
+        </x-panel.metrica>
         <x-panel.metrica titulo="Pedidos" :valor="$resumen['pedidos']['total']" :detalle="$dinero($resumen['pedidos']['monto_total'])"
-            tono="neutral" icono="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            tono="neutral" icono="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" >
+            <x-ui.variacion data-kpi="pedidos" :actual="$resumen['pedidos']['total']" :anterior="$comparacion['pedidos'] ?? null" :etiqueta="$comparacion['etiqueta'] ?? 'vs periodo anterior'" />
+        </x-panel.metrica>
         <x-panel.metrica titulo="Ventas directas" :valor="$resumen['ventas_directas']['total']" :detalle="$dinero($resumen['ventas_directas']['monto_total'])"
-            tono="exito" icono="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3c-.6.6-.2 1.7.7 1.7H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            tono="exito" icono="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 2.3c-.6.6-.2 1.7.7 1.7H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" >
+            <x-ui.variacion data-kpi="ventas" :actual="$resumen['ventas_directas']['total']" :anterior="$comparacion['ventas'] ?? null" :etiqueta="$comparacion['etiqueta'] ?? 'vs periodo anterior'" />
+        </x-panel.metrica>
         <x-panel.metrica titulo="Por cobrar" :valor="$dinero($porCobrar)" :detalle="($pendientes['clientes_directos']['totales']['clientes'] + $pendientes['revendedores']['totales']['clientes']).' clientes con saldo'"
-            :tono="$porCobrar > 0 ? 'aviso' : 'exito'" icono="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            :tono="$porCobrar > 0 ? 'aviso' : 'exito'" icono="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" >
+            <x-ui.variacion :actual="0" etiqueta="corte al día de hoy" />
+        </x-panel.metrica>
         <x-panel.metrica titulo="Vales activos" :valor="$resumen['vales']['activos']" :detalle="'Saldo '.$dinero($resumen['vales']['saldo_activo'])"
-            tono="neutral" icono="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+            tono="neutral" icono="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" >
+            <x-ui.variacion :actual="0" etiqueta="corte al día de hoy" />
+        </x-panel.metrica>
         <x-panel.metrica titulo="Piezas pedidas" :valor="$demanda['totales']['piezas']" :detalle="$demanda['totales']['pedidos'].' pedidos · '.$dinero($demanda['totales']['monto'])"
-            tono="primario" icono="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            tono="primario" icono="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" >
+            <x-ui.variacion data-kpi="piezas" :actual="$demanda['totales']['piezas']" :anterior="$comparacion['piezas'] ?? null" :etiqueta="$comparacion['etiqueta'] ?? 'vs periodo anterior'" />
+        </x-panel.metrica>
     </div>
+    @if ($comparacion === null)
+        <p class="mb-4 text-[11px] text-fp-text-muted" data-sin-comparacion>Elige fecha Desde y Hasta para comparar contra el periodo anterior de la misma duración.</p>
+    @endif
 
     {{-- Secciones en pestañas (todas se renderizan; la pestaña solo decide cuál se ve). --}}
     <div x-data="{ pestana: (location.hash || '').replace('#seccion-', '') || 'resumen' }"
