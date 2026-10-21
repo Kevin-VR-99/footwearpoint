@@ -153,7 +153,7 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
             alt="Footwear Point"
             class="mx-auto h-28 w-auto object-contain"
         >
-        <p class="text-sm text-slate-500 mt-3">Inicia sesión en tu cuenta</p>
+        <h1 class="text-sm font-normal text-slate-500 mt-3">Inicia sesión en tu cuenta</h1>
     </div>
 
     {{-- TG-184: a quien no es personal se le explica que entre por la app. --}}
@@ -165,8 +165,8 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
 
     <form wire:submit="login" class="space-y-5">
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-            <input type="email" wire:model="email"
+            <label for="login-email" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
+            <input id="login-email" type="email" wire:model="email"
                 class="w-full rounded-lg"
                 placeholder="correo@ejemplo.com" autofocus>
             @error('email')
@@ -175,8 +175,8 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         </div>
 
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-            <input type="password" wire:model="password"
+            <label for="login-password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+            <input id="login-password" type="password" wire:model="password"
                 class="w-full rounded-lg"
                 placeholder="••••••••">
             @error('password')

@@ -62,7 +62,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
         <div class="relative flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <div>
                 <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-fp-primary">{{ Auth::user()->hasRole('admin_distribuidora') ? 'Panel distribuidora' : 'Panel del personal' }}</p>
-                <h2 class="mt-1 text-2xl font-bold tracking-tight text-fp-sidebar">Inicio</h2>
+                <h1 class="mt-1 text-2xl font-bold tracking-tight text-fp-sidebar">Inicio</h1>
                 <p class="mt-1 text-sm text-fp-text-muted">
                     {{ filled(Auth::user()->nombre) ? 'Hola, '.Auth::user()->nombre.'.' : 'Hola.' }} Resumen operativo de la distribuidora.
                 </p>

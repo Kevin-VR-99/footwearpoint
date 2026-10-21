@@ -123,8 +123,8 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
 
         <form wire:submit="emitir" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="fp-campo">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de propietario</label>
-                <select wire:model.live="propietario_tipo"
+                <label for="index-propietario-tipo" class="block text-sm font-medium text-slate-700 mb-1">Tipo de propietario</label>
+                <select id="index-propietario-tipo" wire:model.live="propietario_tipo"
                         class="w-full rounded-lg text-sm focus:ring-fp-primary">
                     <option value="cliente_directo">Cliente directo</option>
                     <option value="revendedor">Cliente mayorista</option>
@@ -134,7 +134,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
             <div class="fp-campo">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Propietario</label>
                 @if ($propietario_tipo === 'cliente_directo')
-                    <select wire:model="propietario_id"
+                    <select wire:model="propietario_id" aria-label="Propietario del vale"
                             class="w-full rounded-lg text-sm focus:ring-fp-primary">
                         <option value="">— Seleccionar cliente —</option>
                         @foreach ($this->clientes as $c)
@@ -142,7 +142,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                         @endforeach
                     </select>
                 @else
-                    <select wire:model="propietario_id"
+                    <select wire:model="propietario_id" aria-label="Propietario del vale"
                             class="w-full rounded-lg text-sm focus:ring-fp-primary">
                         <option value="">— Seleccionar cliente mayorista —</option>
                         @foreach ($this->revendedores as $r)
@@ -157,16 +157,16 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
             </div>
 
             <div class="fp-campo">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Monto (MXN)</label>
-                <input type="number" step="0.01" min="0.01" wire:model="monto_original"
+                <label for="index-monto-original" class="block text-sm font-medium text-slate-700 mb-1">Monto (MXN)</label>
+                <input id="index-monto-original" type="number" step="0.01" min="0.01" wire:model="monto_original"
                        class="w-full rounded-lg text-sm focus:ring-fp-primary"
                        placeholder="500.00">
                 @error('monto_original') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div class="fp-campo">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional)</label>
-                <input type="text" wire:model="motivo" maxlength="300"
+                <label for="index-motivo" class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional)</label>
+                <input id="index-motivo" type="text" wire:model="motivo" maxlength="300"
                        class="w-full rounded-lg text-sm focus:ring-fp-primary"
                        placeholder="Ej. compensación, promoción…">
             </div>
@@ -181,10 +181,11 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
     </div>
 
     {{-- Listado --}}
-    <div class="fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
+    <div class="relative fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
+        <x-ui.cargando />
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Vales emitidos</h3>
-            <select wire:model.live="filtro_tipo"
+            <select wire:model.live="filtro_tipo" aria-label="Filtrar por tipo de propietario"
                     class="rounded-lg text-sm focus:ring-fp-primary">
                 <option value="">Todos</option>
                 <option value="cliente_directo">Solo clientes</option>

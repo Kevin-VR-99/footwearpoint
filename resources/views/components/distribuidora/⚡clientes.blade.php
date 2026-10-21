@@ -336,14 +336,14 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                 {{ $clienteEditandoId ? 'Editar cliente directo' : 'Nuevo cliente directo' }}
             </h2>
             <div class="fp-campo">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                <input type="text" wire:model="cliente_nombre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                <label for="clientes-cliente-nombre" class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                <input id="clientes-cliente-nombre" type="text" wire:model="cliente_nombre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 @error('cliente_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                    <input type="text" wire:model="cliente_telefono" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                    <label for="clientes-cliente-telefono" class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+                    <input id="clientes-cliente-telefono" type="text" wire:model="cliente_telefono" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 </div>
                 <div class="fp-campo">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
@@ -357,8 +357,8 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                 </div>
             </div>
             <div class="fp-campo">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Dirección de contacto</label>
-                <input type="text" wire:model="cliente_direccion_contacto" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                <label for="clientes-cliente-direccion-contacto" class="block text-sm font-medium text-slate-700 mb-1">Dirección de contacto</label>
+                <input id="clientes-cliente-direccion-contacto" type="text" wire:model="cliente_direccion_contacto" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
             {{-- E3-07 (TG-133): cuenta para entrar a la app móvil --}}
             <div class="border-t border-slate-200 pt-4">
@@ -373,26 +373,26 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                     </p>
                     <div class="grid grid-cols-2 gap-4">
                         <div class="col-span-2">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Correo para entrar a la app</label>
-                            <input type="email" wire:model="cliente_acceso_email" autocomplete="off" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                            <label for="clientes-cliente-acceso-email" class="block text-sm font-medium text-slate-700 mb-1">Correo para entrar a la app</label>
+                            <input id="clientes-cliente-acceso-email" type="email" wire:model="cliente_acceso_email" autocomplete="off" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                             @error('cliente_acceso_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div class="fp-campo">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-                            <input type="password" wire:model="cliente_acceso_password" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                            <label for="clientes-cliente-acceso-password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+                            <input id="clientes-cliente-acceso-password" type="password" wire:model="cliente_acceso_password" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                             @error('cliente_acceso_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                         </div>
                         <div class="fp-campo">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-                            <input type="password" wire:model="cliente_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                            <label for="clientes-cliente-acceso-password-confirmation" class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
+                            <input id="clientes-cliente-acceso-password-confirmation" type="password" wire:model="cliente_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         </div>
                     </div>
                 @endif
             </div>
             @if ($clienteEditandoId)
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
-                    <select wire:model="cliente_estado" class="w-full rounded-md max-w-xs">
+                    <label for="clientes-cliente-estado" class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
+                    <select id="clientes-cliente-estado" wire:model="cliente_estado" class="w-full rounded-md max-w-xs">
                         <option value="activo">Activo</option>
                         <option value="inactivo">Inactivo</option>
                     </select>

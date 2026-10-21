@@ -133,11 +133,11 @@ class PushCambioEstadoPedidoTest extends TestCase
     }
 
     /** Mismo hueco que los vales: estos cambios solo le llegaban al personal. */
-    public function test_confirmado_rechazado_y_entregado_avisan_al_dueno(): void
+    public function test_confirmado_y_entregado_avisan_al_dueno(): void
     {
         $this->registrarCelular($this->jose(), 'celular-de-jose');
 
-        foreach (['confirmado', 'rechazado', 'entregado'] as $estado) {
+        foreach (['confirmado', 'entregado'] as $estado) {
             $pedido = $this->pedidoDeJose();
             $antes = count($this->push->envios);
 
@@ -151,6 +151,21 @@ class PushCambioEstadoPedidoTest extends TestCase
                 ->where('entidad_id', $pedido->id)
                 ->exists(), $estado);
         }
+    }
+
+    /** rechazado ya lo avisa TG-281: un solo aviso al dueño, no dos. */
+    public function test_rechazo_no_duplica_el_aviso_al_dueno(): void
+    {
+        $this->registrarCelular($this->jose(), 'celular-de-jose');
+        $pedido = $this->pedidoDeJose();
+
+        $this->cambiarEstado($pedido, 'rechazado');
+
+        $this->assertCount(1, $this->push->envios);
+        $this->assertSame(1, Notificacion::withoutGlobalScopes()
+            ->where('usuario_id', $this->jose()->id)
+            ->where('entidad_id', $pedido->id)
+            ->count());
     }
 
     public function test_si_tiene_varios_celulares_le_llega_a_todos(): void

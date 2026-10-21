@@ -39,7 +39,7 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
 <div>
     <div class="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-            <h2 class="text-xl font-bold tracking-tight text-slate-900">Distribuidoras</h2>
+            <h1 class="text-xl font-bold tracking-tight text-slate-900">Distribuidoras</h1>
             <p class="text-sm text-slate-500">
                 {{ $distribuidoras->count() }} {{ $distribuidoras->count() === 1 ? 'distribuidora' : 'distribuidoras' }}
             </p>

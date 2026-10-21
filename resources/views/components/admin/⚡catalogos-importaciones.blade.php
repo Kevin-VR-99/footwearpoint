@@ -182,7 +182,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         subtitulo="Sube el catálogo de la fábrica en PDF o imagen. Después la IA propone los productos y tú los revisas antes de que entren al catálogo." />
 
     @php($porEstado = $this->importaciones->countBy('estado'))
-    <div class="fp-escalonado grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-metricas-admin>
+    <div class="fp-escalonado grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" data-metricas-admin>
         <x-panel.metrica titulo="Catálogos subidos" :valor="$this->importaciones->count()" icono="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
         <x-panel.metrica titulo="Leyendo con IA" :valor="$porEstado['procesando'] ?? 0" tono="primario" detalle="Se actualiza sola"
             icono="M9.75 3.1v5.7a2.25 2.25 0 01-.66 1.6L5 14.5M14.25 3.1v5.7c0 .6.24 1.17.66 1.6L19 14.5M5 14.5l-1.4 4.2A1 1 0 004.6 20h14.8a1 1 0 00.95-1.3L19 14.5M5 14.5h14" />
@@ -197,8 +197,8 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
     <form wire:submit="subir" class="fp-formulario fp-aparecer p-5 sm:p-6 space-y-4 max-w-2xl">
         <div class="grid gap-4 sm:grid-cols-2">
             <div class="fp-campo">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Línea</label>
-                <select wire:model.live="linea_id" class="w-full rounded-lg text-sm">
+                <label for="catalogos-importaciones-linea-id" class="block text-sm font-medium text-slate-700 mb-1">Línea</label>
+                <select id="catalogos-importaciones-linea-id" wire:model.live="linea_id" class="w-full rounded-lg text-sm">
                     <option value="">Elige la línea</option>
                     @foreach ($this->lineas as $linea)
                         <option value="{{ $linea->id }}">{{ $linea->nombre }}</option>
@@ -208,10 +208,10 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
             </div>
 
             <div class="fp-campo">
-                <label class="block text-sm font-medium text-slate-700 mb-1">
+                <label for="catalogos-importaciones-campana-id" class="block text-sm font-medium text-slate-700 mb-1">
                     Temporada <span class="text-slate-400 font-normal">(opcional)</span>
                 </label>
-                <select wire:model="campana_id" class="w-full rounded-lg text-sm" @disabled(! $linea_id)>
+                <select id="catalogos-importaciones-campana-id" wire:model="campana_id" class="w-full rounded-lg text-sm" @disabled(! $linea_id)>
                     <option value="">Se decide al aprobar</option>
                     @foreach ($this->temporadas as $temporada)
                         <option value="{{ $temporada->id }}">{{ $temporada->nombre }}</option>
@@ -222,8 +222,8 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         </div>
 
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Archivo del catálogo</label>
-            <input type="file" wire:model="archivo" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm">
+            <label for="catalogos-importaciones-archivo" class="block text-sm font-medium text-slate-700 mb-1">Archivo del catálogo</label>
+            <input id="catalogos-importaciones-archivo" type="file" wire:model="archivo" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm">
             <p class="mt-1 text-xs text-slate-500">PDF, JPG o PNG. Hasta 40 MB.</p>
             @error('archivo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
 

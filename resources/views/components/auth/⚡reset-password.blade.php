@@ -89,8 +89,8 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
 
     <form wire:submit="resetPassword" class="space-y-5">
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-            <input
+            <label for="reset-password-email" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
+            <input id="reset-password-email"
                 type="email"
                 wire:model="email"
                 class="w-full rounded-lg"
@@ -102,8 +102,8 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
         </div>
 
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Nueva contraseña</label>
-            <input
+            <label for="reset-password-password" class="block text-sm font-medium text-slate-700 mb-1">Nueva contraseña</label>
+            <input id="reset-password-password"
                 type="password"
                 wire:model="password"
                 class="w-full rounded-lg"
@@ -115,8 +115,8 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
         </div>
 
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-            <input
+            <label for="reset-password-password-confirmation" class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
+            <input id="reset-password-password-confirmation"
                 type="password"
                 wire:model="password_confirmation"
                 class="w-full rounded-lg"

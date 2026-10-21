@@ -51,7 +51,7 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
     </x-panel.encabezado>
 
     <x-panel.filtros class="mb-4">
-        <select wire:model.live="filtro_estado"
+        <select wire:model.live="filtro_estado" aria-label="Filtrar por estado"
                 class="rounded-lg text-sm focus:ring-fp-primary">
             <option value="">Todos los estados</option>
             <option value="borrador">Borrador</option>
@@ -72,7 +72,7 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
             <option value="cancelado">Cancelado</option>
         </select>
 
-        <select wire:model.live="filtro_tipo"
+        <select wire:model.live="filtro_tipo" aria-label="Filtrar por tipo de cliente"
                 class="rounded-lg text-sm focus:ring-fp-primary">
             <option value="">Todos los tipos</option>
             <option value="cliente_directo">Cliente directo</option>

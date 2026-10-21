@@ -12,6 +12,7 @@ use App\Services\Notificacion\NotificarValeEmitidoAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class EmitirValeAction
@@ -53,7 +54,7 @@ class EmitirValeAction
         $monto = round((float) $datos['monto_original'], 2);
         $ahora = now();
 
-        $vale = DB::transaction(function () use (
+        return DB::transaction(function () use (
             $distribuidoraId,
             $clienteId,
             $revendedorAfiliacionId,
@@ -93,21 +94,27 @@ class EmitirValeAction
                 'observaciones'           => 'Emisión de vale',
             ]);
 
-            return $vale->fresh(['clienteDirecto', 'revendedorAfiliacion', 'movimientos']);
+            $completo = $vale->fresh(['clienteDirecto', 'revendedorAfiliacion', 'movimientos']);
+
+            // TG-281: avisarle a la persona que ya tiene su vale.
+            //
+            // Va con afterCommit para no avisar de un vale que al final no
+            // exista, y el aviso no puede tumbar la emision: el vale ya esta
+            // guardado y es lo que importa. Si el aviso falla, lo peor que
+            // pasa es que se entere al entrar a la app.
+            DB::afterCommit(function () use ($completo) {
+                try {
+                    app(NotificarValeEmitidoAction::class)->ejecutar($completo);
+                } catch (\Throwable $e) {
+                    Log::warning('No se pudo avisar del vale emitido.', [
+                        'vale_id' => $completo->id,
+                        'error'   => $e->getMessage(),
+                    ]);
+                }
+            });
+
+            return $completo;
         });
-
-        // Aviso al dueño del vale (bandeja + push). Fuera de la transacción:
-        // si el aviso fallara, el vale ya emitido no debe deshacerse.
-        try {
-            app(NotificarValeEmitidoAction::class)->ejecutar($vale);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('No se pudo notificar la emisión del vale.', [
-                'vale_id' => $vale->id,
-                'error'   => $e->getMessage(),
-            ]);
-        }
-
-        return $vale;
     }
 
     protected function generarFolio(int $distribuidoraId): string

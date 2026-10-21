@@ -118,8 +118,8 @@ new #[Layout('layouts.guest')] #[Title('Recuperar contraseña — FootwearPoint'
 
     <form wire:submit="sendResetLink" class="space-y-5">
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-            <input
+            <label for="forgot-password-email" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
+            <input id="forgot-password-email"
                 type="email"
                 wire:model="email"
                 class="w-full rounded-lg"

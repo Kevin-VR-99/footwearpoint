@@ -34,6 +34,8 @@ final class GruposNotificacion
         'vale_por_vencer'           => self::PAGOS,
         'vale_emitido'              => self::PAGOS,
         'pedido_estado_cliente'     => self::PEDIDOS,
+        'pedido_rechazado'          => self::PEDIDOS,
+        'recoleccion_vencida'       => self::PEDIDOS,
     ];
 
     /** Respaldo por prefijo para tipos futuros. */

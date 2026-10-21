@@ -106,32 +106,32 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
         x-on:livewire-upload-error="subiendo = false"
         class="fp-tarjeta p-5 sm:p-6 space-y-4 max-w-2xl fp-formulario fp-aparecer">
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Nombre Comercial</label>
-            <input type="text" wire:model="nombre_comercial" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+            <label for="perfil-nombre-comercial" class="block text-sm font-medium text-slate-700 mb-1">Nombre Comercial</label>
+            <input id="perfil-nombre-comercial" type="text" wire:model="nombre_comercial" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             @error('nombre_comercial') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
         </div>
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
-            <textarea wire:model="descripcion_publica" rows="3" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary"></textarea>
+            <label for="perfil-descripcion-publica" class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
+            <textarea id="perfil-descripcion-publica" wire:model="descripcion_publica" rows="3" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary"></textarea>
         </div>
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Dirección</label>
-            <input type="text" wire:model="direccion_publica" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+            <label for="perfil-direccion-publica" class="block text-sm font-medium text-slate-700 mb-1">Dirección</label>
+            <input id="perfil-direccion-publica" type="text" wire:model="direccion_publica" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             <p class="mt-1 text-xs text-slate-500">Escribe calle, número, colonia y ciudad: con ella se muestra el mapa de tu tienda.</p>
         </div>
         <div class="grid grid-cols-2 gap-4">
             <div class="fp-campo">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                <input type="text" wire:model="telefono_publico" placeholder="+52 55 1234 5678" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                <label for="perfil-telefono-publico" class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+                <input id="perfil-telefono-publico" type="text" wire:model="telefono_publico" placeholder="+52 55 1234 5678" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
             <div class="fp-campo">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-                <input type="email" wire:model="email_publico" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                <label for="perfil-email-publico" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
+                <input id="perfil-email-publico" type="email" wire:model="email_publico" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
         </div>
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Horario</label>
-            <input type="text" wire:model="horario_publico" placeholder="Lunes a sábado, 9:00 a 19:00" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+            <label for="perfil-horario-publico" class="block text-sm font-medium text-slate-700 mb-1">Horario</label>
+            <input id="perfil-horario-publico" type="text" wire:model="horario_publico" placeholder="Lunes a sábado, 9:00 a 19:00" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
         </div>
         <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Logotipo</label>
@@ -140,7 +140,7 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
             @elseif ($logotipo_url_actual)
                 <img src="{{ $logotipo_url_actual }}" class="h-16 w-16 object-cover rounded mb-2">
             @endif
-            <input type="file" wire:model="logotipo" accept="image/png,image/jpeg">
+            <input type="file" wire:model="logotipo" aria-label="Logotipo" accept="image/png,image/jpeg">
             <p x-show="subiendo" x-cloak class="text-xs text-fp-text-muted mt-1">Subiendo logotipo…</p>
             @error('logotipo') <span class="block text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
             <p class="text-xs text-fp-text-muted mt-1">PNG o JPG, hasta 2MB.</p>
@@ -153,7 +153,7 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
         <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Subdominio de tu tienda</label>
             <div class="flex items-center gap-2">
-                <input type="text" wire:model="subdominio" maxlength="63" autocomplete="off"
+                <input type="text" wire:model="subdominio" aria-label="Subdominio" maxlength="63" autocomplete="off"
                     class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 @if (DominioTienda::base())
                     <span class="shrink-0 text-sm text-fp-text-muted">.{{ DominioTienda::base() }}</span>

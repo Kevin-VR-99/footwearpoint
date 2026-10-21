@@ -16,8 +16,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Bug reportado por Ailton: la distribuidora emitía un vale y al dueño no le
- * llegaba ni el aviso en la bandeja de la app ni el push.
+ * Complemento de AvisoDeValeEmitidoTest (TG-281): dueño revendedor por
+ * afiliación, revendedor sin cuenta, un solo aviso por emisión y tokens inválidos.
  */
 class NotificacionValeEmitidoTest extends TestCase
 {
@@ -74,32 +74,6 @@ class NotificacionValeEmitidoTest extends TestCase
             ->firstOrFail();
     }
 
-    public function test_cliente_directo_recibe_aviso_en_bandeja_y_push(): void
-    {
-        $jose = $this->cuenta('jose.hernandez@cliente.test');
-        $this->celular($jose, 'token-jose');
-        $cliente = ClienteDirecto::withoutGlobalScopes()->where('usuario_id', $jose->id)->firstOrFail();
-
-        $this->emitir('cliente_directo', $cliente->id)->assertCreated();
-
-        $vale = Vale::withoutGlobalScopes()->latest('id')->firstOrFail();
-        $aviso = Notificacion::withoutGlobalScopes()->where('usuario_id', $jose->id)->where('tipo', 'vale_emitido')->firstOrFail();
-        $this->assertSame('vale', $aviso->entidad_tipo);
-        $this->assertSame($vale->id, (int) $aviso->entidad_id);
-        $this->assertSame((int) $vale->distribuidora_id, (int) $aviso->distribuidora_id);
-
-        $this->assertCount(1, $this->push->envios);
-        $this->assertSame(['token-jose'], $this->push->envios[0]['tokens']);
-        $this->assertSame('vale_emitido', $this->push->envios[0]['datos']['tipo']);
-        $this->assertSame((string) $vale->id, $this->push->envios[0]['datos']['entidad_id']);
-
-        // Y lo ve en la bandeja de la app.
-        $this->actingAs($jose);
-        Tenant::olvidarCache();
-        PropietarioActual::olvidarCache();
-        $this->getJson('/api/notificaciones')->assertOk()->assertJsonFragment(['tipo' => 'vale_emitido']);
-    }
-
     public function test_revendedor_recibe_aviso_y_push(): void
     {
         $maria = $this->cuenta('maria.lopez@revendedor.test');
@@ -109,6 +83,8 @@ class NotificacionValeEmitidoTest extends TestCase
         $this->emitir('revendedor', $afiliacion->id)->assertCreated();
 
         $this->assertSame(1, Notificacion::withoutGlobalScopes()->where('usuario_id', $maria->id)->where('tipo', 'vale_emitido')->count());
+        // Un solo aviso y un solo push por emisión.
+        $this->assertCount(1, $this->push->envios);
         $this->assertSame(['token-maria'], $this->push->envios[0]['tokens']);
     }
 
@@ -122,18 +98,6 @@ class NotificacionValeEmitidoTest extends TestCase
 
         $this->assertSame($antes, Notificacion::withoutGlobalScopes()->where('tipo', 'vale_emitido')->count());
         $this->assertSame([], $this->push->envios);
-    }
-
-    public function test_si_firebase_falla_el_vale_y_el_aviso_quedan(): void
-    {
-        $jose = $this->cuenta('jose.hernandez@cliente.test');
-        $this->celular($jose, 'token-jose');
-        $this->push->fallar = true;
-        $cliente = ClienteDirecto::withoutGlobalScopes()->where('usuario_id', $jose->id)->firstOrFail();
-
-        $this->emitir('cliente_directo', $cliente->id)->assertCreated();
-
-        $this->assertSame(1, Notificacion::withoutGlobalScopes()->where('usuario_id', $jose->id)->where('tipo', 'vale_emitido')->count());
     }
 
     public function test_token_invalido_se_borra(): void

@@ -142,28 +142,28 @@ new class extends Component {
             <h2 class="text-sm font-semibold text-slate-700">{{ $cicloEditandoId ? 'Editar configuración de ciclo' : 'Nueva configuración de ciclo' }}</h2>
             <div class="grid grid-cols-2 gap-4">
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Día de cierre</label>
-                    <select wire:model="ciclo_dia_cierre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                    <label for="ciclos-ciclo-dia-cierre" class="block text-sm font-medium text-slate-700 mb-1">Día de cierre</label>
+                    <select id="ciclos-ciclo-dia-cierre" wire:model="ciclo_dia_cierre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @foreach ($diasSemanaNombres as $numero => $nombre)
                             <option value="{{ $numero }}">{{ $nombre }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Hora de cierre</label>
-                    <input type="time" wire:model="ciclo_hora_cierre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                    <label for="ciclos-ciclo-hora-cierre" class="block text-sm font-medium text-slate-700 mb-1">Hora de cierre</label>
+                    <input id="ciclos-ciclo-hora-cierre" type="time" wire:model="ciclo_hora_cierre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 </div>
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Día de solicitud a fábrica</label>
-                    <select wire:model="ciclo_dia_solicitud_fabrica" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                    <label for="ciclos-ciclo-dia-solicitud-fabrica" class="block text-sm font-medium text-slate-700 mb-1">Día de solicitud a fábrica</label>
+                    <select id="ciclos-ciclo-dia-solicitud-fabrica" wire:model="ciclo_dia_solicitud_fabrica" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @foreach ($diasSemanaNombres as $numero => $nombre)
                             <option value="{{ $numero }}">{{ $nombre }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="fp-campo">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Días estimados de llegada</label>
-                    <input type="number" wire:model="ciclo_dias_estimados_llegada" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                    <label for="ciclos-ciclo-dias-estimados-llegada" class="block text-sm font-medium text-slate-700 mb-1">Días estimados de llegada</label>
+                    <input id="ciclos-ciclo-dias-estimados-llegada" type="number" wire:model="ciclo_dias_estimados_llegada" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                 </div>
             </div>
             <div class="fp-campo">

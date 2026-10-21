@@ -422,7 +422,8 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
         {{-- Buscador de productos --}}
-        <div class="lg:col-span-3 fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
+        <div class="relative lg:col-span-3 fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
+            <x-ui.cargando />
             <div class="px-5 py-3 border-b border-slate-100">
                 <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
                        placeholder="Buscar por SKU, código de catálogo, modelo, talla o color…" etiqueta="Buscar productos" />
@@ -493,7 +494,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
 
             @if ($lineas === [])
                 <p class="text-sm text-slate-500 py-6 text-center">
-                    Agrega productos desde la lista de la izquierda.
+                    <span class="lg:hidden">Agrega productos desde la lista de arriba.</span><span class="hidden lg:inline">Agrega productos desde la lista de la izquierda.</span>
                 </p>
             @else
                 <div class="space-y-3 mb-4">
@@ -587,8 +588,8 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
 
                     @if ($this->porCobrar > 0)
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Método de pago</label>
-                        <select wire:model="metodo_pago"
+                        <label for="index-metodo-pago" class="block text-sm font-medium text-slate-700 mb-1">Método de pago</label>
+                        <select id="index-metodo-pago" wire:model="metodo_pago"
                                 class="w-full rounded-lg text-sm focus:ring-fp-primary">
                             <option value="efectivo">Efectivo</option>
                             <option value="transferencia">Transferencia</option>
@@ -600,8 +601,8 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                     @endif
 
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Cliente (opcional)</label>
-                        <select wire:model="cliente_directo_id" @disabled($vale)
+                        <label for="index-cliente-directo-id" class="block text-sm font-medium text-slate-700 mb-1">Cliente (opcional)</label>
+                        <select id="index-cliente-directo-id" wire:model="cliente_directo_id" @disabled($vale)
                                 class="w-full rounded-lg text-sm focus:ring-fp-primary">
                             <option value="">— Venta de mostrador —</option>
                             @foreach ($this->clientes as $cliente)

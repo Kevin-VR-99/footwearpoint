@@ -20,8 +20,8 @@
                 placeholder="Buscar por usuario, acción o IP…" etiqueta="Buscar en la auditoría" />
         </div>
         <div class="fp-campo">
-            <label class="mb-1 block text-xs text-fp-text-muted">Área</label>
-            <select wire:model.live="filtro_area" class="rounded-lg text-sm">
+            <label for="lista-filtro-area" class="mb-1 block text-xs text-fp-text-muted">Área</label>
+            <select id="lista-filtro-area" wire:model.live="filtro_area" class="rounded-lg text-sm">
                 <option value="">Todas</option>
                 @foreach ($areas as $area)
                     <option value="{{ $area }}">{{ $area }}</option>
@@ -29,8 +29,8 @@
             </select>
         </div>
         <div class="fp-campo">
-            <label class="mb-1 block text-xs text-fp-text-muted">Acción</label>
-            <select wire:model.live="filtro_accion" class="rounded-lg text-sm">
+            <label for="lista-filtro-accion" class="mb-1 block text-xs text-fp-text-muted">Acción</label>
+            <select id="lista-filtro-accion" wire:model.live="filtro_accion" class="rounded-lg text-sm">
                 <option value="">Todas</option>
                 @foreach ($acciones as $accion)
                     <option value="{{ $accion }}">{{ EtiquetasAuditoria::etiqueta($accion) }}</option>
@@ -38,8 +38,8 @@
             </select>
         </div>
         <div class="fp-campo">
-            <label class="mb-1 block text-xs text-fp-text-muted">Entidad</label>
-            <select wire:model.live="filtro_entidad" class="rounded-lg text-sm">
+            <label for="lista-filtro-entidad" class="mb-1 block text-xs text-fp-text-muted">Entidad</label>
+            <select id="lista-filtro-entidad" wire:model.live="filtro_entidad" class="rounded-lg text-sm">
                 <option value="">Todas</option>
                 @foreach ($entidades as $entidad)
                     <option value="{{ $entidad }}">{{ $entidad }}</option>
@@ -47,8 +47,8 @@
             </select>
         </div>
         <div class="fp-campo">
-            <label class="mb-1 block text-xs text-fp-text-muted">Usuario</label>
-            <select wire:model.live="filtro_usuario" class="rounded-lg text-sm">
+            <label for="lista-filtro-usuario" class="mb-1 block text-xs text-fp-text-muted">Usuario</label>
+            <select id="lista-filtro-usuario" wire:model.live="filtro_usuario" class="rounded-lg text-sm">
                 <option value="">Todos</option>
                 @foreach ($usuarios as $usuario)
                     <option value="{{ $usuario->id }}">{{ $usuario->nombreVisible() ?: $usuario->email }}</option>
@@ -56,18 +56,19 @@
             </select>
         </div>
         <div class="fp-campo">
-            <label class="mb-1 block text-xs text-fp-text-muted">Desde</label>
-            <input type="date" wire:model.live="filtro_desde" class="rounded-lg text-sm" />
+            <label for="lista-filtro-desde" class="mb-1 block text-xs text-fp-text-muted">Desde</label>
+            <input id="lista-filtro-desde" type="date" wire:model.live="filtro_desde" class="rounded-lg text-sm" />
         </div>
         <div class="fp-campo">
-            <label class="mb-1 block text-xs text-fp-text-muted">Hasta</label>
-            <input type="date" wire:model.live="filtro_hasta" class="rounded-lg text-sm" />
+            <label for="lista-filtro-hasta" class="mb-1 block text-xs text-fp-text-muted">Hasta</label>
+            <input id="lista-filtro-hasta" type="date" wire:model.live="filtro_hasta" class="rounded-lg text-sm" />
         </div>
         <x-panel.boton variante="secundario" wire:click="limpiarFiltros">Limpiar</x-panel.boton>
     </div>
 </div>
 
-<div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden">
+<div class="relative fp-tarjeta fp-tabla fp-aparecer overflow-hidden">
+    <x-ui.cargando />
     <div class="overflow-x-auto">
         <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
