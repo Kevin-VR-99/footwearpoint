@@ -39,7 +39,8 @@ class ComponentesPanelTest extends TestCase
     public function test_tarjeta_y_tabla_usan_el_contenedor_de_la_casa(): void
     {
         $tarjeta = Blade::render('<x-panel.tarjeta titulo="Resumen">Contenido</x-panel.tarjeta>');
-        $this->assertStringContainsString('rounded-2xl border border-slate-200/80 bg-white shadow-sm', $tarjeta);
+        $this->assertStringContainsString('fp-tarjeta', $tarjeta);
+        $this->assertStringContainsString('fp-tarjeta-interactiva', Blade::render('<x-panel.tarjeta interactiva>x</x-panel.tarjeta>'));
         $this->assertStringContainsString('Resumen', $tarjeta);
 
         $tabla = Blade::render(<<<'BLADE'
@@ -49,6 +50,7 @@ class ComponentesPanelTest extends TestCase
             </x-panel.tabla>
         BLADE);
         $this->assertStringContainsString('<thead class="bg-fp-page', $tabla);
+        $this->assertStringContainsString('fp-tabla', $tabla);
         $this->assertStringContainsString('colspan="1"', $tabla);
         $this->assertStringContainsString('No hay pedidos.', $tabla);
     }
@@ -65,12 +67,15 @@ class ComponentesPanelTest extends TestCase
     {
         $enlace = Blade::render('<x-panel.boton href="/x">Ir</x-panel.boton>');
         $this->assertStringContainsString('<a href="/x"', $enlace);
-        $this->assertStringContainsString('bg-fp-primary', $enlace);
+        $this->assertStringContainsString('fp-btn fp-btn-primario', $enlace);
 
         $boton = Blade::render('<x-panel.boton variante="peligro" wire:click="borrar">Borrar</x-panel.boton>');
         $this->assertStringContainsString('type="button"', $boton);
         $this->assertStringContainsString('wire:click="borrar"', $boton);
-        $this->assertStringContainsString('bg-fp-danger', $boton);
+        $this->assertStringContainsString('fp-btn-peligro', $boton);
+
+        // Una variante desconocida cae en primario.
+        $this->assertStringContainsString('fp-btn-primario', Blade::render('<x-panel.boton variante="otra">x</x-panel.boton>'));
     }
 
     public function test_alerta_usa_los_colores_de_insignia(): void

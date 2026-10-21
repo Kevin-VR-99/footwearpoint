@@ -8,13 +8,13 @@
 ])
 
 {{-- TG-179: encabezado de página del panel (patrón de referencia del Inicio). --}}
-<div {{ $attributes->class(['relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm']) }}>
+<div {{ $attributes->class(['fp-tarjeta fp-aparecer relative overflow-hidden']) }}>
     <div class="absolute inset-y-0 left-0 w-1.5 bg-fp-primary" aria-hidden="true"></div>
     <div class="relative flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div class="min-w-0">
             @if ($volver)
                 <a href="{{ $volver }}"
-                    class="text-sm text-fp-primary hover:underline">{{ $volverTexto }}</a>
+                    class="fp-enlace text-sm">{{ $volverTexto }}</a>
             @endif
             @if ($eyebrow)
                 <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-fp-primary">{{ $eyebrow }}</p>

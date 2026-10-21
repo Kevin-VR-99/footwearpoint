@@ -1,10 +1,11 @@
 @props([
     'titulo' => null,
     'padding' => true,
+    'interactiva' => false,
 ])
 
 {{-- TG-179: contenedor estándar del panel. --}}
-<div {{ $attributes->class(['rounded-2xl border border-slate-200/80 bg-white shadow-sm', 'p-5 sm:p-6' => $padding]) }}>
+<div {{ $attributes->class([$interactiva ? 'fp-tarjeta-interactiva' : 'fp-tarjeta', 'p-5 sm:p-6' => $padding]) }}>
     @if ($titulo || isset($acciones))
         <div @class(['flex flex-wrap items-center justify-between gap-3', 'mb-4' => $padding, 'border-b border-slate-100 px-5 py-4' => ! $padding])>
             @if ($titulo)

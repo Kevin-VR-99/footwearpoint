@@ -12,6 +12,6 @@
 @endphp
 
 {{-- TG-179: aviso con los colores de insignia de la casa. --}}
-<div role="{{ $tipo === 'error' ? 'alert' : 'status' }}" {{ $attributes->class(['rounded-xl border px-4 py-3 text-sm', $clases]) }}>
+<div role="{{ $tipo === 'error' ? 'alert' : 'status' }}" {{ $attributes->class(['fp-emerger rounded-xl border px-4 py-3 text-sm', $clases]) }}>
     {{ $slot }}
 </div>

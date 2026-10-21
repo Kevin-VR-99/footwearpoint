@@ -181,3 +181,137 @@
         box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-fp-primary) 25%, transparent), 0 2px 6px -1px rgb(17 30 56 / 0.10);
     }
 }
+
+/* =====================================================================
+   Mejoras de diseño: movimiento y reacciones reutilizables.
+   Solo usa la paleta fp-*. Todo se apaga con prefers-reduced-motion.
+   ===================================================================== */
+@keyframes fp-aparecer {
+    from { opacity: 0; transform: translateY(0.5rem); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes fp-desvanecer {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes fp-emerger {
+    from { opacity: 0; transform: translateY(-0.25rem) scale(0.98); }
+    to { opacity: 1; transform: none; }
+}
+
+@layer components {
+    /* Aparición con desvanecido. */
+    .fp-aparecer { animation: fp-aparecer .45s cubic-bezier(.22, .8, .36, 1) both; }
+    .fp-desvanecer { animation: fp-desvanecer .35s ease-out both; }
+    .fp-emerger { animation: fp-emerger .2s ease-out both; }
+
+    /* Hijos que aparecen uno tras otro (rejillas de tarjetas, KPIs). */
+    .fp-escalonado > * { animation: fp-aparecer .45s cubic-bezier(.22, .8, .36, 1) both; }
+    .fp-escalonado > :nth-child(2) { animation-delay: 50ms; }
+    .fp-escalonado > :nth-child(3) { animation-delay: 100ms; }
+    .fp-escalonado > :nth-child(4) { animation-delay: 150ms; }
+    .fp-escalonado > :nth-child(5) { animation-delay: 200ms; }
+    .fp-escalonado > :nth-child(6) { animation-delay: 250ms; }
+    .fp-escalonado > :nth-child(n+7) { animation-delay: 300ms; }
+
+    /* Contenido principal de cada layout: entra suave al navegar. */
+    .fp-contenido > * { animation: fp-aparecer .4s cubic-bezier(.22, .8, .36, 1) both; }
+    .fp-contenido > :nth-child(2) { animation-delay: 40ms; }
+    .fp-contenido > :nth-child(n+3) { animation-delay: 80ms; }
+
+    /* Tarjetas. */
+    .fp-tarjeta {
+        border-radius: var(--radius-2xl);
+        border: 1px solid color-mix(in oklab, var(--color-slate-200) 80%, transparent);
+        background-color: #fff;
+        box-shadow: 0 1px 2px 0 rgb(17 30 56 / 0.05);
+        transition: box-shadow .25s ease, border-color .25s ease, transform .25s ease;
+    }
+    .fp-tarjeta:hover {
+        border-color: color-mix(in oklab, var(--color-fp-primary) 22%, var(--color-slate-200));
+        box-shadow: 0 6px 16px -6px rgb(17 30 56 / 0.12);
+    }
+    .fp-tarjeta-interactiva {
+        border-radius: var(--radius-2xl);
+        border: 1px solid color-mix(in oklab, var(--color-slate-200) 80%, transparent);
+        background-color: #fff;
+        box-shadow: 0 1px 2px 0 rgb(17 30 56 / 0.05);
+        transition: box-shadow .25s ease, border-color .25s ease, transform .25s cubic-bezier(.22, .8, .36, 1);
+    }
+    .fp-tarjeta-interactiva:hover,
+    .fp-tarjeta-interactiva:focus-within {
+        transform: translateY(-3px);
+        border-color: color-mix(in oklab, var(--color-fp-primary) 35%, transparent);
+        box-shadow: 0 14px 28px -10px rgb(17 30 56 / 0.22);
+    }
+
+    /* Botones. Variante + tamaño; las utilidades de la vista siguen mandando. */
+    .fp-btn {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.375rem;
+        border-radius: var(--radius-lg);
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.25rem;
+        box-shadow: 0 1px 2px 0 rgb(17 30 56 / 0.08);
+        transition: background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .15s ease;
+        cursor: pointer;
+    }
+    .fp-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 14px -6px rgb(17 30 56 / 0.35); }
+    .fp-btn:active:not(:disabled) { transform: translateY(0) scale(.98); box-shadow: 0 1px 2px 0 rgb(17 30 56 / 0.08); }
+    .fp-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-fp-primary) 35%, transparent); }
+    .fp-btn:disabled { cursor: not-allowed; opacity: .6; }
+    .fp-btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; line-height: 1rem; }
+    .fp-btn-primario { background-color: var(--color-fp-primary); color: #fff; }
+    .fp-btn-primario:hover:not(:disabled) { background-color: color-mix(in oklab, var(--color-fp-primary) 88%, var(--color-fp-sidebar)); }
+    .fp-btn-oscuro { background-color: var(--color-fp-sidebar); color: #fff; }
+    .fp-btn-oscuro:hover:not(:disabled) { background-color: var(--color-fp-accent); }
+    .fp-btn-secundario { border: 1px solid var(--color-slate-200); background-color: #fff; color: var(--color-fp-accent); }
+    .fp-btn-secundario:hover:not(:disabled) { border-color: color-mix(in oklab, var(--color-fp-primary) 45%, white); background-color: var(--color-fp-page); color: var(--color-fp-primary); }
+    .fp-btn-contorno { border: 1px solid var(--color-fp-primary); background-color: #fff; color: var(--color-fp-primary); }
+    .fp-btn-contorno:hover:not(:disabled) { background-color: color-mix(in oklab, var(--color-fp-primary) 8%, white); }
+    .fp-btn-peligro { background-color: var(--color-fp-danger); color: #fff; }
+    .fp-btn-peligro:hover:not(:disabled) { background-color: color-mix(in oklab, var(--color-fp-danger) 88%, black); }
+    .fp-btn-fantasma { box-shadow: none; background-color: transparent; color: var(--color-fp-text-muted); }
+    .fp-btn-fantasma:hover:not(:disabled) { box-shadow: none; transform: none; background-color: var(--color-fp-page); color: var(--color-fp-sidebar); }
+
+    /* Tablas: fila resaltada al pasar el mouse. */
+    .fp-tabla thead { background-color: var(--color-fp-page); text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .025em; color: var(--color-fp-text-muted); }
+    .fp-tabla tbody tr { transition: background-color .15s ease; }
+    .fp-tabla tbody tr:hover { background-color: color-mix(in oklab, var(--color-fp-page) 75%, white); }
+
+    /* Enlaces de texto con subrayado animado. */
+    .fp-enlace {
+        color: var(--color-fp-primary);
+        background-image: linear-gradient(currentColor, currentColor);
+        background-size: 0% 1px;
+        background-position: 0 100%;
+        background-repeat: no-repeat;
+        transition: background-size .25s ease, color .2s ease;
+    }
+    .fp-enlace:hover, .fp-enlace:focus-visible { background-size: 100% 1px; }
+
+    /* Barra lateral: el elemento se desliza un poco y su icono reacciona. */
+    .fp-nav-item { transition: background-color .2s ease, color .2s ease, transform .2s ease; }
+    .fp-nav-item:hover { transform: translateX(2px); }
+    .fp-nav-item svg { transition: transform .2s ease; }
+    .fp-nav-item:hover svg { transform: scale(1.12); }
+
+    /* Pestañas y chips de filtro. */
+    .fp-chip { transition: background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .15s ease; }
+    .fp-chip:hover { transform: translateY(-1px); }
+    .fp-chip:active { transform: scale(.97); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fp-aparecer, .fp-desvanecer, .fp-emerger,
+    .fp-escalonado > *, .fp-contenido > * { animation: none !important; }
+    .fp-tarjeta, .fp-tarjeta-interactiva, .fp-btn, .fp-nav-item, .fp-nav-item svg, .fp-chip, .fp-enlace,
+    .fp-tabla tbody tr { transition: none !important; }
+    .fp-tarjeta-interactiva:hover, .fp-tarjeta-interactiva:focus-within, .fp-btn:hover:not(:disabled),
+    .fp-btn:active:not(:disabled), .fp-nav-item:hover, .fp-nav-item:hover svg, .fp-chip:hover, .fp-chip:active { transform: none !important; }
+}

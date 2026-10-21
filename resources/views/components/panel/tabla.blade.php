@@ -3,9 +3,9 @@
 ])
 
 {{-- TG-179: tabla estándar del panel dentro de una tarjeta. --}}
-<div {{ $attributes->class(['overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm']) }}>
+<div {{ $attributes->class(['fp-tarjeta fp-tabla overflow-hidden']) }}>
     <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="fp-tabla min-w-full text-sm">
             @isset($encabezado)
                 <thead @class([
                     'bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted',
