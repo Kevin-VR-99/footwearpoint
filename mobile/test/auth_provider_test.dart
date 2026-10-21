@@ -63,10 +63,14 @@ void main() {
   AuthProvider crearProvider({
     http.Response Function()? me,
     http.Response Function()? otra,
+    /// TG-281: el teléfono no alcanza al servidor, como cuando no hay WiFi.
+    bool sinConexion = false,
   }) {
     final cliente = MockClient((peticion) async {
       final ruta = peticion.url.path;
       rutasPedidas.add(ruta);
+
+      if (sinConexion) throw const SocketException('sin red');
 
       if (ruta.endsWith('/auth/login')) {
         return _json({
@@ -198,7 +202,15 @@ void main() {
     });
   });
 
-  test('el login guarda en el teléfono SOLO el token', () async {
+  /// TG-281: en el teléfono viven el token y una copia de la última sesión.
+  ///
+  /// Antes vivía SOLO el token, a propósito: si los datos se guardan y a
+  /// alguien le suspenden la cuenta, la app seguiría creyendo que tiene
+  /// acceso. Eso sigue siendo verdad, así que la copia tiene reglas, y son
+  /// las que prueban los tres casos de aquí abajo: solo se usa cuando el
+  /// servidor no contesta, se reemplaza en cuanto contesta, y se borra con
+  /// la sesión.
+  test('el login guarda el token y una copia de la sesión, y nada más', () async {
     final auth = crearProvider();
     await auth.restaurarSesion();
 
@@ -206,7 +218,46 @@ void main() {
 
     expect(auth.rol, 'revendedor');
     expect(auth.sinAcceso, isFalse);
-    expect(almacen.keys, ['token_sanctum']);
+    expect(almacen.keys.toSet(), {'token_sanctum', 'sesion_cache'});
+    // La contraseña no se guarda nunca.
+    expect(almacen.values.join(), isNot(contains('secreto123')));
+  });
+
+  test('sin conexión y con copia guardada, la app abre con esa copia', () async {
+    final auth = crearProvider();
+    await auth.restaurarSesion();
+    await auth.login('maria@ejemplo.com', 'secreto123');
+
+    // Se vuelve a abrir la app, ahora sin internet.
+    final sinRed = crearProvider(sinConexion: true);
+    await sinRed.restaurarSesion();
+
+    expect(sinRed.haySesion, isTrue);
+    expect(sinRed.rol, 'revendedor');
+    // Y se dice que lo que se ve puede estar viejo.
+    expect(sinRed.conDatosGuardados, isTrue);
+    expect(sinRed.sinConexion, isFalse);
+  });
+
+  test('sin conexión y sin copia, se queda en la pantalla de sin conexión', () async {
+    almacen['token_sanctum'] = '1|token';
+
+    final sinRed = crearProvider(sinConexion: true);
+    await sinRed.restaurarSesion();
+
+    expect(sinRed.haySesion, isFalse);
+    expect(sinRed.sinConexion, isTrue);
+  });
+
+  test('cerrar sesión se lleva también la copia', () async {
+    final auth = crearProvider();
+    await auth.restaurarSesion();
+    await auth.login('maria@ejemplo.com', 'secreto123');
+    expect(almacen.containsKey('sesion_cache'), isTrue);
+
+    await auth.logout();
+
+    expect(almacen, isEmpty);
   });
 
   test('un 401 en cualquier petición borra la sesión y avisa', () async {

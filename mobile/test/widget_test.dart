@@ -151,7 +151,10 @@ void main() {
     await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: servidor)));
     await tester.pumpAndSettle();
 
-    expect(find.text('No se pudo conectar con el servidor'), findsOneWidget);
+    // TG-281: título corto y sin detalles técnicos debajo.
+    expect(find.text('No hay conexión'), findsOneWidget);
+    expect(find.text('Revisa tu internet e inténtalo de nuevo.'), findsOneWidget);
+    expect(find.textContaining('artisan serve'), findsNothing);
     expect(find.text('Reintentar'), findsOneWidget);
     expect(find.text('Entrar'), findsNothing);
   });

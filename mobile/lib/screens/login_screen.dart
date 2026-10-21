@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../tema/fp_colores.dart';
+import '../widgets/fondo_calzado.dart';
 import '../validaciones.dart';
 import '../widgets/fp_componentes.dart';
 import 'recuperar_password_screen.dart';
@@ -73,8 +74,8 @@ class _LoginScreenState extends State<LoginScreen> {
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
         backgroundColor: FpColores.sidebar,
-        body: DecoratedBox(
-          decoration: const BoxDecoration(gradient: FpColores.degradadoMenu),
+        // TG-281: el degradado de la marca con siluetas de calzado detrás.
+        body: FondoCalzado(
           child: SafeArea(
             child: Column(
               children: [
