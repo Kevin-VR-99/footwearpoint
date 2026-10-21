@@ -1,0 +1,74 @@
+<?php
+
+namespace Tests\Feature\Seguridad;
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
+use Tests\TestCase;
+
+/** Auditoría 21-oct-2026: CSP en modo Report-Only con nonce para Vite y Livewire. */
+class PoliticaSeguridadContenidoTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected bool $seed = true;
+
+    public function test_las_paginas_mandan_la_csp_report_only_con_un_nonce_que_usan_los_scripts(): void
+    {
+        $respuesta = $this->get('/login')->assertOk();
+
+        $this->assertFalse($respuesta->headers->has('Content-Security-Policy') && str_contains((string) $respuesta->headers->get('Content-Security-Policy'), 'script-src'));
+        $csp = (string) $respuesta->headers->get('Content-Security-Policy-Report-Only');
+        $this->assertMatchesRegularExpression("/script-src 'self' 'nonce-([A-Za-z0-9]+)'/", $csp);
+        preg_match("/'nonce-([A-Za-z0-9]+)'/", $csp, $m);
+
+        foreach (["default-src 'self'", "object-src 'none'", "frame-ancestors 'self'", "base-uri 'self'", 'https://*.mercadopago.com', 'report-uri /api/csp-report'] as $parte) {
+            $this->assertStringContainsString($parte, $csp);
+        }
+
+        // Todos los <script> de la página llevan el nonce de esta petición.
+        preg_match_all('/<script\b[^>]*>/i', $respuesta->getContent(), $scripts);
+        $this->assertNotEmpty($scripts[0]);
+        foreach ($scripts[0] as $script) {
+            $this->assertStringContainsString('nonce="'.$m[1].'"', $script);
+        }
+    }
+
+    public function test_cada_peticion_tiene_un_nonce_distinto(): void
+    {
+        $uno = $this->get('/login')->headers->get('Content-Security-Policy-Report-Only');
+        $dos = $this->get('/login')->headers->get('Content-Security-Policy-Report-Only');
+
+        $this->assertNotSame($uno, $dos);
+    }
+
+    public function test_las_respuestas_json_no_llevan_csp(): void
+    {
+        $this->getJson('/api/ping')->assertOk()->assertHeaderMissing('Content-Security-Policy-Report-Only');
+    }
+
+    public function test_en_modo_enforce_la_politica_es_obligatoria(): void
+    {
+        config(['app.csp_modo' => 'enforce']);
+
+        $respuesta = $this->get('/login')->assertOk();
+        $this->assertStringContainsString("'nonce-", (string) $respuesta->headers->get('Content-Security-Policy'));
+        $respuesta->assertHeaderMissing('Content-Security-Policy-Report-Only');
+    }
+
+    public function test_el_reporte_del_navegador_queda_en_el_log(): void
+    {
+        Log::spy();
+
+        $this->call('POST', '/api/csp-report', [], [], [], ['CONTENT_TYPE' => 'application/csp-report'], json_encode([
+            'csp-report' => [
+                'document-uri'       => 'https://footwearpoint.test/login',
+                'violated-directive' => 'script-src',
+                'blocked-uri'        => 'https://malo.test/x.js',
+            ],
+        ]))->assertNoContent();
+
+        Log::shouldHaveReceived('warning')->withArgs(fn ($mensaje, $contexto) => str_starts_with($mensaje, 'CSP:')
+            && $contexto['bloqueado'] === 'https://malo.test/x.js' && $contexto['directiva'] === 'script-src');
+    }
+}

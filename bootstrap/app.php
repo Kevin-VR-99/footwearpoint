@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // TG-235 (G17): HSTS en todas las respuestas https.
         $middleware->append(\App\Http\Middleware\AgregarHsts::class);
         $middleware->append(\App\Http\Middleware\CabecerasDeSeguridad::class);
+        // Auditoría 21-oct-2026: CSP con nonce (Report-Only por defecto).
+        $middleware->append(\App\Http\Middleware\PoliticaSeguridadContenido::class);
 
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
