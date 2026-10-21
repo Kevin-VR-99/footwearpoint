@@ -4,7 +4,7 @@
     'eyebrow' => null,
     'volver' => null,
     'volverTexto' => null,
-    'nivel' => 'h2',
+    'nivel' => 'h1',
 ])
 
 {{-- TG-179: encabezado de página del panel (patrón de referencia del Inicio). --}}

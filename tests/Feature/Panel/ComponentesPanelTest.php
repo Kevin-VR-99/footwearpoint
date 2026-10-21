@@ -19,7 +19,7 @@ class ComponentesPanelTest extends TestCase
             </x-panel.encabezado>
         BLADE);
 
-        $this->assertStringContainsString('<h2', $html);
+        $this->assertStringContainsString('<h1', $html);
         $this->assertStringContainsString('Pedidos', $html);
         $this->assertStringContainsString('Listado', $html);
         $this->assertStringContainsString('Operación', $html);

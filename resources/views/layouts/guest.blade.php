@@ -13,6 +13,7 @@
     @livewireStyles
 </head>
 <body class="fp-acceso-fondo min-h-screen text-slate-800 antialiased">
+    <div class="fp-acceso-capa" aria-hidden="true"></div>
     <div class="min-h-screen flex items-center justify-center p-4">
         <div class="fp-contenido w-full max-w-md">
             {{ $slot }}
