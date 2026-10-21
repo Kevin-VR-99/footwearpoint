@@ -161,6 +161,17 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
     Route::livewire('/stock', 'stock.index')
         ->name('stock.index');
 
+    // Plantilla para importar entradas de stock (mismo acceso que la página).
+    Route::get('/stock/plantilla-entradas.csv', function () {
+        abort_if(\App\Support\Tenant::id() === null, 403);
+        $csv = "\u{FEFF}SKU,cantidad,motivo\r\nEJEMPLO-SKU-22,10,Compra a fábrica\r\n";
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="plantilla-entradas-stock.csv"',
+        ]);
+    })->name('stock.plantilla');
+
     Route::livewire('/punto-venta', 'punto-venta.index')
         ->name('punto-venta.index');
 
