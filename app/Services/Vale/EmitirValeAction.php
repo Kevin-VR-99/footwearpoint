@@ -8,9 +8,11 @@ use App\Models\DistribuidoraStaff;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Vale;
 use App\Models\ValeMovimiento;
+use App\Services\Notificacion\NotificarValeEmitidoAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class EmitirValeAction
@@ -92,7 +94,26 @@ class EmitirValeAction
                 'observaciones'           => 'Emisión de vale',
             ]);
 
-            return $vale->fresh(['clienteDirecto', 'revendedorAfiliacion', 'movimientos']);
+            $completo = $vale->fresh(['clienteDirecto', 'revendedorAfiliacion', 'movimientos']);
+
+            // TG-281: avisarle a la persona que ya tiene su vale.
+            //
+            // Va con afterCommit para no avisar de un vale que al final no
+            // exista, y el aviso no puede tumbar la emision: el vale ya esta
+            // guardado y es lo que importa. Si el aviso falla, lo peor que
+            // pasa es que se entere al entrar a la app.
+            DB::afterCommit(function () use ($completo) {
+                try {
+                    app(NotificarValeEmitidoAction::class)->ejecutar($completo);
+                } catch (\Throwable $e) {
+                    Log::warning('No se pudo avisar del vale emitido.', [
+                        'vale_id' => $completo->id,
+                        'error'   => $e->getMessage(),
+                    ]);
+                }
+            });
+
+            return $completo;
         });
     }
 
