@@ -132,6 +132,27 @@ class PushCambioEstadoPedidoTest extends TestCase
         $this->assertStringContainsString('llegó', $this->push->envios[0]['mensaje']);
     }
 
+    /** Mismo hueco que los vales: estos cambios solo le llegaban al personal. */
+    public function test_confirmado_rechazado_y_entregado_avisan_al_dueno(): void
+    {
+        $this->registrarCelular($this->jose(), 'celular-de-jose');
+
+        foreach (['confirmado', 'rechazado', 'entregado'] as $estado) {
+            $pedido = $this->pedidoDeJose();
+            $antes = count($this->push->envios);
+
+            $this->cambiarEstado($pedido, $estado);
+
+            $this->assertCount($antes + 1, $this->push->envios, $estado);
+            $this->assertSame('pedido_estado_cliente', end($this->push->envios)['datos']['tipo']);
+            $this->assertTrue(Notificacion::withoutGlobalScopes()
+                ->where('usuario_id', $this->jose()->id)
+                ->where('entidad_tipo', 'pedido')
+                ->where('entidad_id', $pedido->id)
+                ->exists(), $estado);
+        }
+    }
+
     public function test_si_tiene_varios_celulares_le_llega_a_todos(): void
     {
         $this->registrarCelular($this->jose(), 'celular-1');

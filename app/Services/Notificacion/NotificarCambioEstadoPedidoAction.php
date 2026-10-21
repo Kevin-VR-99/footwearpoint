@@ -59,20 +59,52 @@ class NotificarCambioEstadoPedidoAction
 
         if (in_array($estadoNuevo, ['recibido_distribuidora', 'listo_entrega'], true)) {
             $this->notificarLlegadaAlDueno($pedido, $estadoNuevo);
+        } elseif (isset(self::AVISOS_AL_DUENO[$estadoNuevo])) {
+            $this->notificarEstadoAlDueno($pedido, $estadoNuevo);
         }
+    }
+
+    /**
+     * Otros cambios de estado que le importan al dueño del pedido y que antes
+     * solo veía el personal (mismo hueco que tenía la emisión de vales).
+     * no_surtido tiene su propio aviso (NotificarNoSurtidoAction).
+     */
+    private const AVISOS_AL_DUENO = [
+        'confirmado'          => ['Tu pedido %s fue confirmado', 'La distribuidora confirmó tu pedido %s.'],
+        'rechazado'           => ['Tu pedido %s fue rechazado', 'La distribuidora rechazó tu pedido %s. Comunícate con ella si tienes dudas.'],
+        'entregado'           => ['Tu pedido %s fue entregado', 'Se registró la entrega de tu pedido %s. ¡Gracias por tu compra!'],
+        'vencido_recoleccion' => ['Tu pedido %s venció sin recogerse', 'Se venció el plazo para recoger tu pedido %s. La distribuidora se comunicará contigo.'],
+    ];
+
+    protected function notificarEstadoAlDueno(Pedido $pedido, string $estadoNuevo): void
+    {
+        $usuarioId = $this->duenoDe($pedido);
+        if (! $usuarioId) {
+            return;
+        }
+
+        [$titulo, $mensaje] = self::AVISOS_AL_DUENO[$estadoNuevo];
+        $titulo = sprintf($titulo, $pedido->folio);
+        $mensaje = sprintf($mensaje, $pedido->folio);
+
+        $this->crear($usuarioId, (int) $pedido->distribuidora_id, 'pedido_estado_cliente', $titulo, $mensaje, $pedido->id);
+        $this->mandarPush($usuarioId, $titulo, $mensaje, $pedido, 'pedido_estado_cliente');
+    }
+
+    protected function duenoDe(Pedido $pedido): ?int
+    {
+        $pedido->loadMissing(['clienteDirecto', 'revendedorAfiliacion.revendedor']);
+
+        $usuarioId = $pedido->tipo === 'cliente_directo'
+            ? $pedido->clienteDirecto?->usuario_id
+            : $pedido->revendedorAfiliacion?->revendedor?->usuario_id;
+
+        return $usuarioId ? (int) $usuarioId : null;
     }
 
     protected function notificarLlegadaAlDueno(Pedido $pedido, string $estadoNuevo): void
     {
-        $pedido->loadMissing(['clienteDirecto', 'revendedorAfiliacion.revendedor']);
-
-        $usuarioId = null;
-
-        if ($pedido->tipo === 'cliente_directo') {
-            $usuarioId = $pedido->clienteDirecto?->usuario_id;
-        } else {
-            $usuarioId = $pedido->revendedorAfiliacion?->revendedor?->usuario_id;
-        }
+        $usuarioId = $this->duenoDe($pedido);
 
         if (! $usuarioId) {
             return;
@@ -117,7 +149,7 @@ class NotificarCambioEstadoPedidoAction
      *    nada: el pedido ya cambió de estado y la notificación de la bandeja
      *    ya existe. Solo se deja constancia en el log.
      */
-    protected function mandarPush(int $usuarioId, string $titulo, string $mensaje, Pedido $pedido): void
+    protected function mandarPush(int $usuarioId, string $titulo, string $mensaje, Pedido $pedido, string $tipo = 'pedido_llegada'): void
     {
         $tokens = DispositivoFcm::where('usuario_id', $usuarioId)->pluck('token')->all();
 
@@ -125,12 +157,12 @@ class NotificarCambioEstadoPedidoAction
             return;
         }
 
-        DB::afterCommit(function () use ($tokens, $usuarioId, $titulo, $mensaje, $pedido) {
+        DB::afterCommit(function () use ($tokens, $usuarioId, $titulo, $mensaje, $pedido, $tipo) {
             try {
                 $invalidos = $this->enviadorPush->enviar($tokens, $titulo, $mensaje, [
                     // Para que la app abra el pedido al tocar el aviso. Firebase
                     // solo acepta texto en estos datos.
-                    'tipo'         => 'pedido_llegada',
+                    'tipo'         => $tipo,
                     'entidad_tipo' => 'pedido',
                     'entidad_id'   => (string) $pedido->id,
                 ]);

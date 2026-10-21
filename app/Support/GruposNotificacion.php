@@ -32,6 +32,8 @@ final class GruposNotificacion
         'pago_mercado_pago'         => self::PAGOS,
         'pago_suscripcion'          => self::PAGOS,
         'vale_por_vencer'           => self::PAGOS,
+        'vale_emitido'              => self::PAGOS,
+        'pedido_estado_cliente'     => self::PEDIDOS,
     ];
 
     /** Respaldo por prefijo para tipos futuros. */

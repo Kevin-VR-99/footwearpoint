@@ -8,6 +8,7 @@ use App\Models\DistribuidoraStaff;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Vale;
 use App\Models\ValeMovimiento;
+use App\Services\Notificacion\NotificarValeEmitidoAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +53,7 @@ class EmitirValeAction
         $monto = round((float) $datos['monto_original'], 2);
         $ahora = now();
 
-        return DB::transaction(function () use (
+        $vale = DB::transaction(function () use (
             $distribuidoraId,
             $clienteId,
             $revendedorAfiliacionId,
@@ -94,6 +95,19 @@ class EmitirValeAction
 
             return $vale->fresh(['clienteDirecto', 'revendedorAfiliacion', 'movimientos']);
         });
+
+        // Aviso al dueño del vale (bandeja + push). Fuera de la transacción:
+        // si el aviso fallara, el vale ya emitido no debe deshacerse.
+        try {
+            app(NotificarValeEmitidoAction::class)->ejecutar($vale);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('No se pudo notificar la emisión del vale.', [
+                'vale_id' => $vale->id,
+                'error'   => $e->getMessage(),
+            ]);
+        }
+
+        return $vale;
     }
 
     protected function generarFolio(int $distribuidoraId): string
