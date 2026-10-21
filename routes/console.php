@@ -8,10 +8,8 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 /*
-| Auditoría 21-oct-2026: borra los tokens de Sanctum vencidos (los que pasan
-| de sanctum.expiration) para que personal_access_tokens no crezca sin fin.
-| En Railway no corre schedule:run: las tareas son servicios cron aparte
-| (ver docs/railway-produccion.md, "cron footwearpoint-limpiar-tokens").
-| Se deja registrado aquí para quien use `php artisan schedule:run` en local.
+| Auditoría 21-oct-2026: la limpieza de tokens de Sanctum vencidos
+| (`php artisan sanctum:prune-expired --hours=24`) NO se programa aquí: en
+| Railway cada comando corre como su propio servicio cron
+| (ver docs/railway-produccion.md, "footwearpoint-limpiar-tokens").
 */
-\Illuminate\Support\Facades\Schedule::command('sanctum:prune-expired --hours=24')->dailyAt('04:30');
