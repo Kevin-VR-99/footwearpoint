@@ -32,6 +32,10 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     public string $demandaMarcaId = '';
     public string $errorDemanda = '';
 
+    /** Recordatorio de cobro: deudores marcados ("tipo:id") y los que van en la vista previa. */
+    public array $seleccionDeudores = [];
+    public array $porEnviar = [];
+
     public function mount()
     {
         if (! Auth::check()) {
@@ -53,6 +57,95 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     public function limpiarFiltros(): void
     {
         $this->reset('desde', 'hasta', 'estado', 'cicloId', 'demandaCampanaId', 'demandaMarcaId');
+    }
+
+
+    private function autorizarCobro(): void
+    {
+        abort_unless(app(PermisoModuloService::class)->puede(Auth::user(), PermisoModuloService::REPORTES_FINANCIEROS), 403, MensajeError::SIN_PERMISO);
+    }
+
+    /** @return array<string, array{disponible:bool,motivo:?string,email:?string}> */
+    public function getEstadoRecordatoriosProperty(): array
+    {
+        $servicio = app(\App\Services\Cobranza\RecordatorioCobroService::class);
+        $estado = [];
+        foreach (['clientes_directos' => 'cliente_directo', 'revendedores' => 'revendedor'] as $seccion => $tipo) {
+            foreach ($this->montosPendientes[$seccion]['filas'] as $fila) {
+                $d = $servicio->datos($tipo, (int) $fila['id']);
+                $estado[$tipo.':'.$fila['id']] = ['disponible' => $d['disponible'], 'motivo' => $d['motivo'], 'email' => $d['email']];
+            }
+        }
+
+        return $estado;
+    }
+
+    /** Vista previa para un deudor. */
+    public function previsualizarRecordatorio(string $clave): void
+    {
+        $this->autorizarCobro();
+        $this->porEnviar = [$clave];
+    }
+
+    /** Vista previa del envío masivo a los marcados. */
+    public function previsualizarSeleccion(): void
+    {
+        $this->autorizarCobro();
+        $this->porEnviar = array_values(array_unique($this->seleccionDeudores));
+    }
+
+    public function cerrarVistaPrevia(): void
+    {
+        $this->porEnviar = [];
+    }
+
+    /** @return array<int, array> datos de cada deudor de la vista previa */
+    public function getVistaPreviaProperty(): array
+    {
+        $servicio = app(\App\Services\Cobranza\RecordatorioCobroService::class);
+
+        return collect($this->porEnviar)
+            ->map(function (string $clave) use ($servicio) {
+                [$tipo, $id] = array_pad(explode(':', $clave, 2), 2, null);
+                if (! in_array($tipo, \App\Services\Cobranza\RecordatorioCobroService::TIPOS, true) || ! ctype_digit((string) $id)) {
+                    return null;
+                }
+                try {
+                    return $servicio->datos($tipo, (int) $id);
+                } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+                    return null; // De otra distribuidora o ya no existe.
+                }
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    public function enviarRecordatorios(): void
+    {
+        $this->autorizarCobro();
+        $servicio = app(\App\Services\Cobranza\RecordatorioCobroService::class);
+        $enviados = 0;
+        $omitidos = [];
+
+        foreach ($this->vistaPrevia as $d) {
+            try {
+                $servicio->enviar($d['tipo'], $d['id']);
+                $enviados++;
+            } catch (\App\Exceptions\OperacionInvalidaException $e) {
+                $omitidos[] = $e->getMessage();
+            }
+        }
+
+        $this->porEnviar = [];
+        $this->seleccionDeudores = [];
+
+        if ($enviados > 0) {
+            $this->dispatch('guardado', mensaje: $enviados === 1 ? 'Recordatorio en camino.' : "{$enviados} recordatorios en camino.");
+        }
+        if ($omitidos !== []) {
+            $this->dispatch('error-negocio', mensaje: 'No se enviaron: '.implode(' ', $omitidos));
+        }
     }
 
     public function getDistribuidoraProperty(): Distribuidora
@@ -580,6 +673,13 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             </div>
             <x-panel.seccion titulo="Montos pendientes"
                 nota="Al día de hoy: pedidos colocados o entregados que todavía tienen saldo (sin borradores ni pedidos rechazados, descartados, no surtidos o vencidos). Solo usa el filtro de ciclo.">
+                <x-slot:acciones>
+                    <button type="button" wire:click="previsualizarSeleccion" class="fp-btn fp-btn-primario fp-btn-sm" data-envio-masivo
+                        @disabled($seleccionDeudores === [])>
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        Recordar a seleccionados ({{ count($seleccionDeudores) }})
+                    </button>
+                </x-slot:acciones>
         @if ($errorPendientes)
             <x-panel.alerta tipo="error" class="m-4">{{ $errorPendientes }}</x-panel.alerta>
         @endif
@@ -594,6 +694,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                         <th class="px-4 py-2 text-right">Pagado</th>
                         <th class="px-4 py-2 text-right">Anticipo pendiente</th>
                         <th class="px-4 py-2 text-right">Pendiente</th>
+                        <th class="no-imprimir px-4 py-2 text-right">Recordatorio</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -605,9 +706,29 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                             <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['pagado'], 2) }}</td>
                             <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['anticipo_pendiente'], 2) }}</td>
                             <td class="px-4 py-3 text-right tabular-nums font-semibold">${{ number_format($fila['pendiente'], 2) }}</td>
+                            @php
+                                $claveDeudor = 'cliente_directo:'.$fila['id'];
+                                $estadoDeudor = $this->estadoRecordatorios[$claveDeudor] ?? ['disponible' => false, 'motivo' => null];
+                            @endphp
+                            <td class="no-imprimir px-4 py-3 text-right whitespace-nowrap" data-recordatorio="{{ $claveDeudor }}">
+                                <div class="inline-flex items-center gap-2">
+                                    <label class="inline-flex items-center" title="{{ $estadoDeudor['motivo'] ?? 'Incluir en el envío masivo' }}">
+                                        <span class="sr-only">Seleccionar a {{ $fila['nombre'] }}</span>
+                                        <input type="checkbox" wire:model.live="seleccionDeudores" value="{{ $claveDeudor }}" class="rounded text-fp-primary disabled:opacity-40" @disabled(! $estadoDeudor['disponible'])>
+                                    </label>
+                                    <button type="button" wire:click="previsualizarRecordatorio('{{ $claveDeudor }}')" class="fp-accion fp-accion-primaria disabled:cursor-not-allowed disabled:opacity-50"
+                                        @disabled(! $estadoDeudor['disponible']) @if (! $estadoDeudor['disponible']) title="{{ $estadoDeudor['motivo'] }}" aria-describedby="motivo-{{ $loop->index }}-cd" @endif>
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                        Recordar
+                                    </button>
+                                </div>
+                                @if (! $estadoDeudor['disponible'] && $estadoDeudor['motivo'])
+                                    <p id="motivo-{{ $loop->index }}-cd" class="mt-1 max-w-[14rem] whitespace-normal text-right text-[11px] text-slate-500">{{ $estadoDeudor['motivo'] }}</p>
+                                @endif
+                            </td>
                         </tr>
                     @empty
-                        <x-panel.vacio colspan="6" mensaje="Ningún cliente tiene saldo pendiente" />
+                        <x-panel.vacio colspan="7" mensaje="Ningún cliente tiene saldo pendiente" />
                     @endforelse
                 </tbody>
                 @if ($pendientes['clientes_directos']['filas'] !== [])
@@ -619,6 +740,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                             <td class="px-4 py-3 text-right tabular-nums">${{ number_format($pendientes['clientes_directos']['totales']['pagado'], 2) }}</td>
                             <td class="px-4 py-3 text-right tabular-nums">${{ number_format($pendientes['clientes_directos']['totales']['anticipo_pendiente'], 2) }}</td>
                             <td class="px-4 py-3 text-right tabular-nums">${{ number_format($pendientes['clientes_directos']['totales']['pendiente'], 2) }}</td>
+                            <td class="no-imprimir"></td>
                         </tr>
                     </tfoot>
                 @endif
@@ -635,6 +757,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                         <th class="px-4 py-2 text-right">Pagado</th>
                         
                         <th class="px-4 py-2 text-right">Pendiente</th>
+                        <th class="no-imprimir px-4 py-2 text-right">Recordatorio</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -646,9 +769,29 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                             <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['pagado'], 2) }}</td>
                             
                             <td class="px-4 py-3 text-right tabular-nums font-semibold">${{ number_format($fila['pendiente'], 2) }}</td>
+                            @php
+                                $claveDeudor = 'revendedor:'.$fila['id'];
+                                $estadoDeudor = $this->estadoRecordatorios[$claveDeudor] ?? ['disponible' => false, 'motivo' => null];
+                            @endphp
+                            <td class="no-imprimir px-4 py-3 text-right whitespace-nowrap" data-recordatorio="{{ $claveDeudor }}">
+                                <div class="inline-flex items-center gap-2">
+                                    <label class="inline-flex items-center" title="{{ $estadoDeudor['motivo'] ?? 'Incluir en el envío masivo' }}">
+                                        <span class="sr-only">Seleccionar a {{ $fila['nombre'] }}</span>
+                                        <input type="checkbox" wire:model.live="seleccionDeudores" value="{{ $claveDeudor }}" class="rounded text-fp-primary disabled:opacity-40" @disabled(! $estadoDeudor['disponible'])>
+                                    </label>
+                                    <button type="button" wire:click="previsualizarRecordatorio('{{ $claveDeudor }}')" class="fp-accion fp-accion-primaria disabled:cursor-not-allowed disabled:opacity-50"
+                                        @disabled(! $estadoDeudor['disponible']) @if (! $estadoDeudor['disponible']) title="{{ $estadoDeudor['motivo'] }}" aria-describedby="motivo-{{ $loop->index }}-rv" @endif>
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                        Recordar
+                                    </button>
+                                </div>
+                                @if (! $estadoDeudor['disponible'] && $estadoDeudor['motivo'])
+                                    <p id="motivo-{{ $loop->index }}-rv" class="mt-1 max-w-[14rem] whitespace-normal text-right text-[11px] text-slate-500">{{ $estadoDeudor['motivo'] }}</p>
+                                @endif
+                            </td>
                         </tr>
                     @empty
-                        <x-panel.vacio colspan="5" mensaje="Ningún cliente mayorista tiene saldo pendiente" />
+                        <x-panel.vacio colspan="6" mensaje="Ningún cliente mayorista tiene saldo pendiente" />
                     @endforelse
                 </tbody>
                 @if ($pendientes['revendedores']['filas'] !== [])
@@ -660,6 +803,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                             <td class="px-4 py-3 text-right tabular-nums">${{ number_format($pendientes['revendedores']['totales']['pagado'], 2) }}</td>
                             
                             <td class="px-4 py-3 text-right tabular-nums">${{ number_format($pendientes['revendedores']['totales']['pendiente'], 2) }}</td>
+                            <td class="no-imprimir"></td>
                         </tr>
                     </tfoot>
                 @endif
@@ -756,4 +900,36 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             </x-panel.seccion>
         </div>
     </div>
+    {{-- Vista previa y confirmación del recordatorio de cobro. --}}
+    @if ($porEnviar !== [])
+        @php
+            $previa = $this->vistaPrevia;
+            $listos = array_values(array_filter($previa, fn ($d) => $d['disponible']));
+        @endphp
+        <x-panel.modal titulo="Recordatorio de cobro" :subtitulo="count($listos).' de '.count($previa).' destinatario(s) recibirán el correo.'"
+            ancho="max-w-2xl" cerrar="cerrarVistaPrevia" formulario="enviarRecordatorios" data-vista-previa-recordatorio>
+            <ul class="mb-4 space-y-1.5 text-sm">
+                @foreach ($previa as $d)
+                    <li class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-fp-page px-3 py-2">
+                        <span class="font-medium text-fp-sidebar">{{ $d['nombre'] }} <span class="font-normal text-slate-500">{{ $d['email'] ?? 'sin correo' }}</span></span>
+                        @if ($d['disponible'])
+                            <x-panel.insignia variante="success" punto>${{ number_format($d['saldo'], 2) }}</x-panel.insignia>
+                        @else
+                            <x-panel.insignia variante="warning" punto>{{ $d['motivo'] }}</x-panel.insignia>
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+            @if ($listos !== [])
+                <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Vista previa{{ count($listos) > 1 ? ' (del primero; cada quien recibe su saldo)' : '' }}</p>
+                <div class="max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700" data-texto-recordatorio>
+                    @include('emails.partials.recordatorio-cobro-cuerpo', ['d' => $listos[0]])
+                </div>
+            @endif
+            <x-slot:pie>
+                <button type="button" wire:click="cerrarVistaPrevia" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button type="submit" class="fp-btn fp-btn-primario" @disabled($listos === [])>Enviar {{ count($listos) === 1 ? 'recordatorio' : count($listos).' recordatorios' }}</button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
 </div>
