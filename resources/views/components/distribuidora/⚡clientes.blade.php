@@ -18,6 +18,9 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
     public bool $avisoEnlaceEsError = false;
 
     public $clientesDirectos = [];
+    #[\Livewire\Attributes\Url(except: '')]
+    public string $buscar = '';
+    public string $filtroEstado = '';
     public ?int $clienteEditandoId = null;
     public bool $mostrandoFormularioCliente = false;
     public string $cliente_nombre = '';
@@ -37,9 +40,51 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
         $this->cargarClientesDirectos();
     }
 
+    private function consultaClientes()
+    {
+        $q = ClienteDirecto::with('usuario')->orderBy('nombre');
+        if ($this->filtroEstado !== '') {
+            $q->where('estado', $this->filtroEstado);
+        }
+        if (trim($this->buscar) !== '') {
+            $t = '%'.addcslashes(trim($this->buscar), '%_\\').'%';
+            $q->where(fn ($w) => $w->where('nombre', 'like', $t)->orWhere('telefono', 'like', $t)->orWhere('email', 'like', $t));
+        }
+
+        return $q;
+    }
+
     private function cargarClientesDirectos(): void
     {
-        $this->clientesDirectos = ClienteDirecto::with('usuario')->get();
+        $this->clientesDirectos = $this->consultaClientes()->get();
+    }
+
+    public function updatedBuscar(): void
+    {
+        $this->cargarClientesDirectos();
+    }
+
+    public function updatedFiltroEstado(): void
+    {
+        $this->cargarClientesDirectos();
+    }
+
+    /** Exporta a .xlsx los clientes directos con la búsqueda y el estado de la pantalla. */
+    public function exportar()
+    {
+        \App\Services\Exportar\ExportarListadoXlsx::exigirPersonal(soloAdministrador: true);
+
+        $filas = $this->consultaClientes()->get()->map(fn (ClienteDirecto $c) => [
+            $c->nombre, $c->telefono, $c->email ?? $c->usuario?->email, $c->direccion_contacto,
+            ucfirst((string) $c->estado), $c->usuario ? 'Sí' : 'No', $c->created_at?->format('d/m/Y'),
+        ]);
+
+        return app(\App\Services\Exportar\ExportarListadoXlsx::class)->descargar(
+            'clientes-directos-'.now()->format('Ymd-His').'.xlsx', 'Clientes directos',
+            ['Nombre', 'Teléfono', 'Correo', 'Dirección', 'Estado', 'Cuenta app', 'Alta'],
+            $filas,
+            array_filter(['Búsqueda' => trim($this->buscar) ?: null, 'Estado' => $this->filtroEstado !== '' ? ucfirst($this->filtroEstado) : null]),
+        );
     }
 
     public function abrirFormularioCrearCliente(): void
@@ -262,6 +307,20 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                 <h2 class="text-sm font-semibold text-slate-700">Clientes Directos</h2>
                 <button type="button" wire:click="abrirFormularioCrearCliente"
                     class="fp-btn fp-btn-primario">+ Nuevo cliente</button>
+            </div>
+            <div class="mb-4 flex flex-wrap items-center gap-2" data-filtros-clientes>
+                <x-ui.buscador wire:model.live.debounce.300ms="buscar" placeholder="Buscar nombre, teléfono o correo" etiqueta="Buscar clientes" class="min-w-0 flex-1" />
+                <select wire:model.live="filtroEstado" aria-label="Filtrar por estado" class="rounded-lg text-sm">
+                    <option value="">Todos los estados</option>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                </select>
+                <button type="button" wire:click="exportar" data-exportar="clientes-directos" class="fp-btn fp-btn-secundario"
+                    wire:loading.attr="disabled" wire:target="exportar">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+                    <span wire:loading.remove wire:target="exportar">Exportar Excel</span>
+                    <span wire:loading wire:target="exportar">Generando…</span>
+                </button>
             </div>
             {{-- TG-192: resultado del envio del enlace de restablecimiento. --}}
             {{-- La contrasena temporal se saca de la sesion, no de una propiedad

@@ -32,6 +32,8 @@
         <env name="SEED_IMAGENES" value="false"/>
         <env name="FOOTWEARPOINT_DOMINIO" value="" force="true"/>
         <env name="SEED_PASSWORD" value="" force="true"/>
+        <!-- Las pruebas no heredan el token real de Mercado Pago del .env (evita GET /users/me sin fake). -->
+        <env name="MP_ACCESS_TOKEN" value="" force="true"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

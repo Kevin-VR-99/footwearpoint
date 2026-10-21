@@ -22,7 +22,8 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
         }
     }
 
-    public function getPedidosProperty()
+    /** Misma consulta para la pantalla y para la exportación. */
+    private function consulta()
     {
         $query = Pedido::query()
             ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor'])
@@ -36,7 +37,38 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
             $query->where('tipo', $this->filtro_tipo);
         }
 
-        return $query->limit(100)->get();
+        return $query;
+    }
+
+    public function getPedidosProperty()
+    {
+        return $this->consulta()->limit(100)->get();
+    }
+
+    /** Exporta a .xlsx los pedidos con los filtros de la pantalla (sin el tope de 100). */
+    public function exportar()
+    {
+        \App\Services\Exportar\ExportarListadoXlsx::exigirPersonal();
+
+        $filas = $this->consulta()->get()->map(fn (Pedido $p) => [
+            $p->folio,
+            $p->tipo === 'cliente_directo' ? 'Cliente' : 'Cliente mayorista',
+            $p->clienteDirecto?->nombre ?? $p->revendedorAfiliacion?->revendedor?->nombre ?? '—',
+            ucfirst(str_replace('_', ' ', (string) $p->estado)),
+            $p->fecha_colocacion?->format('d/m/Y H:i') ?? $p->created_at?->format('d/m/Y H:i'),
+            (float) $p->total,
+        ]);
+
+        return app(\App\Services\Exportar\ExportarListadoXlsx::class)->descargar(
+            'pedidos-'.now()->format('Ymd-His').'.xlsx',
+            'Pedidos',
+            ['Folio', 'Tipo', 'Propietario', 'Estado', 'Fecha', 'Total'],
+            $filas,
+            array_filter([
+                'Estado' => $this->filtro_estado !== '' ? ucfirst(str_replace('_', ' ', $this->filtro_estado)) : null,
+                'Tipo' => match ($this->filtro_tipo) { 'cliente_directo' => 'Cliente directo', 'revendedor' => 'Cliente mayorista', default => null },
+            ]),
+        );
     }
 };
 ?>
@@ -44,6 +76,12 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
 <div>
     <x-panel.encabezado titulo="Pedidos" subtitulo="Listado de pedidos de la distribuidora" class="mb-6">
         <x-slot:acciones>
+            <button type="button" wire:click="exportar" data-exportar="pedidos"
+                class="fp-btn fp-btn-secundario shrink-0" wire:loading.attr="disabled" wire:target="exportar">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
+                <span wire:loading.remove wire:target="exportar">Exportar Excel</span>
+                <span wire:loading wire:target="exportar">Generando…</span>
+            </button>
             <x-panel.boton :href="route('pedidos.create')" class="shrink-0">
                 Nuevo pedido
             </x-panel.boton>
