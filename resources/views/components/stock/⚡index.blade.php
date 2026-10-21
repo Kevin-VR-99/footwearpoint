@@ -25,6 +25,11 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 
     public string $busqueda = '';
 
+    /** Alerta de stock bajo: filtro y edición del mínimo propio de la variante. */
+    public bool $soloBajo = false;
+    public ?int $editandoMinimoId = null;
+    public string $minimoNuevo = '';
+
     public string $mensaje = '';
     public string $errorMsg = '';
 
@@ -53,7 +58,13 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 $query->whereHas('variante', fn ($q) => $q->where('sku', 'like', "%{$termino}%"));
             }
 
-            return $query->get();
+            if ($this->soloBajo) {
+                // Mínimo efectivo: el propio si es > 0; si no, el general.
+                $general = $this->minimoGeneral;
+                $query->whereRaw('cantidad_disponible < (CASE WHEN stock_minimo > 0 THEN stock_minimo ELSE ? END)', [$general]);
+            }
+
+            return $query->with('variante.talla', 'variante.color')->get();
         } catch (OperacionInvalidaException $e) {
             return collect();
         }
@@ -72,6 +83,68 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         return Variante::query()
             ->orderBy('sku')
             ->get(['id', 'sku', 'producto_id']);
+    }
+
+    public function getMinimoGeneralProperty(): int
+    {
+        return (int) (\App\Models\ConfiguracionDistribuidora::query()->value('stock_minimo_general') ?? 0);
+    }
+
+    public function getPuedeEditarMinimoProperty(): bool
+    {
+        return app(\App\Services\Auth\PermisoModuloService::class)
+            ->puede(Auth::user(), \App\Services\Auth\PermisoModuloService::CONFIGURACION);
+    }
+
+    public function getTotalBajosProperty(): int
+    {
+        try {
+            return app(StockService::class)->consultar()
+                ->whereRaw('cantidad_disponible < (CASE WHEN stock_minimo > 0 THEN stock_minimo ELSE ? END)', [$this->minimoGeneral])
+                ->count();
+        } catch (OperacionInvalidaException) {
+            return 0;
+        }
+    }
+
+    public function editarMinimo(int $stockId): void
+    {
+        abort_unless($this->puedeEditarMinimo, 403);
+        $stock = app(StockService::class)->consultar()->whereKey($stockId)->firstOrFail();
+        $this->editandoMinimoId = (int) $stock->id;
+        $this->minimoNuevo = (string) (int) $stock->stock_minimo;
+        $this->resetErrorBag('minimoNuevo');
+    }
+
+    public function cancelarMinimo(): void
+    {
+        $this->editandoMinimoId = null;
+        $this->minimoNuevo = '';
+    }
+
+    public function guardarMinimo(): void
+    {
+        abort_unless($this->puedeEditarMinimo, 403);
+        $this->validate(['minimoNuevo' => ['required', 'integer', 'min:0', 'max:100000']], [
+            'minimoNuevo.required' => 'Escribe el mínimo (0 = usar el general).',
+            'minimoNuevo.integer' => 'El mínimo debe ser un número entero.',
+            'minimoNuevo.min' => 'El mínimo no puede ser negativo.',
+        ]);
+
+        // Solo una existencia de esta distribuidora y su sucursal principal.
+        $stock = app(StockService::class)->consultar()->whereKey($this->editandoMinimoId)->firstOrFail();
+        $antes = (int) $stock->stock_minimo;
+        $stock->timestamps = false;
+        $stock->stock_minimo = (int) $this->minimoNuevo;
+        $stock->save();
+
+        app(\App\Services\Auditoria\RegistrarAuditoriaAction::class)->ejecutar(
+            'stock.minimo', 'stock_local', (int) $stock->id,
+            ['stock_minimo' => $antes], ['stock_minimo' => (int) $stock->stock_minimo, 'variante_id' => (int) $stock->variante_id],
+        );
+
+        $this->cancelarMinimo();
+        $this->dispatch('guardado', mensaje: 'Mínimo actualizado.');
     }
 
     public function registrarEntrada(StockService $stock)
@@ -260,8 +333,17 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         <x-ui.cargando />
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Existencias</h3>
-            <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
-                   placeholder="Buscar por SKU…" etiqueta="Buscar existencias por SKU" class="w-full sm:w-80" />
+            <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-fp-primary/40" data-filtro-stock-bajo>
+                    <input type="checkbox" wire:model.live="soloBajo" class="rounded text-fp-primary">
+                    Solo stock bajo
+                    @if ($this->totalBajos > 0)
+                        <x-panel.insignia variante="danger" viva>{{ $this->totalBajos }}</x-panel.insignia>
+                    @endif
+                </label>
+                <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
+                       placeholder="Buscar por SKU…" etiqueta="Buscar existencias por SKU" class="w-full sm:w-72" />
+            </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -288,20 +370,56 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                             </td>
                             <td class="px-4 py-3 text-slate-700">
                                 {{ $existencia->variante?->producto?->nombre ?? '—' }}
+                                @php
+                                    $detalleVariante = trim(implode(' · ', array_filter([
+                                        $existencia->variante?->talla ? trim($existencia->variante->talla->sistema.' '.$existencia->variante->talla->valor) : null,
+                                        $existencia->variante?->nombre_color_comercial ?: $existencia->variante?->color?->nombre,
+                                    ])));
+                                @endphp
+                                @if ($detalleVariante !== '')
+                                    <span class="block text-xs text-slate-500">{{ $detalleVariante }}</span>
+                                @endif
                             </td>
+                            @php
+                                $bajo = $existencia->estaBajo($this->minimoGeneral);
+                            @endphp
                             <td class="px-4 py-3 text-right font-medium
-                                {{ (int) $existencia->cantidad_disponible === 0 ? 'text-fp-danger' : 'text-slate-900' }}">
-                                {{ (int) $existencia->cantidad_disponible }}
+                                {{ (int) $existencia->cantidad_disponible === 0 || $bajo ? 'text-fp-danger' : 'text-slate-900' }}">
+                                <span class="inline-flex items-center justify-end gap-2">
+                                    @if ($bajo)
+                                        <x-panel.insignia variante="danger" punto data-stock-bajo>Stock bajo</x-panel.insignia>
+                                    @endif
+                                    {{ (int) $existencia->cantidad_disponible }}
+                                </span>
                             </td>
-                            <td class="px-4 py-3 text-right text-slate-500">
-                                {{ (int) $existencia->stock_minimo }}
+                            <td class="px-4 py-3 text-right text-slate-500 whitespace-nowrap">
+                                @if ($editandoMinimoId === (int) $existencia->id)
+                                    <form wire:submit="guardarMinimo" class="fp-emerger inline-flex items-center gap-1.5" data-editar-minimo>
+                                        <label for="minimo-{{ $existencia->id }}" class="sr-only">Mínimo de {{ $existencia->variante?->sku }}</label>
+                                        <input id="minimo-{{ $existencia->id }}" type="number" min="0" wire:model="minimoNuevo" class="w-20 rounded-lg py-1 text-right text-sm" autofocus>
+                                        <button type="submit" class="fp-accion fp-accion-primaria">Guardar</button>
+                                        <button type="button" wire:click="cancelarMinimo" class="fp-accion fp-accion-neutra">Cancelar</button>
+                                    </form>
+                                    @error('minimoNuevo') <p class="mt-1 text-xs text-fp-danger">{{ $message }}</p> @enderror
+                                @else
+                                    <span class="inline-flex items-center gap-2">
+                                        @if ((int) $existencia->stock_minimo > 0)
+                                            <span class="tabular-nums">{{ (int) $existencia->stock_minimo }}</span>
+                                        @else
+                                            <span class="tabular-nums text-slate-400" title="Usa el mínimo general">{{ $this->minimoGeneral > 0 ? $this->minimoGeneral.' (general)' : '—' }}</span>
+                                        @endif
+                                        @if ($this->puedeEditarMinimo)
+                                            <button type="button" wire:click="editarMinimo({{ $existencia->id }})" class="fp-accion fp-accion-neutra" aria-label="Editar mínimo de {{ $existencia->variante?->sku }}">Editar</button>
+                                        @endif
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-slate-600">
                                 {{ optional($existencia->updated_at)->format('d/m/Y H:i') ?? '—' }}
                             </td>
                         </tr>
                     @empty
-                        <x-panel.vacio colspan="5" mensaje="No hay existencias registradas todavía." />
+                        <x-panel.vacio colspan="5" :mensaje="$soloBajo ? 'Ninguna variante está por debajo de su mínimo.' : 'No hay existencias registradas todavía.'" />
                     @endforelse
                 </tbody>
             </table>

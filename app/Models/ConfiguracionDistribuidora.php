@@ -35,6 +35,7 @@ class ConfiguracionDistribuidora extends Model
         'mp_access_token',
         'mp_public_key',
         'mp_conectado_at',
+        'stock_minimo_general',
     ];
 
     /**
