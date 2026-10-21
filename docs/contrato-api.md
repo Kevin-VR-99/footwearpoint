@@ -97,8 +97,11 @@ Sin token. Es el único endpoint público que usa la app.
 **Entrada**
 
 ```json
-{ "email": "maria@ejemplo.com", "password": "secreto123" }
+{ "email": "maria@ejemplo.com", "password": "secreto123", "device_name": "App FootwearPoint (android)" }
 ```
+
+`device_name` es opcional (máx. 100): es el nombre del token. Si no viene, se usa el User-Agent. Cada persona conserva
+como máximo 10 sesiones de la app; al entrar en un undécimo dispositivo se cierra la más vieja.
 
 **Salida (200)**
 
@@ -1138,6 +1141,27 @@ Existen en `/api` y están probados, pero los consume el panel web, no la app de
 | Ruta | Para qué |
 |---|---|
 | `GET /api/ping` | Comprobar que la API responde |
-| `POST /api/webhooks/mercado-pago` | Aviso de Mercado Pago cuando cambia un pago (TG-228) |
+| `POST /api/webhooks/mercado-pago` | Aviso de Mercado Pago cuando cambia un pago (TG-228). En producción exige firma válida (`x-signature` con `ts` de menos de 5 min) |
+| `POST /api/csp-report` | El navegador avisa lo que la CSP bloquearía (auditoría 21-oct-2026) |
 
 > **Acuerdo del equipo:** quien crea un endpoint de `/api` lo documenta. Si no está ni arriba ni en esta lista, la prueba `tests/Feature/Documentacion/ContratoApiCompletoTest.php` falla y dice cuál falta.
+
+## Paginación de listados (auditoría 21-oct-2026)
+
+`GET /api/pedidos` y `GET /api/vales` aceptan `?page=` y `?per_page=` (1 a 100; por omisión 100). La lista sigue en
+`data`, así que las versiones viejas de la app no cambian; además vienen:
+
+```json
+{
+  "data": [ ... ],
+  "meta":  { "current_page": 1, "last_page": 3, "per_page": 100, "total": 250 },
+  "links": { "next": "https://…/api/pedidos?page=2", "prev": null }
+}
+```
+
+`GET /api/stock` ya venía paginado (`por_pagina`, ahora con tope de 100).
+
+Las imágenes de producto (`imagenes[]` en catálogo y `GET /api/producto-campana/{id}/imagenes`) traen además
+`url_miniatura` (WebP ~400 px) y `url_mediana` (WebP ~1200 px). En fotos subidas antes de este cambio las dos
+son iguales a `url`.
+
