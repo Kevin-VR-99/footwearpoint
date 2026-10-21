@@ -231,17 +231,19 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
         @endif
     </div>
 
-    <div class="flex flex-wrap gap-3 fp-tarjeta p-4 fp-formulario fp-aparecer">
+    <div class="relative flex flex-wrap gap-3 fp-tarjeta p-4 fp-formulario fp-aparecer">
+        <x-ui.cargando />
         <x-ui.buscador wire:model.live.debounce.400ms="busqueda"
             placeholder="Buscar por nombre, modelo, código o marca" etiqueta="Buscar productos" class="min-w-64 flex-1" />
-        <select wire:model.live="filtro" class="rounded-lg text-sm">
+        <select wire:model.live="filtro" aria-label="Filtrar productos" class="rounded-lg text-sm">
             <option value="todos">Todos</option>
             <option value="ocultos">Solo ocultos</option>
             <option value="precio_propio">Solo con precio propio</option>
         </select>
     </div>
 
-    <div class="overflow-x-auto fp-tarjeta fp-aparecer">
+    <div class="relative overflow-x-auto fp-tarjeta fp-aparecer">
+        <x-ui.cargando />
         <table class="fp-tabla min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-fp-page">
                 <tr class="text-left text-xs font-semibold uppercase tracking-wide text-fp-text-muted">
@@ -273,12 +275,12 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2">
-                                <input type="text" inputmode="decimal" wire:model="preciosPropios.{{ $pc->id }}"
+                                <input type="text" inputmode="decimal" wire:model="preciosPropios.{{ $pc->id }}" aria-label="Precio propio de {{ $pc->producto?->nombre ?? 'producto' }}"
                                     placeholder="{{ $propio !== null ? number_format((float) $propio, 2, '.', '') : 'Ej. 650' }}"
                                     class="w-24 rounded-lg text-sm">
                                 <button type="button" wire:click="guardarPrecio({{ $pc->id }})" class="fp-enlace text-sm font-medium">Guardar</button>
                                 @if ($propio !== null)
-                                    <button type="button" wire:click="quitarPrecio({{ $pc->id }})" class="text-sm text-slate-600">Quitar</button>
+                                    <button type="button" wire:click="quitarPrecio({{ $pc->id }})" wire:confirm="¿Quitar tu precio propio? Se usará el precio del catálogo." class="fp-accion fp-accion-neutra">Quitar</button>
                                 @endif
                             </div>
                         </td>

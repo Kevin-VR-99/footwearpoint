@@ -62,9 +62,9 @@ class extends Component
         <div class="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-fp-danger/10 blur-3xl"></div>
         <div class="relative mx-auto max-w-3xl">
             <img src="{{ asset('brand/logo-mark-white-64.png') }}" alt="" class="mx-auto mb-6 h-16 w-16 rounded-full ring-4 ring-white/10" width="64" height="64">
-            <h2 class="text-3xl font-bold tracking-tight sm:text-5xl">
+            <h1 class="text-3xl font-bold tracking-tight sm:text-5xl">
                 Una distribuidora de calzado, ordenada de principio a fin
-            </h2>
+            </h1>
             <p class="mt-5 text-white/75 sm:text-lg">
                 FootwearPoint junta en un solo lugar el catálogo de tus fábricas, los pedidos de tus
                 clientes y los de mostrador, los anticipos y el inventario de tus sucursales. Tus

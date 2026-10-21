@@ -292,7 +292,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 <div>
     <div class="mb-6">
         <a href="{{ route('pedidos.index') }}" class="text-sm fp-enlace">← Pedidos</a>
-        <h2 class="text-2xl font-bold text-fp-sidebar mt-1">Nuevo pedido</h2>
+        <h1 class="text-2xl font-bold text-fp-sidebar mt-1">Nuevo pedido</h1>
         <p class="text-sm text-slate-500 mt-1">
             Captura borrador, agrega productos de la temporada activa y envía
         </p>
@@ -310,8 +310,8 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             <h3 class="font-semibold text-slate-800">1. Datos del pedido</h3>
 
             <div class="fp-campo">
-                <label class="block text-sm text-slate-600 mb-1">Tipo</label>
-                <select wire:model.live="tipo" class="w-full rounded-lg text-sm">
+                <label for="create-tipo" class="block text-sm text-slate-600 mb-1">Tipo</label>
+                <select id="create-tipo" wire:model.live="tipo" class="w-full rounded-lg text-sm">
                     <option value="cliente_directo">Cliente directo</option>
                     <option value="revendedor">Cliente mayorista</option>
                 </select>
@@ -320,14 +320,14 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             <div class="fp-campo">
                 <label class="block text-sm text-slate-600 mb-1">Propietario</label>
                 @if ($tipo === 'cliente_directo')
-                    <select wire:model="propietario_id" class="w-full rounded-lg text-sm">
+                    <select wire:model="propietario_id" aria-label="Cliente del pedido" class="w-full rounded-lg text-sm">
                         <option value="">— Selecciona —</option>
                         @foreach ($this->clientes as $c)
                             <option value="{{ $c->id }}">{{ $c->nombre }}</option>
                         @endforeach
                     </select>
                 @else
-                    <select wire:model="propietario_id" class="w-full rounded-lg text-sm">
+                    <select wire:model="propietario_id" aria-label="Cliente del pedido" class="w-full rounded-lg text-sm">
                         <option value="">— Selecciona —</option>
                         @foreach ($this->revendedores as $r)
                             <option value="{{ $r->id }}">
@@ -339,8 +339,8 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             </div>
 
             <div class="fp-campo">
-                <label class="block text-sm text-slate-600 mb-1">Sucursal</label>
-                <select wire:model="sucursal_id" class="w-full rounded-lg text-sm">
+                <label for="create-sucursal-id" class="block text-sm text-slate-600 mb-1">Sucursal</label>
+                <select id="create-sucursal-id" wire:model="sucursal_id" class="w-full rounded-lg text-sm">
                     @foreach ($this->sucursales as $s)
                         <option value="{{ $s->id }}">{{ $s->nombre ?? 'Sucursal #'.$s->id }}</option>
                     @endforeach
@@ -348,8 +348,8 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             </div>
 
             <div class="fp-campo">
-                <label class="block text-sm text-slate-600 mb-1">Observaciones</label>
-                <textarea wire:model="observaciones" rows="2"
+                <label for="create-observaciones" class="block text-sm text-slate-600 mb-1">Observaciones</label>
+                <textarea id="create-observaciones" wire:model="observaciones" rows="2"
                     class="w-full rounded-lg text-sm"></textarea>
             </div>
 
@@ -375,8 +375,8 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             </p>
 
             <div class="fp-campo">
-                <label class="block text-sm text-slate-600 mb-1">Línea</label>
-                <select wire:model.live="linea_id" class="w-full rounded-lg text-sm">
+                <label for="create-linea-id" class="block text-sm text-slate-600 mb-1">Línea</label>
+                <select id="create-linea-id" wire:model.live="linea_id" class="w-full rounded-lg text-sm">
                     <option value="">— Selecciona una línea —</option>
                     @foreach ($this->lineas as $linea)
                         <option value="{{ $linea->id }}">{{ $linea->nombre }}</option>
@@ -400,8 +400,8 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             </div>
 
             <div class="fp-campo">
-                <label class="block text-sm text-slate-600 mb-1">Producto</label>
-                <select wire:model.live="producto_campana_id"
+                <label for="create-producto-campana-id" class="block text-sm text-slate-600 mb-1">Producto</label>
+                <select id="create-producto-campana-id" wire:model.live="producto_campana_id"
                     class="w-full rounded-lg text-sm"
                     @disabled($linea_id === '')>
                     <option value="">— Selecciona —</option>
@@ -424,8 +424,8 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             </div>
 
             <div class="fp-campo">
-                <label class="block text-sm text-slate-600 mb-1">Variante (talla / color)</label>
-                <select wire:model="variante_id"
+                <label for="create-variante-id" class="block text-sm text-slate-600 mb-1">Variante (talla / color)</label>
+                <select id="create-variante-id" wire:model="variante_id"
                     class="w-full rounded-lg text-sm"
                     @disabled($producto_campana_id === '')>
                     <option value="">— Selecciona —</option>
@@ -441,8 +441,8 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             </div>
 
             <div class="fp-campo">
-                <label class="block text-sm text-slate-600 mb-1">Cantidad</label>
-                <input type="number" min="1" wire:model="cantidad"
+                <label for="create-cantidad" class="block text-sm text-slate-600 mb-1">Cantidad</label>
+                <input id="create-cantidad" type="number" min="1" wire:model="cantidad"
                     class="w-32 rounded-lg text-sm" />
             </div>
 

@@ -197,8 +197,8 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         subtitulo="Pedidos agrupados por ciclo, consolidado para fábrica y avance del pedido." class="mb-6">
         <x-slot:acciones>
         <div class="w-full sm:w-72">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Ciclo</label>
-            <select wire:model.live="cicloId"
+            <label for="index-cicloId" class="block text-sm font-medium text-slate-700 mb-1">Ciclo</label>
+            <select id="index-cicloId" wire:model.live="cicloId"
                     class="w-full rounded-lg text-sm focus:ring-fp-primary">
                 @foreach ($this->ciclos as $opcion)
                     <option value="{{ $opcion->id }}">{{ $opcion->nombre }} — {{ $opcion->estado }}</option>

@@ -28,7 +28,7 @@
             <div class="h-0.5 w-full bg-gradient-to-r from-fp-primary via-white/40 to-fp-danger"></div>
             <div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4">
                 <div class="min-w-0">
-                    <h1 class="flex items-center gap-2.5 text-lg font-bold tracking-tight"><img src="{{ asset('brand/logo-mark-white-40.png') }}" alt="" class="h-9 w-9 rounded-full bg-white/10 object-cover ring-2 ring-fp-primary/35" width="36" height="36">FootwearPoint</h1>
+                    <p class="flex items-center gap-2.5 text-lg font-bold tracking-tight"><img src="{{ asset('brand/logo-mark-white-40.png') }}" alt="" class="h-9 w-9 rounded-full bg-white/10 object-cover ring-2 ring-fp-primary/35" width="36" height="36">FootwearPoint</p>
                     <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-white/45">Administración general</p>
                 </div>
                 <button type="button"
@@ -112,6 +112,7 @@
         </div>
     </div>
 
+    <x-ui.toast-global />
     @livewireScripts
 </body>
 

@@ -386,7 +386,8 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
 
     {{-- Empleados: listado o formulario inline --}}
     @if ($seccion === 'empleados')
-    <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl fp-formulario fp-aparecer">
+    <div class="relative fp-tarjeta p-5 sm:p-6 max-w-3xl fp-formulario fp-aparecer">
+        <x-ui.cargando />
         @if (! $mostrandoFormularioEmpleado)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Empleados</h2>
@@ -449,28 +450,28 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                 <h2 class="text-sm font-semibold text-slate-700">Invitar empleado</h2>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                        <input type="text" wire:model="empleado_nombre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        <label for="usuarios-empleado-nombre" class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                        <input id="usuarios-empleado-nombre" type="text" wire:model="empleado_nombre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @error('empleado_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-                        <input type="email" wire:model="empleado_email" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        <label for="usuarios-empleado-email" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
+                        <input id="usuarios-empleado-email" type="email" wire:model="empleado_email" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @error('empleado_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                        <input type="text" wire:model="empleado_telefono" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        <label for="usuarios-empleado-telefono" class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+                        <input id="usuarios-empleado-telefono" type="text" wire:model="empleado_telefono" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                     </div>
                     <div></div>
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-                        <input type="password" wire:model="empleado_password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        <label for="usuarios-empleado-password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+                        <input id="usuarios-empleado-password" type="password" wire:model="empleado_password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @error('empleado_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-                        <input type="password" wire:model="empleado_password_confirmation" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        <label for="usuarios-empleado-password-confirmation" class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
+                        <input id="usuarios-empleado-password-confirmation" type="password" wire:model="empleado_password_confirmation" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                     </div>
                 </div>
                 <div class="flex gap-2">
@@ -570,17 +571,17 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                 </h2>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                        <input type="text" wire:model="revendedor_nombre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        <label for="usuarios-revendedor-nombre" class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                        <input id="usuarios-revendedor-nombre" type="text" wire:model="revendedor_nombre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                         @error('revendedor_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                     </div>
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Código interno</label>
-                        <input type="text" wire:model="revendedor_codigo_interno" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        <label for="usuarios-revendedor-codigo-interno" class="block text-sm font-medium text-slate-700 mb-1">Código interno</label>
+                        <input id="usuarios-revendedor-codigo-interno" type="text" wire:model="revendedor_codigo_interno" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                     </div>
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                        <input type="text" wire:model="revendedor_telefono" placeholder="+52 55 1234 5678" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        <label for="usuarios-revendedor-telefono" class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+                        <input id="usuarios-revendedor-telefono" type="text" wire:model="revendedor_telefono" placeholder="+52 55 1234 5678" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                     </div>
                     <div class="fp-campo">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
@@ -605,26 +606,26 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                         </p>
                         <div class="grid grid-cols-2 gap-4">
                             <div class="col-span-2">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Correo para entrar a la app</label>
-                                <input type="email" wire:model="revendedor_acceso_email" autocomplete="off" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                                <label for="usuarios-revendedor-acceso-email" class="block text-sm font-medium text-slate-700 mb-1">Correo para entrar a la app</label>
+                                <input id="usuarios-revendedor-acceso-email" type="email" wire:model="revendedor_acceso_email" autocomplete="off" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                                 @error('revendedor_acceso_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                             </div>
                             <div class="fp-campo">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-                                <input type="password" wire:model="revendedor_acceso_password" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                                <label for="usuarios-revendedor-acceso-password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+                                <input id="usuarios-revendedor-acceso-password" type="password" wire:model="revendedor_acceso_password" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                                 @error('revendedor_acceso_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                             </div>
                             <div class="fp-campo">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-                                <input type="password" wire:model="revendedor_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                                <label for="usuarios-revendedor-acceso-password-confirmation" class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
+                                <input id="usuarios-revendedor-acceso-password-confirmation" type="password" wire:model="revendedor_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                             </div>
                         </div>
                     @endif
                 </div>
                 @if ($revendedorEditandoId)
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
-                        <select wire:model="revendedor_estado" class="w-full rounded-md max-w-xs">
+                        <label for="usuarios-revendedor-estado" class="block text-sm font-medium text-slate-700 mb-1">Estado</label>
+                        <select id="usuarios-revendedor-estado" wire:model="revendedor_estado" class="w-full rounded-md max-w-xs">
                             <option value="activo">Activo</option>
                             <option value="suspendido">Suspendido</option>
                             <option value="inactivo">Inactivo (desafiliado)</option>

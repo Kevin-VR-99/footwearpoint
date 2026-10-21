@@ -414,7 +414,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     <x-panel.encabezado eyebrow="Catálogo maestro" titulo="Líneas, marcas, temporadas y productos" nivel="h1"
         subtitulo="Solo el admin general puede crearlos, editarlos y eliminarlos. Son los mismos para todas las distribuidoras." />
 
-    <div class="fp-escalonado grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-metricas-admin>
+    <div class="fp-escalonado grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" data-metricas-admin>
         <x-panel.metrica titulo="Líneas" :valor="$this->lineas->count()" :detalle="$this->lineas->where('activa', true)->count().' activas'"
             icono="M4 6h16M4 12h16M4 18h10" />
         <x-panel.metrica titulo="Marcas" :valor="$this->marcas->count()" tono="exito" :detalle="$this->marcas->where('activa', true)->count().' activas'"
@@ -490,9 +490,9 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
     @if ($pestana === 'lineas')
         <form wire:submit="guardarLinea" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
-            <input type="text" wire:model="linea_nombre" placeholder="Nombre de la línea" class="rounded-lg text-sm">
+            <input type="text" wire:model="linea_nombre" aria-label="Nombre de la línea" placeholder="Nombre de la línea" class="rounded-lg text-sm">
             @error('linea_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <input type="text" wire:model="linea_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
+            <input type="text" wire:model="linea_descripcion" aria-label="Descripción de la línea" placeholder="Descripción" class="rounded-lg text-sm">
             <button class="fp-btn fp-btn-primario w-fit">Crear línea</button>
         </form>
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">

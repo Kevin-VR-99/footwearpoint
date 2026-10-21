@@ -24,7 +24,7 @@
     <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
             <p class="text-xs font-medium text-fp-text-muted">{{ $titulo }}</p>
-            <p class="fp-metrica-valor mt-2 text-3xl font-semibold tracking-tight text-fp-sidebar">{{ $valor }}</p>
+            <p class="fp-metrica-valor mt-2 whitespace-nowrap text-xl font-semibold tabular-nums sm:text-2xl 2xl:text-3xl tracking-tight text-fp-sidebar">{{ $valor }}</p>
         </div>
         <span class="fp-metrica-icono flex h-9 w-9 shrink-0 items-center justify-center rounded-xl {{ $claseIcono }}">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">

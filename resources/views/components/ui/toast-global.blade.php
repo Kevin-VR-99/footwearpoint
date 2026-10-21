@@ -19,13 +19,23 @@
     <div
         x-show="visible"
         x-cloak
-        x-transition.opacity.duration.200ms
-        class="pointer-events-auto max-w-sm rounded-lg px-4 py-3 text-sm font-medium shadow-lg ring-1 ring-black/5"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 translate-y-2"
+        class="fp-toast pointer-events-auto relative flex max-w-sm items-start gap-3 overflow-hidden rounded-xl px-4 py-3 text-sm font-medium shadow-lg ring-1 ring-black/5"
         :class="tipo === 'error'
             ? 'bg-fp-badge-danger-bg text-fp-badge-danger-fg'
-            : 'bg-slate-900 text-white'"
+            : 'bg-fp-sidebar text-white'"
+        :role="tipo === 'error' ? 'alert' : 'status'"
+        data-toast
     >
-        <span x-text="mensaje"></span>
+        <svg x-show="tipo !== 'error'" class="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+        <svg x-show="tipo === 'error'" class="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" /></svg>
+        <span class="flex-1" x-text="mensaje"></span>
+        <button type="button" @click="visible = false" class="-mr-1 rounded p-0.5 opacity-70 transition hover:opacity-100" aria-label="Cerrar aviso">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+        <template x-if="visible"><span class="fp-toast-tiempo absolute inset-x-0 bottom-0 h-0.5 bg-current opacity-30" aria-hidden="true"></span></template>
     </div>
 </div>
 

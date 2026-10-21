@@ -58,6 +58,12 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         $this->ventaId = null;
         $this->cambioLineaId = null;
 
+        if (trim($this->folioVenta) === '') {
+            $this->errorMsg = 'Escribe el folio de la venta que quieres cambiar.';
+
+            return;
+        }
+
         $venta = VentaDirecta::query()->where('folio', trim($this->folioVenta))->first();
 
         if (! $venta) {
@@ -164,8 +170,8 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
     </div>
 
     <div class="flex items-center gap-3">
-        <label class="text-sm text-slate-600">Estado</label>
-        <select wire:model.live="estado" class="rounded-lg text-sm">
+        <label for="index-estado" class="text-sm text-slate-600">Estado</label>
+        <select id="index-estado" wire:model.live="estado" class="rounded-lg text-sm">
             <option value="">Todos</option>
             @foreach (['solicitada', 'autorizada', 'rechazada', 'enviada_fabrica', 'aceptada_fabrica', 'vale_emitido', 'cerrada'] as $e)
                 <option value="{{ $e }}">{{ ucfirst(str_replace('_', ' ', $e)) }}</option>
@@ -173,7 +179,8 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         </select>
     </div>
 
-    <div class="overflow-x-auto fp-tarjeta fp-aparecer">
+    <div class="relative overflow-x-auto fp-tarjeta fp-aparecer">
+        <x-ui.cargando />
         <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>

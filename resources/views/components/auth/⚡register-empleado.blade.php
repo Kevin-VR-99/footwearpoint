@@ -124,36 +124,36 @@ new #[Layout('layouts.guest')] #[Title('Registrar empleado — FootwearPoint')] 
 
     <form wire:submit="registrar" class="space-y-4">
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-            <input type="text" wire:model="nombre"
+            <label for="register-empleado-nombre" class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+            <input id="register-empleado-nombre" type="text" wire:model="nombre"
                    class="w-full rounded-lg">
             @error('nombre') <p class="text-sm text-fp-danger mt-1">{{ $message }}</p> @enderror
         </div>
 
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-            <input type="email" wire:model="email"
+            <label for="register-empleado-email" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
+            <input id="register-empleado-email" type="email" wire:model="email"
                    class="w-full rounded-lg">
             @error('email') <p class="text-sm text-fp-danger mt-1">{{ $message }}</p> @enderror
         </div>
 
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-            <input type="text" wire:model="telefono"
+            <label for="register-empleado-telefono" class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+            <input id="register-empleado-telefono" type="text" wire:model="telefono"
                    class="w-full rounded-lg">
             @error('telefono') <p class="text-sm text-fp-danger mt-1">{{ $message }}</p> @enderror
         </div>
 
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-            <input type="password" wire:model="password"
+            <label for="register-empleado-password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+            <input id="register-empleado-password" type="password" wire:model="password"
                    class="w-full rounded-lg">
             @error('password') <p class="text-sm text-fp-danger mt-1">{{ $message }}</p> @enderror
         </div>
 
         <div class="fp-campo">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-            <input type="password" wire:model="password_confirmation"
+            <label for="register-empleado-password-confirmation" class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
+            <input id="register-empleado-password-confirmation" type="password" wire:model="password_confirmation"
                    class="w-full rounded-lg">
         </div>
 
