@@ -8,10 +8,14 @@ use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class extends Component
 {
+    use WithPagination;
+
     // Entrada de mercancía (E6-01)
     public string $entrada_variante_id = '';
     public string $entrada_cantidad = '';
@@ -53,10 +57,16 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 $query->whereHas('variante', fn ($q) => $q->where('sku', 'like', "%{$termino}%"));
             }
 
-            return $query->get();
+            // Auditoría 21-oct-2026: paginado; el HTML de /stock ya pesaba 125 KB.
+            return $query->paginate(25);
         } catch (OperacionInvalidaException $e) {
-            return collect();
+            return new LengthAwarePaginator([], 0, 25);
         }
+    }
+
+    public function updatedBusqueda(): void
+    {
+        $this->resetPage();
     }
 
     /** @return array<int, string> producto_id => url */
@@ -305,6 +315,9 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                     @endforelse
                 </tbody>
             </table>
+        </div>
+        <div class="mt-4">
+            {{ $this->existencias->links() }}
         </div>
     </div>
 </div>

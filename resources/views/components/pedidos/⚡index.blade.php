@@ -6,8 +6,11 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class extends Component {
+    use WithPagination;
+
     public string $filtro_estado = '';
     public string $filtro_tipo = '';
 
@@ -20,6 +23,17 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
         if (Tenant::id() === null) {
             abort(403, 'No se pudo determinar la distribuidora.');
         }
+    }
+
+    // Al cambiar un filtro se regresa a la primera página.
+    public function updatedFiltroEstado(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFiltroTipo(): void
+    {
+        $this->resetPage();
     }
 
     public function getPedidosProperty()
@@ -36,7 +50,8 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
             $query->where('tipo', $this->filtro_tipo);
         }
 
-        return $query->limit(100)->get();
+        // Auditoría 21-oct-2026: antes se cortaba en 100 y los viejos no salían.
+        return $query->paginate(25);
     }
 };
 ?>
@@ -128,4 +143,8 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
                     <x-panel.vacio colspan="6" mensaje="No hay pedidos." />
                 @endforelse
     </x-panel.tabla>
+
+    <div class="mt-4">
+        {{ $this->pedidos->links() }}
+    </div>
 </div>

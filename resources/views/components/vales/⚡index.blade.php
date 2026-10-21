@@ -9,9 +9,12 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends Component
 {
+    use WithPagination;
+
     public string $propietario_tipo = 'cliente_directo';
     public string $propietario_id = '';
     public string $monto_original = '';
@@ -46,7 +49,13 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
             $query->porVencer()->reorder('fecha_vencimiento');
         }
 
-        return $query->get();
+        // Auditoría 21-oct-2026: paginado; antes traía todos los vales.
+        return $query->paginate(25);
+    }
+
+    public function updatedFiltroTipo(): void
+    {
+        $this->resetPage();
     }
 
     public function getClientesProperty()
@@ -248,6 +257,9 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                     @endforelse
                 </tbody>
             </table>
+        </div>
+        <div class="mt-4">
+            {{ $this->vales->links() }}
         </div>
     </div>
 </div>

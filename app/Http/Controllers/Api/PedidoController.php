@@ -17,6 +17,7 @@ use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use App\Services\Pedido\ResolverNoSurtidoAction;
 use Illuminate\Http\JsonResponse;
+use App\Support\RespuestaPaginada;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -38,11 +39,8 @@ class PedidoController extends Controller
             $query->where('tipo', $request->tipo);
         }
 
-        $pedidos = $query->limit(100)->get();
-
-        return response()->json([
-            'data' => PedidoResource::collection($pedidos),
-        ]);
+        // Auditoría 21-oct-2026: paginado (?page=, ?per_page= hasta 100).
+        return RespuestaPaginada::json(RespuestaPaginada::paginar($query, $request), PedidoResource::class);
     }
 
     public function show(int $id): JsonResponse
