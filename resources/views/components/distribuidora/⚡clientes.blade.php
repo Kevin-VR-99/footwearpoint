@@ -18,6 +18,7 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
     public bool $avisoEnlaceEsError = false;
 
     public $clientesDirectos = [];
+    #[\Livewire\Attributes\Url(except: '')]
     public string $buscar = '';
     public string $filtroEstado = '';
     public ?int $clienteEditandoId = null;
@@ -308,8 +309,7 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                     class="fp-btn fp-btn-primario">+ Nuevo cliente</button>
             </div>
             <div class="mb-4 flex flex-wrap items-center gap-2" data-filtros-clientes>
-                <input type="search" wire:model.live.debounce.300ms="buscar" placeholder="Buscar nombre, teléfono o correo"
-                    aria-label="Buscar clientes" class="min-w-0 flex-1 rounded-lg text-sm" />
+                <x-ui.buscador wire:model.live.debounce.300ms="buscar" placeholder="Buscar nombre, teléfono o correo" etiqueta="Buscar clientes" class="min-w-0 flex-1" />
                 <select wire:model.live="filtroEstado" aria-label="Filtrar por estado" class="rounded-lg text-sm">
                     <option value="">Todos los estados</option>
                     <option value="activo">Activo</option>

@@ -23,6 +23,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     public string $ajuste_cantidad = '';
     public string $ajuste_motivo = '';
 
+    #[\Livewire\Attributes\Url(except: '')]
     public string $busqueda = '';
 
     /** Alerta de stock bajo: filtro y edición del mínimo propio de la variante. */
