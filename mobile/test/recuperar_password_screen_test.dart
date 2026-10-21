@@ -125,7 +125,9 @@ void main() {
 
     await enviar(tester, 'maria@ejemplo.com');
 
-    expect(find.textContaining('No se pudo conectar con el servidor'), findsOneWidget);
+    // TG-281: el mensaje ya no trae instrucciones para el equipo.
+    expect(find.textContaining('No hay conexión'), findsOneWidget);
+    expect(find.textContaining('lib/config.dart'), findsNothing);
     expect(find.text('Enviar enlace'), findsOneWidget);
     expect(find.text('Revisa tu bandeja'), findsNothing);
   });
@@ -149,5 +151,44 @@ void main() {
 
     expect(find.text('Entrar'), findsOneWidget);
     expect(find.text('Recuperar contraseña'), findsNothing);
+  });
+
+  testWidgets('tras enviar, "Reenviar" queda deshabilitado 60 s con contador y luego se puede', (tester) async {
+    await abrirPantalla(tester, () async => _json({'message': 'ok'}, 200));
+
+    await enviar(tester, 'maria@ejemplo.com');
+
+    OutlinedButton boton() => tester.widget<OutlinedButton>(find.byKey(const Key('reenviar-enlace')));
+
+    expect(find.text('Reenviar en 1:00'), findsOneWidget);
+    expect(boton().onPressed, isNull);
+    expect(find.text('El enlace vence en 15 minutos. Ábrelo desde tu teléfono y ahí mismo '
+        'crea tu nueva contraseña. Si no lo ves, revisa la carpeta de spam.'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Reenviar en 0:59'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 59));
+    expect(find.text('Reenviar enlace'), findsOneWidget);
+    expect(boton().onPressed, isNotNull);
+
+    await tester.tap(find.byKey(const Key('reenviar-enlace')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(peticiones, hasLength(2));
+    expect(jsonDecode(peticiones.last.body), {'email': 'maria@ejemplo.com'});
+    expect(find.text('Reenviar en 1:00'), findsOneWidget);
+  });
+
+  testWidgets('mientras corre el contador, tocar "Reenviar" no manda nada', (tester) async {
+    await abrirPantalla(tester, () async => _json({'message': 'ok'}, 200));
+
+    await enviar(tester, 'maria@ejemplo.com');
+    await tester.tap(find.byKey(const Key('reenviar-enlace')), warnIfMissed: false);
+    await tester.pump(const Duration(seconds: 10));
+
+    expect(peticiones, hasLength(1));
+    expect(find.text('Reenviar en 0:50'), findsOneWidget);
   });
 }

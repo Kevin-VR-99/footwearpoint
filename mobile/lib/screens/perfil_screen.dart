@@ -86,9 +86,26 @@ class _PerfilScreenState extends State<PerfilScreen> {
       // quita solo. Solo cuesta una petición mientras falte confirmarlo.
       unawaited(auth.revisarCorreoConfirmado());
     } on ApiException catch (e) {
+      if (!mounted) return;
+
+      // TG-281: sin internet (codigoHttp null) no se enseña un error: se
+      // enseñan los datos que ya se tenian de la sesion. El perfil es de los
+      // dos sitios que deben abrirse sin conexion, y lo que hay ahi ya se
+      // conoce. La franja de arriba avisa que puede estar viejo.
+      final guardado = auth.usuario;
+
+      if (e.codigoHttp == null && guardado != null) {
+        _mostrar(guardado);
+        setState(() {
+          _cargando = false;
+          _errorCarga = null;
+        });
+
+        return;
+      }
+
       // Un 401 lo atiende AuthProvider (regresa al login). Lo demás se
       // muestra aquí con opción de reintentar.
-      if (!mounted) return;
       setState(() {
         _cargando = false;
         _errorCarga = e.mensaje;

@@ -96,7 +96,8 @@ return [
         'users' => [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
-            'expire' => 60,
+            // TG: el enlace dura 15 minutos y hay que esperar 60 s para pedir otro.
+            'expire' => 15,
             'throttle' => 60,
         ],
     ],

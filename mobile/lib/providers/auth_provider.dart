@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -41,6 +42,18 @@ class AuthProvider extends ChangeNotifier {
   /// [restaurarSesion]); solo se borra por si quedó en algún teléfono de prueba.
   static const _llaveSesionVieja = 'sesion_usuario';
 
+  /// TG-281: la ultima sesion buena, guardada en el telefono para poder
+  /// abrir la app sin internet.
+  ///
+  /// Hasta ahora, a proposito, en el telefono solo vivia el token: si los
+  /// datos se guardan y a alguien le suspenden la cuenta, la app seguiria
+  /// creyendo que tiene acceso. Eso sigue siendo verdad, asi que la copia
+  /// se usa SOLO cuando el servidor no contesta, se reemplaza en cuanto
+  /// contesta, y se borra al cerrar sesion o en cuanto el servidor rechaza
+  /// el token. Sin servidor no se puede hacer nada igualmente: ni enviar un
+  /// pedido, ni pagar, ni ver el catalogo.
+  static const _llaveSesionCache = 'sesion_cache';
+
   final _almacen = const FlutterSecureStorage();
 
   /// El escuchador de renovación del token de Firebase (E16-03). Uno solo
@@ -69,6 +82,10 @@ class AuthProvider extends ChangeNotifier {
   String? _distribuidoraNombre;
   bool _iniciando = true;
   bool _sinConexion = false;
+
+  /// True cuando la app se abrio con la copia guardada porque el servidor no
+  /// contestaba. Lo que se ve puede estar viejo, y hay que decirlo.
+  bool _conDatosGuardados = false;
   bool _ocupado = false;
   String? _error;
 
@@ -101,6 +118,9 @@ class AuthProvider extends ChangeNotifier {
   /// hay WiFi, y se vuelve a intentar con [reintentar].
   bool get sinConexion => _sinConexion;
 
+  /// True si la app esta funcionando con la copia guardada en el telefono.
+  bool get conDatosGuardados => _conDatosGuardados;
+
   /// Se llama una sola vez al abrir la app.
   ///
   /// En el teléfono solo vive el token. Usuario, rol y distribuidora se le
@@ -115,12 +135,28 @@ class AuthProvider extends ChangeNotifier {
 
       final respuesta = await api.get('auth/me');
       _llenarSesion(respuesta['data'] as Map<String, dynamic>);
+      _conDatosGuardados = false;
+      await _guardarCopia(respuesta['data'] as Map<String, dynamic>);
       _registrarDispositivoFCM();
     } on ApiException catch (e) {
       if (e.codigoHttp == null) {
         // Sin conexión o el servidor tardó: no se sabe si el token sirve.
-        _sinConexion = true;
-        _error = e.mensaje;
+        //
+        // TG-281: antes aqui se quedaba en una pantalla de "no se pudo
+        // conectar" y no se podia hacer nada. Si hay una copia de la ultima
+        // sesion, se abre la app con ella: el inicio y el perfil se pueden
+        // ver sin internet. Lo demas seguira fallando, porque necesita al
+        // servidor.
+        final copia = await _leerCopia();
+
+        if (copia != null) {
+          _llenarSesion(copia);
+          _conDatosGuardados = true;
+          _error = null;
+        } else {
+          _sinConexion = true;
+          _error = e.mensaje;
+        }
       } else {
         // El servidor sí contestó y no reconoció el token: 401 (vencido o
         // cuenta suspendida) o cualquier otro error (404, 500).
@@ -140,6 +176,7 @@ class AuthProvider extends ChangeNotifier {
   /// El botón "Reintentar" de la pantalla sin conexión.
   Future<void> reintentar() async {
     _sinConexion = false;
+    _conDatosGuardados = false;
     _iniciando = true;
     _error = null;
     notifyListeners();
@@ -163,6 +200,8 @@ class AuthProvider extends ChangeNotifier {
 
       await api.guardarToken(datos['token'] as String);
       _llenarSesion(datos);
+      _conDatosGuardados = false;
+      await _guardarCopia(datos);
       _registrarDispositivoFCM();
 
       return true;
@@ -251,6 +290,32 @@ class AuthProvider extends ChangeNotifier {
 
   /// Misma forma en el login y en auth/me: { usuario, rol, distribuidora_id,
   /// legales_aceptados, debe_cambiar_password }.
+  /// Guarda la ultima sesion buena. Si fallara al escribir, no pasa nada:
+  /// solo significa que la proxima vez sin internet no se podra abrir.
+  Future<void> _guardarCopia(Map<String, dynamic> datos) async {
+    try {
+      await _almacen.write(key: _llaveSesionCache, value: jsonEncode(datos));
+    } catch (_) {
+      // Sin copia, pero con la sesion en pie.
+    }
+  }
+
+  /// La ultima sesion guardada, o null si no hay o si quedo ilegible.
+  Future<Map<String, dynamic>?> _leerCopia() async {
+    try {
+      final texto = await _almacen.read(key: _llaveSesionCache);
+      if (texto == null || texto.isEmpty) return null;
+
+      final datos = jsonDecode(texto);
+
+      return datos is Map<String, dynamic> ? datos : null;
+    } catch (_) {
+      // Si quedo a medias o de una version vieja, se ignora: es preferible
+      // pedir login a abrir la app con algo que no se entiende.
+      return null;
+    }
+  }
+
   void _llenarSesion(Map<String, dynamic> datos) {
     // Se lee todo antes de asignar, para no quedar con media sesión si algún
     // campo no viene como se esperaba.
@@ -339,7 +404,12 @@ class AuthProvider extends ChangeNotifier {
     _debeCambiarPassword = false;
     _emailVerificado = true;
     _distribuidoraNombre = null;
+    _conDatosGuardados = false;
 
+    // TG-281: la copia se va con la sesion. Da igual si fue la persona
+    // cerrando sesion o el servidor rechazando el token: en los dos casos
+    // esos datos ya no valen y no tienen por que seguir en el telefono.
+    await _almacen.delete(key: _llaveSesionCache);
     await api.borrarToken();
   }
 

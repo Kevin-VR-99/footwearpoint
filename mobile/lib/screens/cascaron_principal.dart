@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:provider/provider.dart';
+
+import '../providers/auth_provider.dart';
 import '../tema/fp_colores.dart';
 import 'catalogo_screen.dart';
 import 'inicio_screen.dart';
@@ -38,7 +41,11 @@ class _CascaronPrincipalState extends State<CascaronPrincipal> {
     _Seccion('Inicio', Icons.home_outlined, Icons.home),
     _Seccion('Catálogo', Icons.storefront_outlined, Icons.storefront),
     _Seccion('Pedidos', Icons.receipt_long_outlined, Icons.receipt_long),
-    _Seccion('Vales', Icons.confirmation_number_outlined, Icons.confirmation_number),
+    _Seccion(
+      'Vales',
+      Icons.confirmation_number_outlined,
+      Icons.confirmation_number,
+    ),
     _Seccion('Perfil', Icons.person_outline, Icons.person),
   ];
 
@@ -68,12 +75,23 @@ class _CascaronPrincipalState extends State<CascaronPrincipal> {
     return Scaffold(
       // IndexedStack y no un simple if: así la pestaña que se deja atrás
       // conserva su estado (lo que se habia buscado, donde iba la lista).
-      body: IndexedStack(
-        index: _actual,
+      body: Column(
         children: [
-          for (var i = 0; i < _secciones.length; i++)
-            // Las que todavia no se han abierto ocupan su lugar sin armarse.
-            _pestanas[i] ?? const SizedBox.shrink(),
+          // TG-281: si la app se abrio con la copia guardada, hay que
+          // decirlo. Lo que se ve puede estar viejo, y quien lo mira tiene
+          // derecho a saberlo antes de tomar una decision con esos numeros.
+          if (context.watch<AuthProvider>().conDatosGuardados)
+            const _AvisoSinConexion(),
+          Expanded(
+            child: IndexedStack(
+              index: _actual,
+              children: [
+                for (var i = 0; i < _secciones.length; i++)
+                  // Las que todavia no se han abierto ocupan su lugar sin armarse.
+                  _pestanas[i] ?? const SizedBox.shrink(),
+              ],
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -88,7 +106,10 @@ class _CascaronPrincipalState extends State<CascaronPrincipal> {
           for (final seccion in _secciones)
             NavigationDestination(
               icon: Icon(seccion.icono, color: FpColores.textoTenue),
-              selectedIcon: Icon(seccion.iconoActivo, color: FpColores.primario),
+              selectedIcon: Icon(
+                seccion.iconoActivo,
+                color: FpColores.primario,
+              ),
               label: seccion.nombre,
               tooltip: seccion.nombre,
             ),
@@ -104,4 +125,55 @@ class _Seccion {
   final String nombre;
   final IconData icono;
   final IconData iconoActivo;
+}
+
+/// La franja de "sin conexión" de arriba (TG-281).
+class _AvisoSinConexion extends StatelessWidget {
+  const _AvisoSinConexion();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: FpColores.insigniaAvisoFondo,
+      child: SafeArea(
+        bottom: false,
+        child: InkWell(
+          onTap: context.read<AuthProvider>().reintentar,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.wifi_off_rounded,
+                  size: 18,
+                  color: FpColores.insigniaAvisoTexto,
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Sin conexión. Estás viendo lo último que se guardó.',
+                    style: TextStyle(
+                      color: FpColores.insigniaAvisoTexto,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Reintentar',
+                  style: TextStyle(
+                    color: FpColores.insigniaAvisoTexto,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    decoration: TextDecoration.underline,
+                    decorationColor: FpColores.insigniaAvisoTexto,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

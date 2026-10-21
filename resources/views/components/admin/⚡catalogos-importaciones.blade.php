@@ -235,9 +235,15 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         </button>
     </form>
 
-    {{-- Mientras la IA trabaja, la tabla se refresca sola para ver el avance. --}}
+    {{-- Mientras la IA trabaja, la tabla se refresca sola para ver el avance.
+         ".keep-alive": sin él, Livewire casi no consulta cuando la pestaña está
+         en segundo plano (y el navegador además frena los temporizadores), así
+         que la sesión podía caducar mientras la IA seguía leyendo. Cada
+         consulta pasa por la sesión y la mantiene viva SOLO mientras hay un
+         análisis en curso; al terminar se quita el poll y la sesión vuelve a
+         caducar por inactividad como siempre. --}}
     <div class="rounded-xl border border-slate-200 bg-white p-5 sm:p-6"
-        @if ($this->hayTrabajo) wire:poll.5s @endif>
+        @if ($this->hayTrabajo) wire:poll.5s.keep-alive data-mantiene-sesion @endif>
         <h2 class="text-sm font-semibold text-slate-700 mb-3">Catálogos subidos</h2>
 
         @if ($this->hayTrabajo)
