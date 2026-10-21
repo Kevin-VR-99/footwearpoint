@@ -89,8 +89,8 @@ new class extends Component {
 <div class="space-y-5">
     <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div class="flex items-start gap-4">
-            <span class="fp-aparecer flex h-14 w-20 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none" data-logo-mercado-pago>
-                <x-ui.logo-mercado-pago class="h-10 w-auto" />
+            <span class="fp-aparecer flex h-14 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none" data-logo-mercado-pago>
+                <x-ui.logo-mercado-pago class="h-8 w-auto" />
             </span>
             <div>
             <div class="flex flex-wrap items-center gap-2">

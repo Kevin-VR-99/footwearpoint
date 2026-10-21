@@ -79,7 +79,7 @@ new #[Layout('layouts.panel')] class extends Component {
                         'text-slate-600 hover:-translate-y-0.5 hover:bg-slate-50 hover:text-slate-900 motion-reduce:transform-none' => $pestanaActiva !== $key,
                     ])>
                     @if ($key === 'mercado-pago')
-                        <x-ui.logo-mercado-pago class="h-4 w-auto" aria-hidden="true" />
+                        <x-ui.logo-mercado-pago variante="icono" class="h-5 w-auto rounded bg-white p-0.5 ring-1 ring-slate-200" alt="" aria-hidden="true" />
                     @elseif (isset($iconos[$key]))
                         <svg class="h-4 w-4 transition-transform duration-200 group-hover:scale-110 motion-reduce:transform-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconos[$key] }}" /></svg>
                     @endif
