@@ -12,7 +12,7 @@ use App\Services\Notificacion\Push\EnviadorPush;
 use App\Services\Vale\EmitirValeAction;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTruncation;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Tests\TestCase;
@@ -24,14 +24,16 @@ use Tests\TestCase;
  * de la app ni por push. El vale aparecía solo si a la persona se le ocurría
  * entrar a mirar, y nadie entra a mirar algo que no sabe que existe.
  *
- * Va con DatabaseTruncation y no con RefreshDatabase a propósito: el aviso
- * se manda con DB::afterCommit, y RefreshDatabase mantiene abierta una
- * transacción que al final se revierte, así que esos callbacks nunca corren.
- * Con RefreshDatabase estas pruebas pasarían sin probar nada.
+ * Nota: los callbacks de DB::afterCommit SÍ corren con RefreshDatabase.
+ * Laravel instala su propio gestor de transacciones en las pruebas, que los
+ * ejecuta cuando la transacción de la aplicación hace commit dentro de la
+ * del test. Estas pruebas usaban DatabaseTruncation por una idea equivocada
+ * mía; se cambiaron porque esa limpia al EMPEZAR y no al terminar, así que
+ * lo que creaban se quedaba y hacía fallar pruebas de más adelante.
  */
 class AvisoDeValeEmitidoTest extends TestCase
 {
-    use DatabaseTruncation;
+    use RefreshDatabase;
 
     protected bool $seed = true;
 

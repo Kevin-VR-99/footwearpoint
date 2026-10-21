@@ -7,7 +7,7 @@ use App\Models\RevendedorDistribuidora;
 use App\Models\Usuario;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
-use Illuminate\Foundation\Testing\DatabaseTruncation;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use Symfony\Component\Mailer\Exception\TransportException;
@@ -24,15 +24,16 @@ use Tests\TestCase;
  * reventaba, la pantalla mostraba «Algo salió mal» por un cliente que sí
  * había quedado registrado.
  *
- * Va con DatabaseTruncation y no con RefreshDatabase a propósito: los
- * callbacks de DB::afterCommit solo corren cuando la transacción de verdad se
- * confirma, y RefreshDatabase mantiene una abierta que al final se revierte.
- * Con RefreshDatabase esta prueba pasaría sin probar nada — que es justo por
- * lo que este fallo llegó hasta producción sin que ninguna prueba lo viera.
+ * Nota: los callbacks de DB::afterCommit SÍ corren con RefreshDatabase.
+ * Laravel instala su propio gestor de transacciones en las pruebas, que los
+ * ejecuta cuando la transacción de la aplicación hace commit dentro de la
+ * del test. Estas pruebas usaban DatabaseTruncation por una idea equivocada
+ * mía; se cambiaron porque esa limpia al EMPEZAR y no al terminar, así que
+ * lo que creaban se quedaba y hacía fallar pruebas de más adelante.
  */
 class AfiliarConCorreoCaidoTest extends TestCase
 {
-    use DatabaseTruncation;
+    use RefreshDatabase;
 
     protected bool $seed = true;
 
