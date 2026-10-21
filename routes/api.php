@@ -124,7 +124,8 @@ require __DIR__.'/api/webhooks.php';
 | Clientes particulares privados del revendedor (E9-06)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth:sanctum'])->prefix('revendedor/clientes-privados')->group(function () {
+// Auditoría 21-oct-2026: solo revendedores y con límite, igual que las demás rutas.
+Route::middleware(['auth:sanctum', 'tenant.team', 'role:revendedor', 'throttle:60,1'])->prefix('revendedor/clientes-privados')->group(function () {
     Route::get('/', [ClientePrivadoRevendedorController::class, 'index']);
     Route::post('/', [ClientePrivadoRevendedorController::class, 'store']);
     Route::put('/{id}', [ClientePrivadoRevendedorController::class, 'update']);
