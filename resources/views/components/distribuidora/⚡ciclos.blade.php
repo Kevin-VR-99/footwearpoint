@@ -2,10 +2,12 @@
 
 use App\Models\ConfiguracionCiclo;
 use App\Services\Distribuidora\ConfiguracionCicloAction;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new class extends Component {
     public $ciclos = [];
+    #[Locked]
     public ?int $cicloEditandoId = null;
     public bool $mostrandoFormularioCiclo = false;
     public int $ciclo_dia_cierre = 5;

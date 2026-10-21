@@ -80,7 +80,7 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                         <span class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-white shadow-md ring-1 ring-slate-200 transition duration-300 group-hover:scale-105 group-hover:ring-fp-primary/40 motion-reduce:transform-none">
                             @if ($d->logotipo_url)
                                 <img src="{{ $d->logotipo_url }}"
-                                     alt="Logo {{ $d->nombre_comercial }}"
+                                     alt="Logo {{ $d->nombre_comercial }}" loading="lazy" decoding="async" width="112" height="112"
                                      class="h-full w-full object-contain p-3">
                             @else
                                 <span class="px-3 text-center text-sm font-semibold text-fp-sidebar">

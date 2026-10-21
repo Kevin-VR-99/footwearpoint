@@ -4,6 +4,7 @@ use App\Models\PlanSuscripcion;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Component
@@ -11,6 +12,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
     public string $mensaje = '';
 
     // Formulario crear/editar
+    #[Locked]
     public ?int $editId = null;
     public string $nombre = '';
     public string $descripcion = '';
@@ -76,11 +78,13 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
     {
         $this->validate([
             'nombre'              => 'required|string|max:100',
-            'descripcion'         => 'nullable|string',
+            'descripcion'         => 'nullable|string|max:2000',
             'precio_base_mensual' => 'required|numeric|min:0',
             'lineas_incluidas'    => 'required|integer|min:0',
             'precio_linea_extra'  => 'required|numeric|min:0',
             'activo'              => 'boolean',
+        ], [
+            'descripcion.max' => 'La descripción no puede tener más de 2000 caracteres.',
         ]);
 
         $data = [

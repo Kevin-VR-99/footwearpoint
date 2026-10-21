@@ -36,7 +36,7 @@ new class extends Component {
                         <td class="px-6 py-3.5 font-medium text-slate-900">
                             <div class="flex items-center gap-3">
                                 @if ($marca->logotipo_url)
-                                    <img src="{{ $marca->logotipo_url }}" alt="{{ $marca->nombre }}"
+                                    <img src="{{ $marca->logotipo_url }}" alt="{{ $marca->nombre }}" loading="lazy" decoding="async" width="32" height="32"
                                         class="h-8 w-8 rounded object-cover">
                                 @endif
                                 {{ $marca->nombre }}

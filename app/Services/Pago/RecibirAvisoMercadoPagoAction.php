@@ -4,6 +4,7 @@ namespace App\Services\Pago;
 
 use App\Models\WebhookMercadoPago;
 use App\Services\MercadoPago\MercadoPagoException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -34,6 +35,9 @@ class RecibirAvisoMercadoPagoAction
 
     /** Falla temporal: responder 500 para que Mercado Pago reintente. */
     public const REINTENTAR = 'reintentar';
+
+    /** Ventana de deduplicación por data.id (segundos). */
+    public const SEGUNDOS_DEDUPLICACION = 60;
 
     public function __construct(private readonly ProcesarAvisoPagoMercadoPagoAction $procesar)
     {
@@ -69,6 +73,18 @@ class RecibirAvisoMercadoPagoAction
             return self::LISTO;
         }
 
+        // Deduplicación por data.id: si el mismo pago se está consultando (o
+        // se consultó hace menos de un minuto), no se vuelve a llamar a la API
+        // de Mercado Pago. La llave se suelta si el aviso queda abierto (pago
+        // en proceso o falla temporal) para que el siguiente sí lo intente.
+        $llave = self::llaveDeduplicacion($tipo, $recursoId);
+
+        if (! Cache::add($llave, true, self::SEGUNDOS_DEDUPLICACION)) {
+            Log::info('Mercado Pago: aviso repetido mientras se procesa; no se consulta la API otra vez.', ['recurso_id' => $recursoId]);
+
+            return self::LISTO;
+        }
+
         try {
             $resultado = $this->procesar->ejecutar($recursoId, $cuenta, $pista);
         } catch (MercadoPagoException $e) {
@@ -77,9 +93,11 @@ class RecibirAvisoMercadoPagoAction
                 'aviso_id' => $aviso->id,
                 'mensaje'  => $e->getMessage(),
             ]);
+            Cache::forget($llave);
 
             return self::REINTENTAR;
         } catch (Throwable $e) {
+            Cache::forget($llave);
             report($e);
             $aviso->update(['error' => 'Error interno al procesar el aviso.']);
 
@@ -92,6 +110,10 @@ class RecibirAvisoMercadoPagoAction
             'error'            => $resultado['error'],
         ]);
 
+        if (! $resultado['definitivo']) {
+            Cache::forget($llave);
+        }
+
         Log::info('Mercado Pago: aviso procesado.', [
             'aviso_id'         => $aviso->id,
             'tipo'             => $tipo,
@@ -103,6 +125,11 @@ class RecibirAvisoMercadoPagoAction
         ]);
 
         return self::LISTO;
+    }
+
+    public static function llaveDeduplicacion(string $tipo, string $recursoId): string
+    {
+        return 'mp-webhook:'.$tipo.':'.$recursoId;
     }
 
     /**

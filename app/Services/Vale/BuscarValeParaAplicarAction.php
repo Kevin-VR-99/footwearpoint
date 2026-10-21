@@ -30,7 +30,9 @@ class BuscarValeParaAplicarAction
 
         // BelongsToTenant ya limita a la distribuidora actual: un folio de
         // otra distribuidora responde igual que uno que no existe.
-        $consulta = Vale::query()->with('clienteDirecto')->whereRaw('UPPER(folio) = ?', [mb_strtoupper($folio)]);
+        // La collation de MySQL (utf8mb4_unicode_ci) ya no distingue mayúsculas,
+        // así que se compara directo y se puede usar el índice de folio.
+        $consulta = Vale::query()->with('clienteDirecto')->where('folio', $folio);
 
         if ($bloquear) {
             $consulta->lockForUpdate();

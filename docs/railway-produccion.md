@@ -72,3 +72,47 @@ Lo ideal es usar *Shared Variables* del entorno para no repetirlas en cada servi
 - Las cabeceras (`curl -I https://footwearpoint.app`) traen `X-Frame-Options`, `X-Content-Type-Options`,
   `Referrer-Policy`, `Permissions-Policy` y `Strict-Transport-Security: max-age=31536000; includeSubDomains`,
   y **no** traen `X-Powered-By`.
+
+---
+
+# Rama `feature/seguridad-rendimiento` (auditoría 21-oct-2026): aplicar DESPUÉS del merge
+
+Solo nombres de variables, nunca valores.
+
+## A. Migración nueva (la corre el pre-deploy `php artisan migrate --force`)
+- `2026_10_21_110000_agrega_variantes_a_producto_imagenes`: agrega `url_miniatura` y `url_mediana` (nullable)
+  a `producto_imagenes`. No toca datos; las fotos viejas siguen usando `url`.
+
+## B. Mercado Pago: firma obligatoria cuando hay `MP_WEBHOOK_SECRET`
+- **Recomendado: configura `MP_WEBHOOK_SECRET` en `footwearpoint` (web).** Con ella, la firma del aviso es
+  obligatoria (sin firma, inválida o con `ts` de más de 5 minutos → 401). Sin ella, los avisos se siguen
+  aceptando como antes (el pago se verifica en la API de Mercado Pago) y el log avisa
+  `falta MP_WEBHOOK_SECRET`; los cobros no se rompen, pero conviene configurarla.
+- En ambos casos se descartan avisos repetidos por `data.id`.
+- Si configuras la variable, el panel de MP debe tener la misma clave secreta del webhook.
+- Verificación: en el panel de MP → Webhooks → "Simular notificación" debe responder 200.
+
+## C. Caché de `/build/*` en Caddy (FrankenPHP de Railpack)
+Railpack no usa `public/.htaccess`. En el servicio web agrega la variable:
+- `CADDY_SERVER_EXTRA_DIRECTIVES` = `header /build/* Cache-Control "public, max-age=31536000, immutable"`
+Verificación: `curl -I https://footwearpoint.app/build/assets/app-XXXX.css` trae ese `Cache-Control`.
+(Probado con Caddy 2.11: la directiva entra en la ruta del sitio y solo afecta `/build/*`.)
+
+## D. CSP (Content-Security-Policy-Report-Only)
+- Por omisión la web manda `Content-Security-Policy-Report-Only` con nonce; **no bloquea nada**.
+  Lo que se bloquearía queda en el log como `CSP: el navegador reportó…` (POST `/api/csp-report`).
+- Variable opcional `CSP_MODO`: `report-only` (omisión), `enforce` (obligatoria) u `off`.
+  Pasar a `enforce` solo cuando el log lleve unos días limpio.
+
+## E. Nuevo cron: limpiar tokens vencidos de la app
+- Duplica `footwearpoint-vencer-recoleccion` como **`footwearpoint-limpiar-tokens`**.
+- Start command: `php artisan sanctum:prune-expired --hours=24`
+- Cron schedule: `30 10 * * *` (10:30 UTC = 4:30 de CDMX). Restart policy: Never.
+- Variables: las mismas `APP_*` y `DB_*` del cron que duplicas.
+- No está en `routes/console.php`: en Railway cada comando es su propio servicio cron.
+
+## F. `SESSION_ENCRYPT` (solo documentado, no se cambió)
+- `config/session.php` deja `SESSION_ENCRYPT=false`. Con `SESSION_DRIVER=database` el contenido de la sesión
+  vive en MySQL; hoy solo guarda ids, el token CSRF y datos de Mercado Pago (PKCE) de corta vida.
+- Si se activa (`SESSION_ENCRYPT=true` en todos los servicios a la vez), todas las sesiones abiertas se
+  invalidan una vez (la gente vuelve a iniciar sesión). Usa `APP_KEY`, que **no** debe cambiar.

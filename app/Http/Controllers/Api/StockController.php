@@ -26,7 +26,7 @@ class StockController extends Controller
 
         $existencias = $this->stock
             ->consultar($request->filled('variante_id') ? $request->integer('variante_id') : null)
-            ->paginate($request->filled('por_pagina') ? $request->integer('por_pagina') : 25);
+            ->paginate(max(1, min(100, $request->filled('por_pagina') ? $request->integer('por_pagina') : 25)));
 
         return StockLocalResource::collection($existencias);
     }

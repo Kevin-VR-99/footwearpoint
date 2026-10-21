@@ -46,12 +46,14 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
     {
         $datos = $this->validate([
             'nombre_comercial' => ['required', 'string', 'max:150'],
-            'descripcion_publica' => ['nullable', 'string'],
+            'descripcion_publica' => ['nullable', 'string', 'max:2000'],
             'direccion_publica' => ['nullable', 'string', 'max:300'],
             'telefono_publico' => ['nullable', 'string', 'max:30'],
             'email_publico' => ['nullable', 'email', 'max:190'],
             'horario_publico' => ['nullable', 'string', 'max:300'],
             'logotipo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+        ], [
+            'descripcion_publica.max' => 'La descripción pública no puede tener más de 2000 caracteres.',
         ]);
 
         $distribuidora = Distribuidora::findOrFail(Tenant::id());
@@ -136,9 +138,9 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
         <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Logotipo</label>
             @if ($logotipo)
-                <img src="{{ $logotipo->temporaryUrl() }}" class="h-16 w-16 object-cover rounded mb-2">
+                <img src="{{ $logotipo->temporaryUrl() }}" alt="Vista previa del logotipo" loading="lazy" decoding="async" width="64" height="64" class="h-16 w-16 object-cover rounded mb-2">
             @elseif ($logotipo_url_actual)
-                <img src="{{ $logotipo_url_actual }}" class="h-16 w-16 object-cover rounded mb-2">
+                <img src="{{ $logotipo_url_actual }}" alt="Logotipo actual" loading="lazy" decoding="async" width="64" height="64" class="h-16 w-16 object-cover rounded mb-2">
             @endif
             <input type="file" wire:model="logotipo" aria-label="Logotipo" accept="image/png,image/jpeg">
             <p x-show="subiendo" x-cloak class="text-xs text-fp-text-muted mt-1">Subiendo logotipo…</p>

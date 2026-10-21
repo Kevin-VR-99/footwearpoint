@@ -12,6 +12,9 @@ class ImagenProductoCampanaResource extends JsonResource
         return [
             'id'           => $this->id,
             'url'          => $this->url,
+            // Auditoría 21-oct-2026: versiones WebP (si la foto es vieja, la original).
+            'url_miniatura' => $this->resource->urlMiniatura(),
+            'url_mediana'   => $this->resource->urlMediana(),
             'orden'        => $this->orden,
             'es_principal' => (bool) $this->es_principal,
         ];

@@ -277,7 +277,7 @@ class PagoMayoristaCheckoutProTest extends TestCase
     {
         $this->sinSesion();
         $requestId = 'bb56a2f1-6aae-46ac-982e-9dcd3581d08e';
-        $ts = '1742505638683';
+        $ts = (string) (now()->getTimestamp() * 1000);
         $firma = 'ts='.$ts.',v1='.hash_hmac('sha256', FirmaWebhookMercadoPago::manifiesto((string) $pagoMpId, $requestId, $ts), self::CLAVE);
 
         $query = http_build_query(['source_news' => 'webhooks', 'd' => $this->distribuidoraId(), 'data.id' => (string) $pagoMpId, 'type' => 'payment']);

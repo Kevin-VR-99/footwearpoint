@@ -22,15 +22,17 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
     protected function rules(): array
     {
         return [
-            'token'    => ['required', 'string'],
+            'token'    => ['required', 'string', 'max:255'],
             'email'    => ['required', 'email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
         ];
     }
 
     protected function messages(): array
     {
         return [
+            'token.max' => 'El enlace para restablecer la contraseña no es válido.',
+            'password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'email.required'     => 'El correo es obligatorio.',
             'email.email'        => 'El correo no es válido.',
             'password.required'  => 'La contraseña es obligatoria.',

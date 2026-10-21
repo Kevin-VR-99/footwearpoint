@@ -16,7 +16,7 @@ class RegisterEmpleadoRequest extends FormRequest
         return [
             'nombre'   => ['required', 'string', 'max:150'],
             'email'    => ['required', 'email', 'max:150', 'unique:usuarios,email'],
-            'password' => ['required', 'string', 'min:8'],
+            'password' => ['required', 'string', 'min:8', 'max:255'],
             'telefono' => ['nullable', 'string', 'max:20'],
         ];
     }
@@ -24,6 +24,7 @@ class RegisterEmpleadoRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'nombre.required'   => 'El nombre es obligatorio.',
             'email.required'    => 'El correo es obligatorio.',
             'email.email'       => 'El correo no es válido.',

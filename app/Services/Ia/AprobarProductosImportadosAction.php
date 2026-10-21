@@ -217,7 +217,7 @@ class AprobarProductosImportadosAction
             return $porOmision;
         }
 
-        $marca = Marca::whereRaw('LOWER(nombre) = ?', [Str::lower($nombre)])->first();
+        $marca = Marca::where('nombre', $nombre)->first(); // collation *_ci: sin LOWER() para usar el índice
 
         return $marca?->id ?? $porOmision;
     }

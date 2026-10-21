@@ -267,7 +267,9 @@ class TiendaPublica
             ])
             ->values();
 
-        $imagenes = $producto->imagenes->pluck('url')->filter()->values();
+        $fotos = $producto->imagenes->filter(fn ($i) => filled($i->url))->values();
+        $imagenes = $fotos->pluck('url')->values();
+        $principal = $fotos->first();
 
         return [
             'id'          => (int) $producto->id,
@@ -283,6 +285,11 @@ class TiendaPublica
             'precio_texto' => '$'.number_format($precio, 2).' '.$moneda,
             'imagen'      => $imagenes->first(),
             'imagenes'    => $imagenes->all(),
+            // Auditoría 21-oct-2026: versiones WebP (la original si la foto es vieja).
+            'imagen_miniatura' => $principal?->urlMiniatura(),
+            'imagen_mediana'   => $principal?->urlMediana(),
+            'imagen_srcset'    => $principal?->srcset(),
+            'miniaturas'       => $fotos->map(fn ($i) => $i->urlMiniatura())->all(),
             'colores'     => $tallas->pluck('color')->filter()->unique()->values()->all(),
             'tallas'      => $tallas->all(),
             'hay_bajo_pedido' => $tallas->contains('bajo_pedido', true),

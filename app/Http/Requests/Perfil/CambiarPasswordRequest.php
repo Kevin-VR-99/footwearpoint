@@ -21,14 +21,16 @@ class CambiarPasswordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'password_actual' => ['required', 'string'],
-            'password'        => ['required', 'string', 'min:8', 'confirmed'],
+            'password_actual' => ['required', 'string', 'max:255'],
+            'password'        => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
         ];
     }
 
     public function messages(): array
     {
         return [
+            'password_actual.max' => 'La contraseña no puede tener más de 255 caracteres.',
+            'password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'password_actual.required' => 'Escribe tu contraseña actual.',
             'password.required'        => 'La contraseña es obligatoria.',
             'password.min'             => 'La contraseña debe tener al menos 8 caracteres.',

@@ -26,6 +26,13 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
 
   List<PedidoResumen>? _lista;
 
+  /// Auditoría 21-oct-2026: la API pagina. Se piden 25 y, al llegar al final
+  /// de la lista, la siguiente página.
+  static const _porPagina = 25;
+  int _pagina = 1;
+  bool _hayMas = false;
+  bool _cargandoMas = false;
+
   /// TG-281: filtra por folio o por estado. Quien tiene muchos pedidos busca
   /// uno concreto, y antes habia que recorrerlos todos.
   String _busqueda = '';
@@ -40,10 +47,12 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
 
   Future<void> _cargar() async {
     try {
-      final lista = await _pedidos.listar();
+      final pagina = await _pedidos.listarPagina(pagina: 1, porPagina: _porPagina);
       if (!mounted) return;
       setState(() {
-        _lista = lista;
+        _lista = pagina.elementos;
+        _pagina = pagina.paginaActual;
+        _hayMas = pagina.hayMas;
         _error = null;
         _cargando = false;
       });
@@ -55,6 +64,42 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
         _cargando = false;
       });
     }
+  }
+
+  Future<void> _cargarMas() async {
+    if (!_hayMas || _cargandoMas) return;
+    setState(() => _cargandoMas = true);
+
+    try {
+      final pagina = await _pedidos.listarPagina(pagina: _pagina + 1, porPagina: _porPagina);
+      if (!mounted) return;
+      final vistos = {for (final p in _lista ?? const <PedidoResumen>[]) p.id};
+      setState(() {
+        _lista = [...?_lista, ...pagina.elementos.where((p) => !vistos.contains(p.id))];
+        _pagina = pagina.paginaActual;
+        _hayMas = pagina.hayMas;
+        _cargandoMas = false;
+      });
+    } on ApiException {
+      // Se queda el botón "Ver más" para intentarlo otra vez.
+      if (mounted) setState(() => _cargandoMas = false);
+    }
+  }
+
+  bool _alDeslizar(ScrollNotification aviso) {
+    if (aviso.metrics.extentAfter < 400) _cargarMas();
+    return false;
+  }
+
+  Widget _pie() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: _cargandoMas
+            ? const CircularProgressIndicator()
+            : TextButton(onPressed: _cargarMas, child: const Text('Ver más pedidos')),
+      ),
+    );
   }
 
   void _reintentar() {
@@ -132,12 +177,16 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
             onRefresh: _cargar,
             child: encontrados.isEmpty
                 ? ListView(children: [FpSinResultados(busqueda: _busqueda, que: 'pedidos')])
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    itemCount: encontrados.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) =>
-                        _TarjetaPedido(pedido: encontrados[i], alTocar: () => _abrir(encontrados[i])),
+                : NotificationListener<ScrollNotification>(
+                    onNotification: _alDeslizar,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      itemCount: encontrados.length + (_hayMas ? 1 : 0),
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (_, i) => i == encontrados.length
+                          ? _pie()
+                          : _TarjetaPedido(pedido: encontrados[i], alTocar: () => _abrir(encontrados[i])),
+                    ),
                   ),
           ),
         ),

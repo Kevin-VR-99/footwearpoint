@@ -58,10 +58,21 @@ class ImagenCatalogo {
     required this.url,
     required this.orden,
     required this.esPrincipal,
+    this.urlMiniatura,
+    this.urlMediana,
   });
 
   final int id;
   final String url;
+
+  /// WebP de ~400 px para listas. El backend viejo no la manda: se usa [url].
+  final String? urlMiniatura;
+
+  /// WebP de ~1200 px para el detalle. Si no viene, se usa [url].
+  final String? urlMediana;
+
+  String get miniatura => urlMiniatura ?? url;
+  String get mediana => urlMediana ?? url;
   final int orden;
   final bool esPrincipal;
 
@@ -71,10 +82,19 @@ class ImagenCatalogo {
       url: json['url'] as String,
       orden: json['orden'] as int,
       esPrincipal: json['es_principal'] as bool,
+      urlMiniatura: json['url_miniatura'] as String?,
+      urlMediana: json['url_mediana'] as String?,
     );
   }
 
-  Map<String, dynamic> aJson() => {'id': id, 'url': url, 'orden': orden, 'es_principal': esPrincipal};
+  Map<String, dynamic> aJson() => {
+        'id': id,
+        'url': url,
+        'orden': orden,
+        'es_principal': esPrincipal,
+        if (urlMiniatura != null) 'url_miniatura': urlMiniatura,
+        if (urlMediana != null) 'url_mediana': urlMediana,
+      };
 }
 
 class VarianteCatalogo {

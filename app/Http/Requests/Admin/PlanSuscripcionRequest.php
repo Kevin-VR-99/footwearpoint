@@ -23,7 +23,7 @@ class PlanSuscripcionRequest extends FormRequest
                 'max:100',
                 Rule::unique('planes_suscripcion', 'nombre')->ignore($planId),
             ],
-            'descripcion'          => ['nullable', 'string'],
+            'descripcion'          => ['nullable', 'string', 'max:2000'],
             'precio_base_mensual'  => ['required', 'numeric', 'min:0'],
             'lineas_incluidas'     => ['required', 'integer', 'min:0'],
             'precio_linea_extra'   => ['required', 'numeric', 'min:0'],
@@ -34,6 +34,7 @@ class PlanSuscripcionRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'descripcion.max' => 'La descripción no puede tener más de 2000 caracteres.',
             'nombre.required'              => 'El nombre del plan es obligatorio.',
             'nombre.unique'                => 'Ya existe un plan con ese nombre.',
             'precio_base_mensual.required' => 'El precio base es obligatorio.',

@@ -16,9 +16,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] class extends Component {
+    #[Locked]
     public int $pedidoId;
     public string $mensaje = '';
     public string $errorMsg = '';
@@ -32,10 +34,12 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     public string $pagoMpId = '';
 
     // TG-254: solicitud de cambio de una línea (el personal la pide por el cliente).
+    #[Locked]
     public ?int $cambioLineaId = null;
     public string $cambioMotivo = '';
 
     /* TG-241 (A12): la fabrica confirmo algo y al final no lo surtio. */
+    #[Locked]
     public ?int $noSurtidoLineaId = null;
     public string $noSurtidoMotivo = '';
 

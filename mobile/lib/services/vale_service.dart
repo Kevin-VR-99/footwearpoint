@@ -1,3 +1,4 @@
+import '../models/pagina.dart';
 import '../models/vale.dart';
 import 'api_service.dart';
 
@@ -6,10 +7,24 @@ class ValeService {
 
   final ApiService _api;
 
+  /// Auditoría 21-oct-2026: la API ya pagina (100 por página). Los vales de
+  /// una persona son pocos, así que se piden todas las páginas (con un tope
+  /// de seguridad) y las pantallas siguen recibiendo la lista completa.
   Future<List<Vale>> listarValesVigentes() async {
-    final respuesta = await _api.get('vales');
-    final lista = respuesta['data'] as List? ?? [];
-    return lista.map((e) => Vale.fromJson(e as Map<String, dynamic>)).toList();
+    const maximoPaginas = 20;
+    final vales = <Vale>[];
+    var pagina = 1;
+
+    while (true) {
+      final respuesta = await _api.get('vales?page=$pagina&per_page=100');
+      final actual = Pagina.desdeJson(respuesta, Vale.fromJson);
+      vales.addAll(actual.elementos);
+
+      if (!actual.hayMas || pagina >= maximoPaginas) break;
+      pagina++;
+    }
+
+    return vales;
   }
 
   Future<void> aplicarVale({

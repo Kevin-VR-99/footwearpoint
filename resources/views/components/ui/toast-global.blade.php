@@ -39,7 +39,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
     document.addEventListener('livewire:init', () => {
         const emitir = (mensaje, tipo = 'ok') => {
             window.dispatchEvent(new CustomEvent('fp-toast', {

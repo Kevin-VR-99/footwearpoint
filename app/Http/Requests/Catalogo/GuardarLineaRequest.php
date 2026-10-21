@@ -21,7 +21,7 @@ class GuardarLineaRequest extends FormRequest
         return [
             // La línea ya no cuelga de una temporada: es al revés (D1).
             'nombre' => [$requerido, 'string', 'max:150'],
-            'descripcion' => ['nullable', 'string'],
+            'descripcion' => ['nullable', 'string', 'max:2000'],
             'logotipo_url' => ['nullable', 'string', 'max:500'],
             'activa' => ['sometimes', 'boolean'],
             'marca_ids' => ['sometimes', 'array'],
@@ -29,6 +29,13 @@ class GuardarLineaRequest extends FormRequest
                 'integer',
                 Rule::exists('marcas', 'id'),
             ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'descripcion.max' => 'La descripción no puede tener más de 2000 caracteres.',
         ];
     }
 }

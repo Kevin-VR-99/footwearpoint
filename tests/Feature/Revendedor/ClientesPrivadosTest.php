@@ -197,4 +197,14 @@ class ClientesPrivadosTest extends TestCase
 
         $this->assertSame(0, ClientePrivadoRevendedor::count());
     }
+
+    public function test_solo_un_revendedor_puede_usar_la_ruta(): void
+    {
+        // Auditoría 21-oct-2026: role:revendedor en la ruta.
+        $this->comoUsuario(Usuario::where('email', \Database\Seeders\DemoContactosSeeder::CLIENTE_DIRECTO)->firstOrFail());
+        $this->getJson(self::RUTA)->assertForbidden();
+
+        $this->comoUsuario(Usuario::where('email', 'empleado@calzadosramirez.test')->firstOrFail());
+        $this->getJson(self::RUTA)->assertForbidden();
+    }
 }

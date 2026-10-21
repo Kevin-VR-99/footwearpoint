@@ -10,6 +10,7 @@ use App\Services\Vale\EmitirValeAction;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Http\JsonResponse;
+use App\Support\RespuestaPaginada;
 use Illuminate\Http\Request;
 use App\Http\Requests\Vale\AplicarValeRequest;
 use App\Services\Vale\AplicarValeAction;
@@ -38,11 +39,8 @@ class ValeController extends Controller
             $query->where('estado', $request->estado);
         }
 
-        $vales = $query->orderByDesc('id')->get();
-
-        return response()->json([
-            'data' => ValeResource::collection($vales),
-        ]);
+        // Auditoría 21-oct-2026: paginado (?page=, ?per_page= hasta 100).
+        return RespuestaPaginada::json(RespuestaPaginada::paginar($query->orderByDesc('id'), $request), ValeResource::class);
     }
 
     public function store(StoreValeRequest $request, EmitirValeAction $accion): JsonResponse

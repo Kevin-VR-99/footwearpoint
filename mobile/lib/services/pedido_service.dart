@@ -1,3 +1,4 @@
+import '../models/pagina.dart';
 import '../models/pedido_resumen.dart';
 import 'api_service.dart';
 
@@ -39,17 +40,25 @@ class PedidoService {
   }
 
   /// "Mis pedidos": el servidor ya regresa solo los de quien inició sesión
-  /// (PropietarioActual), del más nuevo al más viejo, máximo 100.
+  /// (PropietarioActual), del más nuevo al más viejo. Esta es la primera
+  /// página (hasta 100); para ver más se usa [listarPagina].
   ///
   /// Sin borradores: son pedidos que nunca se enviaron (por ejemplo, si se
   /// cortó la conexión a medio envío) y desde la app no se pueden continuar.
   Future<List<PedidoResumen>> listar() async {
-    final respuesta = await _api.get('pedidos');
+    return (await listarPagina(pagina: 1, porPagina: 100)).elementos;
+  }
 
-    return [
-      for (final p in respuesta['data'] as List<dynamic>)
-        PedidoResumen.desdeJson(p as Map<String, dynamic>),
-    ].where((p) => p.estado != 'borrador').toList();
+  /// Una página de "Mis pedidos" (auditoría 21-oct-2026: la API ya pagina).
+  Future<Pagina<PedidoResumen>> listarPagina({int pagina = 1, int porPagina = 25}) async {
+    final respuesta = await _api.get('pedidos?page=$pagina&per_page=$porPagina');
+    final pagina0 = Pagina.desdeJson(respuesta, PedidoResumen.desdeJson);
+
+    return Pagina(
+      elementos: pagina0.elementos.where((p) => p.estado != 'borrador').toList(),
+      paginaActual: pagina0.paginaActual,
+      ultimaPagina: pagina0.ultimaPagina,
+    );
   }
 
   /// El detalle, con líneas y pagos.

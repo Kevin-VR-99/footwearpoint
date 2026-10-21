@@ -24,6 +24,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extends Component {
@@ -41,6 +42,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
 
     // Asignar suscripción
     public bool $mostrarSuscripcion = false;
+    #[Locked]
     public ?int $distribuidoraSuscripcionId = null;
     public string $distribuidoraSuscripcionNombre = '';
     public string $plan_id = '';
@@ -69,6 +71,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public string $admin_password = '';
 
     // Revisar los datos antes de aprobar o rechazar (TG-195)
+    #[Locked]
     public ?int $distribuidoraDetalleId = null;
 
     // Rechazar con motivo (TG-195)
@@ -77,6 +80,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public string $motivo_rechazo = '';
 
     // Editar distribuidora y su administrador (TG-194)
+    #[Locked]
     public ?int $distribuidoraEdicionId = null;
     public string $distribuidoraEdicionNombre = '';
     public string $editar_nombre_comercial = '';
@@ -168,13 +172,15 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             'nuevo_email_publico' => ['nullable', 'email', 'max:190'],
             'nuevo_telefono_publico' => ['nullable', 'string', 'max:30'],
             'nuevo_direccion_publica' => ['nullable', 'string', 'max:300'],
-            'nuevo_descripcion_publica' => ['nullable', 'string'],
+            'nuevo_descripcion_publica' => ['nullable', 'string', 'max:2000'],
             'nuevo_horario_publico' => ['nullable', 'string', 'max:300'],
             // TG-194: el administrador de la tienda es obligatorio.
             'admin_nombre' => ['required', 'string', 'max:150'],
             'admin_email' => ['required', 'email', 'max:190', 'unique:usuarios,email'],
-            'admin_password' => ['required', 'string', 'min:8'],
+            'admin_password' => ['required', 'string', 'min:8', 'max:255'],
         ], [
+            'admin_password.max' => 'La contraseña no puede tener más de 255 caracteres.',
+            'nuevo_descripcion_publica.max' => 'La descripción no puede tener más de 2000 caracteres.',
             'nuevo_nombre_comercial.required' => 'El nombre comercial es obligatorio.',
             'nuevo_nombre_comercial.max' => 'El nombre comercial no puede pasar de 150 caracteres.',
             'nuevo_razon_social.max' => 'La razón social no puede pasar de 200 caracteres.',

@@ -5,7 +5,6 @@ namespace App\Services\Ia;
 use App\Models\Color;
 use App\Models\ImportacionCatalogo;
 use App\Models\Variante;
-use Illuminate\Support\Str;
 
 /**
  * TG-240 (A10) — Emparejar los colores del catálogo con la paleta.
@@ -81,7 +80,7 @@ class ColoresDelCatalogo
     public function sugerir(string $comercial, ?string $baseDeLaIa = null): array
     {
         // 1. Lo que ya se decidió antes para ese mismo nombre comercial.
-        $anterior = Variante::whereRaw('LOWER(nombre_color_comercial) = ?', [Str::lower($comercial)])
+        $anterior = Variante::where('nombre_color_comercial', $comercial) // collation *_ci
             ->whereNotNull('color_id')
             ->value('color_id');
 
@@ -153,6 +152,6 @@ class ColoresDelCatalogo
             return null;
         }
 
-        return Color::whereRaw('LOWER(nombre) = ?', [Str::lower($nombre)])->value('id');
+        return Color::where('nombre', $nombre)->value('id'); // collation *_ci: sin LOWER()
     }
 }

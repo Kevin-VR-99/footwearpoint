@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /*
@@ -33,12 +34,14 @@ use Livewire\Component;
  */
 new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class extends Component
 {
+    #[Locked]
     public int $importacionId;
 
     #[Url]
     public string $filtro = 'por_revisar';
 
     /** La fila que se está corrigiendo, y sus campos. */
+    #[Locked]
     public ?int $editandoId = null;
 
     /** @var array<string, mixed> */

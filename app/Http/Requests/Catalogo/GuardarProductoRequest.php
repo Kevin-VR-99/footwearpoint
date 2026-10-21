@@ -21,7 +21,7 @@ class GuardarProductoRequest extends FormRequest
         $reglas = [
             'modelo'      => [$requerido, 'string', 'max:120'],
             'nombre'      => [$requerido, 'string', 'max:200'],
-            'descripcion' => ['nullable', 'string'],
+            'descripcion' => ['nullable', 'string', 'max:2000'],
             'activo'      => ['sometimes', 'boolean'],
             'categoria_id' => [
                 $requerido,
@@ -38,5 +38,12 @@ class GuardarProductoRequest extends FormRequest
         ];
 
         return $reglas;
+    }
+
+    public function messages(): array
+    {
+        return [
+            'descripcion.max' => 'La descripción no puede tener más de 2000 caracteres.',
+        ];
     }
 }

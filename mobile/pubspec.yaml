@@ -47,6 +47,7 @@ dependencies:
   firebase_core: 4.14.0           # conecta la app con Firebase al arrancar
   firebase_messaging: 16.7.0     # pide el token del dispositivo
   url_launcher: 6.3.3           # abre el pago de Mercado Pago en el navegador (TG-268)
+  cached_network_image: 4.0.4   # fotos de producto con caché en disco y memCacheWidth (auditoría 21-oct)
 
 dev_dependencies:
   flutter_test:

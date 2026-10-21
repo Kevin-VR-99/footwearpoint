@@ -5,14 +5,17 @@ namespace App\Services\Catalogo;
 use App\Services\Auditoria\AuditarCambios;
 use App\Models\ProductoCampana;
 use App\Models\ProductoImagen;
+use App\Services\Imagenes\RedimensionarImagenWebp;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class GestionarImagenProductoCampanaAction
 {
-    public function __construct(private AuditarCambios $auditar)
-    {
+    public function __construct(
+        private AuditarCambios $auditar,
+        private RedimensionarImagenWebp $redimensionar,
+    ) {
     }
 
     /**
@@ -32,6 +35,7 @@ class GestionarImagenProductoCampanaAction
 
             $ruta = $imagen->store('productos/campana/imagenes', 's3');
             $url = Storage::disk('s3')->url($ruta);
+            $variantes = $this->guardarVariantes($imagen, $ruta);
 
             $siguienteOrden = ($productoCampana->imagenes()->max('orden') ?? 0) + 1;
 
@@ -42,6 +46,8 @@ class GestionarImagenProductoCampanaAction
             $registro = ProductoImagen::create([
                 'producto_campana_id' => $productoCampana->id,
                 'url'                 => $url,
+                'url_miniatura'       => $variantes[RedimensionarImagenWebp::MINIATURA] ?? null,
+                'url_mediana'         => $variantes[RedimensionarImagenWebp::MEDIANA] ?? null,
                 'orden'               => $siguienteOrden,
                 'es_principal'        => $esPrincipal || $esPrimera,
             ]);
@@ -74,6 +80,35 @@ class GestionarImagenProductoCampanaAction
             $imagen->delete();
             $this->auditar->eliminado($imagen, 'catalogo.imagen.eliminada', 'producto_imagen');
         });
+    }
+
+    /**
+     * Auditoría 21-oct-2026: además de la original (se conserva tal cual),
+     * guarda dos WebP: ~400 px para listados y ~1200 px para el detalle.
+     * Si GD no puede leer la foto, se sigue con la original sola.
+     *
+     * @return array<int, string> ancho => url pública
+     */
+    private function guardarVariantes(UploadedFile $imagen, string $rutaOriginal): array
+    {
+        try {
+            $versiones = $this->redimensionar->generar($imagen->getRealPath());
+        } catch (\Throwable $e) {
+            report($e);
+
+            return [];
+        }
+
+        $base = preg_replace('/\.[^.\/]+$/', '', $rutaOriginal);
+        $urls = [];
+
+        foreach ($versiones as $ancho => $version) {
+            $ruta = $base.'-'.$ancho.'.webp';
+            Storage::disk('s3')->put($ruta, $version['contenido'], ['ContentType' => 'image/webp', 'CacheControl' => 'public, max-age=31536000, immutable']);
+            $urls[$ancho] = Storage::disk('s3')->url($ruta);
+        }
+
+        return $urls;
     }
 
     private function desmarcarPrincipales(ProductoCampana $productoCampana): void

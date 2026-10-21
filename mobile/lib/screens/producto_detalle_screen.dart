@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -144,7 +145,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                         PageView.builder(
                           itemCount: imagenes.length,
                           onPageChanged: (i) => setState(() => _fotoActual = i),
-                          itemBuilder: (_, i) => ImagenProducto(url: imagenes[i].url),
+                          itemBuilder: (_, i) => ImagenProducto(url: imagenes[i].mediana, anchoCache: 1200),
                         ),
                         if (imagenes.length > 1)
                           Positioned(
@@ -507,9 +508,13 @@ class EtiquetaDisponibilidad extends StatelessWidget {
 }
 
 class ImagenProducto extends StatelessWidget {
-  const ImagenProducto({super.key, required this.url});
+  const ImagenProducto({super.key, required this.url, this.anchoCache = 400});
 
   final String? url;
+
+  /// Ancho (px físicos) con el que se decodifica y guarda en memoria. Evita
+  /// tener fotos de 5 MB decodificadas completas en una lista.
+  final int anchoCache;
 
   @override
   Widget build(BuildContext context) {
@@ -525,13 +530,15 @@ class ImagenProducto extends StatelessWidget {
 
     if (url == null) return sinFoto;
 
-    return Image.network(
-      url!,
+    // Auditoría 21-oct-2026: caché en disco (cached_network_image) y
+    // decodificación al ancho que se muestra (memCacheWidth).
+    return CachedNetworkImage(
+      imageUrl: url!,
       fit: BoxFit.cover,
       width: double.infinity,
-      errorBuilder: (_, _, _) => sinFoto,
-      loadingBuilder: (_, hijo, progreso) =>
-          progreso == null ? hijo : const Center(child: CircularProgressIndicator()),
+      memCacheWidth: anchoCache,
+      errorWidget: (_, _, _) => sinFoto,
+      placeholder: (_, _) => const Center(child: CircularProgressIndicator()),
     );
   }
 }

@@ -18,10 +18,12 @@ use App\Services\Catalogo\CatalogoVisible;
 use App\Services\MercadoPago\FirmaWebhookMercadoPago;
 use App\Services\MercadoPago\MercadoPagoException;
 use App\Services\Pago\AplicarPagoMercadoPagoAction;
+use App\Services\Pago\RecibirAvisoMercadoPagoAction;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as PeticionHttp;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -242,7 +244,7 @@ class WebhookMercadoPagoTest extends TestCase
     {
         $this->sinSesion();
         $requestId = 'bb56a2f1-6aae-46ac-982e-9dcd3581d08e';
-        $ts = '1742505638683';
+        $ts = (string) (now()->getTimestamp() * 1000);
         $firma ??= 'ts='.$ts.',v1='.hash_hmac('sha256', FirmaWebhookMercadoPago::manifiesto((string) $pagoMpId, $requestId, $ts), self::CLAVE);
 
         $query = http_build_query(['source_news' => 'webhooks', 'd' => $this->distribuidoraId(), 'data.id' => (string) $pagoMpId, 'type' => $tipo]);
@@ -330,6 +332,8 @@ class WebhookMercadoPagoTest extends TestCase
 
     public function test_el_ipn_y_el_webhook_del_mismo_pago_caen_en_la_misma_fila(): void
     {
+        // Avisos sin firma (IPN): solo se aceptan si no hay MP_WEBHOOK_SECRET.
+        config(['services.mercadopago.webhook_secret' => null]);
         $pago = $this->pagoPendiente();
         $this->enMercadoPago($this->aprobado($pago));
 
@@ -368,8 +372,21 @@ class WebhookMercadoPagoTest extends TestCase
         $this->assertSame('pendiente', $pago->fresh()->estado);
     }
 
-    public function test_sin_firma_se_procesa_igual_consultando_la_api(): void
+    public function test_con_clave_configurada_un_aviso_sin_firma_responde_401(): void
     {
+        $pago = $this->pagoPendiente();
+        $this->enMercadoPago($this->aprobado($pago));
+        $antes = count(Http::recorded());
+
+        $this->ipn()->assertStatus(401);
+
+        $this->assertCount($antes, Http::recorded());
+        $this->assertSame('pendiente', $pago->fresh()->estado);
+    }
+
+    public function test_sin_clave_configurada_un_aviso_sin_firma_se_procesa_consultando_la_api(): void
+    {
+        config(['services.mercadopago.webhook_secret' => null]);
         $pago = $this->pagoPendiente();
         $this->enMercadoPago($this->aprobado($pago));
 
@@ -394,6 +411,84 @@ class WebhookMercadoPagoTest extends TestCase
 
         $this->assertSame('aplicado', $pago->fresh()->estado);
         Log::shouldHaveReceived('warning')->withArgs(fn ($mensaje) => str_contains($mensaje, 'MP_WEBHOOK_SECRET'));
+    }
+
+    public function test_en_produccion_un_aviso_sin_firma_responde_401_y_no_consulta_la_api(): void
+    {
+        $pago = $this->pagoPendiente();
+        $this->enMercadoPago($this->aprobado($pago));
+        $antes = count(Http::recorded());
+        $this->app->detectEnvironment(fn () => 'production');
+
+        $this->ipn()->assertStatus(401)->assertExactJson(['message' => 'La firma del aviso no es válida.']);
+
+        $this->assertSame(0, WebhookMercadoPago::count());
+        $this->assertCount($antes, Http::recorded());
+        $this->assertSame('pendiente', $pago->fresh()->estado);
+    }
+
+    public function test_en_produccion_sin_clave_configurada_se_acepta_verificando_la_api_y_lo_avisa_en_el_log(): void
+    {
+        Log::spy();
+        config(['services.mercadopago.webhook_secret' => null]);
+        $pago = $this->pagoPendiente();
+        $this->enMercadoPago($this->aprobado($pago));
+        $this->app->detectEnvironment(fn () => 'production');
+
+        $this->ipn()->assertOk();
+
+        $this->assertSame('aplicado', $pago->fresh()->estado);
+        Log::shouldHaveReceived('warning')->once()->withArgs(fn ($mensaje) => str_contains($mensaje, 'falta MP_WEBHOOK_SECRET'));
+    }
+
+    public function test_en_produccion_un_aviso_bien_firmado_se_aplica(): void
+    {
+        $pago = $this->pagoPendiente();
+        $this->enMercadoPago($this->aprobado($pago));
+        $this->app->detectEnvironment(fn () => 'production');
+
+        $this->aviso()->assertOk();
+
+        $this->assertSame('aplicado', $pago->fresh()->estado);
+    }
+
+    public function test_una_firma_valida_con_ts_de_hace_mas_de_5_minutos_se_rechaza(): void
+    {
+        $pago = $this->pagoPendiente();
+        $this->enMercadoPago($this->aprobado($pago));
+        $requestId = 'bb56a2f1-6aae-46ac-982e-9dcd3581d08e';
+
+        foreach ([now()->subMinutes(6), now()->addMinutes(6)] as $momento) {
+            $ts = (string) ($momento->getTimestamp() * 1000);
+            $firma = 'ts='.$ts.',v1='.hash_hmac('sha256', FirmaWebhookMercadoPago::manifiesto((string) self::PAGO_MP, $requestId, $ts), self::CLAVE);
+            $this->aviso(firma: $firma)->assertStatus(401);
+        }
+
+        // Dentro de la ventana (4 minutos, en segundos en lugar de ms) sí entra.
+        $ts = (string) now()->subMinutes(4)->getTimestamp();
+        $firma = 'ts='.$ts.',v1='.hash_hmac('sha256', FirmaWebhookMercadoPago::manifiesto((string) self::PAGO_MP, $requestId, $ts), self::CLAVE);
+        $this->aviso(firma: $firma)->assertOk();
+
+        $this->assertSame('aplicado', $pago->fresh()->estado);
+    }
+
+    public function test_un_aviso_repetido_mientras_se_procesa_no_vuelve_a_consultar_la_api(): void
+    {
+        $pago = $this->pagoPendiente();
+        $this->enMercadoPago($this->aprobado($pago));
+
+        // Simula que otro request del mismo data.id ya está consultando a MP.
+        Cache::put(RecibirAvisoMercadoPagoAction::llaveDeduplicacion('payment', (string) self::PAGO_MP), true, 60);
+
+        $this->aviso()->assertOk();
+
+        $this->assertSame(0, $this->consultasDePagos());
+        $this->assertSame('pendiente', $pago->fresh()->estado);
+
+        // Al soltarse la llave, el siguiente aviso sí lo aplica.
+        Cache::forget(RecibirAvisoMercadoPagoAction::llaveDeduplicacion('payment', (string) self::PAGO_MP));
+        $this->aviso()->assertOk();
+        $this->assertSame('aplicado', $pago->fresh()->estado);
     }
 
     // ---------------------------------------------------------------
@@ -607,6 +702,8 @@ class WebhookMercadoPagoTest extends TestCase
 
     public function test_otros_tipos_de_aviso_se_guardan_y_no_consultan_nada(): void
     {
+        // Avisos sin firma (IPN): solo se aceptan si no hay MP_WEBHOOK_SECRET.
+        config(['services.mercadopago.webhook_secret' => null]);
         $this->ipn('9876543210', 'merchant_order')->assertOk();
         $this->aviso('2c938084726fca480172750000000000', tipo: 'subscription_preapproval')->assertOk();
         $this->aviso('123', tipo: 'mp-connect')->assertOk();
@@ -702,6 +799,8 @@ class WebhookMercadoPagoTest extends TestCase
 
     public function test_un_aviso_sin_id_responde_200_y_no_guarda_nada(): void
     {
+        // Avisos sin firma (IPN): solo se aceptan si no hay MP_WEBHOOK_SECRET.
+        config(['services.mercadopago.webhook_secret' => null]);
         $this->sinSesion();
 
         $this->postJson(self::URL_WEBHOOK, [])->assertOk();

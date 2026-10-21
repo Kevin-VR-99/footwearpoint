@@ -15,6 +15,7 @@ use App\Support\Tenant;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] class extends Component {
@@ -43,6 +44,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
     // TG-247: edición y borrado. Un solo panel de edición para las 4 entidades.
     public string $editando_tipo = '';
+    #[Locked]
     public ?int $editando_id = null;
     public string $editar_nombre = '';
     public string $editar_descripcion = '';
@@ -130,6 +132,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             'editar_categoria_id.required' => 'Elige la categoría.',
             'editar_modelo.required' => 'El modelo es obligatorio.',
             'editar_estado.in' => 'Ese estado no existe.',
+            'editar_descripcion.max' => 'La descripción no puede tener más de :max caracteres.',
         ];
 
         $datos = $this->validate(match ($tipo) {
@@ -148,7 +151,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             ],
             'producto' => [
                 'editar_nombre' => ['required', 'string', 'max:200'],
-                'editar_descripcion' => ['nullable', 'string'],
+                'editar_descripcion' => ['nullable', 'string', 'max:2000'],
                 'editar_marca_id' => ['required', 'exists:marcas,id'],
                 'editar_categoria_id' => ['required', 'exists:categorias_producto,id'],
                 'editar_modelo' => ['required', 'string', 'max:120'],

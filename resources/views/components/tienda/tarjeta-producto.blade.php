@@ -9,7 +9,8 @@
    class="group h-full fp-tarjeta-interactiva overflow-hidden flex flex-col">
     <div class="aspect-square bg-slate-100 flex items-center justify-center overflow-hidden">
         @if ($producto['imagen'])
-            <img src="{{ $producto['imagen'] }}" alt="{{ $producto['nombre'] }}" loading="lazy"
+            <img src="{{ $producto['imagen_miniatura'] ?? $producto['imagen'] }}" alt="{{ $producto['nombre'] }}" loading="lazy" decoding="async"
+                 width="400" height="400"
                  class="h-full w-full object-cover transition duration-500 group-hover:scale-105 motion-reduce:transform-none">
         @else
             <span class="text-slate-400 text-sm px-4 text-center">{{ $producto['marca'] ?? 'Sin foto' }}</span>
