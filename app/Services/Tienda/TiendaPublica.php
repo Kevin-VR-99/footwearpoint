@@ -244,9 +244,7 @@ class TiendaPublica
 
     private function moneda(): string
     {
-        $moneda = ConfiguracionDistribuidora::query()->value('moneda');
-
-        return is_string($moneda) && $moneda !== '' ? $moneda : 'MXN';
+        return ConfiguracionDistribuidora::MONEDA;
     }
 
     /** Lo que la vista necesita de un producto, con su precio de menudeo. */

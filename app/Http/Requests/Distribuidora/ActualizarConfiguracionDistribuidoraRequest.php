@@ -26,8 +26,6 @@ class ActualizarConfiguracionDistribuidoraRequest extends FormRequest
             'dias_gestion_devolucion'  => ['sometimes', 'required', 'integer', 'min:1'],
             'dias_vigencia_vale'       => ['sometimes', 'required', 'integer', 'min:1'],
             'dias_maximos_recoleccion' => ['sometimes', 'required', 'integer', 'min:1'],
-            'moneda'                   => ['sometimes', 'required', 'string', 'size:3'],
-            'zona_horaria'             => ['sometimes', 'required', 'string', 'max:60'],
         ];
     }
 }

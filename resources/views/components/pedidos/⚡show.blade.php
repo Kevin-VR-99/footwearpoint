@@ -419,7 +419,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     {{-- TG-52 / TG-244 (E13-02): alerta del plazo de recolección (dias_maximos_recoleccion). --}}
     @if ($this->pedido->estado === 'listo_entrega' && $this->pedido->fecha_limite_recoleccion)
         @php
-            $limite = $this->pedido->fecha_limite_recoleccion->copy()->timezone('America/Mexico_City');
+            $limite = $this->pedido->fecha_limite_recoleccion->copy()->timezone(\App\Models\ConfiguracionDistribuidora::ZONA_HORARIA);
             $vencido = now()->greaterThan($limite);
             $porVencer = ! $vencido && now()->diffInHours($limite, false) <= 48;
         @endphp

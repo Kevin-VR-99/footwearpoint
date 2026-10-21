@@ -2,6 +2,7 @@
 
 namespace App\Services\Pago;
 
+use App\Models\ConfiguracionDistribuidora;
 use App\Models\Pago;
 use App\Models\Pedido;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
@@ -123,7 +124,7 @@ class CrearPagoPedidoMercadoPagoAction
 
         ['token' => $token, 'configuracion' => $configuracion] = $this->tokens->para((int) $pedido->distribuidora_id);
 
-        $moneda = $configuracion->moneda ?: 'MXN';
+        $moneda = ConfiguracionDistribuidora::MONEDA;
 
         [$pago, $reutilizado, $aVencer] = DB::transaction(fn () => $this->reservarPago($pedido, $tipo));
 

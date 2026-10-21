@@ -167,7 +167,7 @@ class AplicarPagoMercadoPagoAction
             ->where('distribuidora_id', $pago->distribuidora_id)
             ->first();
 
-        $moneda = $configuracion?->moneda ?: 'MXN';
+        $moneda = ConfiguracionDistribuidora::MONEDA;
         $cuenta = $configuracion?->mercado_pago_account_id;
 
         return match (true) {

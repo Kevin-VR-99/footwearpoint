@@ -56,8 +56,6 @@ class PrepararDistribuidoraAction
                     'dias_gestion_devolucion'  => 20,
                     'dias_vigencia_vale'       => 90,
                     'dias_maximos_recoleccion' => 5,
-                    'moneda'                   => 'MXN',
-                    'zona_horaria'             => 'America/Mexico_City',
                 ]
             );
 
