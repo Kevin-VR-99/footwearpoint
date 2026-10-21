@@ -9,21 +9,26 @@ use Livewire\Component;
 
 new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class extends Component
 {
-    /** Nombre comercial. Vacío muestra todas las visibles. */
+    /** Buscador unificado: nombre, ciudad, colonia o dirección. Vacío muestra todas las visibles. */
     #[Url(as: 'q', except: '')]
     public string $q = '';
 
-    /** Ciudad, colonia o dirección pública. */
-    #[Url(as: 'lugar', except: '')]
-    public string $lugar = '';
+    /** Enlaces viejos con ?lugar=… se pasan al buscador unificado. */
+    public function mount(): void
+    {
+        $lugar = trim((string) request()->query('lugar', ''));
+        if ($lugar !== '' && trim($this->q) === '') {
+            $this->q = $lugar;
+        }
+    }
 
     public function render()
     {
         $directorio = app(DirectorioPublico::class);
 
         return $this->view([
-            'distribuidoras' => $directorio->distribuidoras(null, $this->q, $this->lugar),
-            'buscando'       => trim($this->q) !== '' || trim($this->lugar) !== '',
+            'distribuidoras' => $directorio->distribuidoras(null, null, null, $this->q),
+            'buscando'       => trim($this->q) !== '',
             // TG-234 (G15): enlace a la tienda pública de cada distribuidora.
             'enlaceTienda'   => app(EnlaceTienda::class),
         ]);
@@ -39,45 +44,40 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                 {{ $distribuidoras->count() }} {{ $distribuidoras->count() === 1 ? 'distribuidora' : 'distribuidoras' }}
             </p>
         </div>
-        <a href="{{ route('inicio') }}" class="text-sm font-medium text-fp-primary hover:underline">
+        <a href="{{ route('inicio') }}" class="text-sm font-medium fp-enlace">
             Volver al inicio
         </a>
     </div>
 
     {{-- La barra pública mide 4.125rem (franja + fila del logo). El buscador se queda debajo al hacer scroll. --}}
-    <form class="sticky top-[4.125rem] z-20 -mx-4 mb-6 grid grid-cols-1 gap-3 border-b border-slate-200/80 bg-fp-page/95 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-fp-page/80 sm:-mx-5 sm:grid-cols-2 sm:px-5"
+    <form class="sticky top-[4.125rem] z-20 -mx-4 mb-6 grid grid-cols-1 gap-3 border-b border-slate-200/80 bg-fp-page/95 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-fp-page/80 sm:-mx-5 sm:grid-cols-2 sm:px-5 fp-aparecer"
         role="search">
-        <div>
-            <p id="etiqueta-buscar-nombre" class="mb-1 text-sm font-medium text-slate-700">Buscar por nombre</p>
-            <x-ui.buscador id="buscar-nombre" wire:model.live.debounce.300ms="q"
-                placeholder="Nombre de la distribuidora" etiqueta="Buscar por nombre" class="w-full"
-                aria-labelledby="etiqueta-buscar-nombre" />
-        </div>
-        <div>
-            <p id="etiqueta-buscar-lugar" class="mb-1 text-sm font-medium text-slate-700">Buscar por lugar</p>
-            <x-ui.buscador id="buscar-lugar" wire:model.live.debounce.300ms="lugar"
-                placeholder="Ciudad, colonia o dirección" etiqueta="Buscar por lugar" class="w-full"
-                aria-labelledby="etiqueta-buscar-lugar" />
+        <div class="sm:col-span-2">
+            <p id="etiqueta-buscar-distribuidora" class="mb-1 text-sm font-medium text-slate-700">Buscar distribuidora</p>
+            <x-ui.buscador id="buscar-distribuidora" wire:model.live.debounce.300ms="q"
+                placeholder="Nombre, ciudad, colonia o dirección" etiqueta="Buscar distribuidora por nombre, ciudad, colonia o dirección" class="w-full"
+                aria-labelledby="etiqueta-buscar-distribuidora" aria-describedby="ayuda-buscar-distribuidora" />
+            <p id="ayuda-buscar-distribuidora" class="mt-1 text-xs text-fp-text-muted">Escribe el nombre de la distribuidora o el lugar: ciudad, colonia o calle.</p>
         </div>
         <p wire:loading.delay.shortest class="text-sm font-medium text-slate-500 sm:col-span-2" aria-live="polite">Buscando…</p>
     </form>
 
     @if ($distribuidoras->isEmpty() && $buscando)
-        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-10 text-center text-slate-500">
+        <div class="fp-aparecer fp-tarjeta p-10 text-center text-slate-500">
             Ninguna distribuidora coincide con esa búsqueda.
         </div>
     @elseif ($distribuidoras->isEmpty())
-        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-10 text-center text-slate-500">
+        <div class="fp-aparecer fp-tarjeta p-10 text-center text-slate-500">
             No hay distribuidoras visibles en el marketplace por ahora.
         </div>
     @else
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 fp-escalonado">
             @foreach ($distribuidoras as $d)
                 @php($urlTienda = $enlaceTienda->url($d))
-                <article class="group bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-fp-sidebar/10 hover:border-fp-primary/30">
+                <article wire:key="dist-{{ $d->id }}" class="group fp-tarjeta-interactiva overflow-hidden flex flex-col">
                     <{{ $urlTienda ? 'a' : 'div' }} @if ($urlTienda) href="{{ $urlTienda }}" aria-label="Ver la tienda de {{ $d->nombre_comercial }}" @endif
                         class="flex h-40 items-center justify-center bg-fp-page">
-                        <span class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-white shadow-md ring-1 ring-slate-200 transition group-hover:ring-fp-primary/40">
+                        <span class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-white shadow-md ring-1 ring-slate-200 transition duration-300 group-hover:scale-105 group-hover:ring-fp-primary/40 motion-reduce:transform-none">
                             @if ($d->logotipo_url)
                                 <img src="{{ $d->logotipo_url }}"
                                      alt="Logo {{ $d->nombre_comercial }}"
@@ -112,7 +112,7 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                                     <span class="text-slate-400 shrink-0">📍</span>
                                     <span>
                                         {{ $direccionMapa }}
-                                        <a href="{{ \App\Support\MapaUbicacion::urlVerEnMapa($d) }}" target="_blank" rel="noopener" class="ml-1 whitespace-nowrap text-fp-primary hover:underline">Ver en mapa</a>
+                                        <a href="{{ \App\Support\MapaUbicacion::urlVerEnMapa($d) }}" target="_blank" rel="noopener" class="ml-1 whitespace-nowrap fp-enlace">Ver en mapa</a>
                                     </span>
                                 </li>
                             @endif
@@ -120,7 +120,7 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                             @if ($d->telefono_publico)
                                 <li class="flex gap-2">
                                     <span class="text-slate-400 shrink-0">📞</span>
-                                    <a href="tel:{{ $d->telefono_publico }}" class="text-fp-primary hover:underline">
+                                    <a href="tel:{{ $d->telefono_publico }}" class="fp-enlace">
                                         {{ $d->telefono_publico }}
                                     </a>
                                 </li>
@@ -128,7 +128,7 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                             @if ($d->email_publico)
                                 <li class="flex gap-2">
                                     <span class="text-slate-400 shrink-0">✉️</span>
-                                    <a href="mailto:{{ $d->email_publico }}" class="text-fp-primary hover:underline">
+                                    <a href="mailto:{{ $d->email_publico }}" class="fp-enlace">
                                         {{ $d->email_publico }}
                                     </a>
                                 </li>
@@ -145,7 +145,7 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                             <div class="mt-auto pt-5">
                                 <a href="{{ $urlTienda }}"
                                    aria-label="Ver la tienda de {{ $d->nombre_comercial }}"
-                                   class="inline-flex w-full items-center justify-center rounded-xl bg-fp-sidebar px-4 py-2.5 text-sm font-semibold text-white hover:bg-fp-accent">
+                                   class="fp-btn fp-btn-oscuro w-full rounded-xl py-2.5">
                                     Ver tienda
                                 </a>
                             </div>

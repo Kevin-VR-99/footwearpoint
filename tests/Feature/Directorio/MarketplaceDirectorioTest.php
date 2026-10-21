@@ -91,15 +91,17 @@ class MarketplaceDirectorioTest extends TestCase
     // Página pública /marketplace
     // ---------------------------------------------------------------
 
-    public function test_el_marketplace_busca_por_nombre_y_lugar_sin_mostrar_categorias(): void
+    public function test_el_marketplace_tiene_un_solo_buscador_por_nombre_y_lugar_sin_mostrar_categorias(): void
     {
         $norte = $this->otra('Zapatería Norte', ['Infantil']);
         $norte->update(['direccion_publica' => 'Centro, San Cristóbal de las Casas']);
 
         $pagina = $this->get(route('marketplace'))
             ->assertOk()
-            ->assertSee('Buscar por nombre')
-            ->assertSee('Buscar por lugar')
+            ->assertSee('Buscar distribuidora')
+            ->assertSee('Nombre, ciudad, colonia o dirección')
+            ->assertDontSee('Buscar por nombre')
+            ->assertDontSee('Buscar por lugar')
             ->assertSee('Volver al inicio')
             ->assertSee('sticky top-[4.125rem]', false)
             ->assertSee('Buscando…')
@@ -111,14 +113,46 @@ class MarketplaceDirectorioTest extends TestCase
             ->set('q', 'Norte')
             ->assertSee('Zapatería Norte')
             ->assertDontSee('Calzados Ramírez')
-            ->set('q', '')
-            ->set('lugar', 'Cristóbal')
+            ->set('q', 'Cristóbal')
             ->assertSee('Zapatería Norte')
             ->assertDontSee('Calzados Ramírez')
-            ->set('lugar', 'no-existe-xyz')
+            // Nombre y lugar en el mismo campo: cada palabra debe coincidir en alguno de los dos.
+            ->set('q', 'Norte Centro')
+            ->assertSee('Zapatería Norte')
+            ->set('q', 'Norte Tuxtla')
+            ->assertDontSee('Zapatería Norte')
+            ->set('q', 'no-existe-xyz')
             ->assertSee('Ninguna distribuidora coincide con esa búsqueda.');
 
         $pagina->assertDontSee('Infantil');
+    }
+
+    public function test_un_enlace_viejo_con_lugar_llena_el_buscador_unificado(): void
+    {
+        $norte = $this->otra('Zapatería Norte', ['Infantil']);
+        $norte->update(['direccion_publica' => 'Col. Centro, Palenque']);
+
+        Livewire::withQueryParams(['lugar' => 'Palenque'])
+            ->test('marketplace.index')
+            ->assertSet('q', 'Palenque')
+            ->assertSee('Zapatería Norte')
+            ->assertDontSee('Calzados Ramírez');
+    }
+
+    public function test_el_buscador_unificado_usa_la_sucursal_principal_si_no_hay_direccion_publica(): void
+    {
+        $norte = $this->otra('Zapatería Norte', ['Infantil']);
+        $norte->update(['direccion_publica' => null]);
+        \App\Models\Sucursal::withoutGlobalScopes()->updateOrCreate(
+            ['distribuidora_id' => $norte->id, 'es_principal' => true],
+            ['nombre' => 'Matriz Ocosingo', 'direccion' => 'Barrio de Guadalupe, Ocosingo', 'activa' => true],
+        );
+
+        $nombres = app(\App\Services\Directorio\DirectorioPublico::class)
+            ->distribuidoras(null, null, null, 'Ocosingo')
+            ->pluck('nombre_comercial');
+
+        $this->assertSame(['Zapatería Norte'], $nombres->all());
     }
 
     public function test_la_pagina_no_filtra_por_categoria_aunque_llegue_en_la_direccion(): void
