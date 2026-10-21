@@ -282,7 +282,9 @@
                         </span>
                     </button>
 
-                    <div class="flex-1"></div>
+                    <div class="flex flex-1 justify-center">
+                        <livewire:busqueda.global />
+                    </div>
 
                     <div class="flex items-center gap-1.5 sm:gap-2">
                         <livewire:notificaciones.nav-badge />

@@ -182,7 +182,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
     </div>
 
     <div class="relative overflow-x-auto fp-tarjeta fp-aparecer">
-        <x-ui.cargando />
+        <x-ui.cargando objetivo="estado,gotoPage,nextPage,previousPage" />
         <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
                 <tr>

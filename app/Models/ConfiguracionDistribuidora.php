@@ -38,6 +38,7 @@ class ConfiguracionDistribuidora extends Model
         'mp_refresh_token',
         'mp_token_expira_en',
         'mp_aviso_reconexion_at',
+        'stock_minimo_general',
     ];
 
     /**

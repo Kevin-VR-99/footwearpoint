@@ -12,6 +12,7 @@ new class extends Component {
     public int $dias_maximos_recoleccion = 5;
     public string $moneda = 'MXN';
     public string $zona_horaria = 'America/Mexico_City';
+    public int $stock_minimo_general = 0;
 
     public function mount(): void
     {
@@ -24,6 +25,7 @@ new class extends Component {
             $this->dias_maximos_recoleccion = $config->dias_maximos_recoleccion;
             $this->moneda = $config->moneda;
             $this->zona_horaria = $config->zona_horaria;
+            $this->stock_minimo_general = (int) $config->stock_minimo_general;
         }
     }
 
@@ -37,6 +39,7 @@ new class extends Component {
             'dias_maximos_recoleccion' => ['required', 'integer', 'min:1'],
             'moneda' => ['required', 'string', 'size:3'],
             'zona_horaria' => ['required', 'string', 'max:60'],
+            'stock_minimo_general' => ['required', 'integer', 'min:0', 'max:100000'],
         ]);
 
         app(ActualizarConfiguracionDistribuidoraAction::class)->ejecutar($datos);
@@ -73,6 +76,12 @@ new class extends Component {
                 <label for="general-moneda" class="block text-sm font-medium text-slate-700 mb-1">Moneda</label>
                 <input id="general-moneda" type="text" wire:model="moneda" maxlength="3" class="w-full rounded-lg bg-white text-sm uppercase shadow-sm focus:ring-fp-primary">
             </div>
+        </div>
+        <div class="fp-campo" data-stock-minimo-general>
+            <label for="general-stock-minimo-general" class="block text-sm font-medium text-slate-700 mb-1">Stock mínimo general (piezas por variante)</label>
+            <input id="general-stock-minimo-general" type="number" min="0" wire:model="stock_minimo_general" aria-describedby="ayuda-stock-minimo" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+            <p id="ayuda-stock-minimo" class="mt-1 text-xs text-slate-500">Si una talla y color baja de este número te avisamos en la campana. 0 = sin alerta. Cada variante puede tener su propio mínimo en Stock local.</p>
+            @error('stock_minimo_general') <p class="mt-1 text-sm text-fp-danger">{{ $message }}</p> @enderror
         </div>
         <div class="fp-campo">
             <label for="general-zona-horaria" class="block text-sm font-medium text-slate-700 mb-1">Zona horaria</label>
