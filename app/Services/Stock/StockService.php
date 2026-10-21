@@ -59,6 +59,108 @@ class StockService
     }
 
     /**
+     * Entrada por modelo (o importación): varias variantes en UNA transacción.
+     * Un movimiento por variante, mismo motivo. Si una falla, no entra ninguna.
+     *
+     * @param  array<int, int>  $cantidades  variante_id => cantidad (> 0)
+     * @param  array<int, string|null>  $motivos  motivo propio por variante (opcional)
+     * @return list<MovimientoStock>
+     */
+    public function registrarEntradas(array $cantidades, ?string $motivo = null, array $motivos = []): array
+    {
+        $cantidades = array_filter(
+            array_map('intval', $cantidades),
+            fn (int $cantidad) => $cantidad !== 0,
+        );
+
+        if ($cantidades === []) {
+            throw new OperacionInvalidaException('Escribe la cantidad de al menos una talla.', 422);
+        }
+
+        foreach ($cantidades as $cantidad) {
+            if ($cantidad < 1) {
+                throw new OperacionInvalidaException('Las cantidades deben ser mayores que cero.', 422);
+            }
+        }
+
+        // Orden fijo de bloqueo: dos entradas simultáneas no se esperan en cruz.
+        ksort($cantidades);
+
+        return DB::transaction(function () use ($cantidades, $motivo, $motivos) {
+            $movimientos = [];
+
+            foreach ($cantidades as $varianteId => $cantidad) {
+                $stock = $this->stockBloqueado((int) $varianteId, permitirCreacion: true);
+                $anterior = (int) $stock->cantidad_disponible;
+                $posterior = $anterior + $cantidad;
+
+                $this->guardarExistencia($stock, $posterior);
+
+                $motivoVariante = ($motivos[$varianteId] ?? null) ?: $motivo;
+                $movimiento = $this->registrarMovimiento($stock, 'entrada', $cantidad, $anterior, $posterior, $motivoVariante);
+                $this->auditarMovimiento('stock.entrada', $stock, $movimiento);
+                $movimiento->setRelation('stockLocal', $stock);
+                $movimientos[] = $movimiento;
+            }
+
+            return $movimientos;
+        });
+    }
+
+    /**
+     * Movimientos recientes de una existencia de esta distribuidora y sucursal.
+     */
+    public function movimientosDe(int $stockLocalId, int $limite = 15, int $pagina = 1)
+    {
+        $stock = $this->consultar()->whereKey($stockLocalId)->firstOrFail();
+
+        return MovimientoStock::query()
+            ->where('distribuidora_id', $stock->distribuidora_id)
+            ->where('stock_local_id', $stock->id)
+            ->with(['registradoPor.usuario:id,nombre', 'ventaDetalle.ventaDirecta:id,folio'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate($limite, ['*'], 'movimientos', $pagina);
+    }
+
+    /**
+     * Piezas por variante en pedidos abiertos (aún no entregados ni cerrados).
+     * Ojo: los pedidos se surten de fábrica y NUNCA reservan ni descuentan
+     * stock_local (ver DescuentoStockVentaDirectaService). Es informativo.
+     *
+     * @param  iterable<int>  $varianteIds
+     * @return array<int, int> variante_id => piezas
+     */
+    public function enPedidosAbiertos(iterable $varianteIds): array
+    {
+        $ids = collect($varianteIds)->filter()->map(fn ($id) => (int) $id)->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        return DB::table('pedido_detalle as d')
+            ->join('pedidos as p', function ($join) {
+                $join->on('p.id', '=', 'd.pedido_id')->on('p.distribuidora_id', '=', 'd.distribuidora_id');
+            })
+            ->where('d.distribuidora_id', $this->contexto->distribuidoraId())
+            ->whereIn('d.variante_id', $ids)
+            ->whereIn('p.estado', self::ESTADOS_PEDIDO_ABIERTO)
+            ->where('d.estado_surtido', '!=', 'no_surtido')
+            ->groupBy('d.variante_id')
+            ->selectRaw('d.variante_id, SUM(d.cantidad) as piezas')
+            ->pluck('piezas', 'd.variante_id')
+            ->map(fn ($piezas) => (int) $piezas)
+            ->all();
+    }
+
+    /** Estados en los que un pedido sigue vivo y todavía no se entrega. */
+    public const ESTADOS_PEDIDO_ABIERTO = [
+        'colocado', 'en_revision', 'confirmado', 'parcialmente_disponible', 'incluido_en_ciclo',
+        'solicitado_fabrica', 'en_transito', 'recibido_distribuidora', 'listo_entrega',
+    ];
+
+    /**
      * E6-02 - Ajuste manual con motivo obligatorio (merma, correccion).
      */
     public function registrarAjuste(int $varianteId, string $tipo, int $cantidad, string $motivo): MovimientoStock

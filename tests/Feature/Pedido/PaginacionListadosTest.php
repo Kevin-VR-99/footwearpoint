@@ -109,6 +109,6 @@ class PaginacionListadosTest extends TestCase
         $this->actingAs(Usuario::where('email', self::EMPLEADO)->firstOrFail());
 
         $this->assertSame(25, Livewire::test('vales.index')->instance()->vales->perPage());
-        $this->assertSame(25, Livewire::test('stock.index')->instance()->existencias->perPage());
+        $this->assertSame(25, Livewire::test('stock.index')->instance()->grupos->perPage());
     }
 }
