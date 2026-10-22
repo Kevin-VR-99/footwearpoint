@@ -157,7 +157,12 @@ class ProductoCatalogo {
     this.linea,
     this.categoria,
     this.precioMayorista,
+    this.urlPublica,
   });
+
+  /// Ficha del producto en la tienda pública de la distribuidora, para
+  /// compartirla por WhatsApp. Null si la tienda no está publicada.
+  final String? urlPublica;
 
   /// id de producto_campana (la publicación). Es el que se usa al armar un
   /// pedido (producto_campana_id), no el id del producto.
@@ -245,6 +250,7 @@ class ProductoCatalogo {
       codigoCatalogo: json['codigo_catalogo'] as String,
       precioMinoristaSugerido: (json['precio_minorista_sugerido'] as num).toDouble(),
       precioMayorista: (json['precio_mayorista'] as num?)?.toDouble(),
+      urlPublica: json['url_publica'] as String?,
       imagenes: (json['imagenes'] as List<dynamic>? ?? const [])
           .map((i) => ImagenCatalogo.desdeJson(i as Map<String, dynamic>))
           .toList(),
@@ -270,6 +276,7 @@ class ProductoCatalogo {
     'codigo_catalogo': codigoCatalogo,
     'precio_minorista_sugerido': precioMinoristaSugerido,
     if (precioMayorista != null) 'precio_mayorista': precioMayorista,
+    if (urlPublica != null) 'url_publica': urlPublica,
     'imagenes': [for (final imagen in imagenes) imagen.aJson()],
     'variantes': [for (final variante in variantes) variante.aJson()],
   };
