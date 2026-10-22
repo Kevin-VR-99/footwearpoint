@@ -51,13 +51,21 @@ void main() {
       rutas.add('${peticion.method} $ruta');
 
       if (ruta == '/pedidos') {
+        final todos = lista ??
+            [
+              _pedido(3, 'PED-003', 'solicitado_fabrica'),
+              _pedido(2, 'PED-002', 'borrador'),
+              _pedido(1, 'PED-001', 'entregado', total: 900, pagado: 900, anticipoPendiente: 0),
+            ];
+        final estado = peticion.url.queryParameters['estado'];
+        final excluir = peticion.url.queryParameters['excluir_borrador'];
+        final visibles = todos.where((pedido) {
+          if (estado != null) return pedido['estado'] == estado;
+          if (excluir == '1') return pedido['estado'] != 'borrador';
+          return true;
+        }).toList();
         return _json({
-          'data': lista ??
-              [
-                _pedido(3, 'PED-003', 'solicitado_fabrica'),
-                _pedido(2, 'PED-002', 'borrador'),
-                _pedido(1, 'PED-001', 'entregado', total: 900, pagado: 900, anticipoPendiente: 0),
-              ],
+          'data': visibles,
         }, 200);
       }
       if (ruta == '/pedidos/3') {
@@ -98,7 +106,10 @@ void main() {
   testWidgets('muestra los pedidos propios con su estado y saldo, sin borradores', (tester) async {
     final rutas = await abrir(tester);
 
-    expect(rutas, contains('GET /pedidos'));
+    expect(
+      rutas.any((ruta) => ruta == 'GET /pedidos'),
+      isTrue,
+    );
     expect(find.text('PED-003'), findsOneWidget);
     expect(find.text('Solicitado fábrica'), findsOneWidget);
     expect(find.text('PED-001'), findsOneWidget);
@@ -108,6 +119,12 @@ void main() {
 
     expect(find.text('Saldo pendiente'), findsOneWidget);
     expect(find.text(r'$1,600.00'), findsNWidgets(2));
+
+    await tester.tap(find.text('Sin enviar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('PED-002'), findsOneWidget);
+    expect(find.text('PED-003'), findsNothing);
   });
 
   testWidgets('sin pedidos, lo dice', (tester) async {
