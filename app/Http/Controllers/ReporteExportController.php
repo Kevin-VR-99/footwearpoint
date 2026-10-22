@@ -38,6 +38,15 @@ class ReporteExportController extends Controller
             'marca' => isset($datos['marca']) ? (int) $datos['marca'] : null,
         ];
 
+        // Reportes grandes: a la cola, con aviso en Notificaciones (la pantalla
+        // no se queda esperando ni se agota la memoria del contenedor).
+        $cola = app(\App\Services\Exportar\ExportacionesEnCola::class);
+        if ($cola->reporteVaALaCola($filtros)) {
+            $cola->solicitar($request->user(), \App\Services\Exportar\ExportacionesEnCola::TIPO_REPORTE, $formato, $filtros);
+
+            return redirect()->route('reportes.index')->with('exportacion_en_cola', \App\Services\Exportar\ExportacionesEnCola::MENSAJE_EN_COLA);
+        }
+
         $contenido = $formato === 'pdf' ? $exportar->pdf($filtros) : $exportar->xlsx($filtros);
         $tipo = $formato === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 

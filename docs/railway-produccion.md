@@ -138,3 +138,15 @@ Verificación: `curl -I https://footwearpoint.app/build/assets/app-XXXX.css` tra
 - UptimeRobot, Better Stack o similar: monitor HTTP(S) a `https://footwearpoint.app/up`, cada 5 min,
   esperar 200, alerta por correo/Telegram al equipo. `/up` no requiere sesión ni toca datos.
 - Opcional: un segundo monitor de palabra clave sobre `/login` para detectar errores 500 del panel.
+
+## I. Exportaciones grandes en la cola
+- Reporte (PDF/Excel) con más de `EXPORTACIONES_UMBRAL_REPORTE` filas estimadas (1500) y listado de pedidos
+  con más de `EXPORTACIONES_UMBRAL_LISTADO` filas (2000) se arman en el **worker**; lo demás sigue siendo
+  descarga inmediata. Clientes directos y mayoristas siguen siempre inmediatos (ya se cargan completos en pantalla).
+- Web y worker: `EXPORTACIONES_DISK=catalogos` (bucket **privado** de R2 que ya existe; los archivos quedan
+  en `exportaciones/{distribuidora_id}/`). Sin la variable usa `local`, que en Railway se borra en cada deploy.
+- El aviso llega a **Notificaciones** con un enlace firmado de 30 min (`EXPORTACIONES_MINUTOS_ENLACE`); el
+  archivo vive 24 h (`EXPORTACIONES_HORAS_VIGENCIA`). Solo lo baja quien lo pidió, en su distribuidora.
+- Cron opcional `footwearpoint-limpiar-exportaciones`: start command `php artisan exportaciones:limpiar`,
+  schedule `15 11 * * *` (5:15 CDMX), restart policy Never.
+- Migración nueva: `2026_10_21_130000_crea_exportaciones` (la corre el pre-deploy).

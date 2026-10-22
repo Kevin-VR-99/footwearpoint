@@ -448,6 +448,12 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         $pestanas = ['resumen' => 'Estado de cuenta', 'pedidos' => 'Pedidos', 'ventas' => 'Ventas de mostrador', 'cobrar' => 'Por cobrar', 'demanda' => 'Demanda'];
     @endphp
 
+    @if (session('exportacion_en_cola'))
+        <div class="no-imprimir mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800" role="status" data-aviso-exportacion>
+            {{ session('exportacion_en_cola') }} <a href="{{ route('notificaciones.index') }}" class="fp-enlace font-medium" wire:navigate>Ver notificaciones</a>
+        </div>
+    @endif
+
     {{-- Encabezado compacto: quién, qué periodo y descargas con los mismos filtros. --}}
     <header id="estado-cuenta" class="fp-tarjeta fp-aparecer mb-4 p-4 sm:p-5">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

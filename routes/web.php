@@ -226,6 +226,12 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
         ->whereIn('formato', ['pdf', 'xlsx'])
         ->name('reportes.descargar');
 
+    // Exportaciones en cola: enlace firmado y temporal, solo para quien la pidió.
+    Route::get('/exportaciones/{exportacion}/descargar', \App\Http\Controllers\DescargarExportacionController::class)
+        ->whereNumber('exportacion')
+        ->middleware(['signed', 'throttle:30,1'])
+        ->name('exportaciones.descargar');
+
     // TG-160 — bitácora de auditoría (solo admin_distribuidora)
     Route::livewire('/auditoria', 'auditoria.index')
         ->name('auditoria.index')
