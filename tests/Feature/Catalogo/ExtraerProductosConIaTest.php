@@ -463,4 +463,64 @@ class ExtraerProductosConIaTest extends TestCase
 
         $this->assertNull($importacion->fresh()->archivo_ia_id);
     }
+
+    public function test_si_la_respuesta_no_cabe_parte_el_bloque_y_no_pierde_productos(): void
+    {
+        // Con max_tokens el JSON llega cortado. Antes eso tiraba toda la
+        // importación; ahora el bloque se parte en dos y se vuelve a pedir.
+        $importacion = $this->importacionConCatalogoDe(25);
+        $this->lector->cortaSiAbarcaMasDe = 5;
+
+        $this->accion()->ejecutar($importacion);
+
+        $importacion->refresh();
+        $this->assertSame('requiere_revision', $importacion->estado);
+        $this->assertSame(4, $importacion->productosStaging()->count());
+
+        // Lo de las vueltas cortadas también se cobra y queda anotado.
+        $cortadas = collect($this->lector->bloquesPedidos)->filter(fn ($b) => $b['hasta'] - $b['desde'] + 1 > 5)->count();
+        $this->assertGreaterThan(0, $cortadas);
+        $this->assertGreaterThanOrEqual($cortadas * 16000, (int) $importacion->tokens_salida);
+    }
+
+    public function test_una_sola_pagina_que_no_cabe_avisa_con_un_mensaje_claro(): void
+    {
+        $importacion = $this->importacionConCatalogoDe(3);
+        $this->lector->cortaSiAbarcaMasDe = 0;
+
+        $this->accion()->ejecutar($importacion);
+
+        $importacion->refresh();
+        $this->assertSame('error', $importacion->estado);
+        $this->assertStringContainsString('IA_MAX_TOKENS_BLOQUE', (string) $importacion->mensaje_error);
+    }
+
+    public function test_un_reintento_suma_al_gasto_anterior_y_no_lo_borra(): void
+    {
+        // El tope mensual suma costo_usd: si el reintento lo pisara, lo que
+        // ya se pagó en el intento fallido desaparecería de la cuenta.
+        $importacion = $this->importacionConCatalogoDe(15);
+        $importacion->update(['costo_usd' => 1.5, 'tokens_entrada' => 1000, 'tokens_salida' => 500]);
+
+        $this->accion()->ejecutar($importacion);
+
+        $importacion->refresh();
+        $this->assertGreaterThan(1.5, (float) $importacion->costo_usd);
+        $this->assertSame(500 + 8000, (int) $importacion->tokens_salida);
+    }
+
+    public function test_procesar_solo_encola_si_logra_tomar_la_importacion(): void
+    {
+        // Doble clic / dos pestañas: la segunda petición ya no la encuentra
+        // en "cargado" o "error" y no encola otra lectura pagada.
+        Queue::fake();
+
+        $importacion = $this->importacionConCatalogoDe(15);
+        $this->actingAs($this->adminGeneral());
+
+        Livewire::test('admin.catalogos-importaciones')->call('procesar', $importacion->id)->assertSet('esError', false);
+        Livewire::test('admin.catalogos-importaciones')->call('procesar', $importacion->id)->assertSet('esError', true);
+
+        Queue::assertPushed(ProcesarCatalogoConIa::class, 1);
+    }
 }

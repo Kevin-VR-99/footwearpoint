@@ -28,8 +28,12 @@ class SubirCatalogoParaImportarAction
     /** Tamano maximo en kilobytes. Los catalogos reales pesan unos 28 MB. */
     public const MAXIMO_KB = 40960;
 
-    /** Lo que se acepta. El enum de la tabla tambien contempla imagenes. */
-    public const EXTENSIONES = ['pdf', 'jpg', 'jpeg', 'png'];
+    /**
+     * Lo que se acepta. El enum de la tabla tambien contempla imagenes, pero
+     * la lectura con IA solo sabe de PDF (cuenta paginas y lo sube como
+     * application/pdf): una foto se aceptaba y luego fallaba al procesar.
+     */
+    public const EXTENSIONES = ['pdf'];
 
     public function __construct(private RegistrarAuditoriaAction $auditoria)
     {

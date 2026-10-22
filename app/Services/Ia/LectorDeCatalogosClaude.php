@@ -67,6 +67,20 @@ class LectorDeCatalogosClaude implements LectorDeCatalogos
             ]],
         );
 
+        $uso = $respuesta->usage;
+        $consumo = new UsoDeTokens(
+            entrada: (int) ($uso->inputTokens ?? 0),
+            salida: (int) ($uso->outputTokens ?? 0),
+            cacheEscritura: (int) ($uso->cacheCreationInputTokens ?? 0),
+            cacheLectura: (int) ($uso->cacheReadInputTokens ?? 0),
+        );
+
+        // Si se acabó el espacio de respuesta, el JSON viene cortado: no se
+        // intenta leer, se avisa para que el bloque se parta en dos.
+        if (($respuesta->stopReason ?? null) === 'max_tokens') {
+            throw new RespuestaCortadaPorTokens($desde, $hasta, $consumo);
+        }
+
         $texto = '';
         foreach ($respuesta->content as $bloque) {
             if ($bloque->type === 'text') {
@@ -80,16 +94,9 @@ class LectorDeCatalogosClaude implements LectorDeCatalogos
             throw new RuntimeException("La IA respondió algo que no se pudo leer en las páginas {$desde} a {$hasta}.");
         }
 
-        $uso = $respuesta->usage;
-
         return new BloqueDeCatalogo(
             productos: $datos['productos'],
-            uso: new UsoDeTokens(
-                entrada: (int) ($uso->inputTokens ?? 0),
-                salida: (int) ($uso->outputTokens ?? 0),
-                cacheEscritura: (int) ($uso->cacheCreationInputTokens ?? 0),
-                cacheLectura: (int) ($uso->cacheReadInputTokens ?? 0),
-            ),
+            uso: $consumo,
         );
     }
 
