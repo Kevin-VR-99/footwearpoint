@@ -519,9 +519,9 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                                 </p>
                             </div>
 
-                            {{-- wire:model.live: lo que el servidor corrija se ve aquí de inmediato. --}}
+                            {{-- wire:model.live (300 ms de pausa): lo que el servidor corrija se ve aquí casi de inmediato sin un viaje por tecla. --}}
                             <input type="number" min="1" max="{{ $linea['disponible'] }}"
-                                   wire:model.live="lineas.{{ $clave }}.cantidad"
+                                   wire:model.live.debounce.300ms="lineas.{{ $clave }}.cantidad"
                                    class="w-16 rounded-lg text-sm text-center focus:ring-fp-primary">
 
                             <div class="text-right w-20">

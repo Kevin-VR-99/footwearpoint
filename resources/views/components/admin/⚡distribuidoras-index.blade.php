@@ -698,7 +698,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="fp-campo md:col-span-2">
                     <label for="distribuidoras-index-nuevo-nombre-comercial" class="block text-sm font-medium mb-1 text-slate-700">Nombre comercial *</label>
-                    <input id="distribuidoras-index-nuevo-nombre-comercial" type="text" wire:model.live="nuevo_nombre_comercial"
+                    <input id="distribuidoras-index-nuevo-nombre-comercial" type="text" wire:model.live.debounce.400ms="nuevo_nombre_comercial"
                         class="w-full rounded-lg text-sm">
                     @error('nuevo_nombre_comercial')
                         <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
