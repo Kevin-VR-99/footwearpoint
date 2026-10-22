@@ -27,6 +27,7 @@
                 <a href="{{ app(\App\Services\Tienda\EnlaceTienda::class)->url($distribuidora) }}" class="flex min-w-0 items-center gap-2.5 rounded-xl py-1 pr-2.5 pl-1 transition hover:bg-fp-page">
                     @if ($distribuidora->logotipo_url)
                         <img src="{{ $distribuidora->logotipo_url }}" alt="Logo {{ $distribuidora->nombre_comercial }}"
+                             width="40" height="40" decoding="async"
                              class="h-10 w-10 shrink-0 rounded-full bg-white object-contain p-0.5 shadow-sm ring-2 ring-fp-primary/20">
                     @else
                         <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fp-sidebar ring-2 ring-fp-primary/20">
