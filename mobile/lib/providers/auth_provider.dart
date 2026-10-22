@@ -8,6 +8,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/usuario.dart';
 import '../services/api_service.dart';
 import '../services/aperturas_push.dart';
+import '../services/avisos_en_vivo.dart';
 import '../services/enlaces_app.dart';
 import '../services/registro_fcm.dart';
 
@@ -261,6 +262,7 @@ class AuthProvider extends ChangeNotifier {
       _renovacionTokenFcm = null;
       registroFcm.detener();
       unawaited(AperturasPush.detener());
+      unawaited(AvisosEnVivo.detener());
       EnlacesApp.olvidar();
 
       try {
@@ -486,8 +488,10 @@ class AuthProvider extends ChangeNotifier {
       debugPrint('Error al escuchar la renovación FCM: $e');
     }
 
-    // Al tocar un push de cambio de estado se abre su historial.
+    // Al tocar un push se abre el pedido. Con la app abierta, el aviso entra
+    // por AvisosEnVivo: la campanita se actualiza y el cascarón enseña la franja.
     unawaited(AperturasPush.escuchar());
+    unawaited(AvisosEnVivo.escuchar());
 
     try {
       // 0. TG-183: desde Android 13 hay que pedir permiso para mostrar

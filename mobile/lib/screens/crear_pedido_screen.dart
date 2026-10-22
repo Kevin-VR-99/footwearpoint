@@ -54,12 +54,24 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
   PedidoResumen? _pedido;
   String? _avisoVale;
 
-  bool get _esRevendedor => widget.producto.precioMayorista != null;
+  /// TG-281: lo dice el rol, no el precio.
+  ///
+  /// Antes era `producto.precioMayorista != null`, aprovechando que el
+  /// servidor solo le manda ese precio al mayorista. Si un producto se
+  /// quedara sin precio mayorista configurado, a un mayorista le saldria la
+  /// pantalla del cliente directo. El rol no depende de un producto suelto.
+  bool get _esRevendedor => context.read<AuthProvider>().rol == 'revendedor';
 
   /// Solo para orientar antes de enviar. El total de verdad lo calcula el
   /// servidor según el tipo de pedido (TG-166).
+  ///
+  /// Si fuera mayorista y al producto le faltara el precio de mayoreo, se
+  /// usa el de menudeo: es un numero para orientar, y enseñar uno de mas
+  /// molesta menos que reventar la pantalla.
   double get _precioUnitarioEstimado =>
-      _esRevendedor ? widget.producto.precioMayorista! : widget.producto.precioMinoristaSugerido;
+      _esRevendedor && widget.producto.precioMayorista != null
+      ? widget.producto.precioMayorista!
+      : widget.producto.precioMinoristaSugerido;
 
   Future<void> _enviar() async {
     setState(() {

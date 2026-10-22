@@ -71,9 +71,30 @@ class _Servidor {
   final peticiones = <http.Request>[];
   var valeAplicado = false;
 
+  /// TG-281: la pantalla decide por el rol, no por si el producto trae
+  /// precio mayorista, así que la sesión tiene que decir quién es.
+  var rol = 'cliente_directo';
+
   MockClient get cliente => MockClient((peticion) async {
     peticiones.add(peticion);
     final ruta = peticion.url.path;
+
+    if (ruta.endsWith('/auth/me')) {
+      return _json({
+        'data': {
+          'usuario': {
+            'id': 7,
+            'nombre': 'María López',
+            'email': 'maria@ejemplo.com',
+            'telefono': null,
+            'estado': 'activo',
+          },
+          'rol': rol,
+          'legales_aceptados': true,
+          'distribuidora_id': 1,
+        },
+      }, 200);
+    }
 
     if (ruta.endsWith('/vales') && peticion.method == 'GET') return _json({'data': vales}, 200);
     if (ruta.endsWith('/pedidos') && peticion.method == 'POST') {
@@ -126,9 +147,17 @@ void main() {
   Future<void> abrir(WidgetTester tester, _Servidor servidor, {bool revendedor = false}) async {
     final producto = _producto(revendedor: revendedor);
 
+    // TG-281: la pantalla mira el rol de la sesión, así que hay que entrar
+    // de verdad y no solo crear un AuthProvider vacío.
+    servidor.rol = revendedor ? 'revendedor' : 'cliente_directo';
+    FlutterSecureStorage.setMockInitialValues(<String, String>{'token_sanctum': '1|token'});
+
+    final auth = AuthProvider(api: ApiService(cliente: servidor.cliente));
+    await auth.restaurarSesion();
+
     await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (_) => AuthProvider(api: ApiService(cliente: servidor.cliente)),
+      ChangeNotifierProvider<AuthProvider>.value(
+        value: auth,
         child: MaterialApp(
           home: CrearPedidoScreen(producto: producto, variante: producto.variantes.first),
         ),

@@ -34,13 +34,13 @@ class AperturasPush {
   AperturasPush._();
 
   static StreamSubscription<RemoteMessage>? _suscripcion;
-  static StreamSubscription<RemoteMessage>? _enPrimerPlano;
   static bool _inicialRevisado = false;
 
   static Future<void> escuchar() async {
     try {
       _suscripcion ??= FirebaseMessaging.onMessageOpenedApp.listen((m) => abrir(m.data));
-      _enPrimerPlano ??= FirebaseMessaging.onMessage.listen(mostrarEnPrimerPlano);
+      // Con la app abierta el cascarón enseña la franja (AvisosEnVivo). Aquí
+      // no se pone otro aviso encima: serían dos por el mismo mensaje.
 
       if (!_inicialRevisado) {
         _inicialRevisado = true;
@@ -50,12 +50,6 @@ class AperturasPush {
     } catch (e) {
       debugPrint('No se pudo escuchar la apertura de push: $e');
     }
-  }
-
-  static void mostrarEnPrimerPlano(RemoteMessage mensaje) {
-    final titulo = mensaje.notification?.title ?? 'Aviso';
-    final cuerpo = mensaje.notification?.body ?? '';
-    mostrarAviso(titulo: titulo, cuerpo: cuerpo, datos: mensaje.data);
   }
 
   static void mostrarAviso({
@@ -101,8 +95,6 @@ class AperturasPush {
   /// Al cerrar sesión.
   static Future<void> detener() async {
     await _suscripcion?.cancel();
-    await _enPrimerPlano?.cancel();
     _suscripcion = null;
-    _enPrimerPlano = null;
   }
 }

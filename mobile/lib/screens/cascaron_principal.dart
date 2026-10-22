@@ -1,3 +1,11 @@
+import 'dart:async';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+import '../services/aperturas_push.dart';
+import '../services/avisos_en_vivo.dart';
+import 'notificaciones_screen.dart';
+
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
@@ -64,10 +72,90 @@ class _CascaronPrincipalState extends State<CascaronPrincipal> {
     });
   }
 
+  StreamSubscription<RemoteMessage>? _avisos;
+
   @override
   void initState() {
     super.initState();
     _pestanas[0] = _construir(0);
+
+    // TG-281: con la app abierta, Android no enseña el aviso del sistema: se
+    // lo entrega a la app. Aqui se enseña dentro, que ademas es lo correcto:
+    // una notificacion del sistema encima de la app que ya estas usando
+    // sobra, y asi se puede tocar para ir directo a la bandeja.
+    _avisos = AvisosEnVivo.alLlegar.listen(_mostrar);
+  }
+
+  @override
+  void dispose() {
+    _avisos?.cancel();
+    super.dispose();
+  }
+
+  void _mostrar(RemoteMessage mensaje) {
+    if (!mounted) return;
+
+    final titulo = mensaje.notification?.title ?? 'Tienes un aviso nuevo';
+    final cuerpo = mensaje.notification?.body;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentMaterialBanner()
+      ..showMaterialBanner(
+        MaterialBanner(
+          backgroundColor: FpColores.insigniaInfoFondo,
+          leading: const Icon(
+            Icons.notifications_active_outlined,
+            color: FpColores.insigniaInfoTexto,
+          ),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                titulo,
+                style: const TextStyle(
+                  color: FpColores.insigniaInfoTexto,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (cuerpo != null && cuerpo.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  cuerpo,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: FpColores.insigniaInfoTexto,
+                    fontSize: 13.5,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                final datos = Map<String, dynamic>.from(mensaje.data);
+                if (pedidoDePush(datos) != null || solicitudCambioDePush(datos) != null) {
+                  AperturasPush.abrir(datos);
+                  return;
+                }
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const NotificacionesScreen(),
+                  ),
+                );
+              },
+              child: const Text('Ver'),
+            ),
+            TextButton(
+              onPressed: ScaffoldMessenger.of(context)
+                  .hideCurrentMaterialBanner,
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
   }
 
   @override
