@@ -14,6 +14,12 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] class extends Component {
+    use \App\Livewire\Concerns\GestionaBajasDeAcceso;
+
+    private function despuesDeCambioDeAcceso(): void
+    {
+        $this->cargarClientesDirectos();
+    }
     // TG-192: aviso del envio del enlace de restablecimiento.
     public ?string $avisoEnlace = null;
     public bool $avisoEnlaceEsError = false;
@@ -387,6 +393,18 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                                 @endif
                                 <button type="button" wire:click="abrirFormularioEditarCliente({{ $cliente->id }})"
                                     class="text-fp-primary text-xs font-medium">Editar</button>
+                                @if (\Illuminate\Support\Facades\Route::has('clientes.historial.show'))
+                                    <a href="{{ route('clientes.historial.show', $cliente->id) }}" wire:navigate class="text-fp-primary text-xs font-medium ml-3">Historial</a>
+                                @endif
+                                @if ($cliente->estado === 'activo')
+                                    <button type="button" wire:click="darDeBaja('cliente', {{ $cliente->id }})"
+                                        wire:confirm="¿Dar de baja a {{ $cliente->nombre }}? Ya no podrá entrar a la app; su historial se conserva."
+                                        class="ml-3 text-xs font-medium text-fp-danger transition-opacity hover:opacity-75" data-baja="cliente-{{ $cliente->id }}">Dar de baja</button>
+                                @else
+                                    <button type="button" wire:click="reactivar('cliente', {{ $cliente->id }})"
+                                        wire:confirm="¿Reactivar el acceso de {{ $cliente->nombre }}?"
+                                        class="ml-3 text-xs font-medium text-emerald-700 transition-opacity hover:opacity-75">Reactivar</button>
+                                @endif
                             </td>
                         </tr>
                     @endforeach

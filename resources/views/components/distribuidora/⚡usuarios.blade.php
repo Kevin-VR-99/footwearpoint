@@ -20,6 +20,13 @@ use Livewire\Component;
 use Spatie\Permission\PermissionRegistrar;
 
 new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class extends Component {
+    use \App\Livewire\Concerns\GestionaBajasDeAcceso;
+
+    private function despuesDeCambioDeAcceso(): void
+    {
+        $this->cargarEmpleados();
+        $this->cargarRevendedores();
+    }
     /** empleados o mayoristas. Lo decide la ruta. */
     public string $seccion = 'empleados';
     public $empleados = [];
@@ -138,8 +145,9 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
     public function toggleEstadoEmpleado(int $id): void
     {
         $empleado = DistribuidoraStaff::findOrFail($id);
-        $empleado->estado = $empleado->estado === 'activo' ? 'inactivo' : 'activo';
-        $empleado->save();
+        // Baja/reactivación con revocación de tokens y bitácora (BajaAccesoAction).
+        $empleado->estado === 'activo' ? $this->darDeBaja('empleado', $id) : $this->reactivar('empleado', $id);
+        $empleado->refresh();
         $this->cargarEmpleados();
     }
 
@@ -489,6 +497,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                             </td>
                             <td class="py-2 text-right">
                                 <button type="button" wire:click="toggleEstadoEmpleado({{ $empleado->id }})"
+                                    wire:confirm="{{ $empleado->estado === 'activo' ? '¿Dar de baja a este empleado? Pierde el acceso al panel de inmediato.' : '¿Reactivar a este empleado?' }}"
                                     class="text-fp-primary text-xs font-medium">
                                     {{ $empleado->estado === 'activo' ? 'Desactivar' : 'Activar' }}
                                 </button>
@@ -639,6 +648,15 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                                 @endif
                                 <button type="button" wire:click="abrirFormularioEditarRevendedor({{ $afiliacion->id }})"
                                     class="text-fp-primary text-xs font-medium">Editar</button>
+                                @if ($afiliacion->estado !== 'inactivo')
+                                    <button type="button" wire:click="darDeBaja('revendedor', {{ $afiliacion->id }})"
+                                        wire:confirm="¿Dar de baja a {{ $afiliacion->revendedor->nombre }}? Ya no podrá entrar a la app; su historial se conserva."
+                                        class="ml-3 text-xs font-medium text-fp-danger transition-opacity hover:opacity-75" data-baja="revendedor-{{ $afiliacion->id }}">Dar de baja</button>
+                                @else
+                                    <button type="button" wire:click="reactivar('revendedor', {{ $afiliacion->id }})"
+                                        wire:confirm="¿Reactivar el acceso de {{ $afiliacion->revendedor->nombre }}?"
+                                        class="ml-3 text-xs font-medium text-emerald-700 transition-opacity hover:opacity-75">Reactivar</button>
+                                @endif
                             </td>
                         </tr>
                     @endforeach

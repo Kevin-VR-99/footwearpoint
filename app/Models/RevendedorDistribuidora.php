@@ -8,6 +8,7 @@ use App\Models\Concerns\BelongsToTenant;
 class RevendedorDistribuidora extends Model
 {
     use BelongsToTenant;
+    use \App\Models\Concerns\RevocaAccesoAlDesactivar;
     protected $table = 'revendedor_distribuidora';
 
     protected $fillable = [
@@ -31,5 +32,12 @@ class RevendedorDistribuidora extends Model
     public function revendedor()
     {
         return $this->belongsTo(Revendedor::class, 'revendedor_id');
+    }
+
+    public function usuarioIdParaAcceso(): ?int
+    {
+        $id = $this->revendedor()->value('usuario_id');
+
+        return $id !== null ? (int) $id : null;
     }
 }

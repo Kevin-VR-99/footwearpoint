@@ -53,6 +53,25 @@ class AuthController extends Controller
         $usuario->tokens()->whereNotIn('id', $conservar)->delete();
     }
 
+    public const MENSAJE_BAJA = 'Tu acceso fue dado de baja. Comunícate con tu distribuidora.';
+
+    /**
+     * ¿Todos sus accesos (cliente mayorista, cliente directo, personal) están
+     * dados de baja? Un acceso 'suspendido' o 'activo' en cualquier lado no
+     * cuenta como baja (el revendedor suspendido sigue entrando, TG-140).
+     */
+    public static function accesoDadoDeBaja(int $usuarioId): bool
+    {
+        $revendedorId = \App\Models\Revendedor::withoutGlobalScopes()->where('usuario_id', $usuarioId)->value('id');
+
+        $estados = collect()
+            ->merge($revendedorId ? \App\Models\RevendedorDistribuidora::withoutGlobalScopes()->where('revendedor_id', $revendedorId)->pluck('estado') : [])
+            ->merge(\App\Models\ClienteDirecto::withoutGlobalScopes()->where('usuario_id', $usuarioId)->pluck('estado'))
+            ->merge(\App\Models\DistribuidoraStaff::withoutGlobalScopes()->where('usuario_id', $usuarioId)->pluck('estado'));
+
+        return $estados->isNotEmpty() && $estados->every(fn ($estado) => $estado === 'inactivo');
+    }
+
     public function login(LoginRequest $request, LimiteIntentosLogin $limite)
     {
         // TG-185 (A2): mismo limite que el panel web. Se revisa ANTES de mirar
@@ -79,6 +98,14 @@ class AuthController extends Controller
         if ($usuario->estado !== 'activo') {
             throw ValidationException::withMessages([
                 'email' => ['Tu cuenta no está activa.'],
+            ]);
+        }
+
+        // Baja de acceso: la distribuidora lo dio de baja (estado 'inactivo')
+        // y no tiene ningún otro acceso vigente. No se crea token.
+        if (self::accesoDadoDeBaja((int) $usuario->id)) {
+            throw ValidationException::withMessages([
+                'email' => [self::MENSAJE_BAJA],
             ]);
         }
 
@@ -147,6 +174,13 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Tu cuenta no está activa.',
             ], 401);
+        }
+
+        // Lo dieron de baja después del login (por si quedó algún token).
+        if (self::accesoDadoDeBaja((int) $usuario->id)) {
+            $usuario->currentAccessToken()?->delete();
+
+            return response()->json(['message' => self::MENSAJE_BAJA], 401);
         }
 
         // TG-196 (G5): su distribuidora se suspendió o rechazó después del

@@ -118,6 +118,8 @@ require __DIR__.'/api/reportes.php';
 
 // TG-228 (G9) — avisos de Mercado Pago (pública, sin sesión)
 require __DIR__.'/api/webhooks.php';
+// feature/funciones-completas — bajas, caja, conteos, clientes, comisiones
+require __DIR__.'/api/funciones.php';
 
 /*
 |--------------------------------------------------------------------------

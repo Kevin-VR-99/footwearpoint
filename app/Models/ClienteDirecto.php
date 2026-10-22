@@ -8,6 +8,7 @@ use App\Models\Concerns\BelongsToTenant;
 class ClienteDirecto extends Model
 {
     use BelongsToTenant;
+    use \App\Models\Concerns\RevocaAccesoAlDesactivar;
     protected $table = 'clientes_directos';
 
     protected $fillable = [
@@ -29,5 +30,12 @@ class ClienteDirecto extends Model
     public function usuario()
     {
         return $this->belongsTo(Usuario::class, 'usuario_id');
+    }
+
+    public function usuarioIdParaAcceso(): ?int
+    {
+        $id = $this->usuario_id;
+
+        return $id !== null ? (int) $id : null;
     }
 }
