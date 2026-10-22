@@ -25,5 +25,10 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal', 'role:admin_distribui
         ->middleware(\App\Http\Middleware\ExigirPermisoModulo::class.':'.\App\Services\Auth\PermisoModuloService::CLIENTES_IMPORTAR)
         ->name('clientes.importar');
 
+    // Inventario físico (permiso fino inventario.conteo; aplicar pide además stock.ajustar).
+    Route::livewire('/inventario/conteos', 'conteos.index')
+        ->middleware(\App\Http\Middleware\ExigirPermisoModulo::class.':'.\App\Services\Auth\PermisoModuloService::INVENTARIO_CONTEO)
+        ->name('conteos.index');
+
     Route::get('/caja/{id}/pdf', [\App\Http\Controllers\CorteCajaController::class, 'pdf'])->whereNumber('id')->name('caja.pdf');
 });
