@@ -66,10 +66,6 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        if (! $this->app->runningInConsole()) {
-            header('Content-Security-Policy: upgrade-insecure-requests');
-        }
-
         // TG-196 (G5): las acciones de Livewire (botones, formularios) no pasan
         // por las rutas del panel. Así 'solo.personal' se vuelve a revisar en
         // cada acción y una sesión abierta se cierra en cuanto la distribuidora

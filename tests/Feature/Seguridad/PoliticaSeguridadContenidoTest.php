@@ -71,4 +71,34 @@ class PoliticaSeguridadContenidoTest extends TestCase
         Log::shouldHaveReceived('warning')->withArgs(fn ($mensaje, $contexto) => str_starts_with($mensaje, 'CSP:')
             && $contexto['bloqueado'] === 'https://malo.test/x.js' && $contexto['directiva'] === 'script-src');
     }
+
+    public function test_con_https_upgrade_insecure_requests_va_en_su_propia_cabecera_en_report_only(): void
+    {
+        config(['app.url' => 'https://footwearpoint.test']);
+
+        $respuesta = $this->get('/login')->assertOk();
+
+        $this->assertSame('upgrade-insecure-requests', $respuesta->headers->get('Content-Security-Policy'));
+        $this->assertStringContainsString('upgrade-insecure-requests', (string) $respuesta->headers->get('Content-Security-Policy-Report-Only'));
+    }
+
+    public function test_con_https_y_enforce_upgrade_insecure_requests_va_dentro_de_la_politica(): void
+    {
+        config(['app.url' => 'https://footwearpoint.test', 'app.csp_modo' => 'enforce']);
+
+        $csp = (string) $this->get('/login')->assertOk()->headers->get('Content-Security-Policy');
+
+        $this->assertStringContainsString("'nonce-", $csp);
+        $this->assertStringContainsString('upgrade-insecure-requests', $csp);
+    }
+
+    public function test_sin_https_no_se_pide_upgrade_insecure_requests(): void
+    {
+        config(['app.url' => 'http://localhost']);
+
+        $respuesta = $this->get('/login')->assertOk();
+
+        $respuesta->assertHeaderMissing('Content-Security-Policy');
+        $this->assertStringNotContainsString('upgrade-insecure-requests', (string) $respuesta->headers->get('Content-Security-Policy-Report-Only'));
+    }
 }
