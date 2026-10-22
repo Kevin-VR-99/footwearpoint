@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../models/producto_catalogo.dart';
 import '../providers/carrito_revendedor_provider.dart';
+import '../services/compartir_whatsapp.dart';
 import '../widgets/bajo_pedido.dart';
 import '../tema/fp_colores.dart';
 import '../widgets/fp_componentes.dart';
@@ -63,6 +64,19 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         title: Text(producto.nombre),
         bottom: const FpBordeMarca(),
         actions: [
+          IconButton(
+            tooltip: 'Compartir por WhatsApp',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () => compartirPorWhatsApp(
+              context,
+              textoProductoWhatsApp(
+                nombre: producto.nombre,
+                modelo: producto.modelo,
+                precio: producto.precioMinoristaSugerido,
+                url: producto.urlPublica,
+              ),
+            ),
+          ),
           // El icono del carrito ahora siempre se muestra para revendedores si hay ítems acumulados
           if (esRevendedor)
             IconButton(

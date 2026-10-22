@@ -61,4 +61,10 @@ return [
         'timeout'          => 10,
     ],
 
+    // Push (FCM). Opcional: la ruta o el JSON van en FIREBASE_CREDENTIALS
+    // (config de kreait); esto es la alternativa en base64 para Railway.
+    'firebase' => [
+        'credenciales_base64' => env('FIREBASE_CREDENTIALS_BASE64'),
+    ],
+
 ];

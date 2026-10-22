@@ -32,4 +32,28 @@ class VentaDirectaController extends Controller
             ->response()
             ->setStatusCode(201);
     }
+
+    /** Cancela una venta de mostrador: stock de regreso, devolución del dinero y bitácora. */
+    public function anular(\Illuminate\Http\Request $request, int $id, \App\Services\VentaDirecta\AnularVentaDirectaAction $accion): JsonResponse
+    {
+        Gate::authorize('create', VentaDirecta::class);
+
+        $request->validate(['motivo' => ['required', 'string', 'min:5', 'max:300']]);
+
+        $venta = $accion->ejecutar($id, $request->string('motivo')->toString());
+
+        return response()->json([
+            'data' => [
+                'id'               => $venta->id,
+                'folio'            => $venta->folio,
+                'estado'           => $venta->estado,
+                'anulada_at'       => $venta->anulada_at?->toIso8601String(),
+                'motivo_anulacion' => $venta->motivo_anulacion,
+                'reembolsos'       => $venta->pagos->where('direccion', 'salida')->values()->map(fn ($p) => [
+                    'folio' => $p->folio, 'metodo' => $p->metodo, 'monto' => (float) $p->monto,
+                ]),
+            ],
+            'message' => 'Venta cancelada.',
+        ]);
+    }
 }

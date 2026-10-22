@@ -31,7 +31,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        $this->app->bind(EnviadorPush::class, EnviadorPushFirebase::class);
+        // Push real solo si hay credenciales de Firebase; si no, uno que no
+        // manda nada y lo deja claro en el log (ver CredencialesFirebase).
+        $this->app->bind(EnviadorPush::class, fn ($app) => \App\Support\CredencialesFirebase::configuradas()
+            ? $app->make(EnviadorPushFirebase::class)
+            : $app->make(\App\Services\Notificacion\Push\EnviadorPushNulo::class));
 
         // Uno solo por petición: guarda el descuento y los precios propios que
         // ya consultó, para no repetir consultas al armar el catálogo (TG-213).

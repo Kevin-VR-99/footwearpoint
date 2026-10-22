@@ -33,6 +33,16 @@ class CatalogoResource extends JsonResource
             'revendedor',
         ]) ?? false;
 
+        // Permiso fino «Ver precios de mayoreo» para el empleado (prendido por omisión).
+        if ($puedeVerMayorista && $request->user()->hasRole('empleado') && ! $request->user()->hasRole('admin_distribuidora')) {
+            if (! $request->attributes->has('fp.costos_ver')) {
+                $request->attributes->set('fp.costos_ver', app(\App\Services\Auth\PermisoModuloService::class)
+                    ->puede($request->user(), \App\Services\Auth\PermisoModuloService::COSTOS_VER));
+            }
+
+            $puedeVerMayorista = (bool) $request->attributes->get('fp.costos_ver');
+        }
+
         $precios = app(PrecioEfectivo::class);
         $linea = $this->campana?->linea;
 
@@ -58,6 +68,8 @@ class CatalogoResource extends JsonResource
             'codigo_catalogo'           => $this->codigo_catalogo,
             'precio_minorista_sugerido' => $precios->menudeo($this->resource),
             'precio_mayorista'          => $this->when($puedeVerMayorista, fn () => $precios->mayoreo($this->resource)),
+            // Ficha pública en la tienda de la distribuidora (para compartir por WhatsApp).
+            'url_publica' => self::urlPublica((int) $this->id),
             'imagenes' => ImagenProductoCampanaResource::collection($this->whenLoaded('imagenes')),
             'variantes' => $this->disponibilidadPorVariante->map(fn ($disponibilidad) => [
                 'variante_id'            => $disponibilidad->variante_id,
@@ -68,5 +80,22 @@ class CatalogoResource extends JsonResource
                 'disponibilidad'         => $disponibilidad->estado,
             ]),
         ];
+    }
+
+    /** La tienda se busca una vez por petición, no una por producto. */
+    private static function urlPublica(int $productoCampanaId): ?string
+    {
+        $atributos = request()->attributes;
+        $clave = 'fp.tienda_compartir.'.(int) \App\Support\Tenant::id();
+
+        if (! $atributos->has($clave)) {
+            $atributos->set($clave, \App\Models\Distribuidora::find(\App\Support\Tenant::id()));
+        }
+
+        $distribuidora = $atributos->get($clave);
+
+        return $distribuidora
+            ? app(\App\Services\Tienda\EnlaceTienda::class)->producto($distribuidora, $productoCampanaId)
+            : null;
     }
 }

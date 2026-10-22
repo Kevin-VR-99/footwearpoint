@@ -991,6 +991,27 @@ Errores (`{"message": ...}`): `404` línea inexistente o ajena; `409` ya hay una
 
 `{"data": [ ...mismo objeto... ]}`, las más recientes primero (máximo 200).
 
+### `GET /api/solicitudes-cambio/{id}`
+
+Detalle de una solicitud propia (el personal ve las de su distribuidora; otra distribuidora → 404). Mismo objeto, más `estado_etiqueta` y `timeline`:
+
+```json
+{ "timeline": [
+  { "estado": "solicitada", "etiqueta": "Solicitada", "nota": "Me queda chico", "fecha": "2026-10-05T12:00:00-06:00" },
+  { "estado": "autorizada", "etiqueta": "Autorizada", "nota": "Pasa a recoger", "fecha": "2026-10-06T10:00:00-06:00" }
+] }
+```
+
+Estados: `solicitada → autorizada | rechazada`; `autorizada → enviada_fabrica | vale_emitido | rechazada`; `enviada_fabrica → aceptada_fabrica | rechazada`; `aceptada_fabrica → vale_emitido`; `vale_emitido | rechazada → cerrada`. En cada paso el cliente recibe aviso en su bandeja (`tipo: cambio_estado`, `entidad_tipo: solicitud_cambio`), push y correo.
+
+### `POST /api/solicitudes-cambio/{id}/estado` (solo personal)
+
+`{ "estado": "autorizada", "nota": "opcional", "monto_vale": 900 }`. `nota` es obligatoria al rechazar. `monto_vale` (opcional, al pasar a `vale_emitido`) no puede ser mayor que el subtotal de la línea; por omisión es el subtotal. Permiso fino `cambios.resolver`. Transición no permitida → 409.
+
+### `GET /api/revendedor/comisiones?periodo=AAAA-MM` (cliente mayorista)
+
+Su comisión del mes (por omisión el actual): `{ "data": { "periodo", "porcentaje", "pedidos_pagados", "venta_pagada", "comision", "meta", "avance", "lugar" } }`. Cuenta los pedidos del mes (por fecha de colocación) ya pagados por completo. `meta`/`avance` son `null` si no hay meta. La app lo muestra en Inicio («Tu meta del mes»).
+
 ### Cambios en `GET /api/pedidos` y `GET /api/pedidos/{id}`
 
 - `fecha_entrega` (ISO 8601 o `null`).
@@ -1141,6 +1162,10 @@ Existen en `/api` y están probados, pero los consume el panel web, no la app de
 | Ruta | Para qué |
 |---|---|
 | `GET /api/ping` | Comprobar que la API responde |
+| `POST /api/ventas-directas/{id}/anular` | Cancelar una venta de mostrador (`motivo` obligatorio; permiso fino `ventas.cancelar`): regresa stock, registra reembolsos por método y vales |
+| `POST /api/distribuidora/accesos/{tipo}/{id}/baja` | Dar de baja (`tipo`: revendedor, cliente, empleado; `motivo` opcional). Revoca sesiones de la app y bloquea el login. Solo administración |
+| `POST /api/distribuidora/accesos/{tipo}/{id}/reactivar` | Reactivar un acceso dado de baja. Solo administración |
+| `GET /api/distribuidora/comisiones?periodo=AAAA-MM` | Ranking de comisiones y metas de clientes mayoristas (permiso fino `comisiones.ver`) |
 | `POST /api/webhooks/mercado-pago` | Aviso de Mercado Pago cuando cambia un pago (TG-228). En producción exige firma válida (`x-signature` con `ts` de menos de 5 min) |
 | `POST /api/csp-report` | El navegador avisa lo que la CSP bloquearía (auditoría 21-oct-2026) |
 

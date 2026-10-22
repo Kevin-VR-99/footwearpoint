@@ -110,6 +110,8 @@ class ResumenOperativoAction
 
         $ventasDirectas = 0;
         $montoVentas = 0.0;
+        $ventasAnuladas = 0;
+        $montoAnulado = 0.0;
         $listaVentas = [];
 
         if (Schema::hasTable('ventas_directas')) {
@@ -121,8 +123,12 @@ class ResumenOperativoAction
                 $vd->whereDate('fecha_venta', '<=', $hasta);
             }
 
-            $ventasDirectas = (clone $vd)->count();
-            $montoVentas = (float) (clone $vd)->sum('total');
+            // Las ventas canceladas no cuentan como venta: siguen en la lista
+            // (con su estado) pero no suman al total.
+            $ventasDirectas = (clone $vd)->where('estado', 'completada')->count();
+            $montoVentas = (float) (clone $vd)->where('estado', 'completada')->sum('total');
+            $ventasAnuladas = (clone $vd)->where('estado', 'anulada')->count();
+            $montoAnulado = (float) (clone $vd)->where('estado', 'anulada')->sum('total');
 
             $listaVentas = (clone $vd)
                 ->with([
@@ -181,6 +187,8 @@ class ResumenOperativoAction
             'ventas_directas' => [
                 'total' => $ventasDirectas,
                 'monto_total' => $montoVentas,
+                'anuladas' => $ventasAnuladas,
+                'monto_anulado' => $montoAnulado,
                 'lista' => $listaVentas,
             ],
         ];

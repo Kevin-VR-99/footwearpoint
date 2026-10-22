@@ -15,8 +15,9 @@ use Livewire\WithPagination;
 /**
  * TG-254 (R12, E12-01) — Solicitudes de cambio de producto.
  *
- * Lista las solicitudes de la distribuidora (solo consulta: autorizar,
- * rechazar y emitir el vale es de otra tarea) y permite registrar el cambio
+ * Lista las solicitudes de la distribuidora, permite moverlas por su flujo
+ * (autorizar, rechazar, fábrica, vale, cerrar; CambiarEstadoSolicitudCambioAction,
+ * que también le avisa al cliente) y registrar el cambio
  * de una venta de mostrador, que la app no muestra. Los cambios de pedidos
  * se piden desde el detalle del pedido o desde la app.
  */
@@ -98,6 +99,51 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         $this->errorMsg = '';
     }
 
+    #[Locked]
+    public ?int $resolviendoId = null;
+    #[Locked]
+    public string $estadoDestino = '';
+    public string $notaResolucion = '';
+    public ?string $montoVale = null;
+
+    public function getPuedeResolverProperty(): bool
+    {
+        return app(\App\Services\Auth\PermisoModuloService::class)->puede(auth()->user(), \App\Services\Auth\PermisoModuloService::CAMBIOS_RESOLVER);
+    }
+
+    public function prepararTransicion(int $id, string $estado): void
+    {
+        $solicitud = SolicitudCambio::query()->findOrFail($id);
+        abort_unless(in_array($estado, $solicitud->siguientesEstados(), true), 422);
+        $this->resolviendoId = $id;
+        $this->estadoDestino = $estado;
+        $this->notaResolucion = '';
+        $linea = $solicitud->pedidoDetalle ?? $solicitud->ventaDetalle;
+        $this->montoVale = $estado === 'vale_emitido' ? number_format((float) ($linea?->subtotal ?? 0), 2, '.', '') : null;
+        $this->errorMsg = '';
+    }
+
+    public function cancelarTransicion(): void
+    {
+        $this->resolviendoId = null;
+        $this->estadoDestino = '';
+    }
+
+    public function aplicarTransicion(\App\Services\Cambio\CambiarEstadoSolicitudCambioAction $accion): void
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $monto = $this->estadoDestino === 'vale_emitido' && is_numeric($this->montoVale) ? (float) $this->montoVale : null;
+            $s = $accion->ejecutar((int) $this->resolviendoId, $this->estadoDestino, $this->notaResolucion, $monto);
+            $this->mensaje = 'Solicitud #'.$s->id.': '.mb_strtolower(SolicitudCambio::etiqueta($s->estado)).'. Le avisamos al cliente.';
+            $this->cancelarTransicion();
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo actualizar la solicitud.');
+        }
+    }
+
     public function solicitarCambio(SolicitarCambioAction $accion): void
     {
         $this->mensaje = '';
@@ -116,7 +162,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
 
 <div class="space-y-4">
     <x-panel.encabezado titulo="Cambios"
-        subtitulo="Solicitudes de cambio de producto dentro del plazo. Si se autorizan, el cliente recibe un vale: no hay devoluciones en efectivo." />
+        subtitulo="Solicitudes de cambio de producto dentro del plazo. Cada paso le llega al cliente en la app y por correo. Si se autorizan, el cliente recibe un vale: no hay devoluciones en efectivo." />
 
     @if ($mensaje)
         <x-panel.alerta tipo="exito">{{ $mensaje }}</x-panel.alerta>
@@ -193,6 +239,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                     <th class="px-4 py-2">Motivo</th>
                     <th class="px-4 py-2">Plazo</th>
                     <th class="px-4 py-2">Estado</th>
+                    <th class="px-4 py-2 text-right">Acciones</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -214,10 +261,37 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                         </td>
                         <td class="px-4 py-3 max-w-xs">{{ $s->motivo }}</td>
                         <td class="px-4 py-3 text-xs">Pedida antes del {{ $s->fecha_limite_solicitud?->format('d/m/Y') }}</td>
-                        <td class="px-4 py-3"><span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs">{{ ucfirst(str_replace('_', ' ', $s->estado)) }}</span></td>
+                        <td class="px-4 py-3"><span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs">{{ \App\Models\SolicitudCambio::etiqueta($s->estado) }}</span></td>
+                        <td class="px-4 py-3 text-right">
+                            @if ($this->puedeResolver && $resolviendoId === $s->id)
+                                <div class="ml-auto max-w-xs space-y-2 text-left fp-aparecer" data-resolver-cambio="{{ $s->id }}">
+                                    <p class="text-xs font-medium text-slate-700">Pasar a: {{ \App\Models\SolicitudCambio::etiqueta($estadoDestino) }}</p>
+                                    @if ($estadoDestino === 'vale_emitido')
+                                        <label class="block text-xs text-slate-600">Monto del vale
+                                            <input type="number" step="0.01" min="0.01" wire:model="montoVale" class="mt-1 w-full rounded-lg text-sm">
+                                        </label>
+                                    @endif
+                                    <textarea wire:model="notaResolucion" rows="2" maxlength="500" class="w-full rounded-lg text-sm"
+                                        placeholder="{{ $estadoDestino === 'rechazada' ? 'Motivo del rechazo (obligatorio, lo ve el cliente)' : 'Nota para el cliente (opcional)' }}"></textarea>
+                                    <div class="flex gap-2">
+                                        <button type="button" wire:click="aplicarTransicion" wire:loading.attr="disabled" class="fp-btn fp-btn-primario fp-btn-sm">Confirmar</button>
+                                        <button type="button" wire:click="cancelarTransicion" class="fp-btn fp-btn-fantasma fp-btn-sm">Cancelar</button>
+                                    </div>
+                                </div>
+                            @elseif ($this->puedeResolver)
+                                <div class="flex flex-wrap justify-end gap-x-3 gap-y-1">
+                                    @foreach ($s->siguientesEstados() as $siguiente)
+                                        <button type="button" wire:click="prepararTransicion({{ $s->id }}, '{{ $siguiente }}')"
+                                            class="text-xs font-medium transition-opacity hover:opacity-75 {{ $siguiente === 'rechazada' ? 'text-fp-danger' : 'text-fp-primary' }}">
+                                            {{ match ($siguiente) { 'autorizada' => 'Autorizar', 'rechazada' => 'Rechazar', 'enviada_fabrica' => 'Enviar a fábrica', 'aceptada_fabrica' => 'Fábrica aceptó', 'vale_emitido' => 'Emitir vale', 'cerrada' => 'Cerrar', default => $siguiente } }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </td>
                     </tr>
                 @empty
-                    <x-panel.vacio colspan="7" mensaje="No hay solicitudes de cambio" />
+                    <x-panel.vacio colspan="8" mensaje="No hay solicitudes de cambio" />
                 @endforelse
             </tbody>
         </table>

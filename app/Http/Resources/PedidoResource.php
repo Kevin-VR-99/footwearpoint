@@ -41,6 +41,12 @@ class PedidoResource extends JsonResource
             // TG-125: hasta cuándo puede recogerlo (solo cuando ya está listo).
             'fecha_limite_recoleccion' => optional($this->fecha_limite_recoleccion)->toIso8601String(),
             'observaciones'    => $this->observaciones,
+            // Texto listo para compartir el pedido por WhatsApp desde la app.
+            'compartir_texto'  => $this->whenLoaded('detalle', fn () => \App\Support\WhatsApp::textoPedido(
+                $this->resource,
+                (float) $resumen['saldo'],
+                $this->distribuidora ? app(\App\Services\Tienda\EnlaceTienda::class)->url($this->distribuidora) : null,
+            )),
             'capturado_por_staff_id' => $this->capturado_por_staff_id,
             'lineas' => $this->whenLoaded('detalle', function () {
                 $plazo = app(\App\Services\Cambio\PlazoCambio::class);

@@ -20,6 +20,13 @@ use Livewire\Component;
 use Spatie\Permission\PermissionRegistrar;
 
 new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class extends Component {
+    use \App\Livewire\Concerns\GestionaBajasDeAcceso;
+
+    private function despuesDeCambioDeAcceso(): void
+    {
+        $this->cargarEmpleados();
+        $this->cargarRevendedores();
+    }
     /** empleados o mayoristas. Lo decide la ruta. */
     public string $seccion = 'empleados';
     public $empleados = [];
@@ -76,7 +83,11 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     continue;
                 }
                 $usuario->unsetRelation('permissions');
-                $this->permisosEmpleado[$empleado->id] = $usuario->getDirectPermissions()->pluck('name')->all();
+                $finos = array_keys(array_filter(\App\Services\Auth\PermisoModuloService::finosDe($empleado)));
+                $this->permisosEmpleado[$empleado->id] = array_values(array_merge(
+                    $usuario->getDirectPermissions()->pluck('name')->all(),
+                    $finos,
+                ));
             }
         });
     }
@@ -134,8 +145,9 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
     public function toggleEstadoEmpleado(int $id): void
     {
         $empleado = DistribuidoraStaff::findOrFail($id);
-        $empleado->estado = $empleado->estado === 'activo' ? 'inactivo' : 'activo';
-        $empleado->save();
+        // Baja/reactivación con revocación de tokens y bitácora (BajaAccesoAction).
+        $empleado->estado === 'activo' ? $this->darDeBaja('empleado', $id) : $this->reactivar('empleado', $id);
+        $empleado->refresh();
         $this->cargarEmpleados();
     }
 
@@ -148,9 +160,22 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         $marcados = $this->permisosEmpleado[$id] ?? [];
         $validos = array_values(array_intersect($marcados, RolesPermissionsSeeder::PERMISOS_POR_MODULO));
 
+        $antes = \App\Services\Auth\PermisoModuloService::finosDe($empleado);
+        $finos = [];
+        foreach (array_keys(\App\Services\Auth\PermisoModuloService::PERMISOS_FINOS) as $permiso) {
+            $finos[$permiso] = in_array($permiso, $marcados, true);
+        }
+
         $this->enEquipo(function () use ($usuario, $validos) {
             $usuario->syncPermissions($validos);
         });
+
+        $empleado->forceFill(['permisos_finos' => $finos])->save();
+
+        app(\App\Services\Auditoria\RegistrarAuditoriaAction::class)->ejecutar(
+            'empleado.permisos_actualizados', 'distribuidora_staff', (int) $empleado->id,
+            ['finos' => $antes], ['modulo' => $validos, 'finos' => $finos],
+        );
 
         $this->cargarEmpleados();
         $this->dispatch('guardado', mensaje: 'Permisos del empleado actualizados.');
@@ -472,18 +497,14 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                             </td>
                             <td class="py-2 text-right">
                                 <button type="button" wire:click="toggleEstadoEmpleado({{ $empleado->id }})"
+                                    wire:confirm="{{ $empleado->estado === 'activo' ? '¿Dar de baja a este empleado? Pierde el acceso al panel de inmediato.' : '¿Reactivar a este empleado?' }}"
                                     class="text-fp-primary text-xs font-medium">
                                     {{ $empleado->estado === 'activo' ? 'Desactivar' : 'Activar' }}
                                 </button>
                                 <div class="mt-2 space-y-1 text-left text-xs text-slate-600">
-                                    @foreach ([
-                                        'ciclo.cerrar' => 'Cerrar ciclo',
-                                        'ciclo.solicitar_fabrica' => 'Solicitar a fábrica',
-                                        'reportes.ver_financieros' => 'Reportes financieros',
-                                        'configuracion.administrar' => 'Configuración',
-                                        'usuarios.administrar' => 'Usuarios',
-                                    ] as $permiso => $etiqueta)
-                                        <label class="flex items-center gap-1">
+                                    @foreach (\App\Services\Auth\PermisoModuloService::ETIQUETAS_MODULO
+                                        + array_map(fn ($p) => $p[0], \App\Services\Auth\PermisoModuloService::PERMISOS_FINOS) as $permiso => $etiqueta)
+                                        <label class="flex items-center gap-1 rounded px-1 transition-colors hover:bg-fp-page">
                                             <input type="checkbox" wire:model="permisosEmpleado.{{ $empleado->id }}" value="{{ $permiso }}">
                                             {{ $etiqueta }}
                                         </label>
@@ -627,6 +648,15 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                                 @endif
                                 <button type="button" wire:click="abrirFormularioEditarRevendedor({{ $afiliacion->id }})"
                                     class="text-fp-primary text-xs font-medium">Editar</button>
+                                @if ($afiliacion->estado !== 'inactivo')
+                                    <button type="button" wire:click="darDeBaja('revendedor', {{ $afiliacion->id }})"
+                                        wire:confirm="¿Dar de baja a {{ $afiliacion->revendedor->nombre }}? Ya no podrá entrar a la app; su historial se conserva."
+                                        class="ml-3 text-xs font-medium text-fp-danger transition-opacity hover:opacity-75" data-baja="revendedor-{{ $afiliacion->id }}">Dar de baja</button>
+                                @else
+                                    <button type="button" wire:click="reactivar('revendedor', {{ $afiliacion->id }})"
+                                        wire:confirm="¿Reactivar el acceso de {{ $afiliacion->revendedor->nombre }}?"
+                                        class="ml-3 text-xs font-medium text-emerald-700 transition-opacity hover:opacity-75">Reactivar</button>
+                                @endif
                             </td>
                         </tr>
                     @endforeach

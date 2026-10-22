@@ -6,6 +6,7 @@ import '../models/vale.dart';
 import '../models/estado_pedido.dart';
 import '../services/pedido_service.dart';
 import '../services/vale_service.dart';
+import '../services/comision_service.dart';
 import 'producto_detalle_screen.dart' show formatoPrecio;
 import '../providers/auth_provider.dart';
 import '../providers/carrito_revendedor_provider.dart';
@@ -160,6 +161,12 @@ class _InicioScreenState extends State<InicioScreen> {
                 vales: _vales,
                 cargando: _cargandoResumen,
               ),
+              // Comisión y meta del mes: solo del cliente mayorista.
+              if (auth.rol == 'revendedor') ...[
+                const SizedBox(height: 20),
+                const FpTituloSeccion('Tu meta del mes'),
+                const _MetaDelMes(),
+              ],
               const SizedBox(height: 20),
               // Solo lo que NO esta en la barra de abajo.
               const FpTituloSeccion('Accesos'),
@@ -467,6 +474,83 @@ class _BotonCarrito extends StatelessWidget {
               ),
             )
           : null,
+    );
+  }
+}
+
+
+/// Comisión, venta pagada y avance contra la meta del mes (cliente mayorista).
+/// Si no se puede cargar, no estorba: se enseña una línea discreta.
+class _MetaDelMes extends StatefulWidget {
+  const _MetaDelMes();
+
+  @override
+  State<_MetaDelMes> createState() => _MetaDelMesState();
+}
+
+class _MetaDelMesState extends State<_MetaDelMes> {
+  late final Future<ResumenComision> _resumen = ComisionService().delMes();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<ResumenComision>(
+      future: _resumen,
+      builder: (context, foto) {
+        if (foto.connectionState != ConnectionState.done) {
+          return const FpTarjeta(child: Text('Cargando…', style: TextStyle(color: FpColores.textoTenue)));
+        }
+        final r = foto.data;
+        if (foto.hasError || r == null) {
+          return const FpTarjeta(child: Text('No se pudo cargar tu comisión.', style: TextStyle(color: FpColores.textoTenue)));
+        }
+        final avance = ((r.avance ?? 0) / 100).clamp(0.0, 1.0);
+        return FpTarjeta(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Comisión: ${formatoPrecio(r.comision)}',
+                      style: const TextStyle(color: FpColores.texto, fontSize: 18, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  if (r.lugar != null)
+                    Text('Lugar ${r.lugar}', style: const TextStyle(color: FpColores.primario, fontWeight: FontWeight.w600)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${r.pedidosPagados} pedidos pagados · ${formatoPrecio(r.ventaPagada)} · ${r.porcentaje.toStringAsFixed(2)}%',
+                style: const TextStyle(color: FpColores.textoTenue, fontSize: 13),
+              ),
+              if (r.meta != null) ...[
+                const SizedBox(height: 12),
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: avance),
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, valor, _) => ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: valor,
+                      minHeight: 8,
+                      backgroundColor: FpColores.borde,
+                      color: FpColores.primario,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${(r.avance ?? 0).toStringAsFixed(1)}% de tu meta de ${formatoPrecio(r.meta!)}',
+                  style: const TextStyle(color: FpColores.textoTenue, fontSize: 13),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }

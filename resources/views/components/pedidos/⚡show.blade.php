@@ -65,7 +65,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     public function getPedidoProperty()
     {
         return Pedido::query()
-            ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle', 'pagos'])
+            ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle', 'pagos', 'distribuidora'])
             ->findOrFail($this->pedidoId);
     }
 
@@ -75,6 +75,13 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         return app(ImagenDeProducto::class)->porProductoCampana(
             $this->pedido->detalle->pluck('producto_campana_id'),
         );
+    }
+
+    /** Permiso fino «Registrar pagos de pedidos»: sin él no se ve el formulario. */
+    public function getPuedeRegistrarPagoProperty(): bool
+    {
+        return app(\App\Services\Auth\PermisoModuloService::class)
+            ->puede(auth()->user(), \App\Services\Auth\PermisoModuloService::PAGOS_REGISTRAR);
     }
 
     public function getResumenProperty(): array
@@ -367,6 +374,12 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             </div>
 
         <x-slot:acciones>
+        @php $pedidoWa = $this->pedido; @endphp
+        <x-ui.boton-whatsapp
+            :url="\App\Support\WhatsApp::enlace(
+                \App\Support\WhatsApp::textoPedido($pedidoWa, (float) ($this->resumen['saldo'] ?? 0), $pedidoWa->distribuidora ? app(\App\Services\Tienda\EnlaceTienda::class)->url($pedidoWa->distribuidora) : null),
+                \App\Support\WhatsApp::telefonoDelPedido($pedidoWa))"
+            texto="Enviar por WhatsApp" />
         @if ($this->pedido->estado === 'borrador')
             <button type="button" wire:click="enviar"
                 class="fp-btn fp-btn-oscuro">
@@ -470,7 +483,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         @endif
     </div>
 
-    @if ($this->pedido->estado !== 'borrador')
+    @if ($this->pedido->estado !== 'borrador' && $this->puedeRegistrarPago)
         <div class="mb-6 fp-tarjeta p-4 fp-formulario fp-aparecer">
             <h3 class="font-medium text-slate-800 mb-3">Registrar pago</h3>
             <form wire:submit="registrarPago" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-end">

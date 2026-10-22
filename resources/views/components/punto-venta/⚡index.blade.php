@@ -140,6 +140,17 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
             ->values();
     }
 
+    /** Corte de caja: avisar si quien cobra no tiene caja abierta (solo si puede operar caja). */
+    public function getSinCajaAbiertaProperty(): bool
+    {
+        try {
+            return app(\App\Services\Auth\PermisoModuloService::class)->puede(Auth::user(), \App\Services\Auth\PermisoModuloService::CAJA_OPERAR)
+                && app(\App\Services\Caja\CajaService::class)->abiertaDe() === null;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     public function getClientesProperty()
     {
         return ClienteDirecto::query()
@@ -390,6 +401,13 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
 <div>
     <x-panel.encabezado titulo="Venta local"
         subtitulo="Venta de contado con entrega inmediata. Solo se ofrece lo que hay en existencia." class="mb-6" />
+
+    @if (\Illuminate\Support\Facades\Route::has('caja.index') && $this->sinCajaAbierta)
+        <x-panel.alerta tipo="aviso" class="mb-4">
+            No tienes una caja abierta: lo que cobres no entrará a ningún corte.
+            <a href="{{ route('caja.index') }}" wire:navigate class="ml-1 font-semibold underline">Abrir caja</a>
+        </x-panel.alerta>
+    @endif
 
     @if ($mensaje)
         <x-panel.alerta tipo="exito" class="mb-4">

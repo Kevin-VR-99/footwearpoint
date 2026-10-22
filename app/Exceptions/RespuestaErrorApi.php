@@ -55,6 +55,11 @@ final class RespuestaErrorApi
             return null;
         }
 
+        // Permiso de módulo o fino que el empleado no tiene: 403 con su mensaje.
+        if ($e instanceof SinPermisoModuloException) {
+            return self::json($e->getMessage(), 403);
+        }
+
         if ($e instanceof AuthenticationException) {
             return self::json(self::NO_AUTENTICADO, 401);
         }

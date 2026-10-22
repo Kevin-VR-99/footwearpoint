@@ -26,7 +26,11 @@ class PedidoResumen {
     this.puedePagarTotalMercadoPago = false,
     this.pagoMercadoPagoPendiente = false,
     this.pagoMercadoPagoPendienteTipo,
+    this.compartirTexto,
   });
+
+  /// Resumen del pedido listo para mandarlo por WhatsApp (solo en el detalle).
+  final String? compartirTexto;
 
   final int id;
   final String folio;
@@ -132,6 +136,7 @@ class PedidoResumen {
       puedePagarTotalMercadoPago: json['puede_pagar_total_mercado_pago'] == true,
       pagoMercadoPagoPendiente: json['pago_mercado_pago_pendiente'] == true,
       pagoMercadoPagoPendienteTipo: json['pago_mercado_pago_pendiente_tipo'] as String?,
+      compartirTexto: json['compartir_texto'] as String?,
     );
   }
 }

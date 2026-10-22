@@ -122,6 +122,18 @@ new class extends Component {
                 <p class="text-sm text-slate-600">{{ $producto['descripcion'] }}</p>
             @endif
 
+            @php
+                $urlFicha = app(\App\Services\Tienda\EnlaceTienda::class)->producto($distribuidora, $productoId);
+                $textoWa = \App\Support\WhatsApp::textoProducto($producto, $distribuidora, $urlFicha);
+            @endphp
+            <div class="flex flex-wrap gap-2">
+                <x-ui.boton-whatsapp :url="\App\Support\WhatsApp::enlace($textoWa)" texto="Compartir" />
+                @if (\App\Support\WhatsApp::normalizarTelefono($distribuidora->telefono_publico))
+                    <x-ui.boton-whatsapp :url="\App\Support\WhatsApp::enlace('Hola, me interesa este modelo: '.$producto['nombre'].' '.$urlFicha, $distribuidora->telefono_publico)"
+                        texto="Preguntar por WhatsApp" class="!bg-white !text-[#128C7E] border border-[#25D366] hover:!bg-emerald-50" />
+                @endif
+            </div>
+
             <div class="mt-auto rounded-lg bg-fp-badge-info-bg p-4 text-sm text-fp-badge-info-fg">
                 ¿Te interesa? Pídelo en mostrador o desde la app de FootwearPoint.
                 @if ($distribuidora->telefono_publico)

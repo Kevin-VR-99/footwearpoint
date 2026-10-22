@@ -89,6 +89,13 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
         return (bool) auth()->user()?->hasRole('admin_distribuidora');
     }
 
+    /** Permiso fino «Ver precios de mayoreo» (el admin siempre). */
+    public function getPuedeVerMayoreoProperty(): bool
+    {
+        return app(\App\Services\Auth\PermisoModuloService::class)
+            ->puede(auth()->user(), \App\Services\Auth\PermisoModuloService::COSTOS_VER);
+    }
+
     public function getPreciosProperty(): PrecioEfectivo
     {
         return app(PrecioEfectivo::class);
@@ -121,9 +128,23 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
                     <p class="font-semibold text-slate-900">{{ $pc->campana?->nombre }}</p>
                     <p class="text-xs text-fp-text-muted">Código {{ $pc->codigo_catalogo }}</p>
                 </div>
+                @php
+                    $distWa = \App\Models\Distribuidora::find(\App\Support\Tenant::id());
+                    $urlWa = $distWa ? app(\App\Services\Tienda\EnlaceTienda::class)->producto($distWa, (int) $pc->id) : null;
+                @endphp
+                @if ($distWa)
+                    <x-ui.boton-whatsapp tamano="sm" texto="Compartir"
+                        :url="\App\Support\WhatsApp::enlace(\App\Support\WhatsApp::textoProducto([
+                            'nombre' => $this->producto->nombre,
+                            'modelo' => $this->producto->modelo,
+                            'precio_texto' => '$'.number_format($this->precios->menudeo($pc), 2),
+                        ], $distWa, $urlWa))" />
+                @endif
                 <div class="text-right text-sm">
                     <p class="text-fp-text-muted">Menudeo: <span class="tabular-nums">${{ number_format($this->precios->menudeo($pc), 2) }}</span></p>
-                    <p class="font-semibold text-fp-primary">Tu mayoreo: <span class="tabular-nums">${{ number_format($this->precios->mayoreo($pc), 2) }}</span></p>
+                    @if ($this->puedeVerMayoreo)
+                        <p class="font-semibold text-fp-primary">Tu mayoreo: <span class="tabular-nums">${{ number_format($this->precios->mayoreo($pc), 2) }}</span></p>
+                    @endif
                 </div>
             </div>
 

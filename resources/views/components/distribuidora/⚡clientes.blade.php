@@ -14,6 +14,12 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] class extends Component {
+    use \App\Livewire\Concerns\GestionaBajasDeAcceso;
+
+    private function despuesDeCambioDeAcceso(): void
+    {
+        $this->cargarClientesDirectos();
+    }
     // TG-192: aviso del envio del enlace de restablecimiento.
     public ?string $avisoEnlace = null;
     public bool $avisoEnlaceEsError = false;
@@ -309,8 +315,13 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
         <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl fp-formulario fp-aparecer">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Clientes Directos</h2>
-                <button type="button" wire:click="abrirFormularioCrearCliente"
-                    class="fp-btn fp-btn-primario">+ Nuevo cliente</button>
+                <div class="flex items-center gap-2">
+                    @if (\Illuminate\Support\Facades\Route::has('clientes.importar') && app(\App\Services\Auth\PermisoModuloService::class)->puede(auth()->user(), \App\Services\Auth\PermisoModuloService::CLIENTES_IMPORTAR))
+                        <a href="{{ route('clientes.importar') }}" wire:navigate class="fp-btn fp-btn-fantasma" data-importar-clientes>Importar CSV/Excel</a>
+                    @endif
+                    <button type="button" wire:click="abrirFormularioCrearCliente"
+                        class="fp-btn fp-btn-primario">+ Nuevo cliente</button>
+                </div>
             </div>
             <div class="mb-4 flex flex-wrap items-center gap-2" data-filtros-clientes>
                 <x-ui.buscador wire:model.live.debounce.300ms="buscar" placeholder="Buscar nombre, teléfono o correo" etiqueta="Buscar clientes" class="min-w-0 flex-1" />
@@ -387,6 +398,18 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                                 @endif
                                 <button type="button" wire:click="abrirFormularioEditarCliente({{ $cliente->id }})"
                                     class="text-fp-primary text-xs font-medium">Editar</button>
+                                @if (\Illuminate\Support\Facades\Route::has('clientes.historial.show'))
+                                    <a href="{{ route('clientes.historial.show', ['cliente_directo', $cliente->id]) }}" wire:navigate class="text-fp-primary text-xs font-medium ml-3">Historial</a>
+                                @endif
+                                @if ($cliente->estado === 'activo')
+                                    <button type="button" wire:click="darDeBaja('cliente', {{ $cliente->id }})"
+                                        wire:confirm="¿Dar de baja a {{ $cliente->nombre }}? Ya no podrá entrar a la app; su historial se conserva."
+                                        class="ml-3 text-xs font-medium text-fp-danger transition-opacity hover:opacity-75" data-baja="cliente-{{ $cliente->id }}">Dar de baja</button>
+                                @else
+                                    <button type="button" wire:click="reactivar('cliente', {{ $cliente->id }})"
+                                        wire:confirm="¿Reactivar el acceso de {{ $cliente->nombre }}?"
+                                        class="ml-3 text-xs font-medium text-emerald-700 transition-opacity hover:opacity-75">Reactivar</button>
+                                @endif
                             </td>
                         </tr>
                     @endforeach

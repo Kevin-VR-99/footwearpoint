@@ -6,6 +6,7 @@ import '../models/pedido_resumen.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/cambio_service.dart';
+import '../services/compartir_whatsapp.dart';
 import '../services/pedido_service.dart';
 import '../tema/fp_colores.dart';
 import 'producto_detalle_screen.dart';
@@ -111,7 +112,18 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
     final pedido = _pedido;
 
     return Scaffold(
-      appBar: AppBar(title: Text(pedido?.folio ?? 'Pedido'), bottom: const FpBordeMarca()),
+      appBar: AppBar(
+        title: Text(pedido?.folio ?? 'Pedido'),
+        bottom: const FpBordeMarca(),
+        actions: [
+          if (pedido?.compartirTexto != null)
+            IconButton(
+              tooltip: 'Compartir por WhatsApp',
+              icon: const Icon(Icons.share_outlined),
+              onPressed: () => compartirPorWhatsApp(context, pedido!.compartirTexto!),
+            ),
+        ],
+      ),
       body: SafeArea(
         child: _cargando
             ? const Center(child: CircularProgressIndicator())

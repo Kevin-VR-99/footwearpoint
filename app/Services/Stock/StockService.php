@@ -43,6 +43,8 @@ class StockService
      */
     public function registrarEntrada(int $varianteId, int $cantidad, ?string $motivo = null): MovimientoStock
     {
+        $this->exigirPermisoStock();
+
         return DB::transaction(function () use ($varianteId, $cantidad, $motivo) {
             $stock = $this->stockBloqueado($varianteId, permitirCreacion: true);
 
@@ -68,6 +70,8 @@ class StockService
      */
     public function registrarEntradas(array $cantidades, ?string $motivo = null, array $motivos = []): array
     {
+        $this->exigirPermisoStock();
+
         $cantidades = array_filter(
             array_map('intval', $cantidades),
             fn (int $cantidad) => $cantidad !== 0,
@@ -165,6 +169,8 @@ class StockService
      */
     public function registrarAjuste(int $varianteId, string $tipo, int $cantidad, string $motivo): MovimientoStock
     {
+        $this->exigirPermisoStock();
+
         if (! in_array($tipo, ['ajuste_positivo', 'ajuste_negativo'], true)) {
             throw new OperacionInvalidaException('Tipo de ajuste no valido.', 422);
         }
@@ -310,5 +316,14 @@ class StockService
         if (! $existe) {
             throw new OperacionInvalidaException('La variante no existe.', 404);
         }
+    }
+
+    /** Permiso fino «Entradas y ajustes de stock» (prendido por omisión). */
+    private function exigirPermisoStock(): void
+    {
+        app(\App\Services\Auth\PermisoModuloService::class)->exigir(
+            \Illuminate\Support\Facades\Auth::user(),
+            \App\Services\Auth\PermisoModuloService::STOCK_AJUSTAR,
+        );
     }
 }
