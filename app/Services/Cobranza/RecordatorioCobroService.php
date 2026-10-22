@@ -101,14 +101,14 @@ class RecordatorioCobroService
         if ($tipo === 'cliente_directo') {
             $cliente = ClienteDirecto::query()->with('usuario')->findOrFail($id);
 
-            return [(string) $cliente->nombre, $cliente->email ?: $cliente->usuario?->email, 'cliente_directo_id'];
+            return [(string) $cliente->nombre, $cliente->emailVisible(), 'cliente_directo_id'];
         }
 
         if ($tipo === 'revendedor') {
             $afiliacion = RevendedorDistribuidora::query()->with('revendedor.usuario')->findOrFail($id);
             $revendedor = $afiliacion->revendedor;
 
-            return [(string) ($revendedor?->nombre ?? 'Cliente mayorista #'.$id), $revendedor?->email ?: $revendedor?->usuario?->email, 'revendedor_distribuidora_id'];
+            return [(string) ($revendedor?->nombre ?? 'Cliente mayorista #'.$id), $revendedor?->emailVisible(), 'revendedor_distribuidora_id'];
         }
 
         throw new OperacionInvalidaException('Tipo de deudor no válido.', 422);

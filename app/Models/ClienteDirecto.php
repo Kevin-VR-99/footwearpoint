@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\Concerns\BelongsToTenant;
+use App\Models\Concerns\MuestraCorreoDeCuenta;
+use App\Models\Concerns\RevocaAccesoAlDesactivar;
+use Illuminate\Database\Eloquent\Model;
 
 class ClienteDirecto extends Model
 {
     use BelongsToTenant;
-    use \App\Models\Concerns\RevocaAccesoAlDesactivar;
+    use MuestraCorreoDeCuenta;
+    use RevocaAccesoAlDesactivar;
+
     protected $table = 'clientes_directos';
 
     protected $fillable = [

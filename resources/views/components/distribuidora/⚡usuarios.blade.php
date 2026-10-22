@@ -101,7 +101,10 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         if (trim($this->buscar) !== '') {
             $t = '%'.addcslashes(trim($this->buscar), '%_\\').'%';
             $q->where(fn ($w) => $w->where('codigo_interno', 'like', $t)
-                ->orWhereHas('revendedor', fn ($r) => $r->where('nombre', 'like', $t)->orWhere('telefono', 'like', $t)->orWhere('email', 'like', $t)));
+                ->orWhereHas('revendedor', fn ($r) => $r->where('nombre', 'like', $t)
+                    ->orWhere('telefono', 'like', $t)
+                    ->orWhere('email', 'like', $t)
+                    ->orWhereHas('usuario', fn ($u) => $u->where('email', 'like', $t))));
         }
 
         return $q;
@@ -130,7 +133,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         $filas = $this->consultaRevendedores()->with('revendedor.usuario')
             ->limit(\App\Services\Exportar\ExportarListadoXlsx::MAX_FILAS + 1)->get()->map(fn (RevendedorDistribuidora $a) => [
             $a->revendedor?->nombre, $a->codigo_interno, $a->revendedor?->telefono,
-            $a->revendedor?->email ?? $a->revendedor?->usuario?->email,
+            $a->revendedor?->emailVisible(),
             ucfirst((string) $a->estado), $a->revendedor?->usuario ? 'Sí' : 'No', $a->fecha_alta?->format('d/m/Y'),
         ]);
 
@@ -488,7 +491,10 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     @foreach ($empleados as $empleado)
                         <tr class="border-b last:border-0 align-top">
                             <td class="py-2">{{ $empleado->usuario?->nombreVisible() ?? '—' }}</td>
-                            <td class="py-2">{{ $empleado->usuario?->email ?? '—' }}</td>
+                            <td class="py-2">
+                                {{ $empleado->usuario?->email ?? '—' }}
+                                <x-ui.estado-correo :usuario="$empleado->usuario" />
+                            </td>
                             <td class="py-2">{{ $empleado->usuario?->telefono ?? '—' }}</td>
                             <td class="py-2">
                                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $empleado->estado === 'activo' ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
@@ -609,7 +615,10 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                         <tr class="border-b last:border-0">
                             <td class="py-2">{{ $afiliacion->revendedor->nombre }}</td>
                             <td class="py-2">{{ $afiliacion->revendedor->telefono }}</td>
-                            <td class="py-2">{{ $afiliacion->revendedor->email }}</td>
+                            <td class="py-2">
+                                {{ $afiliacion->revendedor->emailVisible() ?: '—' }}
+                                <x-ui.estado-correo :usuario="$afiliacion->revendedor->usuario" />
+                            </td>
                             <td class="py-2">
                                 @php
                                     $colorEstado = match ($afiliacion->estado) {
@@ -625,9 +634,6 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                             <td class="py-2">
                                 @if ($afiliacion->revendedor->usuario_id)
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-fp-badge-success-bg text-fp-badge-success-fg">Con cuenta</span>
-                                    @if (! $afiliacion->revendedor->usuario?->hasVerifiedEmail())
-                                        <span class="mt-1 block text-xs text-amber-700">Correo sin confirmar</span>
-                                    @endif
                                 @else
                                     <span class="text-xs text-slate-400">Sin cuenta</span>
                                 @endif
