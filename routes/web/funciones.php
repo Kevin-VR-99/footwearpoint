@@ -13,4 +13,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'tenant.team', 'solo.personal', 'role:admin_distribuidora|empleado'])->group(function () {
     Route::livewire('/ventas', 'ventas.index')->name('ventas.index');
+
+    // Corte de caja (permiso fino caja.operar, se revisa en la pantalla y en el PDF).
+    Route::livewire('/caja', 'caja.index')->name('caja.index');
+    Route::get('/caja/{id}/pdf', [\App\Http\Controllers\CorteCajaController::class, 'pdf'])->whereNumber('id')->name('caja.pdf');
 });

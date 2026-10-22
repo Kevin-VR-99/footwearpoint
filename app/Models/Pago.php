@@ -32,6 +32,7 @@ class Pago extends Model
         'preferencia_externa',
         'estado',
         'registrado_por_staff_id',
+        'caja_sesion_id',
     ];
 
     protected $casts = [
@@ -52,6 +53,7 @@ class Pago extends Model
         'total_revendedor' => 'Total mayorista',
         'venta_directa' => 'Venta directa',
         'reembolso_anticipo' => 'Reembolso de anticipo',
+        'reembolso_venta' => 'Reembolso de venta',
         'suscripcion' => 'Suscripción',
     ];
 
@@ -107,6 +109,35 @@ class Pago extends Model
     public function esMercadoPagoPendiente(): bool
     {
         return $this->metodo === 'mercado_pago' && $this->estado === 'pendiente';
+    }
+
+    /** Tipos de pago que se cobran o devuelven en el mostrador y cuentan en el corte de caja. */
+    public const TIPOS_DE_CAJA = ['venta_directa', 'reembolso_venta', 'anticipo', 'saldo_pedido', 'total_revendedor', 'reembolso_anticipo'];
+
+    protected static function booted(): void
+    {
+        // Corte de caja: lo que cobra o devuelve en mostrador quien tiene una
+        // caja abierta queda en esa caja. Mercado Pago no pasa por la caja.
+        static::creating(function (Pago $pago) {
+            if ($pago->caja_sesion_id !== null
+                || $pago->registrado_por_staff_id === null
+                || $pago->metodo === 'mercado_pago'
+                || ! in_array($pago->tipo, self::TIPOS_DE_CAJA, true)) {
+                return;
+            }
+
+            $pago->caja_sesion_id = CajaSesion::withoutGlobalScopes()
+                ->where('distribuidora_id', $pago->distribuidora_id)
+                ->where('abierta_por_staff_id', $pago->registrado_por_staff_id)
+                ->where('estado', 'abierta')
+                ->orderByDesc('id')
+                ->value('id');
+        });
+    }
+
+    public function cajaSesion()
+    {
+        return $this->belongsTo(CajaSesion::class, 'caja_sesion_id');
     }
 
     public function pedido()
