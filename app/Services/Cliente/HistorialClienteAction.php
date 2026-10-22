@@ -37,11 +37,11 @@ class HistorialClienteAction
 
         if ($directo) {
             $c = ClienteDirecto::query()->with('usuario')->findOrFail($id);
-            $perfil = ['nombre' => $c->nombre, 'telefono' => $c->telefono, 'email' => $c->email ?: $c->usuario?->email,
+            $perfil = ['nombre' => $c->nombre, 'telefono' => $c->telefono, 'email' => $c->emailVisible(),
                 'estado' => $c->estado, 'con_app' => $c->usuario_id !== null, 'alta' => $c->created_at, 'tipo_etiqueta' => 'Cliente directo'];
         } else {
             $a = RevendedorDistribuidora::query()->with('revendedor.usuario')->findOrFail($id);
-            $perfil = ['nombre' => $a->revendedor?->nombre, 'telefono' => $a->revendedor?->telefono, 'email' => $a->revendedor?->email ?: $a->revendedor?->usuario?->email,
+            $perfil = ['nombre' => $a->revendedor?->nombre, 'telefono' => $a->revendedor?->telefono, 'email' => $a->revendedor?->emailVisible(),
                 'estado' => $a->estado, 'con_app' => $a->revendedor?->usuario_id !== null, 'alta' => $a->fecha_alta ?? $a->created_at, 'tipo_etiqueta' => 'Cliente mayorista'];
         }
 

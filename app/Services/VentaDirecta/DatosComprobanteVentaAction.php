@@ -47,7 +47,7 @@ class DatosComprobanteVentaAction
         $sucursal = Sucursal::query()->find($venta->sucursal_id);
 
         $cliente = $venta->cliente_directo_id !== null
-            ? ClienteDirecto::query()->find($venta->cliente_directo_id)
+            ? ClienteDirecto::query()->with('usuario')->find($venta->cliente_directo_id)
             : null;
 
         $staff = DistribuidoraStaff::query()
@@ -111,7 +111,7 @@ class DatosComprobanteVentaAction
             ],
 
             'cliente' => $cliente !== null
-                ? ['nombre' => (string) $cliente->nombre, 'email' => $cliente->email]
+                ? ['nombre' => (string) $cliente->nombre, 'email' => $cliente->emailVisible()]
                 : null,
 
             'atendio' => $staff?->usuario?->nombreVisible(),

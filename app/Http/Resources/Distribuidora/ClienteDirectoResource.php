@@ -13,7 +13,7 @@ class ClienteDirectoResource extends JsonResource
             'id'                  => $this->id,
             'nombre'              => $this->nombre,
             'telefono'            => $this->telefono,
-            'email'               => $this->email,
+            'email'               => $this->emailVisible(),
             'direccion_contacto'  => $this->direccion_contacto,
             'notas'               => $this->notas,
             'estado'              => $this->estado,

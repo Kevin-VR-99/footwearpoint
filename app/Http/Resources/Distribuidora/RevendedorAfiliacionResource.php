@@ -17,7 +17,7 @@ class RevendedorAfiliacionResource extends JsonResource
             'id'              => $this->id,
             'nombre'          => $this->revendedor->nombre,
             'telefono'        => $this->revendedor->telefono,
-            'email'           => $this->revendedor->email,
+            'email'           => $this->revendedor->emailVisible(),
             'codigo_interno'  => $this->codigo_interno,
             'estado'          => $this->estado,
             'fecha_alta'      => $this->fecha_alta,

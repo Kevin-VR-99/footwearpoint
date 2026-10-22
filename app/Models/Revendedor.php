@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\MuestraCorreoDeCuenta;
 use Illuminate\Database\Eloquent\Model;
 
 class Revendedor extends Model
 {
+    use MuestraCorreoDeCuenta;
+
     protected $table = 'revendedores';
 
     protected $fillable = [

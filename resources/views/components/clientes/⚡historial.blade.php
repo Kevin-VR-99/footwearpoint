@@ -43,11 +43,11 @@ new #[Layout('layouts.panel')] #[Title('Historial de clientes — FootwearPoint'
     {
         $t = '%'.addcslashes(trim($this->buscar), '%_\\').'%';
         $directos = ClienteDirecto::query()
-            ->when(trim($this->buscar) !== '', fn ($q) => $q->where(fn ($w) => $w->where('nombre', 'like', $t)->orWhere('telefono', 'like', $t)->orWhere('email', 'like', $t)))
+            ->when(trim($this->buscar) !== '', fn ($q) => $q->where(fn ($w) => $w->where('nombre', 'like', $t)->orWhere('telefono', 'like', $t)->orWhere('email', 'like', $t)->orWhereHas('usuario', fn ($u) => $u->where('email', 'like', $t))))
             ->orderBy('nombre')->limit(25)->get(['id', 'nombre', 'telefono', 'estado'])
             ->map(fn ($c) => ['tipo' => 'cliente_directo', 'id' => $c->id, 'nombre' => $c->nombre, 'telefono' => $c->telefono, 'estado' => $c->estado, 'etiqueta' => 'Cliente directo']);
         $mayoristas = RevendedorDistribuidora::query()->with('revendedor')
-            ->when(trim($this->buscar) !== '', fn ($q) => $q->whereHas('revendedor', fn ($w) => $w->where('nombre', 'like', $t)->orWhere('telefono', 'like', $t)->orWhere('email', 'like', $t)))
+            ->when(trim($this->buscar) !== '', fn ($q) => $q->whereHas('revendedor', fn ($w) => $w->where('nombre', 'like', $t)->orWhere('telefono', 'like', $t)->orWhere('email', 'like', $t)->orWhereHas('usuario', fn ($u) => $u->where('email', 'like', $t))))
             ->limit(25)->get()
             ->map(fn ($a) => ['tipo' => 'revendedor', 'id' => $a->id, 'nombre' => $a->revendedor?->nombre, 'telefono' => $a->revendedor?->telefono, 'estado' => $a->estado, 'etiqueta' => 'Cliente mayorista']);
 

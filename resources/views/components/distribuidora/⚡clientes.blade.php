@@ -56,7 +56,10 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
         }
         if (trim($this->buscar) !== '') {
             $t = '%'.addcslashes(trim($this->buscar), '%_\\').'%';
-            $q->where(fn ($w) => $w->where('nombre', 'like', $t)->orWhere('telefono', 'like', $t)->orWhere('email', 'like', $t));
+            $q->where(fn ($w) => $w->where('nombre', 'like', $t)
+                ->orWhere('telefono', 'like', $t)
+                ->orWhere('email', 'like', $t)
+                ->orWhereHas('usuario', fn ($u) => $u->where('email', 'like', $t)));
         }
 
         return $q;
@@ -84,7 +87,7 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
 
         $filas = $this->consultaClientes()->with('usuario')
             ->limit(\App\Services\Exportar\ExportarListadoXlsx::MAX_FILAS + 1)->get()->map(fn (ClienteDirecto $c) => [
-            $c->nombre, $c->telefono, $c->email ?? $c->usuario?->email, $c->direccion_contacto,
+            $c->nombre, $c->telefono, $c->emailVisible(), $c->direccion_contacto,
             ucfirst((string) $c->estado), $c->usuario ? 'Sí' : 'No', $c->created_at?->format('d/m/Y'),
         ]);
 
@@ -367,7 +370,10 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                         <tr class="border-b last:border-0">
                             <td class="py-2">{{ $cliente->nombre }}</td>
                             <td class="py-2">{{ $cliente->telefono }}</td>
-                            <td class="py-2">{{ $cliente->email }}</td>
+                            <td class="py-2">
+                                {{ $cliente->emailVisible() ?: '—' }}
+                                <x-ui.estado-correo :usuario="$cliente->usuario" />
+                            </td>
                             <td class="py-2">
                                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $cliente->estado === 'activo' ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
                                     {{ $cliente->estado === 'activo' ? 'Activo' : 'Inactivo' }}
