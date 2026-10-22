@@ -22,6 +22,13 @@ class AuthProvider extends ChangeNotifier {
   /// mismo token, sin crear su propio ApiService.
   final ApiService api;
 
+  /// En las pruebas de widget el reloj es falso y no avanza solo. Si el login
+  /// dispara los reintentos de FCM (2 s, 4 s, 8 s, 16 s, 32 s), la prueba se
+  /// queda esperando. Las pruebas lo apagan en test/flutter_test_config.dart.
+  /// La app real lo deja en true: el login no espera a que termine.
+  @visibleForTesting
+  static bool registrarPush = true;
+
   /// Registro del token de Firebase con reintentos (ver [RegistroFcm]).
   late final registroFcm = RegistroFcm(
     enviar: (token) => api.post(
@@ -450,7 +457,15 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Pide el token a Firebase y lo registra en Laravel (TG-96).
-  void _registrarDispositivoFCM() async {
+  ///
+  /// No se espera: el login ya terminó. Los reintentos tienen tope en
+  /// [RegistroFcm] (5 intentos, espera hasta 32 s).
+  void _registrarDispositivoFCM() {
+    if (!registrarPush) return;
+    unawaited(_registrarDispositivoFcmEnSegundoPlano());
+  }
+
+  Future<void> _registrarDispositivoFcmEnSegundoPlano() async {
     // 2. Escuchamos por si Firebase decide renovar el token en segundo plano.
     // Va primero, aparte del permiso y del getToken: si esos fallaban, antes
     // nunca se llegaba a escuchar la renovación. Solo UNA vez (??=): esto se
