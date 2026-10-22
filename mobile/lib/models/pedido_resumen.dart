@@ -178,6 +178,7 @@ class LineaPedido {
     this.estadoSurtido = '',
     this.motivoNoSurtido,
     this.resolucionNoSurtido,
+    this.imagen,
   });
 
   /// pedido_detalle.id; hace falta para pedir un cambio (TG-254).
@@ -209,6 +210,9 @@ class LineaPedido {
   /// 'sustitucion' o 'reembolso_anticipo'.
   final String? resolucionNoSurtido;
 
+  /// Miniatura del calzado. Null si esa temporada todavía no tiene foto.
+  final String? imagen;
+
   /// True si la fábrica no lo surtió y todavía falta que la persona elija.
   bool get esperaDecision => estadoSurtido == 'no_surtido' && resolucionNoSurtido == 'pendiente';
 
@@ -230,6 +234,7 @@ class LineaPedido {
       estadoSurtido: json['estado_surtido'] as String? ?? '',
       motivoNoSurtido: json['motivo_no_surtido'] as String?,
       resolucionNoSurtido: json['resolucion_no_surtido'] as String?,
+      imagen: json['imagen'] as String?,
     );
   }
 }

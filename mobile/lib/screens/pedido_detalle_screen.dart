@@ -12,6 +12,7 @@ import '../services/pedido_service.dart';
 import '../tema/fp_colores.dart';
 import 'producto_detalle_screen.dart';
 import '../widgets/botones_pago_mercado_pago.dart';
+import '../widgets/foto_calzado.dart';
 import '../widgets/bajo_pedido.dart';
 import '../widgets/fp_componentes.dart';
 
@@ -216,7 +217,7 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
           Card(
             margin: const EdgeInsets.only(bottom: 8),
             child: ListTile(
-              leading: const FpIconoCuadro(icono: Icons.inventory_2_outlined, tamano: 36),
+              leading: FotoCalzado(url: linea.imagen, nombre: linea.productoNombre, tamano: 44),
               title: Text(linea.productoNombre, style: const TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,7 +261,7 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
                     children: [
                       Row(
                         children: [
-                          const FpIconoCuadro(icono: Icons.report_gmailerrorred_outlined, tamano: 36),
+                          FotoCalzado(url: linea.imagen, nombre: linea.productoNombre, tamano: 44),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -318,7 +319,7 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
               Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
-                  leading: const FpIconoCuadro(icono: Icons.swap_horiz, tamano: 36),
+                  leading: FotoCalzado(url: linea.imagen, nombre: linea.productoNombre, tamano: 44),
                   title: Text(linea.productoNombre),
                   subtitle: Text(
                     linea.cambio!.tieneSolicitud

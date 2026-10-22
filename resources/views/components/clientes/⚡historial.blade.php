@@ -140,7 +140,12 @@ new #[Layout('layouts.panel')] #[Title('Historial de clientes — FootwearPoint'
                                         <td class="py-2 text-right">{{ $mxn($f['saldo']) }} <span class="text-xs text-slate-400">de {{ $mxn($f['original']) }}</span></td>
                                         @break
                                     @case('cambios')
-                                        <td class="py-2">#{{ $f['id'] }} {{ $f['producto'] }}</td><td class="py-2 text-xs text-slate-500">{{ $f['fecha'] }}</td><td class="py-2">{{ $f['estado'] }}</td><td class="py-2 text-xs text-slate-500">{{ $f['motivo'] }}</td>
+                                        <td class="py-2">
+                                            <div class="flex items-center gap-2">
+                                                <x-ui.imagen-ampliable :url="$f['imagen'] ?? null" :alt="$f['producto'] ?? 'Producto'" />
+                                                <span>#{{ $f['id'] }} {{ $f['producto'] }}</span>
+                                            </div>
+                                        </td><td class="py-2 text-xs text-slate-500">{{ $f['fecha'] }}</td><td class="py-2">{{ $f['estado'] }}</td><td class="py-2 text-xs text-slate-500">{{ $f['motivo'] }}</td>
                                         @break
                                     @case('pendientes')
                                         <td class="py-2">{{ $f['folio'] }}</td><td class="py-2 text-xs text-slate-500">{{ $f['fecha'] }}</td><td class="py-2">Total {{ $mxn($f['total']) }} · pagado {{ $mxn($f['pagado']) }}</td><td class="py-2 text-right font-medium">{{ $mxn($f['pendiente']) }}</td>

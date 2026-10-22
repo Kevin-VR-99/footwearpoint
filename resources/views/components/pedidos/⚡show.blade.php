@@ -637,7 +637,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     <tr>
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-3">
-                                <x-ui.miniatura
+                                <x-ui.imagen-ampliable
                                     :url="$this->fotos[$l->producto_campana_id] ?? null"
                                     :alt="$l->producto_nombre" />
                                 <div class="min-w-0">

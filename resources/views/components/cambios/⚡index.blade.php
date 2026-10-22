@@ -3,6 +3,7 @@
 use App\Models\SolicitudCambio;
 use App\Models\VentaDirecta;
 use App\Services\Cambio\PlazoCambio;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Cambio\SolicitarCambioAction;
 use App\Support\MensajeError;
 use App\Support\Tenant;
@@ -52,6 +53,24 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
             ->when($this->estado !== '', fn ($q) => $q->where('estado', $this->estado))
             ->orderByDesc('id')
             ->paginate(25);
+    }
+
+    /** @return array<int, string> producto_campana_id => url */
+    public function getFotosSolicitudesProperty(): array
+    {
+        $ids = $this->solicitudes->getCollection()->map(
+            fn ($s) => ($s->pedidoDetalle ?? $s->ventaDetalle)?->producto_campana_id,
+        );
+
+        return app(ImagenDeProducto::class)->porProductoCampana($ids);
+    }
+
+    /** @return array<int, string> producto_campana_id => url */
+    public function getFotosVentaProperty(): array
+    {
+        return app(ImagenDeProducto::class)->porProductoCampana(
+            $this->venta?->detalle->pluck('producto_campana_id') ?? [],
+        );
     }
 
     public function buscarVenta(): void
@@ -190,7 +209,12 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                         @foreach ($this->venta->detalle as $l)
                             @php($cambio = $this->cambiosVenta[$l->id] ?? null)
                             <tr wire:key="vd-{{ $l->id }}">
-                                <td class="py-2">{{ $l->producto_nombre }} <span class="text-xs text-slate-500">{{ $l->talla }} · {{ $l->color }} ×{{ $l->cantidad }}</span></td>
+                                <td class="py-2">
+                                    <div class="flex items-center gap-2">
+                                        <x-ui.imagen-ampliable :url="$this->fotosVenta[$l->producto_campana_id] ?? null" :alt="$l->producto_nombre" />
+                                        <span>{{ $l->producto_nombre }} <span class="text-xs text-slate-500">{{ $l->talla }} · {{ $l->color }} ×{{ $l->cantidad }}</span></span>
+                                    </div>
+                                </td>
                                 <td class="py-2 text-right">
                                     @if ($cambio && $cambio['solicitud'])
                                         <span class="text-xs text-slate-600">Solicitud {{ str_replace('_', ' ', $cambio['solicitud']['estado']) }}</span>
@@ -251,7 +275,12 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                             {{ $s->clienteDirecto?->nombre ?? $s->revendedorAfiliacion?->revendedor?->nombre ?? '—' }}
                             <span class="block text-xs text-slate-500">{{ $s->cliente_directo_id ? 'Cliente' : 'Cliente mayorista' }}</span>
                         </td>
-                        <td class="px-4 py-3">{{ $linea?->producto_nombre }}<span class="block text-xs text-slate-500">{{ $linea?->talla }} · {{ $linea?->color }} ×{{ $linea?->cantidad }}</span></td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                <x-ui.imagen-ampliable :url="$linea ? ($this->fotosSolicitudes[$linea->producto_campana_id] ?? null) : null" :alt="$linea?->producto_nombre ?? 'Producto'" />
+                                <div>{{ $linea?->producto_nombre }}<span class="block text-xs text-slate-500">{{ $linea?->talla }} · {{ $linea?->color }} ×{{ $linea?->cantidad }}</span></div>
+                            </div>
+                        </td>
                         <td class="px-4 py-3">
                             @if ($s->pedidoDetalle)
                                 <a href="{{ route('pedidos.show', $s->pedidoDetalle->pedido_id) }}" class="fp-enlace">Pedido {{ $s->pedidoDetalle->pedido?->folio }}</a>

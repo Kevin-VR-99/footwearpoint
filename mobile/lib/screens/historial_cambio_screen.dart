@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/cambio_service.dart';
 import '../tema/fp_colores.dart';
+import '../widgets/foto_calzado.dart';
 import '../widgets/fp_componentes.dart';
 
 /// Historial de una solicitud de cambio: cada paso (fecha y hora de la
@@ -149,7 +150,7 @@ class _Encabezado extends StatelessWidget {
     return FpTarjeta(
       child: Row(
         children: [
-          const FpIconoCuadro(icono: Icons.swap_horiz, tamano: 44),
+          FotoCalzado(url: solicitud.imagen, nombre: solicitud.productoNombre ?? 'Producto', tamano: 44),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

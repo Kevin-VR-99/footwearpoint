@@ -4,6 +4,7 @@ use App\Models\DistribuidoraLinea;
 use App\Models\Producto;
 use App\Models\ProductoCampana;
 use App\Services\Catalogo\CatalogoVisible;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\PrecioEfectivo;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -100,6 +101,13 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
     {
         return app(PrecioEfectivo::class);
     }
+
+    public function getFotoProperty(): ?string
+    {
+        $fotos = app(ImagenDeProducto::class)->porProducto([$this->productoId]);
+
+        return $fotos[(int) $this->productoId] ?? null;
+    }
 }; ?>
 
 <div class="space-y-6">
@@ -151,8 +159,9 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
             @if ($pc->imagenes->isNotEmpty())
                 <div class="flex flex-wrap gap-3 border-b border-slate-100 px-6 py-4">
                     @foreach ($pc->imagenes->sortByDesc('es_principal') as $imagen)
-                        <img src="{{ $imagen->urlMiniatura() }}" alt="{{ $this->producto->nombre }}" loading="lazy" decoding="async" width="80" height="80"
-                            class="h-20 w-20 rounded object-cover {{ $imagen->es_principal ? 'ring-2 ring-fp-primary' : '' }}">
+                        <span @class(['rounded-lg ring-2 ring-fp-primary' => $imagen->es_principal])>
+                            <x-ui.imagen-ampliable tamano="media" :url="$imagen->urlMiniatura()" :alt="$this->producto->nombre" />
+                        </span>
                     @endforeach
                 </div>
             @endif
@@ -216,7 +225,12 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
             <tbody class="divide-y divide-slate-100">
                 @forelse ($this->producto->variantes as $variante)
                     <tr>
-                        <td class="px-6 py-3 font-medium text-slate-900">{{ $variante->sku }}</td>
+                        <td class="px-6 py-3 font-medium text-slate-900">
+                            <div class="flex items-center gap-2">
+                                <x-ui.imagen-ampliable :url="$this->foto" :alt="$this->producto->nombre" />
+                                <span>{{ $variante->sku }}</span>
+                            </div>
+                        </td>
                         <td class="px-6 py-3 text-slate-600">{{ $variante->talla?->valor }}</td>
                         <td class="px-6 py-3 text-slate-600">
                             {{ $variante->nombre_color_comercial ?? $variante->color?->nombre }}

@@ -9,6 +9,7 @@ use App\Models\RevendedorDistribuidora;
 use App\Models\SolicitudCambio;
 use App\Models\Vale;
 use App\Models\VentaDirecta;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Cobranza\RecordatorioCobroService;
 use App\Support\Estados;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -63,6 +64,9 @@ class HistorialClienteAction
 
         $vales = Vale::query()->where($columna, $id)->orderByDesc('id')->get();
         $cambios = SolicitudCambio::query()->where($columna, $id)->with(['pedidoDetalle', 'ventaDetalle'])->orderByDesc('id')->get();
+        $fotosCambios = app(ImagenDeProducto::class)->porProductoCampana(
+            $cambios->map(fn ($s) => ($s->pedidoDetalle ?? $s->ventaDetalle)?->producto_campana_id),
+        );
         $cobro = $this->cobranza->datos($tipo, $id);
 
         $entradas = $pagos->where('direccion', 'entrada')->where('estado', 'aplicado')->sum('monto');
@@ -89,8 +93,13 @@ class HistorialClienteAction
                 'monto' => (float) $p->monto, 'estado' => $p->estado, 'fecha' => ($p->fecha_pago ?? $p->created_at)?->format('d/m/Y')])->all(),
             'vales'      => $vales->map(fn ($v) => ['id' => $v->id, 'folio' => $v->folio, 'original' => (float) $v->monto_original, 'saldo' => (float) $v->saldo_actual,
                 'estado' => $v->estado, 'vence' => $v->fecha_vencimiento?->format('d/m/Y')])->all(),
-            'cambios'    => $cambios->map(fn ($s) => ['id' => $s->id, 'producto' => ($s->pedidoDetalle ?? $s->ventaDetalle)?->producto_nombre,
-                'estado' => SolicitudCambio::etiqueta($s->estado), 'fecha' => $s->fecha_solicitud?->format('d/m/Y'), 'motivo' => $s->motivo])->all(),
+            'cambios'    => $cambios->map(function ($s) use ($fotosCambios) {
+                $linea = $s->pedidoDetalle ?? $s->ventaDetalle;
+
+                return ['id' => $s->id, 'producto' => $linea?->producto_nombre,
+                    'imagen' => $fotosCambios[(int) ($linea?->producto_campana_id ?? 0)] ?? null,
+                    'estado' => SolicitudCambio::etiqueta($s->estado), 'fecha' => $s->fecha_solicitud?->format('d/m/Y'), 'motivo' => $s->motivo];
+            })->all(),
         ];
     }
 }

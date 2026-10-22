@@ -54,15 +54,11 @@ new class extends Component {
     <article class="fp-tarjeta overflow-hidden grid md:grid-cols-2">
         <div class="bg-slate-100">
             @if ($producto['imagen'])
-                <img src="{{ $producto['imagen_mediana'] ?? $producto['imagen'] }}" alt="{{ $producto['nombre'] }}"
-                     @if (! empty($producto['imagen_srcset'])) srcset="{{ $producto['imagen_srcset'] }}" sizes="(min-width: 768px) 50vw, 100vw" @endif
-                     width="1200" height="1200" decoding="async" fetchpriority="high"
-                     class="w-full aspect-square object-cover">
+                <x-ui.imagen-ampliable tamano="portada" :url="$producto['imagen_mediana'] ?? $producto['imagen']" :alt="$producto['nombre']" />
                 @if (count($producto['imagenes']) > 1)
                     <div class="grid grid-cols-4 gap-2 p-3">
                         @foreach (array_slice($producto['miniaturas'] ?? $producto['imagenes'], 1) as $url)
-                            <img src="{{ $url }}" alt="{{ $producto['nombre'] }}" loading="lazy" decoding="async" width="400" height="400"
-                                 class="w-full aspect-square object-cover rounded-lg bg-white">
+                            <x-ui.imagen-ampliable :url="$url" :alt="$producto['nombre']" />
                         @endforeach
                     </div>
                 @endif

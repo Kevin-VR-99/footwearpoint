@@ -8,6 +8,7 @@ use App\Models\ProductoCampana;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Sucursal;
 use App\Services\Catalogo\CatalogoVisible;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Services\Pedido\AgregarLineaPedidoAction;
 use App\Services\Pedido\QuitarLineaPedidoAction;
@@ -134,6 +135,15 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             ])
             ->orderBy('id')
             ->get();
+    }
+
+    /** @return array<int, string> producto_campana_id => url */
+    public function getFotosProperty(): array
+    {
+        $ids = $this->catalogo->pluck('id')
+            ->merge($this->pedido?->detalle->pluck('producto_campana_id') ?? []);
+
+        return app(ImagenDeProducto::class)->porProductoCampana($ids);
     }
 
     /** Los precios los calcula siempre el mismo servicio (TG-212). */
@@ -401,6 +411,11 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
             <div class="fp-campo">
                 <label for="create-producto-campana-id" class="block text-sm text-slate-600 mb-1">Producto</label>
+                <div class="flex items-center gap-2">
+                    @if ($producto_campana_id !== '')
+                        @php($elegido = $this->catalogo->firstWhere('id', (int) $producto_campana_id))
+                        <x-ui.imagen-ampliable :url="$this->fotos[(int) $producto_campana_id] ?? null" :alt="$elegido?->producto?->nombre ?? 'Producto'" />
+                    @endif
                 <select id="create-producto-campana-id" wire:model.live="producto_campana_id"
                     class="w-full rounded-lg text-sm"
                     @disabled($linea_id === '')>
@@ -416,6 +431,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                         </option>
                     @endforeach
                 </select>
+                </div>
                 @if ($linea_id !== '' && $this->catalogo->isEmpty())
                     <p class="text-xs text-slate-500 mt-1">
                         Esta línea no tiene productos publicados en la temporada activa.
@@ -465,7 +481,12 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($this->pedido?->detalle ?? [] as $l)
                         <tr wire:key="pedido-linea-{{ $l->id }}">
-                            <td class="px-4 py-3">{{ $l->producto_nombre }}</td>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-2">
+                                    <x-ui.imagen-ampliable :url="$this->fotos[$l->producto_campana_id] ?? null" :alt="$l->producto_nombre" />
+                                    <span>{{ $l->producto_nombre }}</span>
+                                </div>
+                            </td>
                             <td class="px-4 py-3">{{ $l->talla }}</td>
                             <td class="px-4 py-3">{{ $l->color }}</td>
                             <td class="px-4 py-3 text-right">{{ $l->cantidad }}</td>

@@ -10,6 +10,7 @@ use App\Models\RevendedorDistribuidora;
 use App\Models\StockLocal;
 use App\Models\Usuario;
 use App\Services\Catalogo\CatalogoVisible;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Support\Tenant;
 
 /**
@@ -109,31 +110,37 @@ class BusquedaGlobalService
     /** Solo productos del catálogo que esta distribuidora maneja (sus líneas y temporadas activas). */
     private function productos(string $like): array
     {
-        return app(CatalogoVisible::class)->consultaIncluyendoOcultos()
+        $publicaciones = app(CatalogoVisible::class)->consultaIncluyendoOcultos()
             ->with('producto.marca')
             ->whereHas('producto', fn ($p) => $p->where('modelo', 'like', $like)->orWhere('nombre', 'like', $like)
                 ->orWhereHas('variantes', fn ($v) => $v->where('sku', 'like', $like)))
             ->get()
-            ->unique('producto_id')->take(self::POR_GRUPO)
-            ->map(fn (ProductoCampana $pc) => [
-                'titulo' => (string) $pc->producto?->nombre,
-                'detalle' => trim(($pc->producto?->marca?->nombre ? $pc->producto->marca->nombre.' · ' : '').'Modelo '.$pc->producto?->modelo),
-                'url' => route('catalogo.producto.detalle', $pc->producto_id),
-            ])->values()->all();
+            ->unique('producto_id')->take(self::POR_GRUPO);
+        $fotos = app(ImagenDeProducto::class)->porProductoCampana($publicaciones->pluck('id'));
+
+        return $publicaciones->map(fn (ProductoCampana $pc) => [
+            'titulo' => (string) $pc->producto?->nombre,
+            'detalle' => trim(($pc->producto?->marca?->nombre ? $pc->producto->marca->nombre.' · ' : '').'Modelo '.$pc->producto?->modelo),
+            'url' => route('catalogo.producto.detalle', $pc->producto_id),
+            'imagen' => $fotos[$pc->id] ?? null,
+        ])->values()->all();
     }
 
     /** Variantes con existencias en esta distribuidora (stock local con scope de tenant). */
     private function variantes(string $like): array
     {
-        return app(\App\Services\Stock\StockService::class)->consultar()
+        $filas = app(\App\Services\Stock\StockService::class)->consultar()
             ->with(['variante.producto', 'variante.talla', 'variante.color'])
             ->whereHas('variante', fn ($v) => $v->where('sku', 'like', $like)
                 ->orWhereHas('producto', fn ($p) => $p->where('modelo', 'like', $like)))
-            ->limit(self::POR_GRUPO)->get()
-            ->map(fn (StockLocal $s) => [
-                'titulo' => (string) $s->variante?->sku,
-                'detalle' => trim(($s->variante?->producto?->nombre ?? '').' · T. '.($s->variante?->talla?->valor ?? '—').' · '.($s->variante?->nombre_color_comercial ?: $s->variante?->color?->nombre ?? '').' · '.$s->cantidad_disponible.' disp.'),
-                'url' => route('stock.index', ['busqueda' => (string) $s->variante?->sku]),
-            ])->all();
+            ->limit(self::POR_GRUPO)->get();
+        $fotos = app(ImagenDeProducto::class)->porProducto($filas->map(fn (StockLocal $s) => $s->variante?->producto_id));
+
+        return $filas->map(fn (StockLocal $s) => [
+            'titulo' => (string) $s->variante?->sku,
+            'detalle' => trim(($s->variante?->producto?->nombre ?? '').' · T. '.($s->variante?->talla?->valor ?? '—').' · '.($s->variante?->nombre_color_comercial ?: $s->variante?->color?->nombre ?? '').' · '.$s->cantidad_disponible.' disp.'),
+            'url' => route('stock.index', ['busqueda' => (string) $s->variante?->sku]),
+            'imagen' => $fotos[(int) ($s->variante?->producto_id ?? 0)] ?? null,
+        ])->all();
     }
 }

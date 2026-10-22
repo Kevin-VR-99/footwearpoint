@@ -13,6 +13,7 @@ class SolicitudCambio {
     this.pedidoId,
     this.fechaSolicitud,
     this.pasos = const [],
+    this.imagen,
   });
 
   final int id;
@@ -25,6 +26,9 @@ class SolicitudCambio {
   final String? resolucion;
   final int? pedidoId;
   final DateTime? fechaSolicitud;
+
+  /// Miniatura del calzado de la solicitud.
+  final String? imagen;
 
   /// Solo viene en el detalle.
   final List<PasoCambio> pasos;
@@ -40,6 +44,7 @@ class SolicitudCambio {
       estado: json['estado'] as String? ?? 'solicitada',
       estadoEtiqueta: json['estado_etiqueta'] as String? ?? 'Solicitada',
       productoNombre: producto is Map<String, dynamic> ? producto['nombre'] as String? : null,
+      imagen: producto is Map<String, dynamic> ? producto['imagen'] as String? : null,
       talla: producto is Map<String, dynamic> ? producto['talla']?.toString() : null,
       color: producto is Map<String, dynamic> ? producto['color'] as String? : null,
       motivo: json['motivo'] as String?,

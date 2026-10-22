@@ -11,6 +11,7 @@ use App\Models\ValeMovimiento;
 use App\Models\Sucursal;
 use App\Models\VentaDirecta;
 use App\Models\VentaDirectaDetalle;
+use App\Services\Catalogo\ImagenDeProducto;
 
 /**
  * Junta todo lo que lleva el comprobante de una venta directa (E7-02 / TG-115).
@@ -54,10 +55,13 @@ class DatosComprobanteVentaAction
             ->with('usuario')
             ->find($venta->registrada_por_staff_id);
 
-        $lineas = VentaDirectaDetalle::query()
+        $detalles = VentaDirectaDetalle::query()
             ->where('venta_directa_id', $venta->id)
             ->orderBy('id')
-            ->get()
+            ->get();
+        $fotos = app(ImagenDeProducto::class)->porProductoCampana($detalles->pluck('producto_campana_id'));
+
+        $lineas = $detalles
             ->map(fn (VentaDirectaDetalle $linea) => [
                 'producto'        => (string) $linea->producto_nombre,
                 'modelo'          => (string) $linea->modelo,
@@ -66,6 +70,7 @@ class DatosComprobanteVentaAction
                 'cantidad'        => (int) $linea->cantidad,
                 'precio_unitario' => (float) $linea->precio_unitario,
                 'subtotal'        => (float) $linea->subtotal,
+                'imagen'          => $fotos[(int) $linea->producto_campana_id] ?? null,
             ])
             ->all();
 

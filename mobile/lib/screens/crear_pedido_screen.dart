@@ -13,6 +13,7 @@ import 'login_screen.dart';
 import 'producto_detalle_screen.dart';
 import '../tema/fp_colores.dart';
 import '../widgets/bajo_pedido.dart';
+import '../widgets/foto_calzado.dart';
 import '../widgets/fp_componentes.dart';
 
 /// Pedido directo de una variante (E8-01 / E8-02), con vale opcional (E12-03).
@@ -153,6 +154,8 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                FotoCalzado(url: producto.imagenPrincipal?.miniatura, nombre: producto.nombre, tamano: 84),
+                const SizedBox(height: 12),
                 Text(
                   producto.nombre,
                   style: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: FpColores.sidebar),

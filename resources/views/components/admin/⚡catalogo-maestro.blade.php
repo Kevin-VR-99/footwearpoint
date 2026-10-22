@@ -7,6 +7,7 @@ use App\Models\Marca;
 use App\Models\Producto;
 use App\Models\ProductoCampana;
 use App\Services\Catalogo\GestionarCampanaAction;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\GestionarLineaAction;
 use App\Services\Catalogo\GestionarMarcaAction;
 use App\Services\Catalogo\GestionarProductoAction;
@@ -410,6 +411,12 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             ->limit(50)
             ->get();
     }
+
+    /** @return array<int, string> producto_campana_id => url */
+    public function getFotosProperty(): array
+    {
+        return app(ImagenDeProducto::class)->porProductoCampana($this->productos->pluck('id'));
+    }
 };
 ?>
 
@@ -641,7 +648,12 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             <tbody>
                 @forelse ($this->productos as $fila)
                     <tr class="border-t border-slate-100">
-                        <td class="px-4 py-3">{{ $fila->producto?->nombre }} <span class="text-slate-400">{{ $fila->producto?->modelo }}</span></td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                <x-ui.imagen-ampliable :url="$this->fotos[$fila->id] ?? null" :alt="$fila->producto?->nombre ?? 'Producto'" />
+                                <span>{{ $fila->producto?->nombre }} <span class="text-slate-400">{{ $fila->producto?->modelo }}</span></span>
+                            </div>
+                        </td>
                         <td class="px-4 py-3">{{ $fila->producto?->marca?->nombre }}</td>
                         <td class="px-4 py-3">{{ $fila->campana?->linea?->nombre }} — {{ $fila->campana?->nombre }}</td>
                         <td class="px-4 py-3">{{ $fila->codigo_catalogo }}</td>

@@ -2,6 +2,7 @@
 
 use App\Models\VentaDirecta;
 use App\Services\Auth\PermisoModuloService;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Reembolso\ReembolsoMercadoPagoService;
 use App\Services\VentaDirecta\AnularVentaDirectaAction;
 use App\Support\MensajeError;
@@ -81,6 +82,18 @@ new #[Layout('layouts.panel')] #[Title('Ventas de mostrador — FootwearPoint')]
             ->orderByDesc('fecha_venta')
             ->orderByDesc('id')
             ->paginate(20);
+    }
+
+    /** @return array<int, string> producto_campana_id => url de la venta abierta */
+    public function getFotosProperty(): array
+    {
+        $venta = $this->ventas->getCollection()->firstWhere('id', $this->abiertaId);
+
+        if ($venta === null) {
+            return [];
+        }
+
+        return app(ImagenDeProducto::class)->porProductoCampana($venta->detalle->pluck('producto_campana_id'));
     }
 
     public function alternar(int $id): void
@@ -235,8 +248,11 @@ new #[Layout('layouts.panel')] #[Title('Ventas de mostrador — FootwearPoint')]
                         <td colspan="7" class="px-6 py-4 fp-emerger">
                             <ul class="space-y-1 text-sm">
                                 @foreach ($venta->detalle as $linea)
-                                    <li class="flex justify-between gap-4">
-                                        <span>{{ $linea->cantidad }} × {{ $linea->producto_nombre }} · talla {{ $linea->talla }} · {{ $linea->color }}</span>
+                                    <li class="flex items-center justify-between gap-4">
+                                        <span class="flex min-w-0 items-center gap-2">
+                                            <x-ui.imagen-ampliable :url="$this->fotos[$linea->producto_campana_id] ?? null" :alt="$linea->producto_nombre" />
+                                            <span>{{ $linea->cantidad }} × {{ $linea->producto_nombre }} · talla {{ $linea->talla }} · {{ $linea->color }}</span>
+                                        </span>
                                         <span class="tabular-nums">${{ number_format((float) $linea->subtotal, 2) }}</span>
                                     </li>
                                 @endforeach
