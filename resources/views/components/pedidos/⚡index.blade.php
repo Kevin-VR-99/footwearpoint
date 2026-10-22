@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Pedido;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -36,22 +35,15 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
         $this->resetPage();
     }
 
-    /** Misma consulta para la pantalla y para la exportación. */
+    /** Misma consulta para la pantalla y para la exportación (App\Services\Exportar\ExportarPedidos). */
     private function consulta()
     {
-        $query = Pedido::query()
-            ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor'])
-            ->orderByDesc('id');
+        return app(\App\Services\Exportar\ExportarPedidos::class)->consulta($this->filtros());
+    }
 
-        if ($this->filtro_estado !== '') {
-            $query->where('estado', $this->filtro_estado);
-        }
-
-        if ($this->filtro_tipo !== '') {
-            $query->where('tipo', $this->filtro_tipo);
-        }
-
-        return $query;
+    private function filtros(): array
+    {
+        return ['estado' => $this->filtro_estado, 'tipo' => $this->filtro_tipo];
     }
 
     public function getPedidosProperty()
@@ -60,31 +52,28 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
         return $this->consulta()->paginate(25);
     }
 
-    /** Exporta a .xlsx los pedidos con los filtros de la pantalla (sin el tope de 100). */
+    /** Aviso cuando la exportación se fue a la cola. */
+    public string $avisoExportacion = '';
+
+    /**
+     * Exporta a .xlsx los pedidos con los filtros de la pantalla. Hasta
+     * config('exportaciones.umbral_listado') filas se descarga al momento;
+     * más que eso se arma en la cola y llega el enlace en Notificaciones.
+     */
     public function exportar()
     {
         \App\Services\Exportar\ExportarListadoXlsx::exigirPersonal();
+        $this->avisoExportacion = '';
 
-        $filas = $this->consulta()
-            ->limit(\App\Services\Exportar\ExportarListadoXlsx::MAX_FILAS + 1)->get()->map(fn (Pedido $p) => [
-            $p->folio,
-            $p->tipo === 'cliente_directo' ? 'Cliente' : 'Cliente mayorista',
-            $p->clienteDirecto?->nombre ?? $p->revendedorAfiliacion?->revendedor?->nombre ?? '—',
-            ucfirst(str_replace('_', ' ', (string) $p->estado)),
-            $p->fecha_colocacion?->format('d/m/Y H:i') ?? $p->created_at?->format('d/m/Y H:i'),
-            (float) $p->total,
-        ]);
+        $cola = app(\App\Services\Exportar\ExportacionesEnCola::class);
+        if ($cola->pedidosVanALaCola($this->filtros())) {
+            $cola->solicitar(Auth::user(), \App\Services\Exportar\ExportarPedidos::TIPO, 'xlsx', $this->filtros());
+            $this->avisoExportacion = \App\Services\Exportar\ExportacionesEnCola::MENSAJE_EN_COLA;
 
-        return app(\App\Services\Exportar\ExportarListadoXlsx::class)->descargar(
-            'pedidos-'.now()->format('Ymd-His').'.xlsx',
-            'Pedidos',
-            ['Folio', 'Tipo', 'Propietario', 'Estado', 'Fecha', 'Total'],
-            $filas,
-            array_filter([
-                'Estado' => $this->filtro_estado !== '' ? ucfirst(str_replace('_', ' ', $this->filtro_estado)) : null,
-                'Tipo' => match ($this->filtro_tipo) { 'cliente_directo' => 'Cliente directo', 'revendedor' => 'Cliente mayorista', default => null },
-            ]),
-        );
+            return null;
+        }
+
+        return app(\App\Services\Exportar\ExportarPedidos::class)->descargar($this->filtros());
     }
 };
 ?>
@@ -103,6 +92,12 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
             </x-panel.boton>
         </x-slot:acciones>
     </x-panel.encabezado>
+
+    @if ($avisoExportacion !== '')
+        <div class="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800" role="status" data-aviso-exportacion>
+            {{ $avisoExportacion }} <a href="{{ route('notificaciones.index') }}" class="fp-enlace font-medium" wire:navigate>Ver notificaciones</a>
+        </div>
+    @endif
 
     <x-panel.filtros class="mb-4">
         <select wire:model.live="filtro_estado" aria-label="Filtrar por estado"

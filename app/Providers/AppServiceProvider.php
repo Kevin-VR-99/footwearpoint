@@ -37,6 +37,10 @@ class AppServiceProvider extends ServiceProvider
         // ya consultó, para no repetir consultas al armar el catálogo (TG-213).
         $this->app->scoped(PrecioEfectivo::class);
 
+        // Mismo motivo: staff y sucursal principal se resolvían 3-4 veces por
+        // pantalla (/stock, /punto-venta) porque cada app() daba una instancia nueva.
+        $this->app->scoped(\App\Support\ContextoOperativo::class);
+
         // TG-238 (A8): quien lee los catálogos. En las pruebas se cambia por
         // un lector falso, así que nunca gastan dinero ni piden la llave.
         $this->app->bind(LectorDeCatalogos::class, LectorDeCatalogosClaude::class);
@@ -56,6 +60,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Caché de catálogos por distribuidora: se limpia al guardar o borrar.
+        foreach ([\App\Models\Talla::class, \App\Models\Color::class, \App\Models\Marca::class, \App\Models\Linea::class,
+            \App\Models\Campana::class, \App\Models\DistribuidoraLinea::class, \App\Models\CicloCompra::class] as $modelo) {
+            $modelo::observe(\App\Observers\InvalidarCatalogoCache::class);
+        }
+
         // TG-220: las acciones de Livewire también respetan el cobro inicial.
         \Livewire\Livewire::addPersistentMiddleware([\App\Http\Middleware\CobroInicialPendiente::class]);
 
@@ -64,10 +74,6 @@ class AppServiceProvider extends ServiceProvider
         if (str_starts_with($appUrl, 'https://')) {
             URL::forceRootUrl($appUrl);
             URL::forceScheme('https');
-        }
-
-        if (! $this->app->runningInConsole()) {
-            header('Content-Security-Policy: upgrade-insecure-requests');
         }
 
         // TG-196 (G5): las acciones de Livewire (botones, formularios) no pasan

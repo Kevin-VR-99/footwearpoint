@@ -87,6 +87,24 @@ class ExportarListadoXlsx
         return $libro;
     }
 
+    /** El mismo libro como texto binario, para guardarlo en disco (exportación en cola). */
+    public function contenido(string $titulo, array $encabezados, iterable $filas, array $filtros = []): string
+    {
+        $libro = $this->libro($titulo, $encabezados, $filas, $filtros);
+        $escritor = new Xlsx($libro);
+        $escritor->setPreCalculateFormulas(false);
+
+        ob_start();
+        try {
+            $escritor->save('php://output');
+        } finally {
+            $contenido = (string) ob_get_clean();
+            $libro->disconnectWorksheets();
+        }
+
+        return $contenido;
+    }
+
     public function descargar(string $archivo, string $titulo, array $encabezados, iterable $filas, array $filtros = []): StreamedResponse
     {
         $libro = $this->libro($titulo, $encabezados, $filas, $filtros);

@@ -129,6 +129,26 @@ class ExportarReporteDistribuidora
         return implode(' · ', $partes);
     }
 
+    /**
+     * Estimación barata (dos COUNT) del tamaño del reporte, para decidir si se
+     * descarga al momento o va a la cola: pedidos del periodo + movimientos
+     * del estado de cuenta (pagos), que son las secciones que crecen.
+     */
+    public function filasEstimadas(array $f): int
+    {
+        $periodo = function ($q, string $columna) use ($f) {
+            return $q->when($f['desde'] ?? null, fn ($q, $d) => $q->whereDate($columna, '>=', $d))
+                ->when($f['hasta'] ?? null, fn ($q, $h) => $q->whereDate($columna, '<=', $h));
+        };
+
+        $pedidos = $periodo(\App\Models\Pedido::query(), 'created_at')
+            ->when($f['estado'] ?? null, fn ($q, $e) => $q->where('estado', $e))
+            ->when($f['ciclo'] ?? null, fn ($q, $c) => $q->where('ciclo_compra_id', $c))
+            ->count();
+
+        return $pedidos + \App\Models\Pago::query()->count();
+    }
+
     public function nombreArchivo(string $formato): string
     {
         $slug = Distribuidora::query()->whereKey(Tenant::id())->value('slug') ?? 'distribuidora';

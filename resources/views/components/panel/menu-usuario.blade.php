@@ -17,7 +17,7 @@
         class="flex items-center gap-2 rounded-full border border-slate-200/90 bg-white py-1 pl-1 pr-2.5 text-left shadow-sm transition hover:border-fp-primary/30 hover:bg-fp-page focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40"
         @click="userMenuOpen = !userMenuOpen" :aria-expanded="userMenuOpen.toString()" aria-haspopup="menu">
         @if ($logotipo)
-            <img src="{{ $logotipo }}" alt="Logotipo"
+            <img src="{{ $logotipo }}" alt="Logotipo" decoding="async"
                 class="h-8 w-8 rounded-full object-cover bg-slate-100 ring-2 ring-white" width="32" height="32">
         @else
             <span

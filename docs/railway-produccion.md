@@ -116,3 +116,37 @@ Verificación: `curl -I https://footwearpoint.app/build/assets/app-XXXX.css` tra
   vive en MySQL; hoy solo guarda ids, el token CSRF y datos de Mercado Pago (PKCE) de corta vida.
 - Si se activa (`SESSION_ENCRYPT=true` en todos los servicios a la vez), todas las sesiones abiertas se
   invalidan una vez (la gente vuelve a iniciar sesión). Usa `APP_KEY`, que **no** debe cambiar.
+
+## G. Nivel de logs en producción (solo documentado, no se cambió)
+- Web y worker: `LOG_LEVEL=warning` y `LOG_CHANNEL=stderr`. Railway guarda la salida estándar
+  y así no se llena el disco efímero con `storage/logs/laravel.log` ni se registran consultas de depuración.
+- `debug` solo en local. Si hace falta investigar algo en producción, subirlo un rato y regresarlo.
+- `CSP_MODO`: `upgrade-insecure-requests` ahora lo pone el middleware `PoliticaSeguridadContenido`
+  (dentro de la política con `enforce`; en `report-only`/`off` va en su propia cabecera
+  `Content-Security-Policy`, porque el navegador ignora esa directiva en Report-Only).
+
+## H. Monitoreo de errores (Sentry) y de caída (`/up`)
+**Sentry** (opcional; sin DSN no se manda nada):
+1. Crear un proyecto *Laravel* en sentry.io y copiar su DSN.
+2. En Railway, servicios **web** y **worker** → Variables: `SENTRY_LARAVEL_DSN=<dsn>` y
+   `SENTRY_ENVIRONMENT=production`. Opcional: `SENTRY_TRACES_SAMPLE_RATE` (por defecto 0.05 = 5 %).
+3. Redeploy y probar con `php artisan sentry:test` desde la shell del servicio.
+- `send_default_pii` está fijo en `false` (`config/sentry.php`): no viajan IP, cookies, usuario ni cuerpo.
+  Los bindings de SQL tampoco se mandan (`SENTRY_*_SQL_BINDINGS_ENABLED=false` por defecto).
+
+**Monitor externo de `/up`:** el healthcheck de Railway solo reinicia; nadie se entera.
+- UptimeRobot, Better Stack o similar: monitor HTTP(S) a `https://footwearpoint.app/up`, cada 5 min,
+  esperar 200, alerta por correo/Telegram al equipo. `/up` no requiere sesión ni toca datos.
+- Opcional: un segundo monitor de palabra clave sobre `/login` para detectar errores 500 del panel.
+
+## I. Exportaciones grandes en la cola
+- Reporte (PDF/Excel) con más de `EXPORTACIONES_UMBRAL_REPORTE` filas estimadas (1500) y listado de pedidos
+  con más de `EXPORTACIONES_UMBRAL_LISTADO` filas (2000) se arman en el **worker**; lo demás sigue siendo
+  descarga inmediata. Clientes directos y mayoristas siguen siempre inmediatos (ya se cargan completos en pantalla).
+- Web y worker: `EXPORTACIONES_DISK=catalogos` (bucket **privado** de R2 que ya existe; los archivos quedan
+  en `exportaciones/{distribuidora_id}/`). Sin la variable usa `local`, que en Railway se borra en cada deploy.
+- El aviso llega a **Notificaciones** con un enlace firmado de 30 min (`EXPORTACIONES_MINUTOS_ENLACE`); el
+  archivo vive 24 h (`EXPORTACIONES_HORAS_VIGENCIA`). Solo lo baja quien lo pidió, en su distribuidora.
+- Cron opcional `footwearpoint-limpiar-exportaciones`: start command `php artisan exportaciones:limpiar`,
+  schedule `15 11 * * *` (5:15 CDMX), restart policy Never.
+- Migración nueva: `2026_10_21_130000_crea_exportaciones` (la corre el pre-deploy).

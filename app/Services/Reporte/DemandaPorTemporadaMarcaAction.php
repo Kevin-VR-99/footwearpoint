@@ -2,9 +2,6 @@
 
 namespace App\Services\Reporte;
 
-use App\Models\Campana;
-use App\Models\DistribuidoraLinea;
-use App\Models\Marca;
 use App\Models\PedidoDetalle;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -103,16 +100,13 @@ class DemandaPorTemporadaMarcaAction
     /** Temporadas para el filtro: las de líneas que la distribuidora tiene o tuvo. */
     public function temporadasParaFiltro()
     {
-        return Campana::query()
-            ->with('linea:id,nombre')
-            ->whereIn('linea_id', DistribuidoraLinea::query()->select('linea_id'))
-            ->orderByDesc('fecha_inicio')->orderBy('nombre')
-            ->get(['id', 'nombre', 'linea_id']);
+        // Caché por distribuidora (se invalida al cambiar temporadas o líneas).
+        return app(\App\Support\Cache\CatalogoCache::class)->temporadasParaFiltro();
     }
 
     public function marcasParaFiltro()
     {
-        return Marca::query()->orderBy('nombre')->get(['id', 'nombre']);
+        return app(\App\Support\Cache\CatalogoCache::class)->marcas();
     }
 
     private function base(?int $campanaId, ?int $marcaId, ?string $desde, ?string $hasta, ?int $cicloId): Builder

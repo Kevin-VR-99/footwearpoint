@@ -63,6 +63,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('api', \App\Http\Middleware\CobroInicialPendiente::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Monitoreo de errores: solo reporta si SENTRY_LARAVEL_DSN está puesto
+        // (sin DSN el SDK no hace nada). Ver docs/railway-produccion.md (H).
+        \Sentry\Laravel\Integration::handles($exceptions);
+
         // TG-224 (G3): el usuario nunca ve el error técnico; el detalle solo
         // va al log (Laravel reporta antes de armar la respuesta).
 

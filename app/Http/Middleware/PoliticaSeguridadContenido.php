@@ -33,7 +33,7 @@ class PoliticaSeguridadContenido
         $modo = (string) config('app.csp_modo', 'report-only');
 
         if ($modo === 'off') {
-            return $next($request);
+            return self::conUpgradeInsecure($next($request), $modo);
         }
 
         Vite::useCspNonce();
@@ -51,7 +51,32 @@ class PoliticaSeguridadContenido
             $respuesta->headers->set($cabecera, self::politica((string) Vite::cspNonce()));
         }
 
+        return self::conUpgradeInsecure($respuesta, $modo);
+    }
+
+    /**
+     * upgrade-insecure-requests (antes un header() suelto en AppServiceProvider):
+     * con APP_URL https el navegador pide por https cualquier recurso http://.
+     * En modo enforce va dentro de la política; en report-only/off el
+     * navegador ignora esa directiva en Report-Only, así que viaja sola en una
+     * cabecera Content-Security-Policy que no restringe nada más.
+     */
+    private static function conUpgradeInsecure(Response $respuesta, string $modo): Response
+    {
+        if (! self::usaHttps() || $modo === 'enforce') {
+            return $respuesta;
+        }
+
+        if (! $respuesta->headers->has('Content-Security-Policy')) {
+            $respuesta->headers->set('Content-Security-Policy', 'upgrade-insecure-requests');
+        }
+
         return $respuesta;
+    }
+
+    private static function usaHttps(): bool
+    {
+        return str_starts_with((string) config('app.url'), 'https://');
     }
 
     public static function politica(string $nonce): string
@@ -79,6 +104,10 @@ class PoliticaSeguridadContenido
             "object-src 'none'",
             'report-uri '.route('csp.reporte', absolute: false),
         ];
+
+        if (self::usaHttps()) {
+            $directivas[] = 'upgrade-insecure-requests';
+        }
 
         return implode('; ', $directivas);
     }

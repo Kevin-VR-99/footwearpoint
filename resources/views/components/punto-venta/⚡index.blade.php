@@ -1,13 +1,11 @@
 <?php
 
 use App\Models\ClienteDirecto;
-use App\Models\Color;
 use App\Models\ProductoCampana;
 use App\Services\Catalogo\CatalogoVisible;
 use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Models\StockLocal;
-use App\Models\Talla;
 use App\Services\Vale\BuscarValeParaAplicarAction;
 use App\Services\VentaDirecta\RegistrarVentaDirectaService;
 use App\Support\MensajeError;
@@ -95,15 +93,10 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         $fotos = app(ImagenDeProducto::class)->porProductoCampana($publicaciones->flatten()->pluck('id'));
 
         // tallas y colores son catálogos GLOBALES: no llevan distribuidora_id.
-        $tallas = Talla::query()
-            ->whereIn('id', $variantes->pluck('talla_id')->filter()->unique()->all())
-            ->get()
-            ->keyBy('id');
-
-        $colores = Color::query()
-            ->whereIn('id', $variantes->pluck('color_id')->filter()->unique()->all())
-            ->get()
-            ->keyBy('id');
+        // Salen de CatalogoCache (sin consulta mientras no cambie el catálogo).
+        $catalogo = app(\App\Support\Cache\CatalogoCache::class);
+        $tallas = $catalogo->modelosTalla($variantes->pluck('talla_id'));
+        $colores = $catalogo->modelosColor($variantes->pluck('color_id'));
 
         $termino = mb_strtolower(trim($this->busqueda));
 
@@ -519,9 +512,9 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                                 </p>
                             </div>
 
-                            {{-- wire:model.live: lo que el servidor corrija se ve aquí de inmediato. --}}
+                            {{-- wire:model.live (300 ms de pausa): lo que el servidor corrija se ve aquí casi de inmediato sin un viaje por tecla. --}}
                             <input type="number" min="1" max="{{ $linea['disponible'] }}"
-                                   wire:model.live="lineas.{{ $clave }}.cantidad"
+                                   wire:model.live.debounce.300ms="lineas.{{ $clave }}.cantidad"
                                    class="w-16 rounded-lg text-sm text-center focus:ring-fp-primary">
 
                             <div class="text-right w-20">

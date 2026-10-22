@@ -47,6 +47,22 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
         return $query->limit(50)->get();
     }
 
+    private ?\Illuminate\Support\Collection $exportacionesCache = null;
+
+    /** Exportaciones (de esta persona) a las que apuntan los avisos de la página, por id. */
+    public function getExportacionesProperty(): \Illuminate\Support\Collection
+    {
+        if ($this->exportacionesCache !== null) {
+            return $this->exportacionesCache;
+        }
+
+        $ids = $this->notificaciones->where('entidad_tipo', 'exportacion')->pluck('entidad_id')->filter()->all();
+
+        return $this->exportacionesCache = $ids === []
+            ? collect()
+            : \App\Models\Exportacion::query()->where('usuario_id', Auth::id())->whereKey($ids)->get()->keyBy('id');
+    }
+
     public function getNoLeidasCountProperty()
     {
         return Notificacion::query()
@@ -157,6 +173,14 @@ new #[Layout('layouts.panel')] #[Title('Notificaciones - FootwearPoint')] class 
                         <time class="text-xs tabular-nums text-slate-400">{{ optional($n->created_at)->format('d/m/Y H:i') }}</time>
                     </div>
                     <p class="mt-1 text-sm leading-relaxed text-slate-600">{{ $n->mensaje }}</p>
+                    @if ($n->entidad_tipo === 'exportacion' && $n->tipo === 'exportacion_lista' && ($exportacion = $this->exportaciones->get($n->entidad_id)))
+                        @if ($exportacion->disponible())
+                            <a href="{{ \App\Services\Exportar\ExportacionesEnCola::enlace($exportacion) }}" data-descargar-exportacion
+                               class="mt-2 inline-flex text-sm font-medium fp-enlace">Descargar {{ $exportacion->nombre_archivo }}</a>
+                        @else
+                            <p class="mt-2 text-xs text-slate-500">El archivo ya venció. Vuelve a generarlo desde la pantalla.</p>
+                        @endif
+                    @endif
                     @if (! $n->leida_at)
                         <button type="button" wire:click="marcarLeida({{ $n->id }})"
                             class="mt-3 text-xs font-medium fp-enlace">
