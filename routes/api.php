@@ -133,3 +133,5 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:revendedor', 'throttle:6
     Route::put('/{id}', [ClientePrivadoRevendedorController::class, 'update']);
     Route::delete('/{id}', [ClientePrivadoRevendedorController::class, 'destroy']);
 });
+// Reembolsos automáticos en Mercado Pago (estado y reintento).
+require __DIR__.'/api/reembolsos-mercado-pago.php';

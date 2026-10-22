@@ -6,6 +6,7 @@ import '../models/pedido_resumen.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/notificacion_service.dart';
+import 'historial_cambio_screen.dart';
 import 'pedido_detalle_screen.dart';
 import '../widgets/fp_componentes.dart';
 import '../tema/fp_colores.dart';
@@ -154,6 +155,14 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
       } on ApiException {
         // Un 401 lo atiende AuthProvider; lo demás no vale la pena mostrarlo.
       }
+    }
+
+    final solicitudId = notificacion.solicitudCambioId;
+    if (solicitudId != null && mounted) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => HistorialCambioScreen(solicitudId: solicitudId)),
+      );
+      return;
     }
 
     final pedidoId = notificacion.pedidoId;

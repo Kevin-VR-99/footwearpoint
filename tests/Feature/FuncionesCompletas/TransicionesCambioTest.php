@@ -156,4 +156,39 @@ class TransicionesCambioTest extends TestCase
         $this->postJson("/api/solicitudes-cambio/{$solicitud->id}/estado", ['estado' => 'autorizada'])->assertForbidden();
         $this->assertSame('solicitada', $solicitud->fresh()->estado);
     }
+
+    public function test_la_linea_de_tiempo_trae_hora_de_cdmx_quien_y_estado_anterior(): void
+    {
+        [$solicitud, $cliente] = $this->solicitudDeCliente();
+        $this->comoApi(self::ADMIN);
+        Carbon::setTestNow('2026-10-05 18:30:00'); // UTC -> 12:30 en CDMX
+        $this->postJson("/api/solicitudes-cambio/{$solicitud->id}/estado", ['estado' => 'autorizada', 'nota' => 'Pasa a recoger'])->assertOk();
+        $nombreAdmin = $this->usuario(self::ADMIN)->nombre;
+
+        $this->comoApi(Usuario::findOrFail($cliente->usuario_id)->email);
+        $respuesta = $this->getJson("/api/solicitudes-cambio/{$solicitud->id}")->assertOk()
+            ->assertJsonCount(2, 'data.timeline')
+            ->assertJsonPath('data.timeline.0.quien', 'Cliente')
+            ->assertJsonPath('data.timeline.0.estado_anterior', null)
+            ->assertJsonPath('data.timeline.1.estado_anterior', 'solicitada')
+            ->assertJsonPath('data.timeline.1.quien', $nombreAdmin.' (distribuidora)');
+
+        $paso = $respuesta->json('data.timeline.1');
+        $this->assertSame(
+            Carbon::parse($paso['fecha'])->timezone('America/Mexico_City')->format('d/m/Y H:i'),
+            $paso['fecha_cdmx']
+        );
+        $this->assertStringNotContainsString('@', json_encode($respuesta->json('data.timeline')));
+
+        // Otro cliente de la misma distribuidora no la ve.
+        $otro = ClienteDirecto::query()->whereNotNull('usuario_id')->where('id', '!=', $cliente->id)->orderBy('id')->first();
+        if ($otro !== null) {
+            $this->comoApi(Usuario::findOrFail($otro->usuario_id)->email);
+            $this->getJson("/api/solicitudes-cambio/{$solicitud->id}")->assertNotFound();
+        }
+
+        // Otra distribuidora tampoco.
+        $this->comoApi(self::OTRA_ADMIN);
+        $this->getJson("/api/solicitudes-cambio/{$solicitud->id}")->assertNotFound();
+    }
 }

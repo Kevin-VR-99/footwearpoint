@@ -7,6 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import '../models/usuario.dart';
 import '../services/api_service.dart';
+import '../services/aperturas_push.dart';
 import '../services/registro_fcm.dart';
 
 /// Guarda quién inició sesión y avisa a las pantallas cuando eso cambia.
@@ -240,6 +241,7 @@ class AuthProvider extends ChangeNotifier {
       await _renovacionTokenFcm?.cancel();
       _renovacionTokenFcm = null;
       registroFcm.detener();
+      unawaited(AperturasPush.detener());
 
       try {
         await FirebaseMessaging.instance.deleteToken();
@@ -430,6 +432,9 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error al escuchar la renovación FCM: $e');
     }
+
+    // Al tocar un push de cambio de estado se abre su historial.
+    unawaited(AperturasPush.escuchar());
 
     try {
       // 0. TG-183: desde Android 13 hay que pedir permiso para mostrar

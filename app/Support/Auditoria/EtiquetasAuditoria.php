@@ -41,6 +41,11 @@ final class EtiquetasAuditoria
         'stock.entrada'                   => 'Entrada de stock',
         'stock.ajuste'                    => 'Ajuste de stock',
         'venta_mostrador.registrada'      => 'Venta de mostrador',
+        // Reembolsos automáticos en Mercado Pago
+        'mercado_pago.reembolso_solicitado' => 'Reembolso en Mercado Pago solicitado',
+        'mercado_pago.reembolso_aprobado'  => 'Reembolso en Mercado Pago aprobado',
+        'mercado_pago.reembolso_fallido'   => 'Reembolso en Mercado Pago fallido',
+        'mercado_pago.reembolso_reintentado' => 'Reembolso en Mercado Pago reintentado',
         // Precios de la distribuidora
         'oferta.precio_mayorista_actualizado' => 'Precio de mayoreo cambiado',
         'oferta.precio_mayorista_restablecido' => 'Precio de mayoreo restablecido',

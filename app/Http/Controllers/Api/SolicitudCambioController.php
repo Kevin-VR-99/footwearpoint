@@ -34,7 +34,7 @@ class SolicitudCambioController extends Controller
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
         $solicitud = PropietarioActual::limitar(SolicitudCambio::query())
-            ->with(['pedidoDetalle', 'ventaDetalle', 'historial'])
+            ->with(['pedidoDetalle', 'ventaDetalle', 'historial.staff.usuario'])
             ->findOrFail($id);
 
         return response()->json(['data' => new SolicitudCambioResource($solicitud)]);
@@ -52,7 +52,7 @@ class SolicitudCambioController extends Controller
         $solicitud = $accion->ejecutar($id, $datos['estado'], $datos['nota'] ?? null, isset($datos['monto_vale']) ? (float) $datos['monto_vale'] : null);
 
         return response()->json([
-            'data'    => new SolicitudCambioResource($solicitud->load(['pedidoDetalle', 'ventaDetalle', 'historial'])),
+            'data'    => new SolicitudCambioResource($solicitud->load(['pedidoDetalle', 'ventaDetalle', 'historial.staff.usuario'])),
             'message' => 'Solicitud actualizada: '.mb_strtolower(SolicitudCambio::etiqueta($solicitud->estado)).'.',
         ]);
     }

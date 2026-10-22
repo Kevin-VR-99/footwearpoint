@@ -27,6 +27,9 @@ class Notificacion {
   /// Si al tocarla se puede abrir el detalle de un pedido propio.
   int? get pedidoId => entidadTipo == 'pedido' ? entidadId : null;
 
+  /// Avisos de cambio de estado de una solicitud de cambio.
+  int? get solicitudCambioId => entidadTipo == 'solicitud_cambio' ? entidadId : null;
+
   Notificacion marcadaLeida() => Notificacion(
     id: id,
     tipo: tipo,

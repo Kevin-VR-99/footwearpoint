@@ -75,6 +75,8 @@ class PedidoResource extends JsonResource
                     'cambio' => $plazo->estado($l->setRelation('pedido', $this->resource)),
                 ]);
             }),
+            // Reembolsos automáticos en Mercado Pago (cuando se cargan).
+            'reembolsos_mercado_pago' => $this->whenLoaded('reembolsosMercadoPago', fn () => $this->reembolsosMercadoPago->map->aArreglo()->values()),
             'pagos' => $this->whenLoaded('pagos', function () {
                 return $this->pagos->map(fn ($p) => [
                     'id'         => $p->id,

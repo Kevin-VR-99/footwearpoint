@@ -2,6 +2,7 @@
 
 namespace App\Services\Pedido;
 
+use App\Services\Reembolso\ReembolsoMercadoPagoService;
 use App\Models\DistribuidoraStaff;
 use App\Models\Pago;
 use App\Models\PedidoDetalle;
@@ -107,7 +108,25 @@ class ResolverNoSurtidoAction
 
         $pedido = $detalle->pedido;
 
-        return DB::transaction(function () use ($detalle, $pedido, $monto, $metodo, $staffId) {
+        // Si el anticipo se cobró con Mercado Pago, se devuelve ahí mismo
+        // (reembolso parcial del cobro, pedido a su API desde la cola).
+        $cobroMp = null;
+        if ($metodo === 'mercado_pago') {
+            app(\App\Services\Auth\PermisoModuloService::class)->exigir(Auth::user(), \App\Services\Auth\PermisoModuloService::PAGOS_REGISTRAR);
+            $reembolsosMp = app(ReembolsoMercadoPagoService::class);
+            $cobroMp = $pedido->pagos()
+                ->where('metodo', 'mercado_pago')->where('direccion', 'entrada')->where('estado', 'aplicado')
+                ->orderByDesc('id')->get()
+                ->first(fn (Pago $c) => ReembolsoMercadoPagoService::esReembolsable($c) && $reembolsosMp->disponible($c) >= $monto);
+
+            if ($cobroMp === null) {
+                throw ValidationException::withMessages([
+                    'detalle' => ['Este pedido no tiene un cobro de Mercado Pago del que se pueda devolver ese monto. Devuélvelo en efectivo.'],
+                ]);
+            }
+        }
+
+        return DB::transaction(function () use ($detalle, $pedido, $monto, $metodo, $staffId, $cobroMp) {
             $pago = Pago::create([
                 'distribuidora_id'        => $pedido->distribuidora_id,
                 'pedido_id'               => $pedido->id,
@@ -117,7 +136,7 @@ class ResolverNoSurtidoAction
                 'metodo'                  => $metodo,
                 'monto'                   => $monto,
                 'fecha_pago'              => now(),
-                'referencia'              => 'Anticipo devuelto: '.$detalle->producto_nombre.' no surtido',
+                'referencia'              => ($cobroMp ? 'Anticipo devuelto en Mercado Pago: ' : 'Anticipo devuelto: ').$detalle->producto_nombre.' no surtido',
                 'estado'                  => 'aplicado',
                 'registrado_por_staff_id' => $staffId,
             ]);
@@ -134,8 +153,23 @@ class ResolverNoSurtidoAction
                 ],
             );
 
+            if ($cobroMp !== null) {
+                app(ReembolsoMercadoPagoService::class)->solicitar($cobroMp, $monto, 'Anticipo de '.$detalle->producto_nombre.' no surtido', $staffId, (int) $pago->id);
+            }
+
             return $pago;
         });
+    }
+
+    /** true si el pedido tiene un cobro de Mercado Pago del que se puede devolver el anticipo de ese renglón. */
+    public function puedeDevolverEnMercadoPago(PedidoDetalle $detalle): bool
+    {
+        $monto = $this->montoADevolver($detalle);
+        $reembolsosMp = app(ReembolsoMercadoPagoService::class);
+
+        return $monto > 0 && $detalle->pedido->pagos
+            ->where('metodo', 'mercado_pago')->where('direccion', 'entrada')->where('estado', 'aplicado')
+            ->contains(fn (Pago $c) => ReembolsoMercadoPagoService::esReembolsable($c) && $reembolsosMp->disponible($c) >= $monto);
     }
 
     /**

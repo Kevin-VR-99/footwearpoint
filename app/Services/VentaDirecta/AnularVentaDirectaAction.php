@@ -12,6 +12,7 @@ use App\Models\ValeMovimiento;
 use App\Models\VentaDirecta;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Auth\PermisoModuloService;
+use App\Services\Reembolso\ReembolsoMercadoPagoService;
 use App\Support\ContextoOperativo;
 use App\Support\FolioPago;
 use Illuminate\Support\Facades\Auth;
@@ -29,10 +30,10 @@ use Illuminate\Validation\ValidationException;
  *   - si se pagó con vale, el saldo regresa al vale;
  *   - la venta queda 'anulada' con quién, cuándo y por qué, y en la bitácora.
  *
- * Mercado Pago: el punto de venta no cobra con Mercado Pago (solo efectivo,
- * transferencia, tarjeta u otro), así que aquí nunca se llama a su API. Si
- * algún día llegara un cobro así, el reembolso se asienta como manual
- * (referencia «Reembolso manual») y se hace desde el panel de Mercado Pago.
+ * Mercado Pago: si un cobro de la venta se hizo con Mercado Pago (y se
+ * conoce el id del pago en Mercado Pago), el reembolso se pide solo a su API
+ * desde la cola (ReembolsoMercadoPagoService), con su estado en la pantalla
+ * y reintento si falla. Sin id del pago, queda como reembolso manual.
  */
 class AnularVentaDirectaAction
 {
@@ -40,6 +41,7 @@ class AnularVentaDirectaAction
         private ContextoOperativo $contexto,
         private RegistrarAuditoriaAction $auditoria,
         private PermisoModuloService $permisos,
+        private ReembolsoMercadoPagoService $reembolsosMp,
     ) {
     }
 
@@ -142,15 +144,25 @@ class AnularVentaDirectaAction
                     'metodo'                  => $cobro->metodo,
                     'monto'                   => (float) $cobro->monto,
                     'fecha_pago'              => now(),
-                    'referencia'              => $cobro->metodo === 'mercado_pago'
-                        ? 'Reembolso manual en Mercado Pago de '.$cobro->folio
-                        : 'Devolución de '.$cobro->folio,
+                    'referencia'              => match (true) {
+                        ReembolsoMercadoPagoService::esReembolsable($cobro) => 'Reembolso automático en Mercado Pago de '.$cobro->folio,
+                        $cobro->metodo === 'mercado_pago'                    => 'Reembolso manual en Mercado Pago de '.$cobro->folio,
+                        default                                              => 'Devolución de '.$cobro->folio,
+                    },
                     'estado'                  => 'aplicado',
                     'registrado_por_staff_id' => $staffId,
                     'created_at'              => now(),
                 ])->save();
 
                 $reembolsos[] = ['folio' => $reembolso->folio, 'metodo' => $reembolso->metodo, 'monto' => (float) $reembolso->monto];
+
+                // Cobrado con Mercado Pago: se pide la devolución a su API (en la cola).
+                if (ReembolsoMercadoPagoService::esReembolsable($cobro)) {
+                    $disponible = $this->reembolsosMp->disponible($cobro);
+                    if ($disponible > 0) {
+                        $this->reembolsosMp->solicitar($cobro, $disponible, $nota, $staffId, (int) $reembolso->id);
+                    }
+                }
             }
 
             // 3) Lo pagado con vale regresa al vale.

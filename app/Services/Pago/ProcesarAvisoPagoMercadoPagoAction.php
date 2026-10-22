@@ -49,6 +49,9 @@ class ProcesarAvisoPagoMercadoPagoAction
 
     public const NO_APLICA = 'no_aplica';
 
+    /** El aviso confirmó un reembolso automático pedido desde FootwearPoint. */
+    public const REEMBOLSO_CONFIRMADO = 'reembolso_confirmado';
+
     /** Fallas de Mercado Pago que vale la pena reintentar más tarde. */
     public const FALLAS_TEMPORALES = [
         MercadoPagoException::SIN_RESPUESTA,
@@ -127,12 +130,20 @@ class ProcesarAvisoPagoMercadoPagoAction
             return $this->sinAplicar($distribuidoraId, null, 'No existe el pago de la referencia.');
         }
 
+        $status = is_string($pagoMp['status'] ?? null) ? $pagoMp['status'] : '';
+
+        // Reembolsos automáticos: el aviso confirma lo que se pidió a Mercado Pago.
+        if (in_array($status, self::DEVUELTO_MP, true) || ! empty($pagoMp['refunds'])) {
+            $confirmados = app(\App\Services\Reembolso\ReembolsoMercadoPagoService::class)->desdeAviso($pago, $pagoMp);
+            if ($confirmados > 0) {
+                return $this->resultado(true, self::REEMBOLSO_CONFIRMADO, $distribuidoraId, $pago->id, null);
+            }
+        }
+
         if ($pago->pedido_id === null) {
             // Por ejemplo, la suscripción de G11: todavía no hay quién la aplique.
             return $this->sinAplicar($distribuidoraId, $pago->id, 'Sin manejador: el pago no es de un pedido.');
         }
-
-        $status = is_string($pagoMp['status'] ?? null) ? $pagoMp['status'] : '';
 
         if ($status === 'approved') {
             return $this->aprobado($distribuidoraId, $pago, $pagoMp);

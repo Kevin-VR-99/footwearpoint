@@ -291,6 +291,55 @@ class ClienteMercadoPago
         return (string) $id;
     }
 
+    /**
+     * Reembolso total (sin monto) o parcial de un pago, con la cuenta de la
+     * distribuidora: POST /v1/payments/{id}/refunds.
+     *
+     * Lleva X-Idempotency-Key: si la misma llave llega dos veces (un
+     * reintento después de que se cortó la conexión), Mercado Pago no
+     * devuelve dos veces.
+     *
+     * No lanza por un rechazo de Mercado Pago: regresa el código HTTP y el
+     * mensaje para que quien llama decida si reintentar. Solo lanza
+     * MercadoPagoException::SIN_RESPUESTA si no hubo respuesta.
+     *
+     * @return array{ok: bool, http: int, datos: array, error: string|null}
+     */
+    public function reembolsarPago(string $token, string $pagoId, ?float $monto, string $llaveIdempotencia): array
+    {
+        $cuerpo = $monto === null ? [] : ['amount' => round($monto, 2)];
+
+        try {
+            $respuesta = $this->conToken($token)
+                ->withHeaders(['X-Idempotency-Key' => $llaveIdempotencia])
+                ->post($this->config('url_api').'/v1/payments/'.rawurlencode($pagoId).'/refunds', (object) $cuerpo);
+        } catch (ConnectionException) {
+            report(new RuntimeException('Mercado Pago no respondió al reembolsar el pago.'));
+
+            throw MercadoPagoException::con(MercadoPagoException::SIN_RESPUESTA);
+        }
+
+        $datos = $respuesta->json();
+        $datos = is_array($datos) ? $datos : [];
+
+        if ($respuesta->successful()) {
+            return ['ok' => true, 'http' => $respuesta->status(), 'datos' => $datos, 'error' => null];
+        }
+
+        $codigo = is_string($datos['error'] ?? null) && $datos['error'] !== '' ? $datos['error'] : 'sin_codigo';
+        $mensaje = is_string($datos['message'] ?? null) ? mb_substr($datos['message'], 0, 200) : '';
+
+        // Al log solo el código HTTP y el código de error, nunca el token.
+        report(new RuntimeException("Mercado Pago rechazó el reembolso (HTTP {$respuesta->status()}, error: {$codigo})."));
+
+        return [
+            'ok'    => false,
+            'http'  => $respuesta->status(),
+            'datos' => $datos,
+            'error' => trim("HTTP {$respuesta->status()} · {$codigo}".($mensaje !== '' ? " · {$mensaje}" : '')),
+        ];
+    }
+
     private function conToken(string $token): \Illuminate\Http\Client\PendingRequest
     {
         return Http::withToken($token)
