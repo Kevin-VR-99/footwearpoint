@@ -22,6 +22,12 @@ class RegistrarPagoPedidoAction
 
     public function ejecutar(Pedido $pedido, array $datos): Pedido
     {
+        // Permiso fino «Registrar pagos de pedidos» (prendido por omisión).
+        app(\App\Services\Auth\PermisoModuloService::class)->exigir(
+            \Illuminate\Support\Facades\Auth::user(),
+            \App\Services\Auth\PermisoModuloService::PAGOS_REGISTRAR,
+        );
+
         $tipo = $datos['tipo'];
         $metodo = $datos['metodo'];
         $monto = round((float) $datos['monto'], 2);

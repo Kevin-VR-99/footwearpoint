@@ -89,6 +89,13 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
         return (bool) auth()->user()?->hasRole('admin_distribuidora');
     }
 
+    /** Permiso fino «Ver precios de mayoreo» (el admin siempre). */
+    public function getPuedeVerMayoreoProperty(): bool
+    {
+        return app(\App\Services\Auth\PermisoModuloService::class)
+            ->puede(auth()->user(), \App\Services\Auth\PermisoModuloService::COSTOS_VER);
+    }
+
     public function getPreciosProperty(): PrecioEfectivo
     {
         return app(PrecioEfectivo::class);
@@ -135,7 +142,9 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
                 @endif
                 <div class="text-right text-sm">
                     <p class="text-fp-text-muted">Menudeo: <span class="tabular-nums">${{ number_format($this->precios->menudeo($pc), 2) }}</span></p>
-                    <p class="font-semibold text-fp-primary">Tu mayoreo: <span class="tabular-nums">${{ number_format($this->precios->mayoreo($pc), 2) }}</span></p>
+                    @if ($this->puedeVerMayoreo)
+                        <p class="font-semibold text-fp-primary">Tu mayoreo: <span class="tabular-nums">${{ number_format($this->precios->mayoreo($pc), 2) }}</span></p>
+                    @endif
                 </div>
             </div>
 

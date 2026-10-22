@@ -76,7 +76,11 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     continue;
                 }
                 $usuario->unsetRelation('permissions');
-                $this->permisosEmpleado[$empleado->id] = $usuario->getDirectPermissions()->pluck('name')->all();
+                $finos = array_keys(array_filter(\App\Services\Auth\PermisoModuloService::finosDe($empleado)));
+                $this->permisosEmpleado[$empleado->id] = array_values(array_merge(
+                    $usuario->getDirectPermissions()->pluck('name')->all(),
+                    $finos,
+                ));
             }
         });
     }
@@ -148,9 +152,22 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         $marcados = $this->permisosEmpleado[$id] ?? [];
         $validos = array_values(array_intersect($marcados, RolesPermissionsSeeder::PERMISOS_POR_MODULO));
 
+        $antes = \App\Services\Auth\PermisoModuloService::finosDe($empleado);
+        $finos = [];
+        foreach (array_keys(\App\Services\Auth\PermisoModuloService::PERMISOS_FINOS) as $permiso) {
+            $finos[$permiso] = in_array($permiso, $marcados, true);
+        }
+
         $this->enEquipo(function () use ($usuario, $validos) {
             $usuario->syncPermissions($validos);
         });
+
+        $empleado->forceFill(['permisos_finos' => $finos])->save();
+
+        app(\App\Services\Auditoria\RegistrarAuditoriaAction::class)->ejecutar(
+            'empleado.permisos_actualizados', 'distribuidora_staff', (int) $empleado->id,
+            ['finos' => $antes], ['modulo' => $validos, 'finos' => $finos],
+        );
 
         $this->cargarEmpleados();
         $this->dispatch('guardado', mensaje: 'Permisos del empleado actualizados.');
@@ -476,14 +493,9 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                                     {{ $empleado->estado === 'activo' ? 'Desactivar' : 'Activar' }}
                                 </button>
                                 <div class="mt-2 space-y-1 text-left text-xs text-slate-600">
-                                    @foreach ([
-                                        'ciclo.cerrar' => 'Cerrar ciclo',
-                                        'ciclo.solicitar_fabrica' => 'Solicitar a fábrica',
-                                        'reportes.ver_financieros' => 'Reportes financieros',
-                                        'configuracion.administrar' => 'Configuración',
-                                        'usuarios.administrar' => 'Usuarios',
-                                    ] as $permiso => $etiqueta)
-                                        <label class="flex items-center gap-1">
+                                    @foreach (\App\Services\Auth\PermisoModuloService::ETIQUETAS_MODULO
+                                        + array_map(fn ($p) => $p[0], \App\Services\Auth\PermisoModuloService::PERMISOS_FINOS) as $permiso => $etiqueta)
+                                        <label class="flex items-center gap-1 rounded px-1 transition-colors hover:bg-fp-page">
                                             <input type="checkbox" wire:model="permisosEmpleado.{{ $empleado->id }}" value="{{ $permiso }}">
                                             {{ $etiqueta }}
                                         </label>

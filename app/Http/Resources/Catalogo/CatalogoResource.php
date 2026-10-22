@@ -33,6 +33,16 @@ class CatalogoResource extends JsonResource
             'revendedor',
         ]) ?? false;
 
+        // Permiso fino «Ver precios de mayoreo» para el empleado (prendido por omisión).
+        if ($puedeVerMayorista && $request->user()->hasRole('empleado') && ! $request->user()->hasRole('admin_distribuidora')) {
+            if (! $request->attributes->has('fp.costos_ver')) {
+                $request->attributes->set('fp.costos_ver', app(\App\Services\Auth\PermisoModuloService::class)
+                    ->puede($request->user(), \App\Services\Auth\PermisoModuloService::COSTOS_VER));
+            }
+
+            $puedeVerMayorista = (bool) $request->attributes->get('fp.costos_ver');
+        }
+
         $precios = app(PrecioEfectivo::class);
         $linea = $this->campana?->linea;
 

@@ -16,10 +16,12 @@ class DistribuidoraStaff extends Model
         'tipo',
         'estado',
         'fecha_alta',
+        'permisos_finos',
     ];
 
     protected $casts = [
         'fecha_alta' => 'datetime',
+        'permisos_finos' => 'array',
     ];
 
     public function distribuidora()

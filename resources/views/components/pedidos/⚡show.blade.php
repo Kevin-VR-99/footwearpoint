@@ -77,6 +77,13 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         );
     }
 
+    /** Permiso fino «Registrar pagos de pedidos»: sin él no se ve el formulario. */
+    public function getPuedeRegistrarPagoProperty(): bool
+    {
+        return app(\App\Services\Auth\PermisoModuloService::class)
+            ->puede(auth()->user(), \App\Services\Auth\PermisoModuloService::PAGOS_REGISTRAR);
+    }
+
     public function getResumenProperty(): array
     {
         return app(RegistrarPagoPedidoAction::class)->resumen($this->pedido);
@@ -476,7 +483,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         @endif
     </div>
 
-    @if ($this->pedido->estado !== 'borrador')
+    @if ($this->pedido->estado !== 'borrador' && $this->puedeRegistrarPago)
         <div class="mb-6 fp-tarjeta p-4 fp-formulario fp-aparecer">
             <h3 class="font-medium text-slate-800 mb-3">Registrar pago</h3>
             <form wire:submit="registrarPago" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-end">

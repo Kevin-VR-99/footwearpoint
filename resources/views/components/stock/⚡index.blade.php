@@ -448,6 +448,13 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         return (int) (\App\Models\ConfiguracionDistribuidora::query()->value('stock_minimo_general') ?? 0);
     }
 
+    /** Permiso fino «Entradas y ajustes de stock» (prendido por omisión). */
+    public function getPuedeAjustarStockProperty(): bool
+    {
+        return app(\App\Services\Auth\PermisoModuloService::class)
+            ->puede(Auth::user(), \App\Services\Auth\PermisoModuloService::STOCK_AJUSTAR);
+    }
+
     public function getPuedeEditarMinimoProperty(): bool
     {
         return app(\App\Services\Auth\PermisoModuloService::class)
@@ -605,6 +612,13 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         </x-panel.alerta>
     @endif
 
+    @if (! $this->puedeAjustarStock)
+        <x-panel.alerta tipo="info" class="mb-4">
+            Puedes consultar las existencias. Para registrar entradas o ajustes pídele el permiso al administrador.
+        </x-panel.alerta>
+    @endif
+
+    @if ($this->puedeAjustarStock)
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
         {{-- Entrada de mercancía: por variante, por modelo (todas las tallas) o importando un archivo --}}
@@ -806,6 +820,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
             </form>
         </div>
     </div>
+    @endif
 
     @php
         $tipApartado = 'Piezas de esta talla en pedidos abiertos (colocados, en revisión, confirmados, en ciclo, pedidos a fábrica, en tránsito o listos para entregar). '
