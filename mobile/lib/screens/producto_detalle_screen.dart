@@ -83,6 +83,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                 modelo: producto.modelo,
                 precio: producto.precioMinoristaSugerido,
                 url: producto.urlPublica,
+                productoCampanaId: producto.id,
               ),
             ),
           ),

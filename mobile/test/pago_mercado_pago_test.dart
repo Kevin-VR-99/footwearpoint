@@ -158,6 +158,22 @@ void main() {
     expect(find.text('Pagar anticipo con Mercado Pago'), findsNothing);
   });
 
+  testWidgets('si se vuelve a la app antes de que el navegador suelte la llamada, igual verifica', (tester) async {
+    final servidor = _Servidor(pedido: _pedido(anticipo: true));
+    PagoMercadoPagoScreen.abrirEnlacePorDefecto = (enlace) async {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      return true;
+    };
+    await abrir(tester, servidor);
+
+    await tocar(tester, 'Pagar anticipo con Mercado Pago');
+    await tocar(tester, 'Pagar con Mercado Pago');
+
+    expect(servidor.rutas, contains('POST /pedidos/5/anticipo/mercado-pago/verificar'));
+    expect(find.text('Recibimos el pago de tu pedido. ¡Gracias!'), findsOneWidget);
+  });
+
   testWidgets('el cliente mayorista paga el total de su pedido', (tester) async {
     final servidor = _Servidor(pedido: _pedido(tipo: 'revendedor', total: true));
     await abrir(tester, servidor);

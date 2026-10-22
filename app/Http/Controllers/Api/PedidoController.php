@@ -39,8 +39,53 @@ class PedidoController extends Controller
             $query->where('tipo', $request->tipo);
         }
 
+        // La app lo pide para que una página llena de borradores no se vea
+        // vacía. Sin el parámetro, el personal sigue viendo los borradores.
+        if ($request->boolean('excluir_borrador')) {
+            $query->where('estado', '!=', 'borrador');
+        }
+
         // Auditoría 21-oct-2026: paginado (?page=, ?per_page= hasta 100).
         return RespuestaPaginada::json(RespuestaPaginada::paginar($query, $request), PedidoResource::class);
+    }
+
+    /**
+     * Cifras del inicio de la app. Se calculan en la base, no con los
+     * primeros 100 pedidos: si hay más, el número igual sale bien.
+     */
+    public function resumen(RegistrarPagoPedidoAction $pagos): JsonResponse
+    {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+
+        $terminados = ['borrador', 'descartado', 'entregado', 'rechazado'];
+        $enCurso = 0;
+        $porPagar = 0.0;
+
+        PropietarioActual::limitar(Pedido::query())
+            ->whereNotIn('estado', $terminados)
+            ->with(['detalle', 'pagos', 'aplicacionesVale'])
+            ->orderBy('id')
+            ->lazyById(100)
+            ->each(function (Pedido $pedido) use (&$enCurso, &$porPagar, $pagos) {
+                $enCurso++;
+                $porPagar += (float) $pagos->resumen($pedido)['saldo'];
+            });
+
+        $ultimos = PropietarioActual::limitar(
+            Pedido::query()->with(['clienteDirecto', 'revendedorAfiliacion.revendedor'])
+        )
+            ->where('estado', '!=', 'borrador')
+            ->orderByDesc('id')
+            ->limit(3)
+            ->get();
+
+        return response()->json([
+            'data' => [
+                'en_curso'  => $enCurso,
+                'por_pagar' => round($porPagar, 2),
+                'ultimos'   => PedidoResource::collection($ultimos),
+            ],
+        ]);
     }
 
     public function show(int $id): JsonResponse

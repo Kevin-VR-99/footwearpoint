@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AbrirEnLaAppController;
 use App\Http\Controllers\ArchivoCatalogoImportacionController;
 use App\Http\Controllers\ComprobanteVentaController;
 use Illuminate\Support\Facades\Auth;
@@ -35,6 +36,13 @@ if ($dominioTiendas = config('app.dominio_base')) {
 // arriba (TG-232), que se registra antes a propósito.
 Route::livewire('/', 'publico.inicio')
     ->name('inicio');
+
+// Enlace que viaja en el texto de WhatsApp. La app de Android lo abre
+// directo; en el navegador queda esta página.
+Route::get('/abrir/{tipo}/{id}', AbrirEnLaAppController::class)
+    ->whereIn('tipo', ['pedido', 'producto'])
+    ->whereNumber('id')
+    ->name('abrir.en-app');
 
 Route::livewire('/marketplace', 'marketplace.index')
     ->name('marketplace');

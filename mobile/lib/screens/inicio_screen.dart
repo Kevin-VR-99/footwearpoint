@@ -39,7 +39,7 @@ class InicioScreen extends StatefulWidget {
 }
 
 class _InicioScreenState extends State<InicioScreen> {
-  List<PedidoResumen>? _pedidos;
+  ResumenPedidos? _resumen;
   List<Vale>? _vales;
 
   /// True mientras de verdad se esta pidiendo el resumen.
@@ -64,8 +64,8 @@ class _InicioScreenState extends State<InicioScreen> {
     // el Inicio entero por un numero de adorno. La pantalla tiene que seguir
     // sirviendo para navegar aunque el resumen no se pueda armar.
     try {
-      final pedidos = await PedidoService(api).listar();
-      if (mounted) setState(() => _pedidos = pedidos);
+      final resumen = await PedidoService(api).resumen();
+      if (mounted) setState(() => _resumen = resumen);
     } catch (_) {
       // Se queda con el guion.
     }
@@ -160,7 +160,9 @@ class _InicioScreenState extends State<InicioScreen> {
               // vistazo se sabe como van los pedidos y los vales.
               const FpTituloSeccion('Tu resumen'),
               _Cifras(
-                pedidos: _pedidos,
+                enCurso: _resumen?.enCurso,
+                porPagar: _resumen?.porPagar,
+                cargado: _resumen != null,
                 vales: _vales,
                 cargando: _cargandoResumen,
               ),
@@ -194,7 +196,7 @@ class _InicioScreenState extends State<InicioScreen> {
                       : null,
                 ),
               _UltimosPedidos(
-                pedidos: _pedidos,
+                pedidos: _resumen?.ultimos,
                 alVerTodos: habilitado
                     ? () => _abrir(context, const MisPedidosScreen())
                     : null,
@@ -213,12 +215,17 @@ class _InicioScreenState extends State<InicioScreen> {
 /// cero dice "no tienes nada", y eso todavia no se sabe.
 class _Cifras extends StatelessWidget {
   const _Cifras({
-    required this.pedidos,
+    required this.enCurso,
+    required this.porPagar,
+    required this.cargado,
     required this.vales,
     required this.cargando,
   });
 
-  final List<PedidoResumen>? pedidos;
+  /// Ya vienen contados en el servidor, también si hay más de 100 pedidos.
+  final int? enCurso;
+  final double? porPagar;
+  final bool cargado;
   final List<Vale>? vales;
 
   /// Si ya se intento y no se pudo, se dice. No se deja un "Cargando..."
@@ -227,21 +234,8 @@ class _Cifras extends StatelessWidget {
 
   String get _sinDato => cargando ? 'Cargando…' : 'No se pudo cargar';
 
-  /// Los que todavia estan en curso. Un borrador no cuenta: no se ha
-  /// enviado. Un entregado o rechazado tampoco: ya se acabaron.
-  static const _terminados = {
-    'borrador',
-    'descartado',
-    'entregado',
-    'rechazado',
-  };
-
   @override
   Widget build(BuildContext context) {
-    final enCurso = pedidos
-        ?.where((p) => !_terminados.contains(p.estado))
-        .toList();
-    final porPagar = enCurso?.fold<double>(0, (suma, p) => suma + p.saldo);
     final saldoVales = vales?.fold<double>(
       0,
       (suma, v) => suma + v.saldoActual,
@@ -256,16 +250,16 @@ class _Cifras extends StatelessWidget {
           Expanded(
             child: FpDato(
               etiqueta: 'Pedidos en curso',
-              valor: enCurso == null ? '—' : '${enCurso.length}',
-              nota: enCurso == null ? _sinDato : 'Sin contar los entregados',
+              valor: cargado ? '$enCurso' : '—',
+              nota: cargado ? 'Sin contar los entregados' : _sinDato,
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: FpDato(
               etiqueta: 'Te falta pagar',
-              valor: porPagar == null ? '—' : formatoPrecio(porPagar),
-              nota: porPagar == null ? _sinDato : 'De tus pedidos en curso',
+              valor: cargado ? formatoPrecio(porPagar ?? 0) : '—',
+              nota: cargado ? 'De tus pedidos en curso' : _sinDato,
               colorValor: (porPagar ?? 0) > 0
                   ? FpColores.peligro
                   : FpColores.sidebar,
@@ -307,9 +301,10 @@ class _UltimosPedidos extends StatelessWidget {
     final lista = pedidos;
 
     // Sin datos todavia, o sin pedidos: no se enseña una seccion vacia.
+    // El servidor ya manda solo los tres más nuevos.
     if (lista == null || lista.isEmpty) return const SizedBox.shrink();
 
-    final recientes = lista.take(3).toList();
+    final recientes = lista;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -424,7 +419,12 @@ class _CampanaNotificacionesState extends State<_CampanaNotificaciones> {
     // TG-281: si llega un aviso con la app abierta, el globito rojo tiene
     // que aparecer solo. Antes habia que tocar la campanita para enterarse,
     // que es justo al reves de para lo que sirve.
-    _avisos = AvisosEnVivo.alLlegar.listen((_) => _contar());
+    // El conteo se guarda unos minutos. Un aviso nuevo tiene que saltarse
+    // esa copia: si no, el globito sigue en cero hasta que venza.
+    _avisos = AvisosEnVivo.alLlegar.listen((_) {
+      NotificacionService.olvidarCache();
+      _contar(forzar: true);
+    });
   }
 
   @override
@@ -433,9 +433,9 @@ class _CampanaNotificacionesState extends State<_CampanaNotificaciones> {
     super.dispose();
   }
 
-  Future<void> _contar() async {
+  Future<void> _contar({bool forzar = false}) async {
     try {
-      final total = await _servicio.contarNoLeidas();
+      final total = await _servicio.contarNoLeidas(forzar: forzar);
       if (mounted) setState(() => _noLeidas = total);
     } on ApiException {
       // Sin el número la campana sigue sirviendo; un 401 lo atiende AuthProvider.
@@ -446,7 +446,7 @@ class _CampanaNotificacionesState extends State<_CampanaNotificaciones> {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const NotificacionesScreen()),
     );
-    _contar();
+    _contar(forzar: true);
   }
 
   @override

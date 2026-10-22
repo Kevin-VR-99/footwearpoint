@@ -26,6 +26,17 @@ class ApiException implements Exception {
   String toString() => mensaje;
 }
 
+/// Un GET que también entiende el 304 del servidor.
+class RespuestaGet {
+  const RespuestaGet({required this.codigo, required this.cuerpo, this.etag});
+
+  final int codigo;
+  final Map<String, dynamic> cuerpo;
+  final String? etag;
+
+  bool get sinCambios => codigo == 304;
+}
+
 /// Lo que se le dice a la persona cuando el teléfono no alcanza el servidor.
 ///
 /// Es el mismo texto siempre, venga de donde venga el fallo de red, para que
@@ -72,7 +83,16 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> get(String ruta) async {
-    return _enviar(() async => _cliente.get(_url(ruta), headers: await _encabezados()));
+    return (await getConEtag(ruta)).cuerpo;
+  }
+
+  /// Manda [etag] como If-None-Match. Si el servidor responde 304, [sinCambios]
+  /// es true y el cuerpo viene vacío.
+  Future<RespuestaGet> getConEtag(String ruta, {String? etag}) async {
+    final extra = <String, String>{};
+    if (etag != null && etag.isNotEmpty) extra['If-None-Match'] = etag;
+
+    return _enviarCrudo(() async => _cliente.get(_url(ruta), headers: await _encabezados(extra: extra)));
   }
 
   Future<Map<String, dynamic>> post(String ruta, {Map<String, dynamic>? cuerpo}) async {
@@ -116,10 +136,11 @@ class ApiService {
     return Uri.parse('${Config.urlBaseApi}/$limpia');
   }
 
-  Future<Map<String, String>> _encabezados() async {
+  Future<Map<String, String>> _encabezados({Map<String, String>? extra}) async {
     final encabezados = <String, String>{
       'Accept': 'application/json',
       'Content-Type': 'application/json',
+      ...?extra,
     };
 
     final actual = await token();
@@ -147,6 +168,28 @@ class ApiService {
     }
 
     return _procesar(respuesta);
+  }
+
+  Future<RespuestaGet> _enviarCrudo(Future<http.Response> Function() peticion) async {
+    final http.Response respuesta;
+
+    try {
+      respuesta = await peticion().timeout(_tiempoLimite);
+    } on SocketException {
+      throw ApiException(sinConexion);
+    } on TimeoutException {
+      throw ApiException('El servidor tardó demasiado en responder.');
+    }
+
+    if (respuesta.statusCode == 304) {
+      return RespuestaGet(codigo: 304, cuerpo: const {}, etag: respuesta.headers['etag']);
+    }
+
+    return RespuestaGet(
+      codigo: respuesta.statusCode,
+      cuerpo: _procesar(respuesta),
+      etag: respuesta.headers['etag'],
+    );
   }
 
   Map<String, dynamic> _procesar(http.Response respuesta) {

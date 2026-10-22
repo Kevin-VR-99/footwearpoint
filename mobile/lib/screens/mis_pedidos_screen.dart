@@ -36,6 +36,10 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
   /// TG-281: filtra por folio o por estado. Quien tiene muchos pedidos busca
   /// uno concreto, y antes habia que recorrerlos todos.
   String _busqueda = '';
+
+  /// Pedidos que se armaron y todavía no se envían. Ahí se pueden quitar
+  /// productos. Los enviados van en la otra lista.
+  bool _sinEnviar = false;
   bool _cargando = true;
   String? _error;
 
@@ -47,7 +51,11 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
 
   Future<void> _cargar() async {
     try {
-      final pagina = await _pedidos.listarPagina(pagina: 1, porPagina: _porPagina);
+      final pagina = await _pedidos.listarPagina(
+        pagina: 1,
+        porPagina: _porPagina,
+        estado: _sinEnviar ? 'borrador' : null,
+      );
       if (!mounted) return;
       setState(() {
         _lista = pagina.elementos;
@@ -71,7 +79,11 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
     setState(() => _cargandoMas = true);
 
     try {
-      final pagina = await _pedidos.listarPagina(pagina: _pagina + 1, porPagina: _porPagina);
+      final pagina = await _pedidos.listarPagina(
+        pagina: _pagina + 1,
+        porPagina: _porPagina,
+        estado: _sinEnviar ? 'borrador' : null,
+      );
       if (!mounted) return;
       final vistos = {for (final p in _lista ?? const <PedidoResumen>[]) p.id};
       setState(() {
@@ -125,6 +137,39 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
     );
   }
 
+  Widget _selector() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Row(
+        children: [
+          Expanded(child: _opcion(texto: 'Enviados', activo: !_sinEnviar, sinEnviar: false)),
+          const SizedBox(width: 8),
+          Expanded(child: _opcion(texto: 'Sin enviar', activo: _sinEnviar, sinEnviar: true)),
+        ],
+      ),
+    );
+  }
+
+  Widget _opcion({required String texto, required bool activo, required bool sinEnviar}) {
+    void cambiar() {
+      if (_sinEnviar == sinEnviar) return;
+      setState(() {
+        _sinEnviar = sinEnviar;
+        _cargando = true;
+        _busqueda = '';
+        _error = null;
+      });
+      _cargar();
+    }
+
+    final estilo = const ButtonStyle(minimumSize: WidgetStatePropertyAll(Size.fromHeight(40)));
+    if (activo) {
+      return FilledButton(style: estilo, onPressed: cambiar, child: Text(texto));
+    }
+
+    return OutlinedButton(style: estilo, onPressed: cambiar, child: Text(texto));
+  }
+
   Widget _contenido(BuildContext context) {
     if (_cargando) return const Center(child: CircularProgressIndicator());
 
@@ -145,19 +190,28 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
     }
 
     if (lista.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _cargar,
-        child: ListView(
-          // ListView para que se pueda deslizar y recargar aunque esté vacío.
-          children: const [
-            SizedBox(height: 80),
-            FpEstadoVacio(
-              icono: Icons.receipt_long_outlined,
-              titulo: 'Todavía no tienes pedidos.',
-              texto: 'Cuando envíes uno desde el catálogo, aparecerá aquí con su estado.',
+      return Column(
+        children: [
+          _selector(),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _cargar,
+              child: ListView(
+                // ListView para que se pueda deslizar y recargar aunque esté vacío.
+                children: [
+                  const SizedBox(height: 80),
+                  FpEstadoVacio(
+                    icono: Icons.receipt_long_outlined,
+                    titulo: _sinEnviar ? 'No tienes pedidos sin enviar.' : 'Todavía no tienes pedidos.',
+                    texto: _sinEnviar
+                        ? 'Si uno se quedó a medias, aparece aquí y puedes quitarle productos.'
+                        : 'Cuando envíes uno desde el catálogo, aparecerá aquí con su estado.',
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
@@ -165,8 +219,9 @@ class _MisPedidosScreenState extends State<MisPedidosScreen> {
 
     return Column(
       children: [
+        _selector(),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: FpBuscador(
             texto: 'Buscar por folio o estado',
             alCambiar: (valor) => setState(() => _busqueda = valor),

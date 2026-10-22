@@ -1,5 +1,6 @@
 import '../models/producto_catalogo.dart';
 import 'api_service.dart';
+import 'cache_minutos.dart';
 
 /// Consulta el catálogo de la distribuidora del usuario (E4-05).
 ///
@@ -7,18 +8,35 @@ import 'api_service.dart';
 /// productos publicados de campañas activas de SU distribuidora, y decide si
 /// incluye el precio mayorista según el rol.
 ///
-/// Queda separado de las pantallas para que el flujo de pedidos (E8-01, E9)
-/// pueda reutilizarlo.
+/// Se guarda unos minutos. Al volver a pedirlo, si no cambió el servidor
+/// responde 304 y no se vuelve a bajar.
 class CatalogoService {
-  const CatalogoService(this._api);
+  CatalogoService(this._api);
 
   final ApiService _api;
 
-  Future<List<ProductoCatalogo>> obtener() async {
-    final respuesta = await _api.get('catalogo');
+  static final _cache = CacheMinutos<List<ProductoCatalogo>>();
 
-    return (respuesta['data'] as List<dynamic>)
+  static void olvidarCache() => _cache.olvidar();
+
+  bool get vigente => _cache.vigente;
+
+  List<ProductoCatalogo>? get enMemoria => _cache.valor;
+
+  Future<List<ProductoCatalogo>> obtener({bool forzar = false}) async {
+    if (!forzar && _cache.vigente) return List.unmodifiable(_cache.valor!);
+
+    final respuesta = await _api.getConEtag('catalogo', etag: _cache.etag);
+    if (respuesta.sinCambios && _cache.valor != null) {
+      _cache.confirmar();
+      return List.unmodifiable(_cache.valor!);
+    }
+
+    final lista = (respuesta.cuerpo['data'] as List<dynamic>)
         .map((p) => ProductoCatalogo.desdeJson(p as Map<String, dynamic>))
         .toList();
+    _cache.guardar(lista, etag: respuesta.etag);
+
+    return List.unmodifiable(lista);
   }
 }

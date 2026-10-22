@@ -52,7 +52,7 @@ void main() {
     expect(pagina.hayMas, isFalse);
   });
 
-  test('pedidos: pide page y per_page, quita borradores y dice si hay más', () async {
+  test('pedidos: pide excluir borradores y dice si hay más', () async {
     final pedidas = <Uri>[];
     final api = ApiService(
       cliente: MockClient((peticion) async {
@@ -60,7 +60,7 @@ void main() {
         final pagina = int.parse(peticion.url.queryParameters['page'] ?? '1');
 
         return _json({
-          'data': pagina == 1 ? [_pedido(3, 'colocado'), _pedido(2, 'borrador')] : [_pedido(1, 'entregado')],
+          'data': pagina == 1 ? [_pedido(3, 'colocado'), _pedido(2, 'listo_entrega')] : [_pedido(1, 'entregado')],
           'meta': _meta(pagina, 2),
           'links': {'next': null, 'prev': null},
         });
@@ -68,13 +68,17 @@ void main() {
     );
 
     final primera = await PedidoService(api).listarPagina();
-    expect(primera.elementos.map((p) => p.id), [3]);
+    expect(primera.elementos.map((p) => p.id), [3, 2]);
     expect(primera.hayMas, isTrue);
-    expect(pedidas.last.queryParameters, {'page': '1', 'per_page': '25'});
+    expect(pedidas.last.queryParameters, {'page': '1', 'per_page': '25', 'excluir_borrador': '1'});
 
     final segunda = await PedidoService(api).listarPagina(pagina: 2);
     expect(segunda.elementos.map((p) => p.id), [1]);
     expect(segunda.hayMas, isFalse);
+
+    await PedidoService(api).listarPagina(estado: 'borrador');
+    expect(pedidas.last.queryParameters['estado'], 'borrador');
+    expect(pedidas.last.queryParameters.containsKey('excluir_borrador'), isFalse);
   });
 
   test('vales: junta todas las páginas', () async {

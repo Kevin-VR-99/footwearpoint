@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 
+import '../services/aperturas_push.dart';
 import '../services/avisos_en_vivo.dart';
 import 'notificaciones_screen.dart';
 
@@ -134,6 +135,11 @@ class _CascaronPrincipalState extends State<CascaronPrincipal> {
             TextButton(
               onPressed: () {
                 ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                final datos = Map<String, dynamic>.from(mensaje.data);
+                if (pedidoDePush(datos) != null || solicitudCambioDePush(datos) != null) {
+                  AperturasPush.abrir(datos);
+                  return;
+                }
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => const NotificacionesScreen(),

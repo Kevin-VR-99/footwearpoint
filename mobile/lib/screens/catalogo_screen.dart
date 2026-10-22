@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/filtro_catalogo.dart';
 import '../models/producto_catalogo.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
@@ -33,6 +34,10 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   /// productos que coinciden, de TODAS las lineas. Buscar entre dos lineas no
   /// le sirve a nadie; buscar un modelo, si.
   String _busqueda = '';
+  String? _marca;
+  String? _categoria;
+  String? _talla;
+  String? _disponibilidad;
 
   bool _cargando = true;
   String? _error;
@@ -53,11 +58,11 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
 
   /// La primera vez se llama desde initState, donde todavía no se puede usar
   /// setState: por eso [_cargando] ya empieza en true.
-  Future<void> _cargar() async {
+  Future<void> _cargar({bool forzar = false}) async {
     final servicio = CatalogoService(context.read<AuthProvider>().api);
 
     try {
-      final productos = await servicio.obtener();
+      final productos = await servicio.obtener(forzar: forzar);
       if (!mounted) return;
 
       setState(() {
@@ -102,7 +107,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _cargar,
+      onRefresh: () => _cargar(forzar: true),
       child: _lineas!.isEmpty
           ? ListView(
               // ListView para que se pueda deslizar y recargar aunque esté vacío.
@@ -118,9 +123,23 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     );
   }
 
+  FiltroCatalogo get _filtro => FiltroCatalogo(
+    marca: _marca,
+    categoria: _categoria,
+    talla: _talla,
+    disponibilidad: _disponibilidad,
+  );
+
+  List<ProductoCatalogo> get _visibles {
+    final filtrados = aplicarFiltroCatalogo(_productos, _filtro);
+    _lineas = LineaCatalogo.agrupar(filtrados);
+    return filtrados;
+  }
+
   Widget _lista(BuildContext context) {
+    final visibles = _visibles;
     final buscando = _busqueda.trim().isNotEmpty;
-    final encontrados = buscando ? filtrarProductos(_productos, _busqueda) : const <ProductoCatalogo>[];
+    final encontrados = buscando ? filtrarProductos(visibles, _busqueda) : const <ProductoCatalogo>[];
 
     // TG-281: el buscador va fijo arriba y no dentro del scroll. Si se
     // fuera con la lista, para buscar otra cosa habria que subir primero.
@@ -133,12 +152,78 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
             alCambiar: (valor) => setState(() => _busqueda = valor),
           ),
         ),
-        Expanded(child: _resultados(buscando, encontrados)),
+        _filtros(),
+        Expanded(child: _resultados(buscando, encontrados, visibles)),
       ],
     );
   }
 
-  Widget _resultados(bool buscando, List<ProductoCatalogo> encontrados) {
+  Widget _filtros() {
+    final marcas = opcionesDe(_productos.map((p) => p.marca?.nombre));
+    final categorias = opcionesDe(_productos.map((p) => p.categoria?.nombre));
+    final tallas = opcionesDe(_productos.expand((p) => p.variantes.map((v) => v.talla)));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('Todo'),
+                selected: _disponibilidad == null,
+                onSelected: (_) => setState(() => _disponibilidad = null),
+              ),
+              ChoiceChip(
+                label: const Text('Disponible'),
+                selected: _disponibilidad == 'disponible',
+                onSelected: (_) => setState(() => _disponibilidad = 'disponible'),
+              ),
+              ChoiceChip(
+                label: const Text('Bajo pedido'),
+                selected: _disponibilidad == 'bajo_pedido',
+                onSelected: (_) => setState(() => _disponibilidad = 'bajo_pedido'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _desplegable('Marca', _marca, marcas, (valor) => setState(() => _marca = valor)),
+              _desplegable('Categoría', _categoria, categorias, (valor) => setState(() => _categoria = valor)),
+              _desplegable('Talla', _talla, tallas, (valor) => setState(() => _talla = valor)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _desplegable(String etiqueta, String? actual, List<String> opciones, ValueChanged<String?> alCambiar) {
+    return SizedBox(
+      width: 150,
+      child: DropdownButton<String?>(
+        isExpanded: true,
+        value: actual != null && opciones.contains(actual) ? actual : null,
+        hint: Text(etiqueta),
+        items: [
+          DropdownMenuItem<String?>(value: null, child: Text(etiqueta, overflow: TextOverflow.ellipsis)),
+          for (final opcion in opciones)
+            DropdownMenuItem<String?>(
+              value: opcion,
+              child: Text(opcion, overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: alCambiar,
+      ),
+    );
+  }
+
+  Widget _resultados(bool buscando, List<ProductoCatalogo> encontrados, List<ProductoCatalogo> visibles) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
       children: [
@@ -158,6 +243,11 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
               const SizedBox(height: 10),
             ],
           ],
+        ] else if (visibles.isEmpty) ...[
+          const FpEstadoVacio(
+            icono: Icons.filter_alt_off_outlined,
+            titulo: 'Ningún producto coincide con esos filtros.',
+          ),
         ] else ...[
           FpEncabezado(
             etiqueta: 'Catálogo',

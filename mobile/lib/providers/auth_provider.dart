@@ -9,6 +9,7 @@ import '../models/usuario.dart';
 import '../services/api_service.dart';
 import '../services/aperturas_push.dart';
 import '../services/avisos_en_vivo.dart';
+import '../services/enlaces_app.dart';
 import '../services/registro_fcm.dart';
 
 /// Guarda quién inició sesión y avisa a las pantallas cuando eso cambia.
@@ -17,6 +18,7 @@ import '../services/registro_fcm.dart';
 class AuthProvider extends ChangeNotifier {
   AuthProvider({ApiService? api}) : api = api ?? ApiService() {
     this.api.alNoAutorizado = _sesionVencida;
+    EnlacesApp.haySesion = () => haySesion;
   }
 
   /// Se expone para que las demás pantallas hagan sus peticiones con el
@@ -187,6 +189,7 @@ class AuthProvider extends ChangeNotifier {
     } finally {
       _iniciando = false;
       notifyListeners();
+      if (haySesion) EnlacesApp.abrirSiHaySesion();
     }
   }
 
@@ -221,6 +224,7 @@ class AuthProvider extends ChangeNotifier {
       _conDatosGuardados = false;
       await _guardarCopia(datos);
       _registrarDispositivoFCM();
+      EnlacesApp.abrirSiHaySesion();
 
       return true;
     } on ApiException catch (e) {
@@ -259,6 +263,7 @@ class AuthProvider extends ChangeNotifier {
       registroFcm.detener();
       unawaited(AperturasPush.detener());
       unawaited(AvisosEnVivo.detener());
+      EnlacesApp.olvidar();
 
       try {
         await FirebaseMessaging.instance.deleteToken();
@@ -483,8 +488,10 @@ class AuthProvider extends ChangeNotifier {
       debugPrint('Error al escuchar la renovación FCM: $e');
     }
 
-    // Al tocar un push de cambio de estado se abre su historial.
+    // Al tocar un push se abre el pedido. Con la app abierta, el aviso entra
+    // por AvisosEnVivo: la campanita se actualiza y el cascarón enseña la franja.
     unawaited(AperturasPush.escuchar());
+    unawaited(AvisosEnVivo.escuchar());
 
     try {
       // 0. TG-183: desde Android 13 hay que pedir permiso para mostrar

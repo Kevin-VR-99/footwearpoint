@@ -143,6 +143,7 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
                 @if ($distWa)
                     <x-ui.boton-whatsapp tamano="sm" texto="Compartir"
                         :url="\App\Support\WhatsApp::enlace(\App\Support\WhatsApp::textoProducto([
+                            'id' => (int) $pc->id,
                             'nombre' => $this->producto->nombre,
                             'modelo' => $this->producto->modelo,
                             'precio_texto' => '$'.number_format($this->precios->menudeo($pc), 2),

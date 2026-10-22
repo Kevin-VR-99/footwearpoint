@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Catalogo\CatalogoResource;
 use App\Services\Catalogo\CatalogoVisible;
 use App\Services\Catalogo\PrecioEfectivo;
+use App\Support\RespuestaConEtag;
 use App\Support\Tenant;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * El catálogo como lo ve esta distribuidora (E4-05).
@@ -23,7 +25,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
  */
 class CatalogoController extends Controller
 {
-    public function index(CatalogoVisible $catalogo, PrecioEfectivo $precios): AnonymousResourceCollection
+    public function index(Request $request, CatalogoVisible $catalogo, PrecioEfectivo $precios): Response
     {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora del usuario autenticado.');
 
@@ -41,6 +43,9 @@ class CatalogoController extends Controller
         // Los precios propios de todos, en una sola consulta.
         $precios->precargar($productosCampana);
 
-        return CatalogoResource::collection($productosCampana);
+        return RespuestaConEtag::desde(
+            $request,
+            CatalogoResource::collection($productosCampana)->response($request),
+        );
     }
 }
