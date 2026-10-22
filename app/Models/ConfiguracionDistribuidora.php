@@ -33,6 +33,7 @@ class ConfiguracionDistribuidora extends Model
 
     protected $fillable = [
         'distribuidora_id',
+        'comision_porcentaje_default',
         'anticipo_por_producto',
         'dias_solicitud_cambio',
         'dias_gestion_devolucion',

@@ -14,3 +14,9 @@ Route::prefix('distribuidora/accesos')
         Route::post('{tipo}/{id}/baja', [AccesoController::class, 'baja'])->whereIn('tipo', ['revendedor', 'cliente', 'empleado'])->whereNumber('id');
         Route::post('{tipo}/{id}/reactivar', [AccesoController::class, 'reactivar'])->whereIn('tipo', ['revendedor', 'cliente', 'empleado'])->whereNumber('id');
     });
+
+// Comisiones y metas.
+Route::middleware(['auth:sanctum', 'tenant.team', 'throttle:60,1'])->group(function () {
+    Route::get('revendedor/comisiones', [\App\Http\Controllers\Api\ComisionController::class, 'mias'])->middleware('role:revendedor');
+    Route::get('distribuidora/comisiones', [\App\Http\Controllers\Api\ComisionController::class, 'ranking'])->middleware('role:admin_distribuidora|empleado');
+});
