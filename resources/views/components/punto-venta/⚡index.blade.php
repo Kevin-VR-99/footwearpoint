@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class extends Component
@@ -43,6 +44,10 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
     #[Locked]
     public ?int $ultimaVentaId = null;
 
+    /** Cobrar es el punto de venta. Historial es el listado que antes era otra pantalla. */
+    #[Url(as: 'pestana', except: 'cobrar')]
+    public string $pestana = 'cobrar';
+
     public function mount()
     {
         if (! Auth::check()) {
@@ -51,6 +56,10 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
 
         if (Tenant::id() === null) {
             abort(403, 'No se pudo determinar la distribuidora.');
+        }
+
+        if (! in_array($this->pestana, ['cobrar', 'historial'], true)) {
+            $this->pestana = 'cobrar';
         }
     }
 
@@ -400,8 +409,28 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
 
 <div>
     <x-panel.encabezado titulo="Venta local"
-        subtitulo="Venta de contado con entrega inmediata. Solo se ofrece lo que hay en existencia." class="mb-6" />
+        subtitulo="Cobro de contado con lo que hay en existencia, y el historial de esas ventas." class="mb-6" />
 
+    <div class="fp-pestanas mb-6 flex flex-wrap gap-1" role="tablist" aria-label="Venta local">
+        <button type="button" role="tab" wire:click="$set('pestana', 'cobrar')"
+            aria-selected="{{ $pestana === 'cobrar' ? 'true' : 'false' }}" data-pestana-venta="cobrar"
+            @class([
+                'fp-pestana rounded-lg px-3.5 py-2 text-sm font-medium transition',
+                'bg-fp-primary text-white shadow-sm' => $pestana === 'cobrar',
+                'text-slate-600 hover:bg-slate-50' => $pestana !== 'cobrar',
+            ])>Cobrar</button>
+        <button type="button" role="tab" wire:click="$set('pestana', 'historial')"
+            aria-selected="{{ $pestana === 'historial' ? 'true' : 'false' }}" data-pestana-venta="historial"
+            @class([
+                'fp-pestana rounded-lg px-3.5 py-2 text-sm font-medium transition',
+                'bg-fp-primary text-white shadow-sm' => $pestana === 'historial',
+                'text-slate-600 hover:bg-slate-50' => $pestana !== 'historial',
+            ])>Historial</button>
+    </div>
+
+    @if ($pestana === 'historial')
+        <livewire:ventas.index :embebido="true" wire:key="venta-local-historial" />
+    @else
     @if (\Illuminate\Support\Facades\Route::has('caja.index') && $this->sinCajaAbierta)
         <x-panel.alerta tipo="aviso" class="mb-4">
             No tienes una caja abierta: lo que cobres no entrará a ningún corte.
@@ -639,4 +668,5 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
             @endif
         </div>
     </div>
+    @endif
 </div>

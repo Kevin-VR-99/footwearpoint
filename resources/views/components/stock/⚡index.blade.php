@@ -60,6 +60,10 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     #[\Livewire\Attributes\Url(except: '')]
     public string $busqueda = '';
 
+    /** Existencias es esta pantalla. Conteo es el inventario físico, si el permiso lo permite. */
+    #[\Livewire\Attributes\Url(as: 'pestana', except: 'existencias')]
+    public string $pestana = 'existencias';
+
     /** Alerta de stock bajo: filtro y edición del mínimo propio de la variante. */
     public bool $soloBajo = false;
     public ?int $editandoMinimoId = null;
@@ -76,6 +80,33 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 
         if (Tenant::id() === null) {
             abort(403, 'No se pudo determinar la distribuidora.');
+        }
+
+        $this->normalizarPestana();
+    }
+
+    public function updatedPestana(): void
+    {
+        $this->normalizarPestana();
+    }
+
+    /** Permiso fino «Inventario físico (conteos)» (prendido por omisión). */
+    public function getPuedeContarProperty(): bool
+    {
+        return app(\App\Services\Auth\PermisoModuloService::class)
+            ->puede(Auth::user(), \App\Services\Auth\PermisoModuloService::INVENTARIO_CONTEO);
+    }
+
+    private function normalizarPestana(): void
+    {
+        $permitidas = ['existencias'];
+
+        if ($this->puedeContar) {
+            $permitidas[] = 'conteo';
+        }
+
+        if (! in_array($this->pestana, $permitidas, true)) {
+            $this->pestana = 'existencias';
         }
     }
 
@@ -590,8 +621,30 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 
 <div>
     <x-panel.encabezado titulo="Stock local"
-        subtitulo="Entradas de mercancía, existencias por modelo y talla, y ajustes manuales de la sucursal principal." class="mb-6" />
+        subtitulo="Existencias, entradas y ajustes de la sucursal, y el conteo físico." class="mb-6" />
 
+    <div class="fp-pestanas mb-6 flex flex-wrap gap-1" role="tablist" aria-label="Stock local">
+        <button type="button" role="tab" wire:click="$set('pestana', 'existencias')"
+            aria-selected="{{ $pestana === 'existencias' ? 'true' : 'false' }}" data-pestana-stock="existencias"
+            @class([
+                'fp-pestana rounded-lg px-3.5 py-2 text-sm font-medium transition',
+                'bg-fp-primary text-white shadow-sm' => $pestana === 'existencias',
+                'text-slate-600 hover:bg-slate-50' => $pestana !== 'existencias',
+            ])>Existencias</button>
+        @if ($this->puedeContar)
+            <button type="button" role="tab" wire:click="$set('pestana', 'conteo')"
+                aria-selected="{{ $pestana === 'conteo' ? 'true' : 'false' }}" data-pestana-stock="conteo"
+                @class([
+                    'fp-pestana rounded-lg px-3.5 py-2 text-sm font-medium transition',
+                    'bg-fp-primary text-white shadow-sm' => $pestana === 'conteo',
+                    'text-slate-600 hover:bg-slate-50' => $pestana !== 'conteo',
+                ])>Conteo</button>
+        @endif
+    </div>
+
+    @if ($pestana === 'conteo' && $this->puedeContar)
+        <livewire:conteos.index :embebido="true" wire:key="stock-local-conteo" />
+    @else
     @if ($mensaje)
         <x-panel.alerta tipo="exito" class="mb-4">
             {{ $mensaje }}
@@ -1036,5 +1089,6 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 <button type="button" wire:click="cerrarMovimientos" class="fp-btn fp-btn-secundario">Cerrar</button>
             </x-slot:pie>
         </x-panel.modal>
+    @endif
     @endif
 </div>

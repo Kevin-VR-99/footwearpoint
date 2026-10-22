@@ -7,9 +7,7 @@
     $permisosMenu = app(\App\Services\Auth\PermisoModuloService::class);
     $usuarioMenu = auth()->user();
     $enlacesFunciones = [
-        ['ventas.index', 'Ventas de mostrador', null, 'ventas.*'],
         ['caja.index', 'Caja y cortes', \App\Services\Auth\PermisoModuloService::CAJA_OPERAR, 'caja.*'],
-        ['conteos.index', 'Inventario físico', \App\Services\Auth\PermisoModuloService::INVENTARIO_CONTEO, 'conteos.*'],
         ['clientes.historial', 'Historial de clientes', \App\Services\Auth\PermisoModuloService::CLIENTES_VER, 'clientes.historial*'],
         ['comisiones.index', 'Comisiones y metas', \App\Services\Auth\PermisoModuloService::COMISIONES_VER, 'comisiones.*'],
     ];

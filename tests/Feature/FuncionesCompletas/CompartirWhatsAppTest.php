@@ -60,6 +60,74 @@ class CompartirWhatsAppTest extends TestCase
             ->assertSeeHtml('https://wa.me/52');
     }
 
+    public function test_escribir_por_whatsapp_solo_aparece_si_el_perfil_lo_activa(): void
+    {
+        $tienda = $this->get('/tienda/calzados-ramirez')->assertOk();
+        $tienda->assertDontSee('data-contacto-whatsapp', false);
+        $tienda->assertDontSee('>Escríbenos<', false);
+        $tienda->assertSee('9631234567');
+
+        $this->comoPanel(self::ADMIN);
+        Livewire::test('distribuidora.perfil')
+            ->assertSee('¿Este número es solo para llamadas')
+            ->assertSet('uso_telefono', 'llamadas')
+            ->set('uso_telefono', 'whatsapp')
+            ->call('guardarPerfil')
+            ->assertHasNoErrors()
+            ->assertSet('uso_telefono', 'whatsapp');
+
+        $this->assertTrue($this->ramirez()->fresh()->telefono_es_whatsapp);
+
+        $this->get('/tienda/calzados-ramirez')->assertOk()
+            ->assertSee('data-contacto-whatsapp', false)
+            ->assertSee('Escríbenos')
+            ->assertSee('https://wa.me/529631234567', false);
+
+        $pc = ProductoCampana::query()->whereRelation('campana', 'estado', 'activa')->get()
+            ->first(fn ($p) => $this->get('/tienda/calzados-ramirez/productos/'.$p->id)->status() === 200);
+        $this->assertNotNull($pc);
+        $this->get('/tienda/calzados-ramirez/productos/'.$pc->id)
+            ->assertOk()
+            ->assertSee('Preguntar por WhatsApp')
+            ->assertSee('data-contacto-whatsapp', false);
+
+        Livewire::test('distribuidora.perfil')
+            ->set('uso_telefono', 'llamadas')
+            ->call('guardarPerfil')
+            ->assertHasNoErrors();
+
+        $this->assertFalse($this->ramirez()->fresh()->telefono_es_whatsapp);
+        $this->get('/tienda/calzados-ramirez')->assertOk()
+            ->assertDontSee('data-contacto-whatsapp', false)
+            ->assertDontSee('>Escríbenos<', false);
+        $this->get('/tienda/calzados-ramirez/productos/'.$pc->id)
+            ->assertDontSee('Preguntar por WhatsApp');
+    }
+
+    public function test_un_numero_que_whatsapp_no_abre_no_prende_el_boton(): void
+    {
+        $this->comoPanel(self::ADMIN);
+
+        Livewire::test('distribuidora.perfil')
+            ->set('telefono_publico', '123')
+            ->set('uso_telefono', 'whatsapp')
+            ->call('guardarPerfil')
+            ->assertHasErrors('uso_telefono');
+
+        $this->assertFalse($this->ramirez()->fresh()->telefono_es_whatsapp);
+
+        Livewire::test('distribuidora.perfil')
+            ->set('telefono_publico', '')
+            ->set('uso_telefono', 'whatsapp')
+            ->call('guardarPerfil')
+            ->assertHasNoErrors()
+            ->assertDontSee('¿Este número es solo para llamadas');
+
+        $fresca = $this->ramirez()->fresh();
+        $this->assertNull($fresca->telefono_publico);
+        $this->assertFalse($fresca->telefono_es_whatsapp);
+    }
+
     public function test_el_catalogo_de_la_app_trae_la_url_publica_de_cada_producto(): void
     {
         $this->comoApi(self::MARIA);

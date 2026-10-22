@@ -126,6 +126,30 @@ class ConteoInventarioTest extends TestCase
             ->call('aplicar')->assertSet('errorMsg', '');
 
         $this->assertSame(4, (int) $a->fresh()->cantidad_disponible);
-        $this->get(route('conteos.index'))->assertOk();
+
+        $this->get(route('conteos.index'))
+            ->assertRedirect(route('stock.index', ['pestana' => 'conteo']));
+
+        $this->get(route('stock.index', ['pestana' => 'conteo']))
+            ->assertOk()
+            ->assertSee('Nuevo conteo')
+            ->assertSee('data-pestana-stock="conteo"', false)
+            ->assertDontSee('Inventario físico');
+    }
+
+    public function test_sin_permiso_el_conteo_no_sale_en_stock_y_la_ruta_vieja_sigue_cerrada(): void
+    {
+        $this->staffDe(self::EMPLEADO)
+            ->forceFill(['permisos_finos' => [PermisoModuloService::INVENTARIO_CONTEO => false]])
+            ->save();
+        $this->comoPanel(self::EMPLEADO);
+
+        $this->get(route('conteos.index'))->assertForbidden();
+
+        $this->get(route('stock.index', ['pestana' => 'conteo']))
+            ->assertOk()
+            ->assertDontSee('data-pestana-stock="conteo"', false)
+            ->assertDontSee('Nuevo conteo')
+            ->assertSee('Existencias');
     }
 }

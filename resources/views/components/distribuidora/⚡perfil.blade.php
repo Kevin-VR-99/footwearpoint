@@ -5,6 +5,7 @@ use App\Services\Distribuidora\ActualizarPerfilDistribuidoraAction;
 use App\Services\Distribuidora\CambiarSubdominioAction;
 use App\Services\Tienda\DominioTienda;
 use App\Services\Tienda\EnlaceTienda;
+use App\Support\WhatsApp;
 use Illuminate\Validation\ValidationException;
 use App\Support\Tenant;
 use Livewire\Attributes\Layout;
@@ -19,6 +20,10 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
     public ?string $descripcion_publica = null;
     public ?string $direccion_publica = null;
     public ?string $telefono_publico = null;
+
+    /** llamadas: el teléfono solo se muestra para marcar. whatsapp: la tienda ofrece escribirles. */
+    public string $uso_telefono = 'llamadas';
+
     public ?string $email_publico = null;
     public ?string $horario_publico = null;
     public $logotipo = null;
@@ -35,6 +40,7 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
         $this->descripcion_publica = $distribuidora->descripcion_publica;
         $this->direccion_publica = $distribuidora->direccion_publica;
         $this->telefono_publico = $distribuidora->telefono_publico;
+        $this->uso_telefono = $distribuidora->telefono_es_whatsapp ? 'whatsapp' : 'llamadas';
         $this->email_publico = $distribuidora->email_publico;
         $this->horario_publico = $distribuidora->horario_publico;
         $this->logotipo_url_actual = $distribuidora->logotipo_url;
@@ -49,12 +55,26 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
             'descripcion_publica' => ['nullable', 'string', 'max:2000'],
             'direccion_publica' => ['nullable', 'string', 'max:300'],
             'telefono_publico' => ['nullable', 'string', 'max:30'],
+            'uso_telefono' => ['required', 'in:llamadas,whatsapp'],
             'email_publico' => ['nullable', 'email', 'max:190'],
             'horario_publico' => ['nullable', 'string', 'max:300'],
             'logotipo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
         ], [
             'descripcion_publica.max' => 'La descripción pública no puede tener más de 2000 caracteres.',
         ]);
+
+        $telefono = trim((string) ($datos['telefono_publico'] ?? ''));
+        $quiereWhatsApp = $datos['uso_telefono'] === 'whatsapp' && $telefono !== '';
+
+        if ($quiereWhatsApp && WhatsApp::normalizarTelefono($telefono) === null) {
+            $this->addError('uso_telefono', 'Ese número no se puede usar en WhatsApp. Escríbelo con 10 dígitos o elige solo llamadas.');
+
+            return;
+        }
+
+        $datos['telefono_publico'] = $telefono !== '' ? $telefono : null;
+        $datos['telefono_es_whatsapp'] = $quiereWhatsApp;
+        unset($datos['uso_telefono']);
 
         $distribuidora = Distribuidora::findOrFail(Tenant::id());
         $conLogotipo = $this->logotipo !== null;
@@ -124,13 +144,30 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
         <div class="grid grid-cols-2 gap-4">
             <div class="fp-campo">
                 <label for="perfil-telefono-publico" class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                <input id="perfil-telefono-publico" type="text" wire:model="telefono_publico" placeholder="+52 55 1234 5678" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                <input id="perfil-telefono-publico" type="text" wire:model.live="telefono_publico" placeholder="+52 55 1234 5678" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
             <div class="fp-campo">
                 <label for="perfil-email-publico" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
                 <input id="perfil-email-publico" type="email" wire:model="email_publico" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
             </div>
         </div>
+        @if (trim((string) $telefono_publico) !== '')
+            <fieldset class="fp-campo" data-uso-telefono>
+                <legend class="block text-sm font-medium text-slate-700 mb-2">¿Este número es solo para llamadas o también recibe mensajes de WhatsApp?</legend>
+                <div class="flex flex-col gap-2 text-sm text-slate-700">
+                    <label class="inline-flex items-center gap-2">
+                        <input type="radio" name="uso_telefono" value="llamadas" wire:model="uso_telefono" class="text-fp-primary">
+                        Solo llamadas
+                    </label>
+                    <label class="inline-flex items-center gap-2">
+                        <input type="radio" name="uso_telefono" value="whatsapp" wire:model="uso_telefono" class="text-fp-primary">
+                        También WhatsApp
+                    </label>
+                </div>
+                <p class="mt-2 text-xs text-slate-500">El botón «Escríbenos» de tu tienda aparece cuando eliges WhatsApp y guardas. Si lo dejas en llamadas, el teléfono sigue visible para marcar.</p>
+                @error('uso_telefono') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+            </fieldset>
+        @endif
         <div class="fp-campo">
             <label for="perfil-horario-publico" class="block text-sm font-medium text-slate-700 mb-1">Horario</label>
             <input id="perfil-horario-publico" type="text" wire:model="horario_publico" placeholder="Lunes a sábado, 9:00 a 19:00" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
