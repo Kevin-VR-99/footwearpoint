@@ -116,3 +116,11 @@ Verificación: `curl -I https://footwearpoint.app/build/assets/app-XXXX.css` tra
   vive en MySQL; hoy solo guarda ids, el token CSRF y datos de Mercado Pago (PKCE) de corta vida.
 - Si se activa (`SESSION_ENCRYPT=true` en todos los servicios a la vez), todas las sesiones abiertas se
   invalidan una vez (la gente vuelve a iniciar sesión). Usa `APP_KEY`, que **no** debe cambiar.
+
+## G. Nivel de logs en producción (solo documentado, no se cambió)
+- Web y worker: `LOG_LEVEL=warning` y `LOG_CHANNEL=stderr`. Railway guarda la salida estándar
+  y así no se llena el disco efímero con `storage/logs/laravel.log` ni se registran consultas de depuración.
+- `debug` solo en local. Si hace falta investigar algo en producción, subirlo un rato y regresarlo.
+- `CSP_MODO`: `upgrade-insecure-requests` ahora lo pone el middleware `PoliticaSeguridadContenido`
+  (dentro de la política con `enforce`; en `report-only`/`off` va en su propia cabecera
+  `Content-Security-Policy`, porque el navegador ignora esa directiva en Report-Only).
