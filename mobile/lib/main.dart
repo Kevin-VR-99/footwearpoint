@@ -8,6 +8,7 @@ import 'screens/aviso_privacidad_screen.dart';
 import 'screens/cambiar_password_screen.dart';
 import 'screens/cascaron_principal.dart';
 import 'screens/login_screen.dart';
+import 'services/aperturas_push.dart';
 import 'services/api_service.dart';
 import 'tema/fp_tema.dart';
 
@@ -49,6 +50,8 @@ class FootwearPointApp extends StatelessWidget {
       child: MaterialApp(
         title: 'FootwearPoint',
         debugShowCheckedModeBanner: false,
+        // Para abrir el historial de un cambio al tocar su push.
+        navigatorKey: navegadorRaiz,
         // Con el estilo del panel web (TG-165).
         theme: FpTema.claro(),
         home: const _Raiz(),

@@ -997,10 +997,14 @@ Detalle de una solicitud propia (el personal ve las de su distribuidora; otra di
 
 ```json
 { "timeline": [
-  { "estado": "solicitada", "etiqueta": "Solicitada", "nota": "Me queda chico", "fecha": "2026-10-05T12:00:00-06:00" },
-  { "estado": "autorizada", "etiqueta": "Autorizada", "nota": "Pasa a recoger", "fecha": "2026-10-06T10:00:00-06:00" }
+  { "id": 1, "estado": "solicitada", "etiqueta": "Solicitada", "estado_anterior": null, "nota": "Me queda chico",
+    "fecha": "2026-10-05T12:00:00-06:00", "fecha_cdmx": "05/10/2026 12:00", "quien": "Cliente" },
+  { "id": 2, "estado": "autorizada", "etiqueta": "Autorizada", "estado_anterior": "solicitada", "nota": "Pasa a recoger",
+    "fecha": "2026-10-06T10:00:00-06:00", "fecha_cdmx": "06/10/2026 10:00", "quien": "Ana (distribuidora)" }
 ] }
 ```
+
+`fecha_cdmx` es la hora de la Ciudad de México lista para mostrar; `quien` es «Cliente», el nombre de quien lo resolvió en la distribuidora o «Distribuidora» (nunca correos). La app lo muestra en la pantalla «Historial del cambio».
 
 Estados: `solicitada → autorizada | rechazada`; `autorizada → enviada_fabrica | vale_emitido | rechazada`; `enviada_fabrica → aceptada_fabrica | rechazada`; `aceptada_fabrica → vale_emitido`; `vale_emitido | rechazada → cerrada`. En cada paso el cliente recibe aviso en su bandeja (`tipo: cambio_estado`, `entidad_tipo: solicitud_cambio`), push y correo.
 
@@ -1162,7 +1166,9 @@ Existen en `/api` y están probados, pero los consume el panel web, no la app de
 | Ruta | Para qué |
 |---|---|
 | `GET /api/ping` | Comprobar que la API responde |
-| `POST /api/ventas-directas/{id}/anular` | Cancelar una venta de mostrador (`motivo` obligatorio; permiso fino `ventas.cancelar`): regresa stock, registra reembolsos por método y vales |
+| `POST /api/ventas-directas/{id}/anular` | Cancelar una venta de mostrador (`motivo` obligatorio; permiso fino `ventas.cancelar`): regresa stock, registra reembolsos por método y vales. Si un cobro fue con Mercado Pago, `reembolsos_mercado_pago` trae el estado del reembolso automático |
+| `GET /api/reembolsos-mercado-pago/{id}` | Estado de un reembolso automático en Mercado Pago (`pendiente`, `procesando`, `aprobado`, `fallido`), solo personal de la distribuidora |
+| `POST /api/reembolsos-mercado-pago/{id}/reintentar` | Vuelve a mandar un reembolso `fallido` (permiso `ventas.cancelar` para ventas, `pagos.registrar` para pedidos); 409 si no está fallido |
 | `POST /api/distribuidora/accesos/{tipo}/{id}/baja` | Dar de baja (`tipo`: revendedor, cliente, empleado; `motivo` opcional). Revoca sesiones de la app y bloquea el login. Solo administración |
 | `POST /api/distribuidora/accesos/{tipo}/{id}/reactivar` | Reactivar un acceso dado de baja. Solo administración |
 | `GET /api/distribuidora/comisiones?periodo=AAAA-MM` | Ranking de comisiones y metas de clientes mayoristas (permiso fino `comisiones.ver`) |

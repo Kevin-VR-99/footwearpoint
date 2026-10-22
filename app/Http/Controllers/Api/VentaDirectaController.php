@@ -52,6 +52,8 @@ class VentaDirectaController extends Controller
                 'reembolsos'       => $venta->pagos->where('direccion', 'salida')->values()->map(fn ($p) => [
                     'folio' => $p->folio, 'metodo' => $p->metodo, 'monto' => (float) $p->monto,
                 ]),
+                // Solo si se cobró con Mercado Pago: estado del reembolso automático.
+                'reembolsos_mercado_pago' => $venta->reembolsosMercadoPago()->get()->map->aArreglo()->values(),
             ],
             'message' => 'Venta cancelada.',
         ]);

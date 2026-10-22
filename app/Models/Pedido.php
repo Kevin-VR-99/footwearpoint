@@ -116,4 +116,10 @@ class Pedido extends Model
 
         return now()->diffInHours($this->fecha_limite_recoleccion, false) <= 48 ? 'por_vencer' : null;
     }
+
+    /** Reembolsos automáticos en Mercado Pago de esta pedido. */
+    public function reembolsosMercadoPago()
+    {
+        return $this->hasMany(ReembolsoMercadoPago::class, 'pedido_id')->orderBy('id');
+    }
 }

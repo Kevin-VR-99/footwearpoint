@@ -73,4 +73,10 @@ class VentaDirecta extends Model
     {
         return $this->hasMany(Pago::class, 'venta_directa_id');
     }
+
+    /** Reembolsos automáticos en Mercado Pago de esta venta. */
+    public function reembolsosMercadoPago()
+    {
+        return $this->hasMany(ReembolsoMercadoPago::class, 'venta_directa_id')->orderBy('id');
+    }
 }

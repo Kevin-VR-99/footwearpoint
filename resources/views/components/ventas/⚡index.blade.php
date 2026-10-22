@@ -2,6 +2,7 @@
 
 use App\Models\VentaDirecta;
 use App\Services\Auth\PermisoModuloService;
+use App\Services\Reembolso\ReembolsoMercadoPagoService;
 use App\Services\VentaDirecta\AnularVentaDirectaAction;
 use App\Support\MensajeError;
 use App\Support\Tenant;
@@ -70,7 +71,7 @@ new #[Layout('layouts.panel')] #[Title('Ventas de mostrador — FootwearPoint')]
         $termino = trim($this->buscar);
 
         return VentaDirecta::query()
-            ->with(['clienteDirecto:id,nombre', 'registradaPor.usuario:id,nombre', 'anuladaPor.usuario:id,nombre', 'detalle', 'pagos'])
+            ->with(['clienteDirecto:id,nombre', 'registradaPor.usuario:id,nombre', 'anuladaPor.usuario:id,nombre', 'detalle', 'pagos', 'reembolsosMercadoPago'])
             ->when($termino !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('folio', 'like', '%'.$termino.'%')
                 ->orWhereHas('clienteDirecto', fn ($c) => $c->where('nombre', 'like', '%'.$termino.'%'))))
@@ -112,6 +113,20 @@ new #[Layout('layouts.panel')] #[Title('Ventas de mostrador — FootwearPoint')]
     public function getVentaACancelarProperty(): ?VentaDirecta
     {
         return $this->cancelandoId ? VentaDirecta::query()->with(['detalle', 'pagos'])->find($this->cancelandoId) : null;
+    }
+
+    /** Vuelve a mandar a Mercado Pago un reembolso automático que falló. */
+    public function reintentarReembolsoMp(int $id, ReembolsoMercadoPagoService $servicio): void
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        try {
+            $servicio->reintentar($id, Auth::user());
+            $this->mensaje = 'Reembolso enviado de nuevo a Mercado Pago.';
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo reintentar el reembolso.');
+        }
     }
 
     public function cancelar(AnularVentaDirectaAction $accion): void
@@ -233,6 +248,9 @@ new #[Layout('layouts.panel')] #[Title('Ventas de mostrador — FootwearPoint')]
                                 </p>
                                 @foreach ($venta->pagos->where('direccion', 'salida') as $reembolso)
                                     <p class="text-xs text-slate-600">Devolución {{ $reembolso->folio }} · {{ \App\Models\Pago::etiquetaMetodo($reembolso->metodo) }} · ${{ number_format((float) $reembolso->monto, 2) }}</p>
+                                @endforeach
+                                @foreach ($venta->reembolsosMercadoPago as $reembolsoMp)
+                                    <x-ui.reembolso-mercado-pago :reembolso="$reembolsoMp" :puede-reintentar="$this->puedeCancelar" />
                                 @endforeach
                             @endif
                         </td>

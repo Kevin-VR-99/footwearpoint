@@ -65,7 +65,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     public function getPedidoProperty()
     {
         return Pedido::query()
-            ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle', 'pagos', 'distribuidora'])
+            ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle', 'pagos', 'distribuidora', 'reembolsosMercadoPago'])
             ->findOrFail($this->pedidoId);
     }
 
@@ -330,21 +330,50 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     }
 
     /** El efectivo que de verdad se entrego. Es la unica salida de dinero del sistema. */
-    public function entregarReembolso(int $lineaId, ResolverNoSurtidoAction $accion): void
+    public function entregarReembolso(int $lineaId, ResolverNoSurtidoAction $accion, string $metodo = 'efectivo'): void
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+        $metodo = $metodo === 'mercado_pago' ? 'mercado_pago' : 'efectivo';
+
+        try {
+            $linea = $this->pedido->detalle()->findOrFail($lineaId);
+            $pago = $accion->entregarReembolso($linea, $metodo);
+
+            unset($this->pedido);
+
+            $this->mensaje = $metodo === 'mercado_pago'
+                ? 'Reembolso enviado a Mercado Pago: $'.number_format((float) $pago->monto, 2).' (folio '.$pago->folio.'). Abajo ves su estado.'
+                : 'Reembolso registrado: $'.number_format((float) $pago->monto, 2).' (folio '.$pago->folio.').';
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar el reembolso.');
+        }
+    }
+
+    /** Vuelve a mandar a Mercado Pago un reembolso automático que falló. */
+    public function reintentarReembolsoMp(int $id, \App\Services\Reembolso\ReembolsoMercadoPagoService $servicio): void
     {
         $this->mensaje = '';
         $this->errorMsg = '';
 
         try {
-            $linea = $this->pedido->detalle()->findOrFail($lineaId);
-            $pago = $accion->entregarReembolso($linea);
-
+            $servicio->reintentar($id, \Illuminate\Support\Facades\Auth::user());
             unset($this->pedido);
-
-            $this->mensaje = 'Reembolso registrado: $'.number_format((float) $pago->monto, 2).' (folio '.$pago->folio.').';
+            $this->mensaje = 'Reembolso enviado de nuevo a Mercado Pago.';
         } catch (\Throwable $e) {
-            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar el reembolso.');
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo reintentar el reembolso.');
         }
+    }
+
+    /** @return array<int, bool> detalle_id => se puede devolver en Mercado Pago */
+    public function getDevolverEnMpProperty(): array
+    {
+        $accion = app(ResolverNoSurtidoAction::class);
+
+        return $this->pedido->detalle
+            ->filter(fn ($l) => $l->estado_surtido === 'no_surtido' && $l->resolucion_no_surtido === 'reembolso_anticipo')
+            ->mapWithKeys(fn ($l) => [$l->id => $accion->puedeDevolverEnMercadoPago($l->setRelation('pedido', $this->pedido))])
+            ->all();
     }
 
     public function solicitarCambio(SolicitarCambioAction $accion): void
@@ -575,6 +604,14 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     @endforeach
                 </tbody>
             </table>
+            @if ($this->pedido->reembolsosMercadoPago->isNotEmpty())
+                <div class="border-t border-slate-100 px-4 py-3">
+                    <p class="text-xs font-medium text-slate-700">Reembolsos en Mercado Pago</p>
+                    @foreach ($this->pedido->reembolsosMercadoPago as $reembolsoMp)
+                        <x-ui.reembolso-mercado-pago :reembolso="$reembolsoMp" :puede-reintentar="$this->puedeRegistrarPago" />
+                    @endforeach
+                </div>
+            @endif
         </div>
     @endif
 
@@ -652,6 +689,13 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                                             class="fp-btn fp-btn-primario fp-btn-sm mt-1">
                                             Registrar que ya se le entregó
                                         </button>
+                                        @if ($this->devolverEnMp[$l->id] ?? false)
+                                            <button type="button" wire:click="entregarReembolso({{ $l->id }}, 'mercado_pago')"
+                                                wire:confirm="Se le devolverá ${{ number_format($porDevolver, 2) }} a su cuenta de Mercado Pago. ¿Continuar?"
+                                                class="fp-btn fp-btn-secundario fp-btn-sm mt-1 inline-flex items-center gap-1" data-devolver-mp="{{ $l->id }}">
+                                                <x-ui.logo-mercado-pago class="h-4 w-auto" /> Devolver en Mercado Pago
+                                            </button>
+                                        @endif
                                     @else
                                         <p class="mt-2 text-xs text-slate-600">Anticipo devuelto.</p>
                                     @endif

@@ -6,6 +6,7 @@ import '../models/pedido_resumen.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/cambio_service.dart';
+import 'historial_cambio_screen.dart';
 import '../services/compartir_whatsapp.dart';
 import '../services/pedido_service.dart';
 import '../tema/fp_colores.dart';
@@ -326,6 +327,14 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
                   ),
                   trailing: linea.cambio!.puedeSolicitar
                       ? TextButton(onPressed: () => _solicitarCambio(linea), child: const Text('Solicitar cambio'))
+                      : (linea.cambio!.tieneSolicitud ? const Icon(Icons.chevron_right, color: FpColores.textoTenue) : null),
+                  // Con solicitud: abre su historial.
+                  onTap: linea.cambio!.tieneSolicitud
+                      ? () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => HistorialCambioScreen(solicitudId: linea.cambio!.solicitudId!),
+                            ),
+                          )
                       : null,
                 ),
               ),
