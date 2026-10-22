@@ -25,6 +25,8 @@ class SolicitudCambioController extends Controller
             ->limit(200)
             ->get();
 
+        SolicitudCambioResource::precargarImagenes($solicitudes);
+
         return response()->json(['data' => SolicitudCambioResource::collection($solicitudes)]);
     }
 

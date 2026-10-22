@@ -12,6 +12,7 @@ import 'login_screen.dart';
 import '../tema/fp_colores.dart';
 import '../models/producto_catalogo.dart';
 import '../widgets/bajo_pedido.dart';
+import '../widgets/foto_calzado.dart';
 import '../widgets/fp_componentes.dart';
 
 /// El pedido acumulado del revendedor (E9-01 / E9-03). Lee el carrito de
@@ -142,6 +143,12 @@ class _PedidoRevendedorScreenState extends State<PedidoRevendedorScreen> {
                           padding: const EdgeInsets.all(12.0),
                           child: Row(
                             children: [
+                              FotoCalzado(
+                                url: item.producto.imagenPrincipal?.miniatura,
+                                nombre: item.producto.nombre,
+                                tamano: 56,
+                              ),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,

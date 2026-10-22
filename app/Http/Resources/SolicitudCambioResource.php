@@ -8,6 +8,22 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /** TG-254 — Una solicitud de cambio de producto. */
 class SolicitudCambioResource extends JsonResource
 {
+    /** @param iterable<int, \App\Models\SolicitudCambio> $solicitudes */
+    public static function precargarImagenes(iterable $solicitudes): void
+    {
+        $coleccion = collect($solicitudes);
+        $ids = $coleccion->map(fn ($s) => ($s->pedidoDetalle ?? $s->ventaDetalle)?->producto_campana_id);
+        $fotos = app(\App\Services\Catalogo\ImagenDeProducto::class)->porProductoCampana($ids);
+
+        foreach ($coleccion as $solicitud) {
+            $linea = $solicitud->pedidoDetalle ?? $solicitud->ventaDetalle;
+            $solicitud->setAttribute(
+                'imagen_producto',
+                $linea ? ($fotos[(int) $linea->producto_campana_id] ?? null) : null,
+            );
+        }
+    }
+
     public function toArray(Request $request): array
     {
         $linea = $this->pedido_detalle_id ? $this->pedidoDetalle : $this->ventaDetalle;
@@ -25,6 +41,7 @@ class SolicitudCambioResource extends JsonResource
                 'talla' => $linea->talla,
                 'color' => $linea->color,
                 'cantidad' => (int) $linea->cantidad,
+                'imagen' => $this->fotoDe($linea),
             ] : null,
             'propietario' => [
                 'tipo' => $this->cliente_directo_id ? 'cliente_directo' : 'revendedor',
@@ -41,6 +58,20 @@ class SolicitudCambioResource extends JsonResource
             // Solo en el detalle (GET /solicitudes-cambio/{id}).
             'timeline' => $this->whenLoaded('historial', fn () => $this->lineaDeTiempo()),
         ];
+    }
+
+    private function fotoDe(object $linea): ?string
+    {
+        if (array_key_exists('imagen_producto', $this->resource->getAttributes())) {
+            $guardada = $this->resource->getAttribute('imagen_producto');
+
+            return $guardada !== null && $guardada !== '' ? (string) $guardada : null;
+        }
+
+        $id = (int) $linea->producto_campana_id;
+        $fotos = app(\App\Services\Catalogo\ImagenDeProducto::class)->porProductoCampana([$id]);
+
+        return $fotos[$id] ?? null;
     }
 
     private const ZONA = 'America/Mexico_City';

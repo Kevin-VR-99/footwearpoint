@@ -51,10 +51,14 @@ class PedidoResource extends JsonResource
             'lineas' => $this->whenLoaded('detalle', function () {
                 $plazo = app(\App\Services\Cambio\PlazoCambio::class);
                 $bajoPedido = \App\Models\DisponibilidadVarianteCampana::bajoPedidoPorLinea($this->detalle);
+                $fotos = app(\App\Services\Catalogo\ImagenDeProducto::class)->porProductoCampana(
+                    $this->detalle->pluck('producto_campana_id'),
+                );
 
                 return $this->detalle->map(fn ($l) => [
                     'id'               => $l->id,
                     'producto_nombre'  => $l->producto_nombre,
+                    'imagen'           => $fotos[(int) $l->producto_campana_id] ?? null,
                     'modelo'           => $l->modelo,
                     'talla'            => $l->talla,
                     'color'            => $l->color,

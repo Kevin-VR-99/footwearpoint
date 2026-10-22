@@ -1,16 +1,33 @@
 {{-- Miniatura que, con foto, abre un modal pequeño (≈360 px) con la imagen del calzado.
-     Se cierra con clic afuera, Esc o el botón. Sin foto, el marcador solo tiembla un poco al pasar el cursor o al hacer clic. --}}
+     Se cierra con clic afuera, Esc o el botón. Sin foto, el marcador solo tiembla un poco al pasar el cursor o al hacer clic.
+     tamano: chica (listas, 40 px), media (galería, 80 px), portada (foto grande de la ficha). --}}
 @props([
     'url' => null,
     'alt' => 'Producto',
+    'tamano' => 'chica',
 ])
 
+@php
+    $caja = match ($tamano) {
+        'media' => 'h-20 w-20',
+        'portada' => 'aspect-square w-full',
+        default => 'h-10 w-10',
+    };
+    $portada = $tamano === 'portada';
+    $ajuste = $portada ? 'object-cover' : 'object-contain';
+    $pixeles = match ($tamano) {
+        'media' => 80,
+        'portada' => 800,
+        default => 40,
+    };
+@endphp
+
 @if (filled($url))
-    <span x-data="{ abierto: false }" class="inline-flex" @keydown.escape.window="abierto = false">
+    <span x-data="{ abierto: false }" @class(['block w-full' => $portada, 'inline-flex' => ! $portada]) @keydown.escape.window="abierto = false">
         <button type="button" @click="abierto = true" data-ver-imagen-stock
-            class="group inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-fp-primary/50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40 motion-reduce:transform-none"
+            class="group {{ $caja }} {{ $portada ? 'flex w-full' : 'inline-flex' }} shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-fp-primary/50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40 motion-reduce:transform-none"
             aria-label="Ver la foto de {{ $alt }}" aria-haspopup="dialog">
-            <img src="{{ $url }}" alt="{{ $alt }}" class="h-full w-full object-contain transition duration-300 group-hover:scale-110 motion-reduce:transform-none" loading="lazy" width="40" height="40">
+            <img src="{{ $url }}" alt="{{ $alt }}" class="h-full w-full {{ $ajuste }} transition duration-300 group-hover:scale-110 motion-reduce:transform-none" loading="lazy" width="{{ $pixeles }}" height="{{ $pixeles }}">
         </button>
 
         <template x-teleport="body">
@@ -38,7 +55,7 @@
     <span x-data="{ temblando: false }"
         @click="temblando = false; $nextTick(() => temblando = true)" @animationend="temblando = false"
         :class="temblando && 'fp-temblor-activo'" data-sin-imagen-stock role="img" aria-label="Sin foto"
-        {{ $attributes->class('fp-temblor inline-flex h-10 w-10 shrink-0 cursor-default items-center justify-center rounded-lg border border-dashed border-slate-300 bg-fp-page text-slate-400') }}>
+        {{ $attributes->class('fp-temblor '.$caja.' '.($portada ? 'flex w-full' : 'inline-flex').' shrink-0 cursor-default items-center justify-center rounded-lg border border-dashed border-slate-300 bg-fp-page text-slate-400') }}>
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.6-4.6a2 2 0 012.8 0L16 16m-2-2l1.6-1.6a2 2 0 012.8 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
     </span>
 @endif

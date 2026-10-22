@@ -2,6 +2,7 @@
 
 use App\Models\Distribuidora;
 use App\Services\Auth\PermisoModuloService;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Reporte\DemandaPorTemporadaMarcaAction;
 use App\Services\Reporte\EstadoDeCuentaAction;
 use App\Services\Reporte\MontosPendientesAction;
@@ -400,13 +401,23 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         $this->errorDemanda = '';
 
         try {
-            return app(DemandaPorTemporadaMarcaAction::class)->ejecutar(
+            $demanda = app(DemandaPorTemporadaMarcaAction::class)->ejecutar(
                 $this->demandaCampanaId !== '' ? (int) $this->demandaCampanaId : null,
                 $this->demandaMarcaId !== '' ? (int) $this->demandaMarcaId : null,
                 $this->desde !== '' ? $this->desde : null,
                 $this->hasta !== '' ? $this->hasta : null,
                 $this->cicloId !== '' ? (int) $this->cicloId : null,
             );
+            $fotos = app(ImagenDeProducto::class)->porProductoCampana(
+                collect($demanda['productos'] ?? [])->pluck('producto_campana_id'),
+            );
+            $demanda['productos'] = array_map(function (array $fila) use ($fotos) {
+                $fila['imagen'] = $fotos[$fila['producto_campana_id']] ?? null;
+
+                return $fila;
+            }, $demanda['productos'] ?? []);
+
+            return $demanda;
         } catch (\Throwable $e) {
             $this->errorDemanda = MensajeError::paraUsuario($e, 'No se pudo calcular la demanda.');
 
@@ -1110,7 +1121,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($demanda['productos'] as $fila)
-                        <tr><td class="px-4 py-3">{{ $fila['producto'] }}<span class="block text-xs text-slate-500">Modelo {{ $fila['modelo'] }}</span></td><td class="px-4 py-3">{{ $fila['marca'] }}</td><td class="px-4 py-3">{{ $fila['temporada'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['piezas'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['pedidos'] }}</td><td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td></tr>
+                        <tr><td class="px-4 py-3"><div class="flex items-center gap-2"><x-ui.imagen-ampliable :url="$fila['imagen'] ?? null" :alt="$fila['producto']" /><div>{{ $fila['producto'] }}<span class="block text-xs text-slate-500">Modelo {{ $fila['modelo'] }}</span></div></div></td><td class="px-4 py-3">{{ $fila['marca'] }}</td><td class="px-4 py-3">{{ $fila['temporada'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['piezas'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['pedidos'] }}</td><td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td></tr>
                     @empty
                         <x-panel.vacio colspan="6" mensaje="Sin demanda en el periodo" />
                     @endforelse

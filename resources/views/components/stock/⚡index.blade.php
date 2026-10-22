@@ -194,7 +194,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
      * Combobox: busca variantes por SKU (o código escaneado), nombre o modelo.
      * El SKU exacto va primero para que el Enter del lector lo elija.
      *
-     * @return list<array{id:int, sku:string, etiqueta:string, detalle:string}>
+     * @return list<array{id:int, sku:string, etiqueta:string, detalle:string, imagen:?string}>
      */
     public function buscarVariantes(string $termino): array
     {
@@ -206,20 +206,24 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 
         $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $termino).'%';
 
-        return Variante::query()
+        $variantes = Variante::query()
             ->with('talla:id,sistema,valor', 'color:id,nombre', 'producto:id,nombre,modelo')
             ->where(fn ($q) => $q->where('sku', 'like', $like)
                 ->orWhereHas('producto', fn ($p) => $p->where('nombre', 'like', $like)->orWhere('modelo', 'like', $like)))
             ->orderByRaw('CASE WHEN sku = ? THEN 0 WHEN sku LIKE ? THEN 1 ELSE 2 END', [$termino, $termino.'%'])
             ->orderBy('sku')
             ->limit(20)
-            ->get()
-            ->map(fn (Variante $v) => [
-                'id' => (int) $v->id,
-                'sku' => (string) $v->sku,
-                'etiqueta' => $v->sku.' — '.$this->descripcionVariante($v),
-                'detalle' => $this->descripcionVariante($v),
-            ])->all();
+            ->get();
+
+        $fotos = app(ImagenDeProducto::class)->porProducto($variantes->pluck('producto_id'));
+
+        return $variantes->map(fn (Variante $v) => [
+            'id' => (int) $v->id,
+            'sku' => (string) $v->sku,
+            'etiqueta' => $v->sku.' — '.$this->descripcionVariante($v),
+            'detalle' => $this->descripcionVariante($v),
+            'imagen' => $fotos[(int) $v->producto_id] ?? null,
+        ])->all();
     }
 
     private function descripcionVariante(Variante $v): string
@@ -475,6 +479,39 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         );
     }
 
+    public function getFotoModeloProperty(): ?string
+    {
+        if ($this->modelo_producto_id === '') {
+            return null;
+        }
+
+        $id = (int) $this->modelo_producto_id;
+
+        return app(ImagenDeProducto::class)->porProducto([$id])[$id] ?? null;
+    }
+
+    /** @return array<string, string> sku en minúsculas => url */
+    public function getFotosImportacionProperty(): array
+    {
+        if ($this->vistaPrevia === null) {
+            return [];
+        }
+
+        $lineas = collect($this->vistaPrevia['lineas'] ?? []);
+        $porVariante = app(ImagenDeProducto::class)->porVariante($lineas->pluck('variante_id'));
+        $mapa = [];
+
+        foreach ($lineas as $linea) {
+            $url = $porVariante[(int) $linea['variante_id']] ?? null;
+
+            if ($url !== null) {
+                $mapa[mb_strtolower((string) $linea['sku'])] = $url;
+            }
+        }
+
+        return $mapa;
+    }
+
     public function getMinimoGeneralProperty(): int
     {
         return (int) (\App\Models\ConfiguracionDistribuidora::query()->value('stock_minimo_general') ?? 0);
@@ -720,12 +757,17 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="fp-campo">
                             <label for="modelo-producto" class="block text-sm font-medium text-slate-700 mb-1">Modelo</label>
+                            <div class="flex items-center gap-2">
+                                @if ($modelo_producto_id !== '')
+                                    <x-ui.imagen-ampliable :url="$this->fotoModelo" :alt="$this->productosModelo->firstWhere('id', (int) $modelo_producto_id)?->nombre ?? 'Producto'" />
+                                @endif
                             <select id="modelo-producto" wire:model.live="modelo_producto_id" class="w-full rounded-lg text-sm focus:ring-fp-primary">
                                 <option value="">— Elegir modelo —</option>
                                 @foreach ($this->productosModelo as $producto)
                                     <option value="{{ $producto->id }}">{{ $producto->nombre }}{{ $producto->modelo ? ' ('.$producto->modelo.')' : '' }}</option>
                                 @endforeach
                             </select>
+                            </div>
                             @error('modelo_producto_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                         </div>
                         <div class="fp-campo">
@@ -811,7 +853,12 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                                         @foreach ($vistaPrevia['filas'] as $fila)
                                             <tr class="{{ $fila['error'] ? 'bg-fp-danger/5' : '' }}">
                                                 <td class="px-3 py-1.5 text-slate-400">{{ $fila['fila'] }}</td>
-                                                <td class="px-3 py-1.5 font-mono">{{ $fila['sku'] ?: '—' }}</td>
+                                                <td class="px-3 py-1.5 font-mono">
+                                                    <div class="flex items-center gap-2">
+                                                        <x-ui.imagen-ampliable :url="$this->fotosImportacion[mb_strtolower((string) $fila['sku'])] ?? null" :alt="$fila['sku'] !== '' ? $fila['sku'] : 'Producto'" />
+                                                        <span>{{ $fila['sku'] ?: '—' }}</span>
+                                                    </div>
+                                                </td>
                                                 <td class="px-3 py-1.5 text-right tabular-nums">{{ $fila['cantidad'] }}</td>
                                                 <td class="px-3 py-1.5 text-slate-500">{{ $fila['motivo'] }}</td>
                                                 <td class="px-3 py-1.5 {{ $fila['error'] ? 'text-fp-danger font-medium' : 'text-fp-success' }}">{{ $fila['error'] ?? 'OK' }}</td>
@@ -1033,6 +1080,9 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         @php $sm = $this->stockMovimientos; @endphp
         <x-panel.modal titulo="Movimientos" ancho="max-w-3xl" cerrar="cerrarMovimientos"
             :subtitulo="($sm->variante?->sku ?? '').' · '.($sm->variante?->producto?->nombre ?? '').' · Talla '.($sm->variante?->talla?->valor ?? '—').' · Existencia '.(int) $sm->cantidad_disponible">
+            <div class="mb-3">
+                <x-ui.imagen-ampliable :url="$this->fotos[$sm->variante?->producto_id] ?? null" :alt="$sm->variante?->producto?->nombre ?? 'Producto'" />
+            </div>
             <div class="relative" data-modal-movimientos>
                 <x-ui.cargando objetivo="paginaMovimientos" />
                 <div class="overflow-x-auto rounded-lg border border-slate-200">

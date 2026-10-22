@@ -203,6 +203,9 @@
             @foreach ($c['lineas'] as $linea)
                 <tr>
                     <td>
+                        @if (! empty($linea['imagen']))
+                            <img src="{{ $linea['imagen'] }}" alt="{{ $linea['producto'] }}" width="36" height="36" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;margin-right:6px;">
+                        @endif
                         {{ $linea['producto'] }}
                         <div class="gris">Modelo {{ $linea['modelo'] }}</div>
                     </td>

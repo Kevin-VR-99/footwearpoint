@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\Catalogo\CatalogoVisible;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\PrecioEfectivo;
 use Livewire\Component;
 
@@ -43,6 +44,12 @@ new class extends Component {
         })->values();
     }
 
+    /** @return array<int, string> producto_campana_id => url */
+    public function getFotosProperty(): array
+    {
+        return app(ImagenDeProducto::class)->porProductoCampana($this->publicaciones->pluck('id'));
+    }
+
     public function getPreciosProperty(): PrecioEfectivo
     {
         return app(PrecioEfectivo::class);
@@ -76,8 +83,13 @@ new class extends Component {
                 @forelse ($this->publicaciones as $pc)
                     <tr>
                         <td class="px-6 py-3.5">
-                            <p class="font-medium text-slate-900">{{ $pc->producto?->nombre }}</p>
-                            <p class="text-xs text-fp-text-muted">Modelo {{ $pc->producto?->modelo }}</p>
+                            <div class="flex items-center gap-2">
+                                <x-ui.imagen-ampliable :url="$this->fotos[$pc->id] ?? null" :alt="$pc->producto?->nombre ?? 'Producto'" />
+                                <div>
+                                    <p class="font-medium text-slate-900">{{ $pc->producto?->nombre }}</p>
+                                    <p class="text-xs text-fp-text-muted">Modelo {{ $pc->producto?->modelo }}</p>
+                                </div>
+                            </div>
                         </td>
                         <td class="px-6 py-3.5 text-slate-600">{{ $pc->producto?->marca?->nombre ?? '—' }}</td>
                         <td class="px-6 py-3.5 text-slate-600">

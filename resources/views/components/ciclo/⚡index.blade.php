@@ -3,6 +3,7 @@
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\CicloCompra;
 use App\Services\Auth\PermisoModuloService;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Ciclo\AsignarCicloVigenteService;
 use App\Support\MensajeError;
 use App\Services\Ciclo\TransicionCicloService;
@@ -61,6 +62,14 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         } catch (OperacionInvalidaException $e) {
             return null;
         }
+    }
+
+    /** @return array<int, string> variante_id => url */
+    public function getFotosProperty(): array
+    {
+        return app(ImagenDeProducto::class)->porVariante(
+            collect($this->detalle?->consolidado ?? [])->pluck('variante_id'),
+        );
     }
 
     /**
@@ -360,8 +369,13 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
                             @forelse ($detalle->consolidado as $renglon)
                                 <tr wire:key="cons-{{ $renglon['variante_id'] }}">
                                     <td class="px-4 py-3">
-                                        <div class="text-slate-900">{{ $renglon['producto_nombre'] }}</div>
-                                        <div class="text-xs text-slate-500">{{ $renglon['modelo'] }}</div>
+                                        <div class="flex items-center gap-2">
+                                            <x-ui.imagen-ampliable :url="$this->fotos[$renglon['variante_id']] ?? null" :alt="$renglon['producto_nombre']" />
+                                            <div>
+                                                <div class="text-slate-900">{{ $renglon['producto_nombre'] }}</div>
+                                                <div class="text-xs text-slate-500">{{ $renglon['modelo'] }}</div>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td class="px-4 py-3 font-medium text-slate-900">{{ $renglon['talla'] }}</td>
                                     <td class="px-4 py-3 text-slate-700">{{ $renglon['color'] }}</td>

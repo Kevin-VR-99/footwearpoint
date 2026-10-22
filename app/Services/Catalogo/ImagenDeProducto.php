@@ -3,6 +3,7 @@
 namespace App\Services\Catalogo;
 
 use App\Models\ProductoImagen;
+use App\Models\Variante;
 use Illuminate\Support\Collection;
 
 /**
@@ -60,6 +61,35 @@ class ImagenDeProducto
             ->get(['producto_campana.producto_id as producto_id', 'producto_imagenes.url as url', 'producto_imagenes.url_miniatura as url_miniatura']);
 
         return $this->primeraUrl($filas, 'producto_id');
+    }
+
+    /**
+     * Una foto por talla (SKU). La imagen sigue siendo la del modelo.
+     *
+     * @param  iterable<int|string|null>  $varianteIds
+     * @return array<int, string> variante_id => url
+     */
+    public function porVariante(iterable $varianteIds): array
+    {
+        $ids = $this->ids($varianteIds);
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $variantes = Variante::query()->whereIn('id', $ids)->pluck('producto_id', 'id');
+        $fotos = $this->porProducto($variantes->values());
+        $mapa = [];
+
+        foreach ($variantes as $varianteId => $productoId) {
+            $url = $fotos[(int) $productoId] ?? null;
+
+            if ($url !== null) {
+                $mapa[(int) $varianteId] = $url;
+            }
+        }
+
+        return $mapa;
     }
 
     /**

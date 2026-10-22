@@ -101,7 +101,11 @@ new class extends Component {
                                             :aria-selected="(activo === {{ $i }}).toString()"
                                             @mouseenter="activo = {{ $i }}" @click="cerrar()"
                                             :class="activo === {{ $i }} ? 'bg-fp-badge-info-bg text-fp-badge-info-fg' : 'text-slate-700'"
-                                            class="flex items-center gap-3 rounded-xl px-3 py-2 transition-colors motion-reduce:transition-none">
+                                            class="group flex items-center gap-3 rounded-xl px-3 py-2 transition-colors motion-reduce:transition-none">
+                                            @if (! empty($item['imagen']))
+                                                <img src="{{ $item['imagen'] }}" alt="" width="40" height="40" loading="lazy"
+                                                    class="h-10 w-10 shrink-0 rounded-lg border border-slate-200 bg-white object-contain transition duration-300 group-hover:scale-110 motion-reduce:transform-none">
+                                            @endif
                                             <span class="min-w-0 flex-1">
                                                 <span class="block truncate text-sm font-medium">{{ $item['titulo'] }}</span>
                                                 <span class="block truncate text-xs text-fp-text-muted">{{ $item['detalle'] }}</span>

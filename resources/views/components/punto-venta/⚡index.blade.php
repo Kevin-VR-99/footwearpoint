@@ -489,7 +489,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                             <tr wire:key="disp-{{ $fila['clave'] }}">
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-2">
-                                        <x-ui.miniatura :url="$fila['imagen'] ?: null" :alt="$fila['nombre'] !== '' ? $fila['nombre'] : 'Producto'" />
+                                        <x-ui.imagen-ampliable :url="$fila['imagen'] ?: null" :alt="$fila['nombre'] !== '' ? $fila['nombre'] : 'Producto'" />
                                         <span class="font-mono text-xs">{{ $fila['sku'] }}</span>
                                     </div>
                                 </td>
@@ -543,7 +543,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                     @foreach ($lineas as $clave => $linea)
                         <div class="flex items-start gap-3 pb-3 border-b border-slate-100 last:border-0"
                              wire:key="linea-{{ $clave }}">
-                            <x-ui.miniatura :url="($linea['imagen'] ?? '') !== '' ? $linea['imagen'] : null" :alt="$linea['nombre'] !== '' ? $linea['nombre'] : 'Producto'" />
+                            <x-ui.imagen-ampliable :url="($linea['imagen'] ?? '') !== '' ? $linea['imagen'] : null" :alt="$linea['nombre'] !== '' ? $linea['nombre'] : 'Producto'" />
                             <div class="flex-1 min-w-0">
                                 <p class="font-mono text-xs text-slate-500">{{ $linea['sku'] }}</p>
                                 <p class="text-sm text-slate-900 truncate">

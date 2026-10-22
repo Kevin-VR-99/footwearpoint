@@ -56,13 +56,21 @@ class MiniaturaDeProductoTest extends TestCase
 
         Livewire::test('stock.index')
             ->assertSee('https://ejemplo.test/tenis-principal.png', false)
+            ->assertSee('data-ver-imagen-stock', false)
             ->assertDontSee('https://ejemplo.test/tenis-secundaria.png', false);
 
         Livewire::test('punto-venta.index')
             ->assertSee('https://ejemplo.test/tenis-principal.png', false)
+            ->assertSee('data-ver-imagen-stock', false)
             ->assertDontSee('https://ejemplo.test/tenis-secundaria.png', false)
             ->call('agregar', $renglon['clave'])
-            ->assertSee('https://ejemplo.test/tenis-principal.png', false);
+            ->assertSee('https://ejemplo.test/tenis-principal.png', false)
+            ->assertSee('data-ver-imagen-stock', false);
+
+        Livewire::test('catalogo.productos')
+            ->assertSee('https://ejemplo.test/tenis-principal.png', false)
+            ->assertSee('data-ver-imagen-stock', false)
+            ->assertDontSee('https://ejemplo.test/tenis-secundaria.png', false);
 
         $pedido = Pedido::create([
             'distribuidora_id' => Tenant::id(),
@@ -93,6 +101,7 @@ class MiniaturaDeProductoTest extends TestCase
 
         Livewire::test('pedidos.show', ['id' => $pedido->id])
             ->assertSee('https://ejemplo.test/tenis-principal.png', false)
+            ->assertSee('data-ver-imagen-stock', false)
             ->assertDontSee('https://ejemplo.test/tenis-secundaria.png', false)
             ->assertSee('Tenis foto');
     }

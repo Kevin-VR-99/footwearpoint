@@ -7,6 +7,7 @@ import '../models/producto_catalogo.dart';
 import '../providers/carrito_revendedor_provider.dart';
 import '../services/compartir_whatsapp.dart';
 import '../widgets/bajo_pedido.dart';
+import '../widgets/foto_calzado.dart';
 import '../tema/fp_colores.dart';
 import '../widgets/fp_componentes.dart';
 import 'crear_pedido_screen.dart';
@@ -167,7 +168,10 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                         PageView.builder(
                           itemCount: imagenes.length,
                           onPageChanged: (i) => setState(() => _fotoActual = i),
-                          itemBuilder: (_, i) => ImagenProducto(url: imagenes[i].mediana, anchoCache: 1200),
+                          itemBuilder: (_, i) => GestureDetector(
+                            onTap: () => FotoCalzado.abrir(context, imagenes[i].mediana, producto.nombre),
+                            child: ImagenProducto(url: imagenes[i].mediana, anchoCache: 1200),
+                          ),
                         ),
                         if (imagenes.length > 1)
                           Positioned(

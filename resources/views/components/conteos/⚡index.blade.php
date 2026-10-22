@@ -6,6 +6,7 @@ use App\Models\Producto;
 use App\Models\StockLocal;
 use App\Models\Variante;
 use App\Services\Auth\PermisoModuloService;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Inventario\ConteoInventarioService;
 use App\Support\MensajeError;
 use Livewire\Attributes\Layout;
@@ -72,6 +73,17 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
 
         return Producto::query()->whereIn('id', Variante::query()->whereIn('id', $variantes)->select('producto_id'))
             ->orderBy('modelo')->limit(500)->get(['id', 'modelo', 'nombre']);
+    }
+
+    /** @return array<int, string> producto_id => url */
+    public function getFotosProperty(): array
+    {
+        $ids = $this->renglones->map(fn ($r) => $r->variante?->producto_id)
+            ->merge($this->historial->pluck('producto_id'))
+            ->push($this->productoId !== '' ? $this->productoId : null)
+            ->push($this->conteo?->producto_id);
+
+        return app(ImagenDeProducto::class)->porProducto($ids);
     }
 
     public function getPuedeAplicarProperty(): bool
@@ -173,12 +185,17 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
             <p class="text-sm font-medium text-slate-800">Nuevo conteo</p>
             <div class="grid gap-4 sm:grid-cols-2">
                 <label class="block text-sm text-slate-600">¿Qué vas a contar?
-                    <select wire:model="productoId" class="mt-1 w-full rounded-lg text-sm">
-                        <option value="">Todo lo que tiene existencia</option>
-                        @foreach ($this->modelos as $m)
-                            <option value="{{ $m->id }}">{{ $m->modelo }} — {{ $m->nombre }}</option>
-                        @endforeach
-                    </select>
+                    <div class="mt-1 flex items-center gap-2">
+                        @if ($productoId !== '' && $productoId !== null)
+                            <x-ui.imagen-ampliable :url="$this->fotos[(int) $productoId] ?? null" :alt="$this->modelos->firstWhere('id', (int) $productoId)?->nombre ?? 'Producto'" />
+                        @endif
+                        <select wire:model.live="productoId" class="w-full rounded-lg text-sm">
+                            <option value="">Todo lo que tiene existencia</option>
+                            @foreach ($this->modelos as $m)
+                                <option value="{{ $m->id }}">{{ $m->modelo }} — {{ $m->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </label>
                 <label class="block text-sm text-slate-600">Notas (opcional)
                     <input type="text" wire:model="notas" maxlength="500" class="mt-1 w-full rounded-lg text-sm" placeholder="Ej. conteo de fin de mes">
@@ -196,7 +213,14 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
                     @forelse ($this->historial as $h)
                         <tr wire:key="h-{{ $h->id }}" class="transition-colors hover:bg-slate-50">
                             <td class="px-4 py-2">#{{ $h->id }} <span class="block text-xs text-slate-500">{{ $h->created_at?->format('d/m/Y H:i') }}</span></td>
-                            <td class="px-4 py-2">{{ $h->producto?->modelo ?? 'Todo el inventario' }}</td>
+                            <td class="px-4 py-2">
+                                <div class="flex items-center gap-2">
+                                    @if ($h->producto_id)
+                                        <x-ui.imagen-ampliable :url="$this->fotos[(int) $h->producto_id] ?? null" :alt="$h->producto?->nombre ?? 'Producto'" />
+                                    @endif
+                                    <span>{{ $h->producto?->modelo ?? 'Todo el inventario' }}</span>
+                                </div>
+                            </td>
                             <td class="px-4 py-2">{{ $h->renglones_count }}</td>
                             <td class="px-4 py-2"><span class="rounded-full px-2 py-0.5 text-xs {{ $h->estado === 'abierto' ? 'bg-fp-badge-warning-bg text-fp-badge-warning-fg' : ($h->estado === 'aplicado' ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-slate-100 text-slate-500') }}">{{ ucfirst($h->estado) }}</span></td>
                             <td class="px-4 py-2 text-right"><button type="button" wire:click="$set('conteoId', {{ $h->id }})" class="fp-enlace text-sm font-medium">{{ $h->estado === 'abierto' ? 'Continuar' : 'Ver' }}</button></td>
@@ -213,6 +237,9 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
         @endphp
         <div class="flex flex-wrap items-center gap-3">
             <button type="button" wire:click="salir" class="fp-btn fp-btn-fantasma rounded-xl">← Conteos</button>
+            @if ($c->producto_id)
+                <x-ui.imagen-ampliable :url="$this->fotos[(int) $c->producto_id] ?? null" :alt="$c->producto?->nombre ?? 'Producto'" />
+            @endif
             <p class="text-sm text-slate-700">Conteo #{{ $c->id }} · {{ $c->producto?->modelo ?? 'Todo el inventario' }} · {{ ucfirst($c->estado) }}</p>
         </div>
 
@@ -263,7 +290,12 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
                             $dif = $ren->diferencia();
                         @endphp
                         <tr wire:key="ren-{{ $ren->id }}" class="transition-colors hover:bg-slate-50">
-                            <td class="px-4 py-2">{{ $ren->variante?->producto?->modelo }} <span class="block text-xs text-slate-500">{{ $ren->variante?->producto?->nombre }}</span></td>
+                            <td class="px-4 py-2">
+                                <div class="flex items-center gap-2">
+                                    <x-ui.imagen-ampliable :url="$this->fotos[(int) ($ren->variante?->producto_id ?? 0)] ?? null" :alt="$ren->variante?->producto?->nombre ?? 'Producto'" />
+                                    <div>{{ $ren->variante?->producto?->modelo }} <span class="block text-xs text-slate-500">{{ $ren->variante?->producto?->nombre }}</span></div>
+                                </div>
+                            </td>
                             <td class="px-4 py-2">{{ $ren->variante?->talla?->valor }} · {{ $ren->variante?->nombre_color_comercial ?? $ren->variante?->color?->nombre }}</td>
                             <td class="px-4 py-2 font-mono text-xs">{{ $ren->variante?->sku }}</td>
                             <td class="px-4 py-2 text-right">{{ $ren->esperado }}</td>

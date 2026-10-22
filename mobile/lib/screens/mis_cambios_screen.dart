@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/cambio_service.dart';
 import '../tema/fp_colores.dart';
+import '../widgets/foto_calzado.dart';
 import '../widgets/fp_componentes.dart';
 import 'historial_cambio_screen.dart';
 
@@ -108,7 +109,7 @@ class _MisCambiosScreenState extends State<MisCambiosScreen> {
                 return Card(
                   margin: EdgeInsets.zero,
                   child: ListTile(
-                    leading: const FpIconoCuadro(icono: Icons.swap_horiz, tamano: 36),
+                    leading: FotoCalzado(url: s.imagen, nombre: s.productoNombre ?? 'Solicitud #${s.id}', tamano: 44),
                     title: Text(s.productoNombre ?? 'Solicitud #${s.id}'),
                     subtitle: Text(
                       [s.estadoEtiqueta, if (s.fechaSolicitud != null) 'Pedida el ${formatearCdmx(s.fechaSolicitud)}'].join(' · '),

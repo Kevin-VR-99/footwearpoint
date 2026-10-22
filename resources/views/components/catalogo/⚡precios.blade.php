@@ -4,6 +4,7 @@ use App\Exceptions\OperacionInvalidaException;
 use App\Models\ConfiguracionDistribuidora;
 use App\Models\DistribuidoraLinea;
 use App\Services\Catalogo\CatalogoParaConfigurarPrecios;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Services\Distribuidora\FijarDescuentoLineaAction;
 use App\Services\Distribuidora\FijarDescuentoMayoristaAction;
@@ -177,6 +178,12 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
         return app(CatalogoParaConfigurarPrecios::class)->pagina($this->busqueda, $this->filtro);
     }
 
+    /** @return array<int, string> producto_campana_id => url */
+    public function getFotosProperty(): array
+    {
+        return app(ImagenDeProducto::class)->porProductoCampana($this->productos->pluck('id'));
+    }
+
     public function getPreciosProperty(): PrecioEfectivo
     {
         return app(PrecioEfectivo::class);
@@ -261,8 +268,13 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
                     @php($propio = $pc->oferta?->precio_mayorista)
                     <tr wire:key="pc-{{ $pc->id }}" @class(['bg-slate-50 text-slate-500' => $oculto])>
                         <td class="px-4 py-3">
-                            <p class="font-medium text-slate-900">{{ $pc->producto?->nombre }}</p>
-                            <p class="text-xs text-fp-text-muted">{{ $pc->producto?->marca?->nombre }} · {{ $pc->codigo_catalogo }}</p>
+                            <div class="flex items-center gap-2">
+                                <x-ui.imagen-ampliable :url="$this->fotos[$pc->id] ?? null" :alt="$pc->producto?->nombre ?? 'Producto'" />
+                                <div>
+                                    <p class="font-medium text-slate-900">{{ $pc->producto?->nombre }}</p>
+                                    <p class="text-xs text-fp-text-muted">{{ $pc->producto?->marca?->nombre }} · {{ $pc->codigo_catalogo }}</p>
+                                </div>
+                            </div>
                         </td>
                         <td class="px-4 py-3">
                             {{ $pc->campana?->linea?->nombre }}
