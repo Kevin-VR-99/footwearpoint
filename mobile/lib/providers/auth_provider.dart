@@ -8,6 +8,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/usuario.dart';
 import '../services/api_service.dart';
 import '../services/aperturas_push.dart';
+import '../services/avisos_en_vivo.dart';
 import '../services/registro_fcm.dart';
 
 /// Guarda quién inició sesión y avisa a las pantallas cuando eso cambia.
@@ -257,6 +258,7 @@ class AuthProvider extends ChangeNotifier {
       _renovacionTokenFcm = null;
       registroFcm.detener();
       unawaited(AperturasPush.detener());
+      unawaited(AvisosEnVivo.detener());
 
       try {
         await FirebaseMessaging.instance.deleteToken();

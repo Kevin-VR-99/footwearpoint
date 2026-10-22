@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import '../services/avisos_en_vivo.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -167,9 +170,13 @@ class _InicioScreenState extends State<InicioScreen> {
                 const FpTituloSeccion('Tu meta del mes'),
                 const _MetaDelMes(),
               ],
-              const SizedBox(height: 20),
-              // Solo lo que NO esta en la barra de abajo.
-              const FpTituloSeccion('Accesos'),
+              // Solo lo que NO esta en la barra de abajo, y todo eso es del
+              // cliente mayorista. TG-281: al cliente directo no se le
+              // enseña el titulo "Accesos" con nada debajo.
+              if (auth.rol == 'revendedor') ...[
+                const SizedBox(height: 20),
+                const FpTituloSeccion('Accesos'),
+              ],
               if (auth.rol == 'revendedor') ...[
                 _BotonCarrito(habilitado: habilitado),
                 const SizedBox(height: 10),
@@ -407,10 +414,23 @@ class _CampanaNotificacionesState extends State<_CampanaNotificaciones> {
   late final _servicio = NotificacionService(context.read<AuthProvider>().api);
   int _noLeidas = 0;
 
+  StreamSubscription<RemoteMessage>? _avisos;
+
   @override
   void initState() {
     super.initState();
     _contar();
+
+    // TG-281: si llega un aviso con la app abierta, el globito rojo tiene
+    // que aparecer solo. Antes habia que tocar la campanita para enterarse,
+    // que es justo al reves de para lo que sirve.
+    _avisos = AvisosEnVivo.alLlegar.listen((_) => _contar());
+  }
+
+  @override
+  void dispose() {
+    _avisos?.cancel();
+    super.dispose();
   }
 
   Future<void> _contar() async {
