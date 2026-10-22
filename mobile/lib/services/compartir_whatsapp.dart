@@ -22,12 +22,27 @@ Future<void> compartirPorWhatsApp(BuildContext context, String texto, {String? t
   }
 }
 
+/// El enlace que la app abre al tocarlo.
+const hostEnlacesApp = 'https://footwearpoint.app';
+
+String enlaceAbrirPedido(int id) => '$hostEnlacesApp/abrir/pedido/$id';
+
+String enlaceAbrirProducto(int id) => '$hostEnlacesApp/abrir/producto/$id';
+
+/// Agrega el enlace de la app si el texto todavía no lo trae.
+String conEnlaceDeApp(String texto, String enlace) {
+  if (texto.contains(enlace)) return texto.trim();
+  final base = texto.trim();
+  return [if (base.isNotEmpty) base, 'Abrir en la app: $enlace'].join('\n');
+}
+
 /// Texto para compartir un producto del catálogo.
 String textoProductoWhatsApp({
   required String nombre,
   required String modelo,
   required double precio,
   String? url,
+  int? productoCampanaId,
 }) {
   final lineas = [
     '¡Mira este modelo! 👟',
@@ -36,5 +51,8 @@ String textoProductoWhatsApp({
     if (url != null && url.isNotEmpty) url,
   ];
 
-  return lineas.join('\n');
+  final texto = lineas.join('\n');
+  if (productoCampanaId == null) return texto;
+
+  return conEnlaceDeApp(texto, enlaceAbrirProducto(productoCampanaId));
 }

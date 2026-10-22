@@ -17,6 +17,9 @@ class WhatsApp
     /** Lada de México: los teléfonos de 10 dígitos se completan con 52. */
     public const LADA_PAIS = '52';
 
+    /** Host que la app de Android abre al tocar el enlace del mensaje. */
+    public const HOST_APP = 'https://footwearpoint.app';
+
     public static function enlace(string $texto, ?string $telefono = null): string
     {
         $numero = self::normalizarTelefono($telefono);
@@ -61,7 +64,16 @@ class WhatsApp
             $lineas[] = $url;
         }
 
+        if (! empty($producto['id'])) {
+            $lineas[] = 'Abrir en la app: '.self::enlaceApp('producto', (int) $producto['id']);
+        }
+
         return implode("\n", $lineas);
+    }
+
+    public static function enlaceApp(string $tipo, int $id): string
+    {
+        return self::HOST_APP.'/abrir/'.$tipo.'/'.$id;
     }
 
     /**
@@ -100,6 +112,8 @@ class WhatsApp
         if ($urlTienda) {
             $lineas[] = 'Catálogo: '.$urlTienda;
         }
+
+        $lineas[] = 'Abrir en la app: '.self::enlaceApp('pedido', (int) $pedido->id);
 
         return implode("\n", $lineas);
     }

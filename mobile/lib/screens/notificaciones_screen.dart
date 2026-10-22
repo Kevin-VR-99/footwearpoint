@@ -33,6 +33,9 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   late final _servicio = NotificacionService(context.read<AuthProvider>().api);
 
   List<Notificacion>? _notificaciones;
+  int _pagina = 1;
+  bool _hayMas = false;
+  bool _cargandoMas = false;
 
   /// Sube cuando un aviso que se habia quitado vuelve a su sitio.
   ///
@@ -51,12 +54,14 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     _cargar();
   }
 
-  Future<void> _cargar() async {
+  Future<void> _cargar({bool forzar = false}) async {
     try {
-      final lista = await _servicio.listar();
+      final pagina = await _servicio.listarPagina(forzar: forzar);
       if (!mounted) return;
       setState(() {
-        _notificaciones = lista;
+        _notificaciones = pagina.elementos;
+        _pagina = pagina.paginaActual;
+        _hayMas = pagina.hayMas;
         _error = null;
         _cargando = false;
       });
@@ -66,6 +71,71 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         _error = e.mensaje;
         _cargando = false;
       });
+    }
+  }
+
+  Future<void> _cargarMas() async {
+    if (!_hayMas || _cargandoMas) return;
+    setState(() => _cargandoMas = true);
+
+    try {
+      final pagina = await _servicio.listarPagina(pagina: _pagina + 1);
+      if (!mounted) return;
+      final vistos = {for (final n in _notificaciones ?? const <Notificacion>[]) n.id};
+      setState(() {
+        _notificaciones = [...?_notificaciones, ...pagina.elementos.where((n) => !vistos.contains(n.id))];
+        _pagina = pagina.paginaActual;
+        _hayMas = pagina.hayMas;
+        _cargandoMas = false;
+      });
+    } on ApiException {
+      if (mounted) setState(() => _cargandoMas = false);
+    }
+  }
+
+  Future<void> _marcarTodas() async {
+    final lista = _notificaciones;
+    if (lista == null || lista.every((n) => n.leida)) return;
+
+    try {
+      await _servicio.marcarTodasLeidas();
+      if (!mounted) return;
+      setState(() {
+        _notificaciones = [for (final n in lista) n.marcadaLeida()];
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.mensaje)));
+    }
+  }
+
+  Future<void> _borrarTodas() async {
+    final lista = _notificaciones;
+    if (lista == null || lista.isEmpty) return;
+
+    final seguro = await showDialog<bool>(
+      context: context,
+      builder: (contexto) => AlertDialog(
+        title: const Text('Borrar avisos'),
+        content: const Text('¿Borras todos los avisos? No se pueden recuperar.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(contexto).pop(false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.of(contexto).pop(true), child: const Text('Borrar')),
+        ],
+      ),
+    );
+    if (seguro != true || !mounted) return;
+
+    try {
+      await _servicio.borrarTodas();
+      if (!mounted) return;
+      setState(() {
+        _notificaciones = [];
+        _hayMas = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.mensaje)));
     }
   }
 
@@ -176,7 +246,24 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Notificaciones'), bottom: const FpBordeMarca()),
+      appBar: AppBar(
+        title: const Text('Notificaciones'),
+        bottom: const FpBordeMarca(),
+        actions: [
+          if (_notificaciones != null && _notificaciones!.any((n) => !n.leida))
+            IconButton(
+              tooltip: 'Marcar todas como leídas',
+              onPressed: _marcarTodas,
+              icon: const Icon(Icons.done_all),
+            ),
+          if (_notificaciones != null && _notificaciones!.isNotEmpty)
+            IconButton(
+              tooltip: 'Borrar todas',
+              onPressed: _borrarTodas,
+              icon: const Icon(Icons.delete_outline),
+            ),
+        ],
+      ),
       body: SafeArea(child: _contenido(context)),
     );
   }
@@ -204,7 +291,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _cargar,
+      onRefresh: () => _cargar(forzar: true),
       child: lista.isEmpty
           ? ListView(
               children: const [
@@ -217,19 +304,29 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
             )
           : ListView.separated(
               padding: const EdgeInsets.all(16),
-              itemCount: lista.length,
+              itemCount: lista.length + (_hayMas ? 1 : 0),
               separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (_, i) => _Deslizable(
-                // La key tiene que ser del aviso y no de su posicion: si
-                // fuera la posicion, al borrar uno Flutter creeria que el de
-                // abajo es el que se fue y animaria el equivocado.
-                key: ValueKey('${lista[i].id}#$_generacion'),
-                alBorrar: () => _borrar(lista[i]),
-                child: _TarjetaNotificacion(
-                  notificacion: lista[i],
-                  alTocar: () => _tocar(lista[i]),
-                ),
-              ),
+              itemBuilder: (_, i) {
+                if (i == lista.length) {
+                  return Center(
+                    child: _cargandoMas
+                        ? const CircularProgressIndicator()
+                        : TextButton(onPressed: _cargarMas, child: const Text('Ver más avisos')),
+                  );
+                }
+
+                return _Deslizable(
+                  // La key tiene que ser del aviso y no de su posicion: si
+                  // fuera la posicion, al borrar uno Flutter creeria que el de
+                  // abajo es el que se fue y animaria el equivocado.
+                  key: ValueKey('${lista[i].id}#$_generacion'),
+                  alBorrar: () => _borrar(lista[i]),
+                  child: _TarjetaNotificacion(
+                    notificacion: lista[i],
+                    alTocar: () => _tocar(lista[i]),
+                  ),
+                );
+              },
             ),
     );
   }

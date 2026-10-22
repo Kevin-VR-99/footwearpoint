@@ -36,6 +36,9 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
 
   /// TG-241 (A12): mientras se manda la decision de lo que no se surtio.
   bool _resolviendo = false;
+
+  /// Mientras se quita una línea o se envía el borrador.
+  bool _editando = false;
   String? _error;
 
   @override
@@ -108,6 +111,54 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
     }
   }
 
+  Future<void> _quitarLinea(LineaPedido linea) async {
+    final pedido = _pedido;
+    if (pedido == null || linea.id == null) return;
+
+    final seguro = await showDialog<bool>(
+      context: context,
+      builder: (contexto) => AlertDialog(
+        title: const Text('Quitar producto'),
+        content: Text('¿Quitas ${linea.productoNombre} de este pedido? Todavía no se ha enviado.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(contexto).pop(false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.of(contexto).pop(true), child: const Text('Quitar')),
+        ],
+      ),
+    );
+    if (seguro != true || !mounted) return;
+
+    setState(() => _editando = true);
+    try {
+      final actualizado = await _pedidos.quitarLinea(pedidoId: pedido.id, lineaId: linea.id!);
+      if (!mounted) return;
+      setState(() => _pedido = actualizado);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.mensaje)));
+    } finally {
+      if (mounted) setState(() => _editando = false);
+    }
+  }
+
+  Future<void> _enviarBorrador() async {
+    final pedido = _pedido;
+    if (pedido == null) return;
+
+    setState(() => _editando = true);
+    try {
+      final actualizado = await _pedidos.enviar(pedido.id);
+      if (!mounted) return;
+      setState(() => _pedido = actualizado);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pedido enviado.')));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.mensaje)));
+    } finally {
+      if (mounted) setState(() => _editando = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pedido = _pedido;
@@ -121,7 +172,10 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
             IconButton(
               tooltip: 'Compartir por WhatsApp',
               icon: const Icon(Icons.share_outlined),
-              onPressed: () => compartirPorWhatsApp(context, pedido!.compartirTexto!),
+              onPressed: () => compartirPorWhatsApp(
+                context,
+                conEnlaceDeApp(pedido!.compartirTexto!, enlaceAbrirPedido(pedido.id)),
+              ),
             ),
         ],
       ),
@@ -230,6 +284,14 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
                     const SizedBox(height: 4),
                     const InsigniaBajoPedido(),
                   ],
+                  if (pedido.estado == 'borrador' && linea.id != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: _editando ? null : () => _quitarLinea(linea),
+                        child: const Text('Quitar'),
+                      ),
+                    ),
                 ],
               ),
               isThreeLine: true,
@@ -237,6 +299,15 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
                 formatoPrecio(linea.subtotal),
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
+            ),
+          ),
+        if (pedido.estado == 'borrador' && pedido.lineas.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: FilledButton(
+              onPressed: _editando ? null : _enviarBorrador,
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              child: const Text('Enviar pedido'),
             ),
           ),
         if (pedido.lineas.any((l) => l.bajoPedido))

@@ -17,7 +17,10 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado|revendedor|cliente_directo'])
     ->group(function () {
         Route::get('/notificaciones', [NotificacionController::class, 'index']);
-        Route::post('/notificaciones/{id}/marcar-leida', [NotificacionController::class, 'marcarLeida']);
+        Route::post('/notificaciones/marcar-todas-leidas', [NotificacionController::class, 'marcarTodasLeidas']);
+        Route::delete('/notificaciones', [NotificacionController::class, 'destruirTodas']);
+        Route::post('/notificaciones/{id}/marcar-leida', [NotificacionController::class, 'marcarLeida'])
+            ->whereNumber('id');
         // TG-281 (E19-11): quitar un aviso de la bandeja deslizandolo en la
         // app. Es la bandeja de UNA persona (notificaciones.usuario_id), asi
         // que borrar no le quita el aviso a nadie mas.

@@ -27,7 +27,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado|revendedor|cliente_directo'])
     ->group(function () {
         Route::get('/pedidos', [PedidoController::class, 'index']);
-        Route::get('/pedidos/{id}', [PedidoController::class, 'show']);
+        // Antes de /pedidos/{id}: si no, "resumen" se toma como un id.
+        Route::get('/pedidos/resumen', [PedidoController::class, 'resumen']);
+        Route::get('/pedidos/{id}', [PedidoController::class, 'show'])->whereNumber('id');
         Route::post('/pedidos', [PedidoController::class, 'store']);
         Route::post('/pedidos/{id}/lineas', [PedidoController::class, 'agregarLinea']);
         // TG-189 (A11): enviar el pedido es el momento en que la persona se

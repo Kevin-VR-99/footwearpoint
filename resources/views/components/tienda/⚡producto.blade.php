@@ -124,7 +124,7 @@ new class extends Component {
 
             @php
                 $urlFicha = app(\App\Services\Tienda\EnlaceTienda::class)->producto($distribuidora, $productoId);
-                $textoWa = \App\Support\WhatsApp::textoProducto($producto, $distribuidora, $urlFicha);
+                $textoWa = \App\Support\WhatsApp::textoProducto(['id' => $productoId] + $producto, $distribuidora, $urlFicha);
             @endphp
             <div class="flex flex-wrap gap-2">
                 <x-ui.boton-whatsapp :url="\App\Support\WhatsApp::enlace($textoWa)" texto="Compartir" />

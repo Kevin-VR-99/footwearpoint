@@ -8,6 +8,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/usuario.dart';
 import '../services/api_service.dart';
 import '../services/aperturas_push.dart';
+import '../services/enlaces_app.dart';
 import '../services/registro_fcm.dart';
 
 /// Guarda quién inició sesión y avisa a las pantallas cuando eso cambia.
@@ -16,6 +17,7 @@ import '../services/registro_fcm.dart';
 class AuthProvider extends ChangeNotifier {
   AuthProvider({ApiService? api}) : api = api ?? ApiService() {
     this.api.alNoAutorizado = _sesionVencida;
+    EnlacesApp.haySesion = () => haySesion;
   }
 
   /// Se expone para que las demás pantallas hagan sus peticiones con el
@@ -186,6 +188,7 @@ class AuthProvider extends ChangeNotifier {
     } finally {
       _iniciando = false;
       notifyListeners();
+      if (haySesion) EnlacesApp.abrirSiHaySesion();
     }
   }
 
@@ -220,6 +223,7 @@ class AuthProvider extends ChangeNotifier {
       _conDatosGuardados = false;
       await _guardarCopia(datos);
       _registrarDispositivoFCM();
+      EnlacesApp.abrirSiHaySesion();
 
       return true;
     } on ApiException catch (e) {
@@ -257,6 +261,7 @@ class AuthProvider extends ChangeNotifier {
       _renovacionTokenFcm = null;
       registroFcm.detener();
       unawaited(AperturasPush.detener());
+      EnlacesApp.olvidar();
 
       try {
         await FirebaseMessaging.instance.deleteToken();

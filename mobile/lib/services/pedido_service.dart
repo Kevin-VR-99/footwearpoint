@@ -39,26 +39,47 @@ class PedidoService {
     return PedidoResumen.desdeJson(enviado['data'] as Map<String, dynamic>);
   }
 
-  /// "Mis pedidos": el servidor ya regresa solo los de quien inició sesión
-  /// (PropietarioActual), del más nuevo al más viejo. Esta es la primera
-  /// página (hasta 100); para ver más se usa [listarPagina].
-  ///
-  /// Sin borradores: son pedidos que nunca se enviaron (por ejemplo, si se
-  /// cortó la conexión a medio envío) y desde la app no se pueden continuar.
-  Future<List<PedidoResumen>> listar() async {
-    return (await listarPagina(pagina: 1, porPagina: 100)).elementos;
+  /// Cifras del inicio. El servidor las cuenta todas, no solo las primeras 100.
+  Future<ResumenPedidos> resumen() async {
+    final respuesta = await _api.get('pedidos/resumen');
+
+    return ResumenPedidos.desdeJson(respuesta);
   }
 
-  /// Una página de "Mis pedidos" (auditoría 21-oct-2026: la API ya pagina).
-  Future<Pagina<PedidoResumen>> listarPagina({int pagina = 1, int porPagina = 25}) async {
-    final respuesta = await _api.get('pedidos?page=$pagina&per_page=$porPagina');
-    final pagina0 = Pagina.desdeJson(respuesta, PedidoResumen.desdeJson);
+  /// "Mis pedidos": el servidor ya regresa solo los de quien inició sesión
+  /// (PropietarioActual), del más nuevo al más viejo.
+  ///
+  /// [excluirBorrador] pide al servidor que no mande borradores, para que una
+  /// página no quede vacía. [estado] arma la lista de "Sin enviar".
+  Future<Pagina<PedidoResumen>> listarPagina({
+    int pagina = 1,
+    int porPagina = 25,
+    bool excluirBorrador = true,
+    String? estado,
+  }) async {
+    final parametros = <String, String>{
+      'page': '$pagina',
+      'per_page': '$porPagina',
+      'estado': ?estado,
+      if (excluirBorrador && estado == null) 'excluir_borrador': '1',
+    };
+    final respuesta = await _api.get('pedidos?${Uri(queryParameters: parametros).query}');
 
-    return Pagina(
-      elementos: pagina0.elementos.where((p) => p.estado != 'borrador').toList(),
-      paginaActual: pagina0.paginaActual,
-      ultimaPagina: pagina0.ultimaPagina,
-    );
+    return Pagina.desdeJson(respuesta, PedidoResumen.desdeJson);
+  }
+
+  /// Quita un producto de un pedido que todavía no se envía.
+  Future<PedidoResumen> quitarLinea({required int pedidoId, required int lineaId}) async {
+    final respuesta = await _api.delete('pedidos/$pedidoId/lineas/$lineaId');
+
+    return PedidoResumen.desdeJson(respuesta['data'] as Map<String, dynamic>);
+  }
+
+  /// Envía un borrador que se quedó sin mandar.
+  Future<PedidoResumen> enviar(int pedidoId) async {
+    final respuesta = await _api.post('pedidos/$pedidoId/enviar');
+
+    return PedidoResumen.desdeJson(respuesta['data'] as Map<String, dynamic>);
   }
 
   /// El detalle, con líneas y pagos.
@@ -84,5 +105,27 @@ class PedidoService {
     );
 
     return respuesta['message'] as String? ?? 'Listo, quedó anotado.';
+  }
+}
+
+/// Lo que el inicio pinta arriba: cuántos pedidos van y cuánto falta.
+class ResumenPedidos {
+  const ResumenPedidos({required this.enCurso, required this.porPagar, required this.ultimos});
+
+  final int enCurso;
+  final double porPagar;
+  final List<PedidoResumen> ultimos;
+
+  factory ResumenPedidos.desdeJson(Map<String, dynamic> json) {
+    final datos = json['data'] as Map<String, dynamic>? ?? const {};
+
+    return ResumenPedidos(
+      enCurso: (datos['en_curso'] as num?)?.toInt() ?? 0,
+      porPagar: (datos['por_pagar'] as num?)?.toDouble() ?? 0,
+      ultimos: [
+        for (final p in datos['ultimos'] as List<dynamic>? ?? const [])
+          PedidoResumen.desdeJson(p as Map<String, dynamic>),
+      ],
+    );
   }
 }

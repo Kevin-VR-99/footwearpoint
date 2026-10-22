@@ -5,14 +5,17 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\NotificacionResource;
 use App\Models\Notificacion;
+use App\Support\RespuestaConEtag;
+use App\Support\RespuestaPaginada;
 use App\Support\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\Response;
 
 class NotificacionController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): Response
     {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
@@ -24,10 +27,55 @@ class NotificacionController extends Controller
             $query->whereNull('leida_at');
         }
 
-        $notificaciones = $query->limit(50)->get();
+        $noLeidas = Notificacion::query()
+            ->where('usuario_id', Auth::id())
+            ->whereNull('leida_at')
+            ->count();
+
+        $pagina = RespuestaPaginada::paginar($query, $request);
+
+        return RespuestaConEtag::desde($request, response()->json([
+            'data' => NotificacionResource::collection($pagina->getCollection()),
+            'meta' => [
+                'current_page' => $pagina->currentPage(),
+                'last_page'    => $pagina->lastPage(),
+                'per_page'     => $pagina->perPage(),
+                'total'        => $pagina->total(),
+            ],
+            'links' => [
+                'next' => $pagina->nextPageUrl(),
+                'prev' => $pagina->previousPageUrl(),
+            ],
+            'no_leidas' => $noLeidas,
+        ]));
+    }
+
+    public function marcarTodasLeidas(): JsonResponse
+    {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+
+        $marcadas = Notificacion::query()
+            ->where('usuario_id', Auth::id())
+            ->whereNull('leida_at')
+            ->update(['leida_at' => now()]);
 
         return response()->json([
-            'data' => NotificacionResource::collection($notificaciones),
+            'message'  => 'Avisos marcados como leídos.',
+            'marcadas' => $marcadas,
+        ]);
+    }
+
+    public function destruirTodas(): JsonResponse
+    {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+
+        $borradas = Notificacion::query()
+            ->where('usuario_id', Auth::id())
+            ->delete();
+
+        return response()->json([
+            'message'  => 'Avisos borrados.',
+            'borradas' => $borradas,
         ]);
     }
 

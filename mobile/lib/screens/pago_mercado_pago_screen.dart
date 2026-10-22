@@ -49,6 +49,13 @@ class _PagoMercadoPagoScreenState extends State<PagoMercadoPagoScreen> with Widg
   /// Ya se abrió Mercado Pago: al volver a la app se verifica solo.
   bool _esperandoRegreso = false;
 
+  /// La app sí pasó a segundo plano. Sin esto, un resume de adorno
+  /// verificaría el pago antes de que la persona terminara.
+  bool _salioASegundoPlano = false;
+
+  /// Volvió mientras [abrir] todavía no terminaba. Se verifica al terminar.
+  bool _verificarAlTerminarAbrir = false;
+
   /// Hay un pago que confirmar (recién abierto o pendiente de antes).
   late bool _porVerificar = widget.verificarAlAbrir;
 
@@ -73,10 +80,21 @@ class _PagoMercadoPagoScreenState extends State<PagoMercadoPagoScreen> with Widg
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState estado) {
-    if (estado == AppLifecycleState.resumed && _esperandoRegreso && !_trabajando) {
-      _esperandoRegreso = false;
-      _verificar();
+    final enFondo = estado == AppLifecycleState.paused || estado == AppLifecycleState.hidden;
+    if (enFondo && _esperandoRegreso) {
+      _salioASegundoPlano = true;
+      return;
     }
+
+    if (estado != AppLifecycleState.resumed || !_esperandoRegreso || !_salioASegundoPlano) return;
+
+    _salioASegundoPlano = false;
+    _esperandoRegreso = false;
+    if (_trabajando) {
+      _verificarAlTerminarAbrir = true;
+      return;
+    }
+    _verificar();
   }
 
   bool get _pagado => _resultado?.aplicado ?? false;
@@ -92,15 +110,25 @@ class _PagoMercadoPagoScreenState extends State<PagoMercadoPagoScreen> with Widg
       final enlace = await _pagos.crear(widget.pedido.id, widget.tipo);
       _huboCambios = true;
       final abrir = widget.abrirEnlace ?? PagoMercadoPagoScreen.abrirEnlacePorDefecto;
+      // Antes de esperar: si la persona vuelve mientras el navegador
+      // todavía no suelta esta llamada, el resume no se pierde.
+      _esperandoRegreso = true;
+      _salioASegundoPlano = false;
+      _verificarAlTerminarAbrir = false;
       final abierto = await abrir(enlace.initPoint);
       if (!mounted) return;
+      final verificarYa = abierto && _verificarAlTerminarAbrir;
+      _verificarAlTerminarAbrir = false;
       setState(() {
         _trabajando = false;
         _porVerificar = true;
         _resultado = null;
-        _esperandoRegreso = abierto;
-        if (!abierto) _error = 'No se pudo abrir Mercado Pago. Revisa que tengas un navegador instalado.';
+        if (!abierto) {
+          _esperandoRegreso = false;
+          _error = 'No se pudo abrir Mercado Pago. Revisa que tengas un navegador instalado.';
+        }
       });
+      if (verificarYa) await _verificar();
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {

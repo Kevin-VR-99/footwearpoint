@@ -38,6 +38,17 @@ Map<String, dynamic> _vale(String folio, double saldo) => {
   'estado': 'activo',
 };
 
+/// Lo que contaría el servidor: en curso sin borrador, entregado, rechazado
+/// ni descartado, y solo los tres pedidos más nuevos que no son borrador.
+Map<String, dynamic> _resumenDe(List<Map<String, dynamic>> pedidos) {
+  const terminados = {'borrador', 'descartado', 'entregado', 'rechazado'};
+  final enCurso = pedidos.where((p) => !terminados.contains(p['estado']));
+  final porPagar = enCurso.fold<double>(0, (suma, p) => suma + (p['saldo'] as num).toDouble());
+  final ultimos = pedidos.where((p) => p['estado'] != 'borrador').take(3).toList();
+
+  return {'en_curso': enCurso.length, 'por_pagar': porPagar, 'ultimos': ultimos};
+}
+
 /// TG-281 (E19-11), punto 5: el Inicio enseña números, como el panel web.
 ///
 /// Antes solo tenía botones para ir a otro lado. Lo que se prueba aquí es la
@@ -68,10 +79,10 @@ MockClient _servidor({
       }, 200);
     }
 
-    if (ruta == '/pedidos') {
+    if (ruta == '/pedidos/resumen') {
       if (pedidosFallan) return _json({'message': 'Error del servidor.'}, 500);
 
-      return _json({'data': pedidos ?? const <Object>[]}, 200);
+      return _json({'data': _resumenDe(pedidos ?? const [])}, 200);
     }
 
     if (ruta == '/vales') {
