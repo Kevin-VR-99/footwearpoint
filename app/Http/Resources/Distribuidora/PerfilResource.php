@@ -15,6 +15,7 @@ class PerfilResource extends JsonResource
             'descripcion_publica' => $this->descripcion_publica,
             'direccion_publica'   => $this->direccion_publica,
             'telefono_publico'    => $this->telefono_publico,
+            'telefono_es_whatsapp' => (bool) $this->telefono_es_whatsapp,
             'email_publico'       => $this->email_publico,
             'horario_publico'     => $this->horario_publico,
             'logotipo_url'        => $this->logotipo_url,

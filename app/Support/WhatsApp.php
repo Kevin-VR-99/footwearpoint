@@ -36,6 +36,17 @@ class WhatsApp
         return strlen($digitos) >= 11 && strlen($digitos) <= 15 ? $digitos : null;
     }
 
+    /**
+     * El botón de escribirle a la distribuidora solo aparece si ella activó
+     * WhatsApp en su perfil y el teléfono se puede abrir en wa.me.
+     */
+    public static function aceptaMensajes(?Distribuidora $distribuidora): bool
+    {
+        return $distribuidora !== null
+            && (bool) $distribuidora->telefono_es_whatsapp
+            && self::normalizarTelefono($distribuidora->telefono_publico) !== null;
+    }
+
     public static function textoTienda(Distribuidora $distribuidora, ?string $url): string
     {
         return trim(sprintf(

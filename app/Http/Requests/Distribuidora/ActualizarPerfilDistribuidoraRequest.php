@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests\Distribuidora;
 
+use App\Models\Distribuidora;
+use App\Support\Tenant;
+use App\Support\WhatsApp;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ActualizarPerfilDistribuidoraRequest extends FormRequest
@@ -26,6 +29,7 @@ class ActualizarPerfilDistribuidoraRequest extends FormRequest
             'descripcion_publica' => ['nullable', 'string', 'max:2000'],
             'direccion_publica'   => ['nullable', 'string', 'max:300'],
             'telefono_publico'    => ['nullable', 'string', 'max:30'],
+            'telefono_es_whatsapp' => ['sometimes', 'boolean'],
             'email_publico'       => ['nullable', 'email', 'max:190'],
             'horario_publico'     => ['nullable', 'string', 'max:300'],
             // Nota: ningún mockup ni documento especifica un tamaño máximo para el
@@ -39,6 +43,27 @@ class ActualizarPerfilDistribuidoraRequest extends FormRequest
     {
         return [
             'descripcion_publica.max' => 'La descripción pública no puede tener más de 2000 caracteres.',
+            'telefono_es_whatsapp' => 'Ese número no se puede usar en WhatsApp. Escríbelo con 10 dígitos o déjalo solo para llamadas.',
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            if (! $this->exists('telefono_es_whatsapp') || ! $this->boolean('telefono_es_whatsapp')) {
+                return;
+            }
+
+            $telefono = $this->exists('telefono_publico')
+                ? $this->input('telefono_publico')
+                : Distribuidora::query()->whereKey(Tenant::id())->value('telefono_publico');
+
+            if (WhatsApp::normalizarTelefono(is_string($telefono) ? $telefono : null) === null) {
+                $validator->errors()->add(
+                    'telefono_es_whatsapp',
+                    'Ese número no se puede usar en WhatsApp. Escríbelo con 10 dígitos o déjalo solo para llamadas.',
+                );
+            }
+        });
     }
 }

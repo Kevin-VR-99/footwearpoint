@@ -128,9 +128,9 @@ new class extends Component {
             @endphp
             <div class="flex flex-wrap gap-2">
                 <x-ui.boton-whatsapp :url="\App\Support\WhatsApp::enlace($textoWa)" texto="Compartir" />
-                @if (\App\Support\WhatsApp::normalizarTelefono($distribuidora->telefono_publico))
+                @if (\App\Support\WhatsApp::aceptaMensajes($distribuidora))
                     <x-ui.boton-whatsapp :url="\App\Support\WhatsApp::enlace('Hola, me interesa este modelo: '.$producto['nombre'].' '.$urlFicha, $distribuidora->telefono_publico)"
-                        texto="Preguntar por WhatsApp" class="!bg-white !text-[#128C7E] border border-[#25D366] hover:!bg-emerald-50" />
+                        texto="Preguntar por WhatsApp" data-contacto-whatsapp class="!bg-white !text-[#128C7E] border border-[#25D366] hover:!bg-emerald-50" />
                 @endif
             </div>
 

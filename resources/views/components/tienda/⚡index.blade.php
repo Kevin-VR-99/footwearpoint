@@ -113,9 +113,9 @@ new class extends Component {
             <div class="mt-4 flex flex-wrap gap-2">
                 <x-ui.boton-whatsapp :url="\App\Support\WhatsApp::enlace(\App\Support\WhatsApp::textoTienda($distribuidora, $urlTiendaWa))"
                     texto="Compartir catálogo" tamano="sm" />
-                @if (\App\Support\WhatsApp::normalizarTelefono($distribuidora->telefono_publico))
+                @if (\App\Support\WhatsApp::aceptaMensajes($distribuidora))
                     <x-ui.boton-whatsapp :url="\App\Support\WhatsApp::enlace('Hola, vi su catálogo en '.$urlTiendaWa.' y quiero más información.', $distribuidora->telefono_publico)"
-                        texto="Escríbenos" tamano="sm" class="!bg-white !text-[#128C7E] border border-[#25D366] hover:!bg-emerald-50" />
+                        texto="Escríbenos" tamano="sm" data-contacto-whatsapp class="!bg-white !text-[#128C7E] border border-[#25D366] hover:!bg-emerald-50" />
                 @endif
             </div>
         </div>

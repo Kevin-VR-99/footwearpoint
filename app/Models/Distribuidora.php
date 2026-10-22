@@ -31,6 +31,7 @@ class Distribuidora extends Model
         'descripcion_publica',
         'direccion_publica',
         'telefono_publico',
+        'telefono_es_whatsapp',
         'email_publico',
         'horario_publico',
         'marketplace_visible',
@@ -44,6 +45,7 @@ class Distribuidora extends Model
 
     protected $casts = [
         'marketplace_visible' => 'boolean',
+        'telefono_es_whatsapp' => 'boolean',
         'fecha_solicitud' => 'datetime',
         'fecha_aprobacion' => 'datetime',
     ];
