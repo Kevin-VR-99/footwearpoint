@@ -20,14 +20,23 @@ class ContextoOperativo
 {
     private ?DistribuidoraStaff $staff = null;
     private ?Sucursal $sucursal = null;
+    private ?int $usuarioId = null;
 
     public function staff(): DistribuidoraStaff
     {
+        $usuarioId = Auth::id();
+
+        // Es scoped (una instancia por petición, ver AppServiceProvider): si
+        // cambia el usuario autenticado dentro de la misma vida del proceso,
+        // se vuelve a resolver en lugar de devolver el staff de otro.
+        if ($this->usuarioId !== $usuarioId) {
+            $this->staff = null;
+            $this->sucursal = null;
+        }
+
         if ($this->staff !== null) {
             return $this->staff;
         }
-
-        $usuarioId = Auth::id();
 
         if ($usuarioId === null) {
             throw new OperacionInvalidaException('No hay un usuario autenticado.', 401);
@@ -48,6 +57,8 @@ class ContextoOperativo
             );
         }
 
+        $this->usuarioId = $usuarioId;
+
         return $this->staff = $staff;
     }
 
@@ -61,12 +72,14 @@ class ContextoOperativo
      */
     public function sucursalPrincipal(): Sucursal
     {
-        if ($this->sucursal !== null) {
+        $distribuidoraId = $this->distribuidoraId();
+
+        if ($this->sucursal !== null && (int) $this->sucursal->distribuidora_id === $distribuidoraId) {
             return $this->sucursal;
         }
 
         $sucursal = Sucursal::query()
-            ->where('distribuidora_id', $this->distribuidoraId())
+            ->where('distribuidora_id', $distribuidoraId)
             ->where('es_principal', true)
             ->where('activa', true)
             ->first();
