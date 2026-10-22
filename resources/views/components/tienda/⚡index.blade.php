@@ -109,6 +109,15 @@ new class extends Component {
             <p class="text-sm text-slate-600 mt-4">
                 ¿Te gustó algo? Pídelo en mostrador o desde la app de FootwearPoint.
             </p>
+            @php $urlTiendaWa = app(\App\Services\Tienda\EnlaceTienda::class)->url($distribuidora); @endphp
+            <div class="mt-4 flex flex-wrap gap-2">
+                <x-ui.boton-whatsapp :url="\App\Support\WhatsApp::enlace(\App\Support\WhatsApp::textoTienda($distribuidora, $urlTiendaWa))"
+                    texto="Compartir catálogo" tamano="sm" />
+                @if (\App\Support\WhatsApp::normalizarTelefono($distribuidora->telefono_publico))
+                    <x-ui.boton-whatsapp :url="\App\Support\WhatsApp::enlace('Hola, vi su catálogo en '.$urlTiendaWa.' y quiero más información.', $distribuidora->telefono_publico)"
+                        texto="Escríbenos" tamano="sm" class="!bg-white !text-[#128C7E] border border-[#25D366] hover:!bg-emerald-50" />
+                @endif
+            </div>
         </div>
 
         <ul class="md:w-72 space-y-1.5 text-sm text-fp-text-muted">

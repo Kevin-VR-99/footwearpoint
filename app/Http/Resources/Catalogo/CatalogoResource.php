@@ -58,6 +58,8 @@ class CatalogoResource extends JsonResource
             'codigo_catalogo'           => $this->codigo_catalogo,
             'precio_minorista_sugerido' => $precios->menudeo($this->resource),
             'precio_mayorista'          => $this->when($puedeVerMayorista, fn () => $precios->mayoreo($this->resource)),
+            // Ficha pública en la tienda de la distribuidora (para compartir por WhatsApp).
+            'url_publica' => self::urlPublica((int) $this->id),
             'imagenes' => ImagenProductoCampanaResource::collection($this->whenLoaded('imagenes')),
             'variantes' => $this->disponibilidadPorVariante->map(fn ($disponibilidad) => [
                 'variante_id'            => $disponibilidad->variante_id,
@@ -68,5 +70,22 @@ class CatalogoResource extends JsonResource
                 'disponibilidad'         => $disponibilidad->estado,
             ]),
         ];
+    }
+
+    /** La tienda se busca una vez por petición, no una por producto. */
+    private static function urlPublica(int $productoCampanaId): ?string
+    {
+        $atributos = request()->attributes;
+        $clave = 'fp.tienda_compartir.'.(int) \App\Support\Tenant::id();
+
+        if (! $atributos->has($clave)) {
+            $atributos->set($clave, \App\Models\Distribuidora::find(\App\Support\Tenant::id()));
+        }
+
+        $distribuidora = $atributos->get($clave);
+
+        return $distribuidora
+            ? app(\App\Services\Tienda\EnlaceTienda::class)->producto($distribuidora, $productoCampanaId)
+            : null;
     }
 }

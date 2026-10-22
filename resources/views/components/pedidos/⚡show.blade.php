@@ -65,7 +65,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     public function getPedidoProperty()
     {
         return Pedido::query()
-            ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle', 'pagos'])
+            ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle', 'pagos', 'distribuidora'])
             ->findOrFail($this->pedidoId);
     }
 
@@ -367,6 +367,12 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             </div>
 
         <x-slot:acciones>
+        @php $pedidoWa = $this->pedido; @endphp
+        <x-ui.boton-whatsapp
+            :url="\App\Support\WhatsApp::enlace(
+                \App\Support\WhatsApp::textoPedido($pedidoWa, (float) ($this->resumen['saldo'] ?? 0), $pedidoWa->distribuidora ? app(\App\Services\Tienda\EnlaceTienda::class)->url($pedidoWa->distribuidora) : null),
+                \App\Support\WhatsApp::telefonoDelPedido($pedidoWa))"
+            texto="Enviar por WhatsApp" />
         @if ($this->pedido->estado === 'borrador')
             <button type="button" wire:click="enviar"
                 class="fp-btn fp-btn-oscuro">
