@@ -219,7 +219,20 @@ class _PerfilScreenState extends State<PerfilScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mi perfil'), bottom: const FpBordeMarca()),
+      appBar: AppBar(
+        title: const Text('Mi perfil'),
+        bottom: const FpBordeMarca(),
+        actions: [
+          // Las solicitudes de cambio de producto y su historial.
+          IconButton(
+            tooltip: 'Mis cambios',
+            icon: const Icon(Icons.swap_horiz),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const MisCambiosScreen()),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(child: _contenido(context)),
     );
   }
@@ -436,18 +449,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   icon: const Icon(Icons.logout_rounded),
                   label: const Text('Cerrar sesión'),
-                ),
-                const SizedBox(height: 20),
-                const FpTituloSeccion('Cambios de producto'),
-                OutlinedButton.icon(
-                  onPressed: _guardando
-                      ? null
-                      : () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(builder: (_) => const MisCambiosScreen()),
-                          ),
-                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                  icon: const Icon(Icons.swap_horiz),
-                  label: const Text('Mis cambios'),
                 ),
               ],
             ),

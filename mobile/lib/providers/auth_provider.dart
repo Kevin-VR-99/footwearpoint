@@ -241,7 +241,7 @@ class AuthProvider extends ChangeNotifier {
       await _renovacionTokenFcm?.cancel();
       _renovacionTokenFcm = null;
       registroFcm.detener();
-      await AperturasPush.detener();
+      unawaited(AperturasPush.detener());
 
       try {
         await FirebaseMessaging.instance.deleteToken();
