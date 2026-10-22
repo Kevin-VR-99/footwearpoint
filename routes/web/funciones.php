@@ -12,7 +12,13 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware(['auth', 'tenant.team', 'solo.personal', 'role:admin_distribuidora|empleado'])->group(function () {
-    Route::livewire('/ventas', 'ventas.index')->name('ventas.index');
+    // El historial vive dentro de Venta local. La dirección vieja abre esa pestaña.
+    Route::get('/ventas', function () {
+        $query = request()->query();
+        $query['pestana'] = 'historial';
+
+        return redirect()->route('punto-venta.index', $query);
+    })->name('ventas.index');
 
     // Corte de caja (permiso fino caja.operar, se revisa en la pantalla y en el PDF).
     Route::livewire('/caja', 'caja.index')->name('caja.index');
@@ -25,9 +31,14 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal', 'role:admin_distribui
         ->middleware(\App\Http\Middleware\ExigirPermisoModulo::class.':'.\App\Services\Auth\PermisoModuloService::CLIENTES_IMPORTAR)
         ->name('clientes.importar');
 
-    // Inventario físico (permiso fino inventario.conteo; aplicar pide además stock.ajustar).
-    Route::livewire('/inventario/conteos', 'conteos.index')
-        ->middleware(\App\Http\Middleware\ExigirPermisoModulo::class.':'.\App\Services\Auth\PermisoModuloService::INVENTARIO_CONTEO)
+    // El conteo vive dentro de Stock local. La dirección vieja abre esa pestaña
+    // (permiso fino inventario.conteo; aplicar pide además stock.ajustar).
+    Route::get('/inventario/conteos', function () {
+        $query = request()->query();
+        $query['pestana'] = 'conteo';
+
+        return redirect()->route('stock.index', $query);
+    })->middleware(\App\Http\Middleware\ExigirPermisoModulo::class.':'.\App\Services\Auth\PermisoModuloService::INVENTARIO_CONTEO)
         ->name('conteos.index');
 
     // Comisiones y metas (permiso fino comisiones.ver; editar es solo de la administración).

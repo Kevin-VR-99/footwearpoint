@@ -45,6 +45,9 @@ new #[Layout('layouts.panel')] #[Title('Ventas de mostrador — FootwearPoint')]
 
     public string $motivo = '';
 
+    /** Dentro de Venta local no repite el título ni el botón de nueva venta. */
+    public bool $embebido = false;
+
     public string $mensaje = '';
 
     public string $errorMsg = '';
@@ -152,12 +155,14 @@ new #[Layout('layouts.panel')] #[Title('Ventas de mostrador — FootwearPoint')]
 }; ?>
 
 <div class="space-y-4">
-    <x-panel.encabezado titulo="Ventas de mostrador"
-        subtitulo="Historial de ventas locales. Puedes ver el detalle, reimprimir el comprobante y, con permiso, cancelar una venta." >
-        <x-slot:acciones>
-            <a href="{{ route('punto-venta.index') }}" wire:navigate class="fp-btn fp-btn-primario">Nueva venta</a>
-        </x-slot:acciones>
-    </x-panel.encabezado>
+    @if (! $embebido)
+        <x-panel.encabezado titulo="Ventas de mostrador"
+            subtitulo="Historial de ventas locales. Puedes ver el detalle, reimprimir el comprobante y, con permiso, cancelar una venta." >
+            <x-slot:acciones>
+                <a href="{{ route('punto-venta.index') }}" wire:navigate class="fp-btn fp-btn-primario">Nueva venta</a>
+            </x-slot:acciones>
+        </x-panel.encabezado>
+    @endif
 
     @if ($mensaje)
         <x-panel.alerta tipo="exito">{{ $mensaje }}</x-panel.alerta>

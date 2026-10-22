@@ -120,4 +120,25 @@ class CancelarVentaDirectaTest extends TestCase
             ->assertHasErrors('motivo');
         $this->assertSame('completada', $venta->fresh()->estado);
     }
+
+    public function test_la_ruta_vieja_abre_el_historial_dentro_de_venta_local(): void
+    {
+        [$venta] = $this->vender();
+
+        $this->get(route('ventas.index'))
+            ->assertRedirect(route('punto-venta.index', ['pestana' => 'historial']));
+
+        $this->get(route('punto-venta.index', ['pestana' => 'historial']))
+            ->assertOk()
+            ->assertSee($venta->folio)
+            ->assertSee('data-pestana-venta="historial"', false)
+            ->assertDontSee('Ventas de mostrador')
+            ->assertDontSee('Nueva venta')
+            ->assertDontSee('Inventario físico');
+
+        $this->get(route('punto-venta.index'))
+            ->assertOk()
+            ->assertSee('data-pestana-venta="cobrar"', false)
+            ->assertDontSee('Ventas de mostrador');
+    }
 }

@@ -241,7 +241,10 @@ class VincularMercadoPagoTest extends TestCase
         $this->actingAs($this->admin());
         Livewire::test('distribuidora.mercado-pago')
             ->assertSee(MercadoPagoException::NO_CONFIGURADO)
-            ->assertDontSee('Conectar con Mercado Pago');
+            ->assertDontSee('Conectar con Mercado Pago')
+            ->assertSee('#00bcff', false)
+            ->assertSee('#0a0080', false)
+            ->assertDontSee('#00B1EA', false);
     }
 
     // ---------------------------------------------------------------

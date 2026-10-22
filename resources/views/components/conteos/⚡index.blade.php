@@ -31,6 +31,9 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
     public string $mensaje = '';
     public string $errorMsg = '';
 
+    /** Dentro de Stock local no repite el título. */
+    public bool $embebido = false;
+
     public function mount(): void
     {
         abort_unless(app(PermisoModuloService::class)->puede(auth()->user(), PermisoModuloService::INVENTARIO_CONTEO), 403);
@@ -149,8 +152,10 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
 }; ?>
 
 <div class="space-y-4">
-    <x-panel.encabezado titulo="Inventario físico"
-        subtitulo="Cuenta lo que hay en tu sucursal con el escáner o a mano, revisa las diferencias y aplícalas al stock en un solo paso." />
+    @if (! $embebido)
+        <x-panel.encabezado titulo="Inventario físico"
+            subtitulo="Cuenta lo que hay en tu sucursal con el escáner o a mano, revisa las diferencias y aplícalas al stock en un solo paso." />
+    @endif
 
     @if ($mensaje)
         <x-panel.alerta tipo="exito">{{ $mensaje }}</x-panel.alerta>
