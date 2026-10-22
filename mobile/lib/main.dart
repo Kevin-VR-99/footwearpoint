@@ -71,6 +71,8 @@ class _Raiz extends StatelessWidget {
         context.select<AuthProvider, bool>((auth) => auth.debeCambiarPassword);
     final legalesAceptados =
         context.select<AuthProvider, bool>((auth) => auth.legalesAceptados);
+    final conDatosGuardados =
+        context.select<AuthProvider, bool>((auth) => auth.conDatosGuardados);
 
     // Mientras se revisa el token guardado, para que no parpadee el login
     // antes de entrar solo.
@@ -82,6 +84,15 @@ class _Raiz extends StatelessWidget {
 
     // Va antes que la pantalla de inicio: sin distribuidora no se entra.
     if (sinAcceso) return const _SinAccesoScreen();
+
+    // TG-281: aceptar los legales y cambiar la contraseña temporal son dos
+    // cosas que SOLO se pueden hacer con el servidor. Si la app se abrió con
+    // la copia guardada, enseñar esas pantallas es mandar a la persona a un
+    // botón que va a fallar; mejor decirle que no hay conexión y ofrecerle
+    // reintentar.
+    if (conDatosGuardados && haySesion && (!legalesAceptados || debeCambiarPassword)) {
+      return const _SinConexionScreen();
+    }
 
     // E1-04: sin aceptar el aviso de privacidad y los términos no se usa la
     // app. Va aquí, en la raíz, y no después del login: así también aplica

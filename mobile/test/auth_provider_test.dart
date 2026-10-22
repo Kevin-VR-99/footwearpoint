@@ -239,6 +239,76 @@ void main() {
     expect(sinRed.sinConexion, isFalse);
   });
 
+  /// Reportado al probar: sin internet salía el aviso de privacidad otra vez,
+  /// y al darle «Aceptar» decía que no hay conexión.
+  ///
+  /// La copia se guardaba al entrar, cuando todavía no los había aceptado, y
+  /// aceptar después solo cambiaba la memoria. La copia se quedaba para
+  /// siempre con «no ha aceptado».
+  test('quien ya aceptó los legales no vuelve a verlos sin internet', () async {
+    final cliente = MockClient((peticion) async {
+      if (peticion.url.path.endsWith('/auth/login')) {
+        return _json({
+          'data': {
+            'token': '12|token',
+            'token_type': 'Bearer',
+            ..._sesion,
+            'legales_aceptados': false,
+          },
+        }, 200);
+      }
+
+      return _json({'message': 'ok'}, 200);
+    });
+
+    final auth = AuthProvider(api: ApiService(cliente: cliente));
+    await auth.restaurarSesion();
+    expect(await auth.login('maria@ejemplo.com', 'secreto123'), isTrue);
+    expect(auth.legalesAceptados, isFalse);
+
+    auth.confirmarLegalesAceptados();
+    // La copia se escribe sin esperarla a propósito.
+    await Future<void>.delayed(Duration.zero);
+
+    // Vuelve a abrir la app, ahora sin internet.
+    final otraVez = crearProvider(sinConexion: true);
+    await otraVez.restaurarSesion();
+
+    expect(otraVez.haySesion, isTrue);
+    // Lo que fallaba: aquí salía false y volvía a pedir el aviso.
+    expect(otraVez.legalesAceptados, isTrue);
+  });
+
+  test('tampoco le vuelve a pedir cambiar la contraseña temporal', () async {
+    final cliente = MockClient((peticion) async {
+      if (peticion.url.path.endsWith('/auth/login')) {
+        return _json({
+          'data': {
+            'token': '12|token',
+            'token_type': 'Bearer',
+            ..._sesion,
+            'debe_cambiar_password': true,
+          },
+        }, 200);
+      }
+
+      return _json({'message': 'ok'}, 200);
+    });
+
+    final auth = AuthProvider(api: ApiService(cliente: cliente));
+    await auth.restaurarSesion();
+    await auth.login('maria@ejemplo.com', 'secreto123');
+    expect(auth.debeCambiarPassword, isTrue);
+
+    auth.confirmarPasswordCambiada();
+    await Future<void>.delayed(Duration.zero);
+
+    final otraVez = crearProvider(sinConexion: true);
+    await otraVez.restaurarSesion();
+
+    expect(otraVez.debeCambiarPassword, isFalse);
+  });
+
   test('sin conexión y sin copia, se queda en la pantalla de sin conexión', () async {
     almacen['token_sanctum'] = '1|token';
 
