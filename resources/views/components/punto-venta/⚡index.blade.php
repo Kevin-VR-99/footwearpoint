@@ -1,13 +1,11 @@
 <?php
 
 use App\Models\ClienteDirecto;
-use App\Models\Color;
 use App\Models\ProductoCampana;
 use App\Services\Catalogo\CatalogoVisible;
 use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Models\StockLocal;
-use App\Models\Talla;
 use App\Services\Vale\BuscarValeParaAplicarAction;
 use App\Services\VentaDirecta\RegistrarVentaDirectaService;
 use App\Support\MensajeError;
@@ -95,15 +93,10 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         $fotos = app(ImagenDeProducto::class)->porProductoCampana($publicaciones->flatten()->pluck('id'));
 
         // tallas y colores son catálogos GLOBALES: no llevan distribuidora_id.
-        $tallas = Talla::query()
-            ->whereIn('id', $variantes->pluck('talla_id')->filter()->unique()->all())
-            ->get()
-            ->keyBy('id');
-
-        $colores = Color::query()
-            ->whereIn('id', $variantes->pluck('color_id')->filter()->unique()->all())
-            ->get()
-            ->keyBy('id');
+        // Salen de CatalogoCache (sin consulta mientras no cambie el catálogo).
+        $catalogo = app(\App\Support\Cache\CatalogoCache::class);
+        $tallas = $catalogo->modelosTalla($variantes->pluck('talla_id'));
+        $colores = $catalogo->modelosColor($variantes->pluck('color_id'));
 
         $termino = mb_strtolower(trim($this->busqueda));
 

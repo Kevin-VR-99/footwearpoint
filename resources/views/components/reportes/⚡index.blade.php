@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\CicloCompra;
 use App\Models\Distribuidora;
 use App\Services\Auth\PermisoModuloService;
 use App\Services\Reporte\DemandaPorTemporadaMarcaAction;
@@ -267,7 +266,8 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
 
     public function getCiclosProperty()
     {
-        return CicloCompra::query()->orderByDesc('fecha_apertura')->get(['id', 'nombre']);
+        // Caché por distribuidora; se invalida al crear o cambiar un ciclo.
+        return app(\App\Support\Cache\CatalogoCache::class)->ciclos();
     }
 
     public function getResumenProperty(): array

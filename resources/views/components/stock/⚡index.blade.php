@@ -135,8 +135,9 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         $filas = app(StockService::class)->consultar()
             ->reorder()
             ->whereHas('variante', fn ($q) => $q->whereIn('producto_id', $grupos->pluck('producto_id')->unique()))
-            ->with('variante.talla', 'variante.color', 'variante.producto:id,nombre')
+            ->with('variante.producto:id,nombre')
             ->get()
+            ->tap(fn ($filas) => app(\App\Support\Cache\CatalogoCache::class)->asignarTallaYColor($filas->pluck('variante')))
             ->sortBy(fn ($s) => sprintf('%08d-%s', (int) ($s->variante?->talla?->orden ?? 0), $s->variante?->talla?->valor))
             ->groupBy(fn ($s) => $s->variante?->producto_id.'-'.(int) $s->variante?->color_id);
 
