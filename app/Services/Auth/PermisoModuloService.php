@@ -39,6 +39,7 @@ class PermisoModuloService
     public const CLIENTES_VER = 'clientes.ver';
     public const CLIENTES_IMPORTAR = 'clientes.importar';
     public const COMISIONES_VER = 'comisiones.ver';
+    public const CAMBIOS_RESOLVER = 'cambios.resolver';
 
     /** permiso => [etiqueta, prendido por omisión] */
     public const PERMISOS_FINOS = [
@@ -48,6 +49,7 @@ class PermisoModuloService
         self::CAJA_OPERAR       => ['Abrir y cerrar caja (corte)', true],
         self::INVENTARIO_CONTEO => ['Inventario físico (conteos)', true],
         self::CLIENTES_VER      => ['Ver historial de clientes', true],
+        self::CAMBIOS_RESOLVER  => ['Autorizar y resolver cambios', true],
         self::VENTAS_CANCELAR   => ['Cancelar ventas de mostrador', false],
         self::CLIENTES_IMPORTAR => ['Importar clientes', false],
         self::COMISIONES_VER    => ['Ver comisiones y metas', false],

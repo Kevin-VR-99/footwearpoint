@@ -15,4 +15,9 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empl
     ->group(function () {
         Route::get('/solicitudes-cambio', [SolicitudCambioController::class, 'index']);
         Route::post('/solicitudes-cambio', [SolicitudCambioController::class, 'store']);
+        Route::get('/solicitudes-cambio/{id}', [SolicitudCambioController::class, 'show'])->whereNumber('id');
     });
+
+// Resolver la solicitud: solo el personal.
+Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado', 'throttle:60,1'])
+    ->post('/solicitudes-cambio/{id}/estado', [SolicitudCambioController::class, 'cambiarEstado'])->whereNumber('id');

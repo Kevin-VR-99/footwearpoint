@@ -55,6 +55,58 @@ class SolicitudCambio extends Model
         return $this->belongsTo(RevendedorDistribuidora::class, 'revendedor_distribuidora_id');
     }
 
+    /** Pasos de la solicitud, del más viejo al más nuevo. */
+    public function historial()
+    {
+        return $this->hasMany(SolicitudCambioHistorial::class, 'solicitud_cambio_id')->orderBy('id');
+    }
+
+    public const ETIQUETAS = [
+        'solicitada'       => 'Solicitada',
+        'autorizada'       => 'Autorizada',
+        'rechazada'        => 'Rechazada',
+        'enviada_fabrica'  => 'Enviada a fábrica',
+        'aceptada_fabrica' => 'Aceptada por fábrica',
+        'vale_emitido'     => 'Vale emitido',
+        'cerrada'          => 'Cerrada',
+    ];
+
+    /** estado actual => estados a los que puede pasar */
+    public const TRANSICIONES = [
+        'solicitada'       => ['autorizada', 'rechazada'],
+        'autorizada'       => ['enviada_fabrica', 'vale_emitido', 'rechazada'],
+        'enviada_fabrica'  => ['aceptada_fabrica', 'rechazada'],
+        'aceptada_fabrica' => ['vale_emitido'],
+        'vale_emitido'     => ['cerrada'],
+        'rechazada'        => ['cerrada'],
+        'cerrada'          => [],
+    ];
+
+    public static function etiqueta(string $estado): string
+    {
+        return self::ETIQUETAS[$estado] ?? ucfirst(str_replace('_', ' ', $estado));
+    }
+
+    /** @return list<string> */
+    public function siguientesEstados(): array
+    {
+        return self::TRANSICIONES[$this->estado] ?? [];
+    }
+
+    protected static function booted(): void
+    {
+        // El primer paso de la línea de tiempo, por cualquier camino que se cree.
+        static::created(function (SolicitudCambio $solicitud) {
+            SolicitudCambioHistorial::create([
+                'distribuidora_id'    => $solicitud->distribuidora_id,
+                'solicitud_cambio_id' => $solicitud->id,
+                'estado_anterior'     => null,
+                'estado_nuevo'        => $solicitud->estado ?? 'solicitada',
+                'nota'                => $solicitud->motivo,
+            ]);
+        });
+    }
+
     public function valeGenerado()
     {
         return $this->belongsTo(Vale::class, 'vale_generado_id');

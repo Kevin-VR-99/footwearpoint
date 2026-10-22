@@ -37,6 +37,31 @@ class SolicitudCambioResource extends JsonResource
             'fecha_limite_solicitud' => optional($this->fecha_limite_solicitud)->toIso8601String(),
             'dias_solicitud_aplicados' => (int) $this->dias_solicitud_aplicados,
             'vale_generado_id' => $this->vale_generado_id,
+            'estado_etiqueta' => \App\Models\SolicitudCambio::etiqueta((string) $this->estado),
+            // Solo en el detalle (GET /solicitudes-cambio/{id}).
+            'timeline' => $this->whenLoaded('historial', fn () => $this->lineaDeTiempo()),
         ];
+    }
+
+    private function lineaDeTiempo(): array
+    {
+        $pasos = $this->historial->map(fn ($h) => [
+            'estado'   => $h->estado_nuevo,
+            'etiqueta' => \App\Models\SolicitudCambio::etiqueta($h->estado_nuevo),
+            'nota'     => $h->nota,
+            'fecha'    => optional($h->created_at)->toIso8601String(),
+        ])->values()->all();
+
+        // Solicitudes de antes del historial: el primer paso sale de la solicitud.
+        if ($pasos === []) {
+            $pasos[] = ['estado' => 'solicitada', 'etiqueta' => 'Solicitada', 'nota' => $this->motivo,
+                'fecha' => optional($this->fecha_solicitud)->toIso8601String()];
+            if ($this->estado !== 'solicitada') {
+                $pasos[] = ['estado' => $this->estado, 'etiqueta' => \App\Models\SolicitudCambio::etiqueta((string) $this->estado),
+                    'nota' => $this->resolucion, 'fecha' => optional($this->updated_at)->toIso8601String()];
+            }
+        }
+
+        return $pasos;
     }
 }
