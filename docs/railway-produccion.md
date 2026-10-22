@@ -124,3 +124,17 @@ Verificación: `curl -I https://footwearpoint.app/build/assets/app-XXXX.css` tra
 - `CSP_MODO`: `upgrade-insecure-requests` ahora lo pone el middleware `PoliticaSeguridadContenido`
   (dentro de la política con `enforce`; en `report-only`/`off` va en su propia cabecera
   `Content-Security-Policy`, porque el navegador ignora esa directiva en Report-Only).
+
+## H. Monitoreo de errores (Sentry) y de caída (`/up`)
+**Sentry** (opcional; sin DSN no se manda nada):
+1. Crear un proyecto *Laravel* en sentry.io y copiar su DSN.
+2. En Railway, servicios **web** y **worker** → Variables: `SENTRY_LARAVEL_DSN=<dsn>` y
+   `SENTRY_ENVIRONMENT=production`. Opcional: `SENTRY_TRACES_SAMPLE_RATE` (por defecto 0.05 = 5 %).
+3. Redeploy y probar con `php artisan sentry:test` desde la shell del servicio.
+- `send_default_pii` está fijo en `false` (`config/sentry.php`): no viajan IP, cookies, usuario ni cuerpo.
+  Los bindings de SQL tampoco se mandan (`SENTRY_*_SQL_BINDINGS_ENABLED=false` por defecto).
+
+**Monitor externo de `/up`:** el healthcheck de Railway solo reinicia; nadie se entera.
+- UptimeRobot, Better Stack o similar: monitor HTTP(S) a `https://footwearpoint.app/up`, cada 5 min,
+  esperar 200, alerta por correo/Telegram al equipo. `/up` no requiere sesión ni toca datos.
+- Opcional: un segundo monitor de palabra clave sobre `/login` para detectar errores 500 del panel.
