@@ -2,7 +2,11 @@
 
 namespace Tests\Feature\VentaDirecta;
 
+use App\Models\Campana;
+use App\Models\DistribuidoraLinea;
+use App\Models\Linea;
 use App\Models\MovimientoStock;
+use App\Models\ProductoCampana;
 use App\Models\StockLocal;
 use App\Models\Usuario;
 use App\Models\VentaDirecta;
@@ -111,5 +115,190 @@ class PuntoVentaWebTest extends TestCase
         $this->assertSame(0, (int) $stock->fresh()->cantidad_disponible);
         $this->assertSame($ventasAntes, VentaDirecta::withoutGlobalScopes()->count());
         $this->assertSame($movimientosAntes, MovimientoStock::withoutGlobalScopes()->count());
+    }
+
+    public function test_el_buscador_esta_listo_para_el_lector(): void
+    {
+        Livewire::test('punto-venta.index')
+            ->assertSee('data-pos-escaner')
+            ->assertSee('pos-listo-para-escanear')
+            ->assertSee('Enter agrega una pieza');
+    }
+
+    public function test_enter_con_sku_exacto_agrega_una_pieza_y_limpia_la_busqueda(): void
+    {
+        [$renglon] = $this->primerRenglonDisponible();
+
+        $componente = Livewire::test('punto-venta.index')
+            ->call('agregarPorCodigo', '  '.mb_strtoupper($renglon['sku']).'  ')
+            ->assertSet('busqueda', '')
+            ->assertSet('errorMsg', '')
+            ->assertSet('aviso', '')
+            ->assertDispatched('pos-listo-para-escanear');
+
+        $linea = collect($componente->get('lineas'))->sole();
+        $this->assertSame($renglon['sku'], $linea['sku']);
+        $this->assertSame(1, $linea['cantidad']);
+        $this->assertSame($renglon['clave'], array_key_first($componente->get('lineas')));
+    }
+
+    public function test_el_segundo_escaneo_suma_otra_pieza(): void
+    {
+        [$renglon] = $this->primerRenglonDisponible();
+        $this->assertGreaterThanOrEqual(2, $renglon['disponible']);
+
+        $componente = Livewire::test('punto-venta.index')
+            ->call('agregarPorCodigo', $renglon['sku'])
+            ->call('agregarPorCodigo', $renglon['sku']);
+
+        $this->assertSame(2, collect($componente->get('lineas'))->sole()['cantidad']);
+    }
+
+    public function test_enter_vacio_no_llena_la_venta(): void
+    {
+        Livewire::test('punto-venta.index')
+            ->call('agregarPorCodigo', '   ')
+            ->assertSet('lineas', [])
+            ->assertSet('busqueda', '')
+            ->assertNotDispatched('pos-listo-para-escanear');
+    }
+
+    public function test_enter_sin_existencia_no_agrega(): void
+    {
+        Livewire::test('punto-venta.index')
+            ->call('agregarPorCodigo', 'SKU-QUE-NO-EXISTE-XYZ')
+            ->assertSet('lineas', [])
+            ->assertSet('busqueda', 'SKU-QUE-NO-EXISTE-XYZ')
+            ->assertSee('No hay existencia con ese código.');
+    }
+
+    public function test_enter_con_varias_coincidencias_no_elige_solo(): void
+    {
+        $texto = $this->textoAmbiguo();
+
+        Livewire::test('punto-venta.index')
+            ->call('agregarPorCodigo', $texto)
+            ->assertSet('lineas', [])
+            ->assertSet('busqueda', trim($texto))
+            ->assertSee('Elige');
+    }
+
+    public function test_enter_con_el_mismo_sku_en_dos_temporadas_pide_elegir(): void
+    {
+        [$renglon] = $this->primerRenglonDisponible();
+        $this->publicarEnOtraTemporada($renglon);
+
+        Livewire::test('punto-venta.index')
+            ->call('agregarPorCodigo', $renglon['sku'])
+            ->assertSet('lineas', [])
+            ->assertSee('Elige cuál agregar');
+    }
+
+    public function test_el_cambio_ayuda_al_cajero_y_no_cambia_el_cobro(): void
+    {
+        [$renglon] = $this->primerRenglonDisponible();
+
+        $componente = Livewire::test('punto-venta.index')
+            ->call('agregar', $renglon['clave'])
+            ->assertSee('data-pos-recibido')
+            ->assertSee('No se guarda en la venta')
+            ->set('recibido', 'abc')
+            ->assertDontSee('data-pos-cambio')
+            ->set('recibido', '0,50')
+            ->assertSee('Faltan: $')
+            ->set('recibido', '9999999')
+            ->assertSee('Cambio: $')
+            ->set('metodo_pago', 'transferencia')
+            ->assertDontSee('data-pos-recibido')
+            ->set('metodo_pago', 'efectivo')
+            ->call('cobrar')
+            ->assertSet('errorMsg', '')
+            ->assertSet('recibido', '')
+            ->assertSet('lineas', []);
+
+        $this->assertStringContainsString('(efectivo)', $componente->get('mensaje'));
+
+        $venta = VentaDirecta::withoutGlobalScopes()->latest('id')->firstOrFail();
+        $this->assertEqualsWithDelta((float) $renglon['precio'], (float) $venta->total, 0.001);
+    }
+
+    private function textoAmbiguo(): string
+    {
+        $filas = Livewire::test('punto-venta.index')->instance()->disponibles;
+        $this->assertGreaterThan(1, $filas->count(), 'Hacen falta al menos dos productos para probar una búsqueda ambigua.');
+
+        $candidatos = $filas->flatMap(function (array $fila) {
+            $sku = (string) $fila['sku'];
+            $corte = mb_strrpos($sku, '-');
+
+            return array_filter([
+                $corte === false ? '' : mb_substr($sku, 0, $corte),
+                (string) $fila['color'],
+                (string) $fila['nombre'],
+                (string) $fila['talla'],
+            ]);
+        })->unique();
+
+        foreach ($candidatos as $texto) {
+            $termino = mb_strtolower(trim((string) $texto));
+
+            if ($termino === '') {
+                continue;
+            }
+
+            $exactos = $filas->filter(fn (array $fila) => mb_strtolower($fila['sku']) === $termino)->count();
+
+            if ($exactos === 1) {
+                continue;
+            }
+
+            $coinciden = $filas->filter(function (array $fila) use ($termino) {
+                return str_contains(mb_strtolower($fila['sku']), $termino)
+                    || str_contains(mb_strtolower($fila['codigo_catalogo']), $termino)
+                    || str_contains(mb_strtolower($fila['nombre']), $termino)
+                    || str_contains(mb_strtolower($fila['talla']), $termino)
+                    || str_contains(mb_strtolower($fila['color']), $termino);
+            })->count();
+
+            if ($exactos > 1 || $coinciden > 1) {
+                return (string) $texto;
+            }
+        }
+
+        $this->fail('El seeder no dejó un texto que coincida con más de un producto.');
+    }
+
+    /** El mismo SKU, publicado en otra línea que esta distribuidora también vende. */
+    private function publicarEnOtraTemporada(array $renglon): void
+    {
+        $publicacion = ProductoCampana::query()->findOrFail($renglon['producto_campana_id']);
+
+        $linea = Linea::create([
+            'nombre' => 'Linea escaner '.$publicacion->id.' '.uniqid(),
+            'activa' => true,
+        ]);
+
+        $campana = Campana::create([
+            'linea_id' => $linea->id,
+            'nombre' => 'Temporada escaner',
+            'fecha_inicio' => now()->toDateString(),
+            'fecha_fin' => now()->addMonth()->toDateString(),
+            'estado' => 'activa',
+        ]);
+
+        ProductoCampana::create([
+            'producto_id' => $publicacion->producto_id,
+            'campana_id' => $campana->id,
+            'codigo_catalogo' => 'ESC-'.$publicacion->id.'-'.uniqid(),
+            'activo' => true,
+            'precio_publico' => $publicacion->precio_publico,
+        ]);
+
+        DistribuidoraLinea::create([
+            'linea_id' => $linea->id,
+            'es_extra' => false,
+            'activa' => true,
+            'fecha_activacion' => now(),
+        ]);
     }
 }

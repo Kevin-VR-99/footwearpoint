@@ -25,6 +25,12 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
     public string $cliente_directo_id = '';
     public string $metodo_pago = 'efectivo';
 
+    /**
+     * Lo que el cliente entrega en efectivo. Solo calcula el cambio en
+     * pantalla: cobrar() no lo lee y no se guarda en la venta.
+     */
+    public string $recibido = '';
+
     /** TG-250: folio que escribe el empleado y vale ya validado (solo para mostrar). */
     public string $valeFolio = '';
     public ?array $vale = null;
@@ -176,6 +182,23 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         return round($this->total - $this->montoVale, 2);
     }
 
+    /** Ayuda de mostrador. Vacío si el cajero no escribió un monto. */
+    public function getCambioTextoProperty(): string
+    {
+        $limpio = str_replace(',', '.', trim($this->recibido));
+
+        if ($limpio === '' || ! is_numeric($limpio)) {
+            return '';
+        }
+
+        $diferencia = round((float) $limpio - $this->porCobrar, 2);
+        $monto = number_format(abs($diferencia), 2);
+
+        return $diferencia >= 0
+            ? 'Cambio: $'.$monto
+            : 'Faltan: $'.$monto;
+    }
+
     public function aplicarVale(BuscarValeParaAplicarAction $buscar): void
     {
         $this->mensaje = '';
@@ -253,6 +276,65 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         }
     }
 
+    /**
+     * Enter del buscador, a mano o con el lector de códigos.
+     *
+     * El lector escribe el SKU y manda Enter antes de que el debounce de 300 ms
+     * alcance a guardar la búsqueda, así que el código llega como argumento.
+     * Agrega una pieza si hay un solo SKU exacto, o una sola fila que coincida.
+     * Si ese SKU está en más de una temporada, no elige por su cuenta.
+     */
+    public function agregarPorCodigo(string $codigo): void
+    {
+        $codigo = trim($codigo);
+        $this->mensaje = '';
+        $this->aviso = '';
+        $this->errorMsg = '';
+
+        if ($codigo === '') {
+            return;
+        }
+
+        $this->busqueda = $codigo;
+        unset($this->disponibles);
+
+        $termino = mb_strtolower($codigo);
+        $coinciden = $this->disponibles;
+        $exactos = $coinciden
+            ->filter(fn (array $fila) => mb_strtolower($fila['sku']) === $termino)
+            ->values();
+
+        if ($exactos->count() > 1) {
+            $this->aviso = 'Ese SKU está en '.$exactos->count().' temporadas. Elige cuál agregar.';
+
+            return;
+        }
+
+        $fila = $exactos->count() === 1
+            ? $exactos->first()
+            : ($coinciden->count() === 1 ? $coinciden->first() : null);
+
+        if ($fila === null) {
+            $this->errorMsg = $coinciden->isEmpty()
+                ? 'No hay existencia con ese código.'
+                : 'Hay varias coincidencias. Elige el producto en la lista.';
+
+            return;
+        }
+
+        $clave = $fila['clave'];
+        $antes = (int) ($this->lineas[$clave]['cantidad'] ?? 0);
+        $this->agregar($clave);
+
+        if ((int) ($this->lineas[$clave]['cantidad'] ?? 0) <= $antes) {
+            return;
+        }
+
+        $this->busqueda = '';
+        unset($this->disponibles);
+        $this->dispatch('pos-listo-para-escanear');
+    }
+
     public function agregar(string $clave)
     {
         $this->mensaje = '';
@@ -308,6 +390,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         $this->lineas = [];
         $this->cliente_directo_id = '';
         $this->metodo_pago = 'efectivo';
+        $this->recibido = '';
         $this->vale = null;
         $this->valeFolio = '';
         $this->mensaje = '';
@@ -390,6 +473,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
             $this->limpiar();
             $this->mensaje = $confirmacion;
             $this->ultimaVentaId = (int) $resultado->venta->id;
+            $this->dispatch('pos-listo-para-escanear');
         } catch (\Throwable $e) {
             // TG-224 (G3): MensajeError deja el detalle técnico en el log.
             $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo registrar la venta. Revisa las existencias e intenta de nuevo.');
@@ -436,10 +520,40 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
 
         {{-- Buscador de productos --}}
         <div class="relative lg:col-span-3 fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
-            <x-ui.cargando objetivo="busqueda,agregar,gotoPage,nextPage,previousPage" />
-            <div class="px-5 py-3 border-b border-slate-100">
-                <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
-                       placeholder="Buscar por SKU, código de catálogo, modelo, talla o color…" etiqueta="Buscar productos" />
+            <x-ui.cargando objetivo="busqueda,agregar,agregarPorCodigo,gotoPage,nextPage,previousPage" />
+            {{-- El lector manda Enter antes del debounce. Alpine cancela esa espera y manda el código tal cual. --}}
+            <div class="px-5 py-3 border-b border-slate-100"
+                 wire:ignore
+                 x-data="{
+                    q: '',
+                    timer: null,
+                    escribir() {
+                        clearTimeout(this.timer);
+                        const texto = this.q;
+                        this.timer = setTimeout(() => $wire.set('busqueda', texto), 300);
+                    },
+                    escanear() {
+                        clearTimeout(this.timer);
+                        const codigo = this.q.trim();
+                        if (codigo === '') {
+                            $wire.set('busqueda', '');
+                            return;
+                        }
+                        $wire.agregarPorCodigo(codigo);
+                    },
+                    prepararSiguiente() {
+                        this.q = '';
+                        clearTimeout(this.timer);
+                        this.$nextTick(() => this.$el.querySelector('input')?.focus());
+                    }
+                 }"
+                 x-on:input="q = $event.target.value; escribir()"
+                 x-on:keydown.enter.prevent="escanear()"
+                 x-on:pos-listo-para-escanear.window="prepararSiguiente()">
+                <x-ui.buscador data-pos-escaner x-bind:value="q"
+                       placeholder="Escanea el SKU o busca modelo, talla o color. Enter agrega si es uno solo."
+                       etiqueta="Buscar productos" />
+                <p class="mt-2 text-xs text-slate-500">Enter agrega una pieza cuando el código corresponde a un solo producto.</p>
             </div>
 
             <div class="overflow-x-auto max-h-[28rem] overflow-y-auto">
@@ -602,7 +716,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                     @if ($this->porCobrar > 0)
                     <div class="fp-campo">
                         <label for="index-metodo-pago" class="block text-sm font-medium text-slate-700 mb-1">Método de pago</label>
-                        <select id="index-metodo-pago" wire:model="metodo_pago"
+                        <select id="index-metodo-pago" wire:model.live="metodo_pago"
                                 class="w-full rounded-lg text-sm focus:ring-fp-primary">
                             <option value="efectivo">Efectivo</option>
                             <option value="transferencia">Transferencia</option>
@@ -611,6 +725,20 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                         </select>
                         @error('metodo_pago') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
                     </div>
+
+                    @if ($metodo_pago === 'efectivo')
+                    <div class="fp-campo">
+                        <label for="pos-recibido" class="block text-sm font-medium text-slate-700 mb-1">Recibí (opcional)</label>
+                        <input id="pos-recibido" type="text" inputmode="decimal" autocomplete="off" data-pos-recibido
+                               wire:model.live.debounce.300ms="recibido"
+                               placeholder="Con cuánto paga el cliente"
+                               class="w-full rounded-lg text-sm focus:ring-fp-primary">
+                        @if ($this->cambioTexto !== '')
+                            <p class="mt-1 text-sm font-semibold text-slate-900" data-pos-cambio>{{ $this->cambioTexto }}</p>
+                        @endif
+                        <p class="mt-1 text-xs text-slate-500">Solo ayuda a calcular el cambio. No se guarda en la venta.</p>
+                    </div>
+                    @endif
                     @endif
 
                     <div class="fp-campo">
