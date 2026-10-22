@@ -23,4 +23,18 @@ return [
 
     // Segundos máximos para el volcado.
     'timeout' => (int) env('RESPALDO_TIMEOUT', 1800),
+
+    // Simulacro de restauración (php artisan respaldo:verificar).
+    'verificacion' => [
+        // Base APARTE donde se restaura y que se borra al terminar. Nunca puede
+        // ser la base principal (DB_DATABASE): el comando se niega.
+        'base' => env('RESPALDO_BASE_VERIFICACION', 'footwearpoint_restaurada'),
+
+        // Cliente de MySQL que carga el volcado.
+        'mysql' => env('RESPALDO_MYSQL', 'mysql'),
+
+        // Diferencia de filas por tabla (en %) que solo se reporta como aviso:
+        // la base principal siguió cambiando después del respaldo.
+        'tolerancia_porcentaje' => (float) env('RESPALDO_TOLERANCIA_PORCENTAJE', 10),
+    ],
 ];

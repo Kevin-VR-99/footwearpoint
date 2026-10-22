@@ -75,6 +75,26 @@ Hazlo primero en una base **nueva** y revisa antes de tocar producción.
 5. Revisar: `SELECT COUNT(*) FROM distribuidoras;`, pedidos, pagos y suscripciones; comparar con lo esperado.
 6. Para usarla: cambiar `DB_DATABASE` del servicio `footwearpoint` a la base restaurada (o restaurar sobre la original en una ventana de mantenimiento) y redeploy. **No** cambiar `APP_KEY`: los tokens de Mercado Pago guardados están cifrados con ella.
 
+
+### Simulacro automático: `php artisan respaldo:verificar`
+
+Hace los pasos de "Restaurar un respaldo de R2" solo, sin tocar la base principal:
+toma el respaldo más reciente del bucket, lo restaura en una base **aparte**
+(`RESPALDO_BASE_VERIFICACION`, por defecto `footwearpoint_restaurada`), compara las filas de cada
+tabla contra la principal, imprime la tabla y **borra** la base de verificación.
+
+- Se niega si la base de verificación es la misma que `DB_DATABASE` (sin importar mayúsculas) o si ya
+  existe (usar `--reemplazar` solo si es de un simulacro anterior). `--conservar` la deja para revisarla.
+- Falla (exit 1) si falta una tabla o si la restauración quedó vacía. Diferencias de más de
+  `RESPALDO_TOLERANCIA_PORCENTAJE` (10 %) por tabla salen como aviso: la base siguió cambiando.
+- Necesita `mysql` en la imagen (el mismo paquete que `mysqldump`) y un usuario con
+  `CREATE`/`DROP DATABASE` (el `root` del MySQL de Railway lo tiene).
+
+**Cron mensual opcional en Railway** (`footwearpoint-verificar-respaldo`): mismas variables y paquete que
+`footwearpoint-respaldo`; start command `php artisan respaldo:verificar --reemplazar`; schedule
+`0 11 1 * *` (día 1, 05:00 CDMX, después del respaldo de las 03:00); restart policy Never. El log
+queda como evidencia del simulacro.
+
 ### Simulacro
 
 Al menos una vez por entrega, restaurar el respaldo más reciente en una base nueva (pasos anteriores) y anotar fecha, archivo, tiempo y conteos. Es la evidencia del criterio "Existen respaldos periódicos programados" (E17-04).
