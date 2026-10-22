@@ -117,6 +117,7 @@ Route::livewire('/verificar-correo/{id}/{hash}', 'auth.correo-verificado')
 
 require __DIR__.'/web/distribuidora.php';
 require __DIR__.'/web/catalogo.php';
+require __DIR__.'/web/funciones.php';
 
 /*
 |--------------------------------------------------------------------------

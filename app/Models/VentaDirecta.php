@@ -21,10 +21,14 @@ class VentaDirecta extends Model
         'total',
         'estado',
         'registrada_por_staff_id',
+        'anulada_at',
+        'anulada_por_staff_id',
+        'motivo_anulacion',
     ];
 
     protected $casts = [
         'fecha_venta' => 'datetime',
+        'anulada_at' => 'datetime',
         'subtotal' => 'decimal:2',
         'descuento' => 'decimal:2',
         'total' => 'decimal:2',
@@ -48,6 +52,16 @@ class VentaDirecta extends Model
     public function registradaPor()
     {
         return $this->belongsTo(DistribuidoraStaff::class, 'registrada_por_staff_id');
+    }
+
+    public function anuladaPor()
+    {
+        return $this->belongsTo(DistribuidoraStaff::class, 'anulada_por_staff_id');
+    }
+
+    public function estaAnulada(): bool
+    {
+        return $this->estado === 'anulada';
     }
 
     public function detalle()

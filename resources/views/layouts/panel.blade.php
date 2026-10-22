@@ -27,7 +27,7 @@
 <body class="min-h-screen bg-fp-page text-slate-800 antialiased" x-data="{
     sidebarOpen: false,
     openCatalogo: {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'true' : 'false' }},
-    openOperacion: {{ request()->routeIs('stock.*', 'punto-venta.*', 'ciclo.*', 'pedidos.*', 'vales.*', 'cambios.*', 'reportes.*') ? 'true' : 'false' }},
+    openOperacion: {{ request()->routeIs('stock.*', 'punto-venta.*', 'ciclo.*', 'pedidos.*', 'vales.*', 'cambios.*', 'reportes.*', 'ventas.*', 'caja.*', 'conteos.*', 'clientes.historial*', 'comisiones.*') ? 'true' : 'false' }},
     openMas: {{ request()->routeIs('auditoria.*') ? 'true' : 'false' }},
     openSistema: {{ request()->routeIs('distribuidora.configuracion', 'distribuidora.perfil', 'distribuidora.empleados', 'distribuidora.mayoristas', 'distribuidora.clientes-directos') ? 'true' : 'false' }},
 }"
@@ -175,6 +175,7 @@
                                 class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('vales.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Vales</a>
                             <a href="{{ route('cambios.index') }}" wire:navigate
                                 class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('cambios.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Cambios</a>
+                            <x-panel.enlaces-funciones />
                             @if ($puedeReportesFinancieros)
                                 <a href="{{ route('reportes.index') }}" wire:navigate
                                     class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('reportes.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Reportes</a>

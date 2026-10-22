@@ -12,4 +12,6 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado'])
     ->group(function () {
         Route::post('ventas-directas', [VentaDirectaController::class, 'store']);
+        // Cancelar una venta de mostrador (permiso fino ventas.cancelar, se revisa en la acción).
+        Route::post('ventas-directas/{id}/anular', [VentaDirectaController::class, 'anular'])->whereNumber('id');
     });
