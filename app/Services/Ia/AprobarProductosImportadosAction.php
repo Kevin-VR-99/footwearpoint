@@ -138,6 +138,7 @@ class AprobarProductosImportadosAction
         $categoriaId = (int) ($datos['categoria_id'] ?? $categoriaPorOmision);
         $modelo = $this->modeloDe($datos);
         $codigo = $this->codigoDe($datos, $modelo);
+        $precio = $this->precioDe($datos);
 
         $producto = Producto::where('marca_id', $marcaId)->where('modelo', $modelo)->first();
 
@@ -190,7 +191,7 @@ class AprobarProductosImportadosAction
             'producto_id'     => $producto->id,
             'campana_id'      => $campanaId,
             'codigo_catalogo' => $codigo,
-            'precio_publico'  => (float) ($datos['precio_publico'] ?? 0),
+            'precio_publico'  => $precio,
         ]);
 
         $this->asegurarDisponibilidad($productoCampana, $producto, $datos);
@@ -238,6 +239,18 @@ class AprobarProductosImportadosAction
         }
 
         return $codigo;
+    }
+
+    /** Sin precio no se publica: un producto a $0 se podría pedir gratis. */
+    private function precioDe(array $datos): float
+    {
+        $precio = $datos['precio_publico'] ?? null;
+
+        if (! is_numeric($precio) || (float) $precio <= 0) {
+            throw new InvalidArgumentException('no tiene un precio público válido (mayor a cero)');
+        }
+
+        return round((float) $precio, 2);
     }
 
     private function codigoDe(array $datos, string $modelo): string

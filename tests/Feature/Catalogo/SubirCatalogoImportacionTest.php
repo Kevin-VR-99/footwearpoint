@@ -307,4 +307,17 @@ class SubirCatalogoImportacionTest extends TestCase
         $this->assertStringStartsWith('inline', $respuesta->headers->get('Content-Disposition'));
         $this->assertSame('SAMEORIGIN', $respuesta->headers->get('X-Frame-Options'));
     }
+
+    public function test_se_rechaza_una_imagen_porque_la_ia_solo_lee_pdf(): void
+    {
+        $this->actingAs($this->adminGeneral());
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->set('linea_id', 1)
+            ->set('archivo', UploadedFile::fake()->image('catalogo.jpg'))
+            ->call('subir')
+            ->assertHasErrors(['archivo' => 'mimes']);
+
+        $this->assertSame(0, ImportacionCatalogo::count());
+    }
 }

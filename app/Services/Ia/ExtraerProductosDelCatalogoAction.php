@@ -63,21 +63,22 @@ class ExtraerProductosDelCatalogoAction
 
             $archivoIa = $this->archivoEnLaIa($importacion, $contenido);
 
+            // Lo gastado en intentos anteriores se conserva: el tope del mes
+            // suma costo_usd, y si un reintento lo pisara, ese dinero
+            // desaparecería de la cuenta.
+            $gastoPrevio = [
+                'entrada' => (int) $importacion->tokens_entrada,
+                'salida'  => (int) $importacion->tokens_salida,
+                'costo'   => (float) $importacion->costo_usd,
+            ];
+
             $uso = new UsoDeTokens;
             $porBloque = max(1, (int) config('ia.paginas_por_bloque'));
 
             for ($desde = 1; $desde <= $paginas; $desde += $porBloque) {
                 $hasta = min($desde + $porBloque - 1, $paginas);
 
-                $bloque = $this->lector->leerBloque($archivoIa, $desde, $hasta);
-
-                $this->guardar($importacion, $bloque->productos);
-
-                // Se suma y se guarda en cada vuelta: así la pantalla enseña
-                // el avance de verdad y, si truena, queda registrado lo que
-                // ya se gastó.
-                $uso = $uso->mas($bloque->uso);
-                $this->anotarGasto($importacion, $uso);
+                $uso = $this->leerRango($importacion, $archivoIa, $desde, $hasta, $uso, $gastoPrevio);
             }
 
             $importacion->update(['estado' => 'requiere_revision']);
@@ -89,7 +90,7 @@ class ExtraerProductosDelCatalogoAction
                 datosNuevos: [
                     'paginas'   => $paginas,
                     'productos' => $importacion->productosStaging()->count(),
-                    'costo_usd' => $uso->costo(),
+                    'costo_usd' => (float) $importacion->costo_usd,
                 ],
             );
         } catch (Throwable $e) {
@@ -109,6 +110,43 @@ class ExtraerProductosDelCatalogoAction
                 $this->olvidarArchivo($importacion, $archivoIa);
             }
         }
+    }
+
+    /**
+     * Lee un rango de páginas. Si la respuesta no cupo (max_tokens), parte el
+     * rango a la mitad y lee cada parte; una sola página que no quepa sí es
+     * error, con un mensaje que dice qué subir.
+     *
+     * @param  array{entrada: int, salida: int, costo: float}  $gastoPrevio
+     */
+    private function leerRango(ImportacionCatalogo $importacion, string $archivoIa, int $desde, int $hasta, UsoDeTokens $uso, array $gastoPrevio): UsoDeTokens
+    {
+        try {
+            $bloque = $this->lector->leerBloque($archivoIa, $desde, $hasta);
+        } catch (RespuestaCortadaPorTokens $e) {
+            $uso = $uso->mas($e->uso);
+            $this->anotarGasto($importacion, $uso, $gastoPrevio);
+
+            if ($desde >= $hasta) {
+                throw new RuntimeException(
+                    "La página {$desde} tiene más productos de los que la IA puede devolver de una vez. Sube IA_MAX_TOKENS_BLOQUE o avisa al equipo."
+                );
+            }
+
+            $mitad = intdiv($desde + $hasta, 2);
+            $uso = $this->leerRango($importacion, $archivoIa, $desde, $mitad, $uso, $gastoPrevio);
+
+            return $this->leerRango($importacion, $archivoIa, $mitad + 1, $hasta, $uso, $gastoPrevio);
+        }
+
+        $this->guardar($importacion, $bloque->productos);
+
+        // Se suma y se guarda en cada vuelta: así la pantalla enseña el avance
+        // de verdad y, si truena, queda registrado lo que ya se gastó.
+        $uso = $uso->mas($bloque->uso);
+        $this->anotarGasto($importacion, $uso, $gastoPrevio);
+
+        return $uso;
     }
 
     private function contenidoDelArchivo(ImportacionCatalogo $importacion): string
@@ -184,14 +222,15 @@ class ExtraerProductosDelCatalogoAction
         }
     }
 
-    private function anotarGasto(ImportacionCatalogo $importacion, UsoDeTokens $uso): void
+    /** @param array{entrada: int, salida: int, costo: float} $gastoPrevio */
+    private function anotarGasto(ImportacionCatalogo $importacion, UsoDeTokens $uso, array $gastoPrevio): void
     {
         $importacion->update([
             'proveedor_ia'    => 'anthropic',
             'modelo_ia'       => (string) config('ia.modelo'),
-            'tokens_entrada'  => $uso->totalDeEntrada(),
-            'tokens_salida'   => $uso->salida,
-            'costo_usd'       => $uso->costo(),
+            'tokens_entrada'  => $gastoPrevio['entrada'] + $uso->totalDeEntrada(),
+            'tokens_salida'   => $gastoPrevio['salida'] + $uso->salida,
+            'costo_usd'       => round($gastoPrevio['costo'] + $uso->costo(), 4),
         ]);
     }
 

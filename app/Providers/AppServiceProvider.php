@@ -54,7 +54,17 @@ class AppServiceProvider extends ServiceProvider
                 );
             }
 
-            return new Claude(apiKey: $llave);
+            // Sin esto la conexión no tiene límite de tiempo (Guzzle espera
+            // para siempre) y un 429/529 solo se reintenta 2 veces con
+            // esperas de segundos.
+            return new Claude(apiKey: $llave, requestOptions: [
+                'maxRetries'    => (int) config('ia.reintentos', 4),
+                'maxRetryDelay' => 30.0,
+                'transporter'   => new \GuzzleHttp\Client([
+                    'timeout'         => (int) config('ia.segundos_por_peticion', 600),
+                    'connect_timeout' => 30,
+                ]),
+            ]);
         });
     }
 

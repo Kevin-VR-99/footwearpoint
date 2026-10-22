@@ -30,6 +30,10 @@ return [
     | esto es el respaldo por si el proceso muere a la mitad. El minimo que
     | acepta el API es una hora.
     */
+    /* Reintentos ante 429/529/5xx/timeouts y tope de cada petición al API. */
+    'reintentos' => (int) env('IA_REINTENTOS', 4),
+    'segundos_por_peticion' => (int) env('IA_SEGUNDOS_POR_PETICION', 600),
+
     'horas_del_archivo' => (int) env('IA_HORAS_ARCHIVO', 6),
 
     /*

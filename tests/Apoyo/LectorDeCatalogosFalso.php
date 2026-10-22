@@ -28,6 +28,9 @@ class LectorDeCatalogosFalso implements LectorDeCatalogos
     /** Si se pone, el bloque que empiece en esa página truena. */
     public ?int $fallaEnElBloqueQueEmpiezaEn = null;
 
+    /** Si se pone, un rango de más páginas que esto "no cabe" (max_tokens). */
+    public ?int $cortaSiAbarcaMasDe = null;
+
     /** Para probar que un borrado fallido no deja el identificador puesto. */
     public bool $borrarTruena = false;
 
@@ -50,6 +53,10 @@ class LectorDeCatalogosFalso implements LectorDeCatalogos
 
         if ($this->fallaEnElBloqueQueEmpiezaEn === $desde) {
             throw new RuntimeException('La IA respondió algo que no se pudo leer en las páginas '.$desde.' a '.$hasta.'.');
+        }
+
+        if ($this->cortaSiAbarcaMasDe !== null && ($hasta - $desde + 1) > $this->cortaSiAbarcaMasDe) {
+            throw new \App\Services\Ia\RespuestaCortadaPorTokens($desde, $hasta, new UsoDeTokens(entrada: 341, salida: 16000));
         }
 
         $productos = [];

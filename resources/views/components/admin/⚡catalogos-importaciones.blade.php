@@ -91,7 +91,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
     {
         return [
             'archivo.required'  => 'Elige el archivo del catálogo.',
-            'archivo.mimes'     => 'Solo se aceptan archivos PDF, JPG o PNG.',
+            'archivo.mimes'     => 'Solo se aceptan archivos PDF.',
             'archivo.max'       => 'El archivo pesa más de 40 MB. Si el catálogo es más grande, divídelo.',
             'linea_id.required' => 'Elige a qué línea pertenece el catálogo.',
             'linea_id.exists'   => 'Esa línea no existe.',
@@ -140,9 +140,22 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
             return;
         }
 
+        // Se toma la importacion de forma atomica: con doble clic o dos
+        // pestanas, solo una peticion gana y se encola UNA sola lectura (cada
+        // una cuesta dinero y duplicaria los productos).
+        $tomada = ImportacionCatalogo::where('id', $importacion->id)
+            ->whereIn('estado', ['cargado', 'error'])
+            ->update(['estado' => 'procesando', 'mensaje_error' => null, 'procesamiento_iniciado_at' => now()]);
+
+        if ($tomada !== 1) {
+            $this->mensaje = 'Ese catalogo ya se esta procesando o ya se proceso.';
+            $this->esError = true;
+
+            return;
+        }
+
         // Si se reintenta, se limpia lo que habia quedado del intento anterior.
         $importacion->productosStaging()->delete();
-        $importacion->update(['estado' => 'procesando', 'mensaje_error' => null, 'procesamiento_iniciado_at' => now()]);
 
         ProcesarCatalogoConIa::dispatch($importacion->id);
 
@@ -223,8 +236,8 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
 
         <div class="fp-campo">
             <label for="catalogos-importaciones-archivo" class="block text-sm font-medium text-slate-700 mb-1">Archivo del catálogo</label>
-            <input id="catalogos-importaciones-archivo" type="file" wire:model="archivo" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm">
-            <p class="mt-1 text-xs text-slate-500">PDF, JPG o PNG. Hasta 40 MB.</p>
+            <input id="catalogos-importaciones-archivo" type="file" wire:model="archivo" accept=".pdf,application/pdf" class="w-full text-sm">
+            <p class="mt-1 text-xs text-slate-500">PDF. Hasta 40 MB.</p>
             @error('archivo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
 
             <div wire:loading wire:target="archivo" class="mt-2 text-xs text-slate-500">Subiendo el archivo…</div>

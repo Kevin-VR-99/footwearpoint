@@ -534,4 +534,22 @@ class AprobarProductosImportadosTest extends TestCase
         Livewire::test('admin.revisar-catalogo', ['importacion' => $this->importacion->id])
             ->assertForbidden();
     }
+
+    public function test_sin_precio_valido_no_se_aprueba_ni_se_publica_a_cero(): void
+    {
+        $sinPrecio = $this->revisado(['precio_publico' => null, 'codigo_catalogo' => 'SP-1']);
+        $enCero = $this->revisado(['precio_publico' => 0, 'codigo_catalogo' => 'SP-2']);
+        $negativo = $this->revisado(['precio_publico' => -5, 'codigo_catalogo' => 'SP-3']);
+
+        $resumen = $this->aprobar();
+
+        $this->assertSame(0, $resumen['aprobados']);
+        $this->assertCount(3, $resumen['saltados']);
+        $this->assertStringContainsString('precio', $resumen['saltados'][0]);
+
+        foreach ([$sinPrecio, $enCero, $negativo] as $fila) {
+            $this->assertNull($fila->fresh()->producto_campana_creado_id);
+            $this->assertSame('corregido', $fila->fresh()->estado);
+        }
+    }
 }
