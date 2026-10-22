@@ -81,6 +81,14 @@ class AuthProvider extends ChangeNotifier {
   /// TG-281: antes se enseñaba el numero de la distribuidora, que no le dice
   /// nada a nadie. El servidor ya manda el nombre.
   String? _distribuidoraNombre;
+
+  /// La sesion tal como se guardo en el telefono.
+  ///
+  /// Hace falta tenerla a mano porque algunas cosas cambian DESPUES de
+  /// guardarla —aceptar los legales, cambiar la contrasena temporal,
+  /// confirmar el correo, editar el perfil— y si la copia no se entera, al
+  /// abrir la app sin internet vuelve a pedir lo que ya se hizo.
+  Map<String, dynamic>? _copiaSesion;
   bool _iniciando = true;
   bool _sinConexion = false;
 
@@ -272,6 +280,7 @@ class AuthProvider extends ChangeNotifier {
     if (!haySesion) return;
 
     _usuario = usuario;
+    _corregirCopia('usuario', usuario.aJson());
     notifyListeners();
   }
 
@@ -296,11 +305,27 @@ class AuthProvider extends ChangeNotifier {
   /// Guarda la ultima sesion buena. Si fallara al escribir, no pasa nada:
   /// solo significa que la proxima vez sin internet no se podra abrir.
   Future<void> _guardarCopia(Map<String, dynamic> datos) async {
+    _copiaSesion = datos;
+
     try {
       await _almacen.write(key: _llaveSesionCache, value: jsonEncode(datos));
     } catch (_) {
       // Sin copia, pero con la sesion en pie.
     }
+  }
+
+  /// Corrige un dato suelto de la copia guardada.
+  ///
+  /// Sin esto, la copia se queda con la foto del momento del login: alguien
+  /// que ya acepto los legales volveria a verlos al abrir la app sin
+  /// internet, y al darle "Aceptar" se toparia con que no hay conexion.
+  void _corregirCopia(String clave, Object? valor) {
+    final copia = _copiaSesion;
+
+    if (copia == null) return;
+
+    copia[clave] = valor;
+    unawaited(_guardarCopia(copia));
   }
 
   /// La ultima sesion guardada, o null si no hay o si quedo ilegible.
@@ -311,7 +336,11 @@ class AuthProvider extends ChangeNotifier {
 
       final datos = jsonDecode(texto);
 
-      return datos is Map<String, dynamic> ? datos : null;
+      if (datos is! Map<String, dynamic>) return null;
+
+      _copiaSesion = datos;
+
+      return datos;
     } catch (_) {
       // Si quedo a medias o de una version vieja, se ignora: es preferible
       // pedir login a abrir la app con algo que no se entiende.
@@ -348,6 +377,7 @@ class AuthProvider extends ChangeNotifier {
     if (!_debeCambiarPassword) return;
 
     _debeCambiarPassword = false;
+    _corregirCopia('debe_cambiar_password', false);
     notifyListeners();
   }
 
@@ -357,6 +387,7 @@ class AuthProvider extends ChangeNotifier {
     if (_legalesAceptados) return;
 
     _legalesAceptados = true;
+    _corregirCopia('legales_aceptados', true);
     notifyListeners();
   }
 
@@ -390,6 +421,7 @@ class AuthProvider extends ChangeNotifier {
       if (verificado == _emailVerificado) return;
 
       _emailVerificado = verificado;
+      _corregirCopia('email_verificado', verificado);
       notifyListeners();
     } on ApiException {
       // Sin conexión o el servidor falló: el aviso se queda, que es lo seguro.
@@ -408,6 +440,7 @@ class AuthProvider extends ChangeNotifier {
     _emailVerificado = true;
     _distribuidoraNombre = null;
     _conDatosGuardados = false;
+    _copiaSesion = null;
 
     // TG-281: la copia se va con la sesion. Da igual si fue la persona
     // cerrando sesion o el servidor rechazando el token: en los dos casos

@@ -17,6 +17,16 @@ class Usuario {
   final String? telefono;
   final String estado;
 
+  /// Lo contrario de [desdeJson]. TG-281: hace falta para poder guardar la
+  /// sesion en el telefono y volver a armarla sin internet.
+  Map<String, dynamic> aJson() => {
+    'id': id,
+    'nombre': nombre,
+    'email': email,
+    'telefono': telefono,
+    'estado': estado,
+  };
+
   factory Usuario.desdeJson(Map<String, dynamic> json) {
     return Usuario(
       id: json['id'] as int,

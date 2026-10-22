@@ -92,6 +92,34 @@ void main() {
     expect(find.text('Hola, María'), findsNothing);
   });
 
+  /// El otro lado de lo mismo: quien de verdad NO los ha aceptado no debe
+  /// acabar en una pantalla cuyo único botón falla.
+  testWidgets('sin internet y sin aceptar los legales, se dice que no hay conexión', (tester) async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'token_sanctum': '1|token',
+      'sesion_cache': jsonEncode({..._sesion, 'legales_aceptados': false}),
+    });
+
+    await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: _sinRed)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No hay conexión'), findsOneWidget);
+    expect(find.textContaining('Aviso de Privacidad'), findsNothing);
+  });
+
+  testWidgets('sin internet y con contraseña temporal, tampoco se manda a cambiarla', (tester) async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'token_sanctum': '1|token',
+      'sesion_cache': jsonEncode({..._sesion, 'debe_cambiar_password': true}),
+    });
+
+    await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: _sinRed)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No hay conexión'), findsOneWidget);
+    expect(find.text('Cambiar contraseña'), findsNothing);
+  });
+
   testWidgets('en cuanto hay internet, la copia se reemplaza por lo del servidor', (tester) async {
     FlutterSecureStorage.setMockInitialValues(<String, String>{
       'token_sanctum': '1|token',
