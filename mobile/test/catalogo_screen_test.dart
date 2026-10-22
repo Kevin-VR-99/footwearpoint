@@ -215,6 +215,28 @@ void main() {
     expect(find.textContaining('mayorista'), findsNothing);
   });
 
+  /// TG-281: quién es manda el rol, no si el producto trae precio mayorista.
+  ///
+  /// Antes se decidía con `producto.precioMayorista != null`, aprovechando
+  /// que el servidor solo le manda ese precio al mayorista. Si a un producto
+  /// le faltara ese precio, a un mayorista le salía la pantalla del cliente
+  /// directo: sin carrito y pagando anticipo.
+  testWidgets('a un mayorista se le da su pantalla aunque al producto le falte el precio de mayoreo', (tester) async {
+    await abrirCatalogo(
+      tester,
+      () async => _json({'data': _catalogo(conMayorista: false)}, 200),
+      rol: 'revendedor',
+    );
+
+    await tester.tap(find.text('Impuls'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Botín casual'));
+    await tester.pumpAndSettle();
+
+    // Lo que fallaba: salía «Pedir ahora» en vez del carrito.
+    expect(find.text('Agregar a pedido'), findsOneWidget);
+  });
+
   testWidgets('catálogo vacío: lo dice en vez de dejar la pantalla en blanco', (tester) async {
     await abrirCatalogo(tester, () async => _json({'data': <Object>[]}, 200));
 

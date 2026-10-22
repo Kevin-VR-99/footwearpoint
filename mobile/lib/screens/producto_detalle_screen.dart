@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../models/producto_catalogo.dart';
@@ -56,7 +57,14 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       'Modelo ${producto.modelo}',
     ].join(' · ');
 
-    final esRevendedor = producto.precioMayorista != null;
+    // TG-281: lo dice el rol, no el precio.
+    //
+    // Antes era `producto.precioMayorista != null`, aprovechando que el
+    // servidor solo le manda ese precio al mayorista. Funcionaba, pero si un
+    // producto se quedara sin precio mayorista configurado, a un mayorista le
+    // saldria la pantalla del cliente directo: sin carrito y pagando
+    // anticipo. El rol no depende de como este un producto suelto.
+    final esRevendedor = context.watch<AuthProvider>().rol == 'revendedor';
     final totalItemsCarrito = context.watch<CarritoRevendedorProvider>().totalPiezas;
 
     return Scaffold(

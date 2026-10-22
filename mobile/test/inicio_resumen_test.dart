@@ -46,6 +46,7 @@ MockClient _servidor({
   List<Map<String, dynamic>>? pedidos,
   List<Map<String, dynamic>>? vales,
   bool pedidosFallan = false,
+  String rol = 'revendedor',
 }) {
   return MockClient((peticion) async {
     final ruta = peticion.url.path.replaceFirst('/api', '');
@@ -60,7 +61,7 @@ MockClient _servidor({
             'telefono': null,
             'estado': 'activo',
           },
-          'rol': 'revendedor',
+          'rol': rol,
           'legales_aceptados': true,
           'distribuidora_id': 1,
           'distribuidora': 'Calzados Ramírez',
@@ -174,5 +175,25 @@ void main() {
     expect(find.text('—'), findsWidgets);
     // Y la barra de abajo sigue ahí.
     expect(find.text('Catálogo'), findsOneWidget);
+  });
+
+  /// TG-281: al cliente directo no le toca nada de "Accesos" —el carrito y
+  /// los clientes particulares son del mayorista—, así que el título sobra.
+  testWidgets('al cliente directo no se le enseña "Accesos" con nada debajo', (tester) async {
+    await abrir(tester, _servidor(rol: 'cliente_directo'));
+
+    expect(find.text('Hola, María'), findsOneWidget);
+    expect(find.text('Tu resumen'), findsOneWidget);
+    expect(find.text('Accesos'), findsNothing);
+    expect(find.text('Mi pedido acumulado'), findsNothing);
+    expect(find.text('Mis Clientes Particulares'), findsNothing);
+  });
+
+  testWidgets('al cliente mayorista sí, con sus dos accesos', (tester) async {
+    await abrir(tester, _servidor());
+
+    expect(find.text('Accesos'), findsOneWidget);
+    expect(find.text('Mi pedido acumulado'), findsOneWidget);
+    expect(find.text('Mis Clientes Particulares'), findsOneWidget);
   });
 }
