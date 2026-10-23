@@ -8,6 +8,7 @@ use App\Models\ImportacionCatalogo;
 use App\Models\Marca;
 use App\Models\Producto;
 use App\Models\ProductoCampana;
+use App\Models\ProductoImagen;
 use App\Models\ProductoImportadoStaging;
 use App\Models\Talla;
 use App\Models\Variante;
@@ -257,8 +258,23 @@ class AprobarProductosImportadosAction
      */
     public function publicarFoto(ProductoImportadoStaging $fila, ProductoCampana $productoCampana): void
     {
+        $this->subirRecorte($fila, $productoCampana, esPrincipal: true);
+    }
+
+    /**
+     * El recorte de otro color del mismo modelo, como una foto más de la
+     * galería de la publicación que ya existe. No es la principal: la que ya
+     * tiene se queda como está. La galería es por publicación, no por color.
+     */
+    public function agregarFotoAGaleria(ProductoImportadoStaging $fila, ProductoCampana $productoCampana): ?ProductoImagen
+    {
+        return $this->subirRecorte($fila, $productoCampana, esPrincipal: false);
+    }
+
+    private function subirRecorte(ProductoImportadoStaging $fila, ProductoCampana $productoCampana, bool $esPrincipal): ?ProductoImagen
+    {
         if ($fila->foto_estado === 'descartada' || ! $fila->foto_propuesta_url) {
-            return;
+            return null;
         }
 
         $local = null;
@@ -267,15 +283,17 @@ class AprobarProductosImportadosAction
             $local = $this->recorteADisco($fila->foto_propuesta_url);
 
             if ($local === null) {
-                return;
+                return null;
             }
 
-            $this->imagenes->agregarDesdeRuta($productoCampana, $local, esPrincipal: true);
+            return $this->imagenes->agregarDesdeRuta($productoCampana, $local, esPrincipal: $esPrincipal);
         } catch (Throwable $e) {
             Log::warning('No se pudo publicar la foto confirmada de un producto importado', [
                 'staging' => $fila->id,
                 'error'   => $e->getMessage(),
             ]);
+
+            return null;
         } finally {
             if ($local !== null) {
                 @unlink($local);
