@@ -113,6 +113,16 @@
                             </svg>
                             Mercado Pago
                         </a>
+                        <a href="{{ route('admin.app-movil') }}"
+                            class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-fp-page"
+                            role="menuitem" data-menu-apk>
+                            <svg class="h-4 w-4 text-fp-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="1.8" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14" />
+                            </svg>
+                            Descargar app
+                        </a>
                     </x-panel.menu-usuario>
                 </div>
             </header>

@@ -33,6 +33,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | App móvil (APK)
+    |--------------------------------------------------------------------------
+    |
+    | El botón «Descargar app» del admin general sirve este único archivo.
+    | Vive en el disco de las fotos (persiste en Railway). Quien publique
+    | una versión nueva reemplaza el objeto y el mismo botón la entrega.
+    |
+    */
+
+    'apk' => [
+        'disco' => env('APK_DISK', 'productos'),
+        'ruta' => 'app-movil/footwearpoint.apk',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Solicitudes de alta (TG-220)
     |--------------------------------------------------------------------------
     |
