@@ -209,7 +209,7 @@ class AprobarProductosImportadosAction
 
         $this->asegurarDisponibilidad($productoCampana, $producto, $datos);
 
-        $this->publicarFotoConfirmada($fila, $productoCampana);
+        $this->publicarFoto($fila, $productoCampana);
 
         $fila->update([
             'producto_creado_id'         => $producto->id,
@@ -221,18 +221,18 @@ class AprobarProductosImportadosAction
     }
 
     /**
-     * TG-282 (E5-05) — La foto solo pasa al catálogo si alguien la confirmó.
+     * TG-282 (E5-05) - La foto que la IA recortó del catálogo pasa al producto.
      *
-     * Una propuesta que el revisor no tocó NO se publica: una foto del zapato
-     * de al lado es peor que el hueco vacío, y el hueco se puede llenar
-     * después desde el catálogo maestro.
+     * Se publica la propuesta aunque nadie la haya revisado (lo pidió el
+     * negocio: el catálogo debe salir con las fotos de la importación). Solo
+     * se salta si el revisor la descartó.
      *
      * Si la copia falla, el producto se aprueba igual y nace sin foto. Tirar
      * una aprobación entera por una imagen sería desproporcionado.
      */
-    private function publicarFotoConfirmada(ProductoImportadoStaging $fila, ProductoCampana $productoCampana): void
+    public function publicarFoto(ProductoImportadoStaging $fila, ProductoCampana $productoCampana): void
     {
-        if ($fila->foto_estado !== 'confirmada' || ! $fila->foto_propuesta_url) {
+        if ($fila->foto_estado === 'descartada' || ! $fila->foto_propuesta_url) {
             return;
         }
 
