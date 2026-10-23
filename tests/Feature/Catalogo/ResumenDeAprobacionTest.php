@@ -53,7 +53,7 @@ class ResumenDeAprobacionTest extends TestCase
         ]);
     }
 
-    private function fila(ImportacionCatalogo $importacion, string $codigo, mixed $hasta): void
+    private function fila(ImportacionCatalogo $importacion, string $codigo, mixed $hasta, ?int $colorId = null): void
     {
         ProductoImportadoStaging::create([
             'importacion_id'  => $importacion->id,
@@ -62,8 +62,8 @@ class ResumenDeAprobacionTest extends TestCase
                 'marca'           => 'Cklass',
                 'modelo'          => $codigo,
                 'nombre'          => 'Zapato',
-                'color'           => 'NEGRO',
-                'color_base_id'   => Color::query()->orderBy('id')->firstOrFail()->id,
+                'color'           => $colorId === null ? 'NEGRO' : 'BEIGE',
+                'color_base_id'   => $colorId ?? Color::query()->orderBy('id')->firstOrFail()->id,
                 'codigo_catalogo' => $codigo,
                 'precio_publico'  => 599.0,
                 'talla_desde'     => '2',
@@ -121,5 +121,56 @@ class ResumenDeAprobacionTest extends TestCase
 
         // De 2 a 6.5 con medias son diez tallas.
         $this->assertSame(10, $resumen['variantes']);
+    }
+
+    /**
+     * El caso de los "DUO" del Cklass: el catalogo repite el codigo por
+     * color, dos filas de la misma pagina con el mismo codigo. Once
+     * productos se reportaban como saltados y su color se perdia.
+     */
+    public function test_el_mismo_modelo_en_otro_color_se_agrega_en_vez_de_saltarse(): void
+    {
+        $importacion = $this->importacion();
+
+        $otroColor = Color::query()->orderBy('id')->skip(1)->first();
+
+        $this->fila($importacion, 'DUO-613', '6');
+        $this->fila($importacion, 'DUO-613', '6', $otroColor->id);
+
+        $resumen = $this->aprobar($importacion);
+
+        // Las dos entran: antes la segunda salia en "saltados".
+        $this->assertSame(2, $resumen['aprobados']);
+        $this->assertSame([], $resumen['saltados']);
+        $this->assertCount(1, $resumen['colores_agregados']);
+
+        // Una sola publicacion, con los dos colores disponibles.
+        $publicaciones = \App\Models\ProductoCampana::withoutGlobalScopes()
+            ->where('codigo_catalogo', 'DUO-613')->get();
+
+        $this->assertCount(1, $publicaciones, 'No debe crear dos publicaciones con el mismo codigo.');
+
+        $colores = \App\Models\DisponibilidadVarianteCampana::withoutGlobalScopes()
+            ->where('producto_campana_id', $publicaciones->first()->id)
+            ->join('variantes', 'variantes.id', '=', 'disponibilidad_variante_campana.variante_id')
+            ->distinct()->pluck('variantes.color_id');
+
+        $this->assertCount(2, $colores, 'Los dos colores deben quedar disponibles en la publicacion.');
+    }
+
+    /** La fila queda ligada, si no publicar-fotos-ia no la encuentra. */
+    public function test_la_fila_del_color_agregado_queda_ligada_a_la_publicacion(): void
+    {
+        $importacion = $this->importacion();
+        $otroColor = Color::query()->orderBy('id')->skip(1)->first();
+
+        $this->fila($importacion, 'DUO-164', '6');
+        $this->fila($importacion, 'DUO-164', '6', $otroColor->id);
+
+        $this->aprobar($importacion);
+
+        foreach ($importacion->productosStaging as $fila) {
+            $this->assertNotNull($fila->producto_campana_creado_id, 'La fila quedo huerfana.');
+        }
     }
 }
