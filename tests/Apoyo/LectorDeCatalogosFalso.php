@@ -2,9 +2,12 @@
 
 namespace Tests\Apoyo;
 
+use Anthropic\Core\Exceptions\BadRequestException;
 use App\Services\Ia\BloqueDeCatalogo;
 use App\Services\Ia\LectorDeCatalogos;
 use App\Services\Ia\UsoDeTokens;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
 use RuntimeException;
 
 /**
@@ -34,6 +37,12 @@ class LectorDeCatalogosFalso implements LectorDeCatalogos
     /** Para probar que un borrado fallido no deja el identificador puesto. */
     public bool $borrarTruena = false;
 
+    /** Si se pone, el bloque truena con el 400 de "sin saldo" de Anthropic. */
+    public bool $sinSaldo = false;
+
+    /** Si se pone, el bloque truena con un 400 que NO es de saldo. */
+    public bool $otroErrorDelProveedor = false;
+
     /** @param array<int, array<string, mixed>> $productosPorPagina */
     public function __construct(private array $productosPorPagina = [])
     {
@@ -50,6 +59,16 @@ class LectorDeCatalogosFalso implements LectorDeCatalogos
     public function leerBloque(string $archivoIa, int $desde, int $hasta): BloqueDeCatalogo
     {
         $this->bloquesPedidos[] = ['desde' => $desde, 'hasta' => $hasta];
+
+        if ($this->sinSaldo) {
+            throw self::cuatrocientos(
+                'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'
+            );
+        }
+
+        if ($this->otroErrorDelProveedor) {
+            throw self::cuatrocientos('max_tokens: 99999 > 64000, which is the maximum allowed.');
+        }
 
         if ($this->fallaEnElBloqueQueEmpiezaEn === $desde) {
             throw new RuntimeException('La IA respondió algo que no se pudo leer en las páginas '.$desde.' a '.$hasta.'.');
@@ -79,6 +98,21 @@ class LectorDeCatalogosFalso implements LectorDeCatalogos
                 cacheEscritura: $primero ? 119653 : 0,
                 cacheLectura: $primero ? 0 : 119653,
             ),
+        );
+    }
+
+    /**
+     * Un 400 del proveedor, armado como lo arma el SDK: el mensaje de la
+     * excepción es el JSON del cuerpo, y de ahí sale el texto que se revisa.
+     */
+    public static function cuatrocientos(string $mensaje): BadRequestException
+    {
+        return new BadRequestException(
+            request: new Request('POST', 'https://api.anthropic.com/v1/messages'),
+            response: new Response(400, ['content-type' => 'application/json'], (string) json_encode([
+                'type'  => 'error',
+                'error' => ['type' => 'invalid_request_error', 'message' => $mensaje],
+            ])),
         );
     }
 
