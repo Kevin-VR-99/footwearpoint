@@ -33,6 +33,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function register(): void
     {
+        // "php artisan serve" escribe cada petición en el log de Railway: usamos
+        // la versión que oculta tokens de restablecimiento y firmas de enlaces.
+        $this->app->extend(\Illuminate\Foundation\Console\ServeCommand::class, fn () => new \App\Console\Commands\ServeCommand);
+
         // Push real solo si hay credenciales de Firebase; si no, uno que no
         // manda nada y lo deja claro en el log (ver CredencialesFirebase).
         $this->app->bind(EnviadorPush::class, fn ($app) => \App\Support\CredencialesFirebase::configuradas()

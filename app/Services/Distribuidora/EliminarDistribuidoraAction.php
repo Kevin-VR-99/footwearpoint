@@ -4,6 +4,8 @@ namespace App\Services\Distribuidora;
 
 use App\Models\Distribuidora;
 use App\Models\Usuario;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -34,6 +36,8 @@ class EliminarDistribuidoraAction
         'suscripciones',
     ];
 
+    public function __construct(private readonly RegistrarAuditoriaAction $auditoria) {}
+
     public function ejecutar(Distribuidora $distribuidora): string
     {
         $nombre = $distribuidora->nombre_comercial;
@@ -47,6 +51,8 @@ class EliminarDistribuidoraAction
                 ->where('distribuidora_id', $id)
                 ->pluck('revendedor_id')
                 ->all();
+
+            $this->registrarBorrado($actual, $usuarios, $revendedores);
 
             foreach (self::ANTES_DE_LA_CASA as $tabla) {
                 DB::table($tabla)->where('distribuidora_id', $id)->delete();
@@ -62,6 +68,53 @@ class EliminarDistribuidoraAction
         $this->quitarArchivoLogotipo($logotipo);
 
         return $nombre;
+    }
+
+    /**
+     * Deja constancia ANTES de borrar: quién, cuándo, qué distribuidora y
+     * cuánto se va con ella. La fila de auditorias sobrevive al borrado (sus
+     * llaves a usuarios y distribuidoras son ON DELETE SET NULL), por eso los
+     * datos quedan copiados en datos_previos y no dependen de esas llaves.
+     *
+     * @param  list<int>  $usuarios
+     * @param  list<int>  $revendedores
+     */
+    private function registrarBorrado(Distribuidora $actual, array $usuarios, array $revendedores): void
+    {
+        $id = $actual->id;
+        $usuario = Auth::user();
+        $conteos = [];
+
+        foreach ([...self::ANTES_DE_LA_CASA, 'sucursales', 'distribuidora_staff', 'clientes_directos'] as $tabla) {
+            if (Schema::hasTable($tabla)) {
+                $conteos[$tabla] = DB::table($tabla)->where('distribuidora_id', $id)->count();
+            }
+        }
+
+        $conteos['revendedores_vinculados'] = count($revendedores);
+        $conteos['usuarios_vinculados'] = count($usuarios);
+
+        $this->auditoria->ejecutar(
+            accion: 'distribuidora.borrada_definitivamente',
+            entidadTipo: 'distribuidora',
+            entidadId: $id,
+            datosPrevios: [
+                'distribuidora' => [
+                    'id' => $id,
+                    'nombre_comercial' => $actual->nombre_comercial,
+                    'razon_social' => $actual->razon_social,
+                    'slug' => $actual->slug,
+                    'creada_en' => $actual->created_at?->toIso8601String(),
+                ],
+                'borrada_por' => [
+                    'id' => $usuario?->getAuthIdentifier(),
+                    'email' => $usuario?->email,
+                ],
+                'borrada_en' => now()->toIso8601String(),
+                'conteos' => $conteos,
+                'usuarios_vinculados_ids' => $usuarios,
+            ],
+        );
     }
 
     /** @return list<int> */
