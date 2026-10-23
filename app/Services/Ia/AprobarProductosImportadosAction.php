@@ -83,6 +83,8 @@ class AprobarProductosImportadosAction
             'productos_reusados' => 0,
             'variantes'          => 0,
             'saltados'           => [],
+            // El mismo modelo en otro color: entró, pero conviene decirlo.
+            'colores_agregados'  => [],
             'tallas_creadas'     => [],
             'pendientes'         => 0,
         ];
@@ -175,19 +177,42 @@ class AprobarProductosImportadosAction
             throw new InvalidArgumentException('no se entendió el rango de tallas, así que quedaría sin tallas');
         }
 
-        // ¿Ya estaba en esta temporada? Entonces no se toca: su precio lo
-        // puso alguien y cambiarlo en silencio seria peor que no hacer nada.
+        // ¿Ya estaba en esta temporada?
+        //
+        // Casi siempre esto es el MISMO modelo en otro color. Los catálogos
+        // repiten el código por color: los "DÚO" del Cklass salen en gris y
+        // en beige, los dos con el código DÚO #613 en la misma página. No es
+        // un duplicado, es un color más de lo mismo, y antes se perdía: once
+        // productos de un catálogo real se reportaron como saltados.
+        //
+        // Las variantes de ese color ya se crearon arriba. Lo que falta es
+        // que estén disponibles en la publicación que ya existe y, si no
+        // tiene foto, ponerle la suya.
+        //
+        // El precio sigue sin tocarse: lo puso alguien y cambiarlo en
+        // silencio sería peor que no hacer nada.
         $yaEnLaTemporada = ProductoCampana::where('campana_id', $campanaId)
             ->where('producto_id', $producto->id)
             ->first();
 
         if ($yaEnLaTemporada !== null) {
+            $this->asegurarDisponibilidad($yaEnLaTemporada, $producto, $datos);
+
+            if (! $yaEnLaTemporada->imagenes()->exists()) {
+                $this->publicarFoto($fila, $yaEnLaTemporada);
+            }
+
             $fila->update([
-                'producto_creado_id' => $producto->id,
-                'estado'             => 'aprobado',
+                'producto_creado_id'         => $producto->id,
+                // Sin esto la fila queda huérfana y catalogo:publicar-fotos-ia
+                // no la encuentra después.
+                'producto_campana_creado_id' => $yaEnLaTemporada->id,
+                'estado'                     => 'aprobado',
             ]);
 
-            $resumen['saltados'][] = $this->identificar($fila).': el producto ya estaba en esta temporada, no se cambió su precio';
+            $resumen['aprobados']++;
+            $resumen['colores_agregados'][] = $this->identificar($fila)
+                .': ya estaba en esta temporada; se agregó el color «'.($datos['color'] ?? 'sin nombre').'» y no se tocó su precio';
 
             return;
         }

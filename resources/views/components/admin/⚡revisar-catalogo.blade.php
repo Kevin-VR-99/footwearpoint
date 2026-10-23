@@ -594,6 +594,20 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                     @endif
                 </ul>
 
+                {{-- TG-282: el mismo modelo en otro color SÍ entró, pero no
+                     creó una publicación nueva. Va aparte de los saltados
+                     para que no parezca que se perdió. --}}
+                @if (($resumenAprobacion['colores_agregados'] ?? []) !== [])
+                    <p class="mt-3 font-semibold text-slate-700">
+                        Colores agregados a un producto que ya estaba ({{ count($resumenAprobacion['colores_agregados']) }}):
+                    </p>
+                    <ul class="mt-1 space-y-1 text-xs text-fp-text-muted">
+                        @foreach ($resumenAprobacion['colores_agregados'] as $nota)
+                            <li>· {{ $nota }}</li>
+                        @endforeach
+                    </ul>
+                @endif
+
                 @if ($resumenAprobacion['saltados'])
                     <p class="mt-3 font-semibold text-fp-badge-warning-fg">
                         Saltados ({{ count($resumenAprobacion['saltados']) }}):

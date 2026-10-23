@@ -250,7 +250,13 @@ class AprobarProductosImportadosTest extends TestCase
         $this->assertSame(3, $existente->fresh()->variantes()->count());
     }
 
-    public function test_si_ya_estaba_en_esa_temporada_se_salta_y_no_se_cambia_el_precio(): void
+    /**
+     * TG-282: ya NO se salta. Casi siempre es el mismo modelo en otro color
+     * (los "DUO" del Cklass repiten el codigo por color), asi que el color
+     * se agrega a la publicacion que ya existe. Lo que sigue intacto, que es
+     * lo que esta prueba protege, es el precio.
+     */
+    public function test_si_ya_estaba_en_esa_temporada_se_agrega_el_color_y_no_se_cambia_el_precio(): void
     {
         // Ese precio lo puso alguien: cambiarlo en silencio seria peor que
         // no hacer nada.
@@ -271,10 +277,17 @@ class AprobarProductosImportadosTest extends TestCase
 
         $resumen = $this->aprobar();
 
-        $this->assertSame(0, $resumen['aprobados']);
-        $this->assertNotEmpty($resumen['saltados']);
-        $this->assertStringContainsString('ya estaba en esta temporada', $resumen['saltados'][0]);
+        $this->assertSame(1, $resumen['aprobados']);
+        $this->assertSame([], $resumen['saltados']);
+        $this->assertNotEmpty($resumen['colores_agregados']);
+        $this->assertStringContainsString('ya estaba en esta temporada', $resumen['colores_agregados'][0]);
+
+        // Lo que de verdad protege esta prueba.
         $this->assertSame('499.00', (string) $yaEnTemporada->fresh()->precio_publico);
+
+        // Y no se creo una publicacion nueva con otro codigo.
+        $this->assertSame(1, ProductoCampana::where('campana_id', $this->campanaId)
+            ->where('producto_id', $existente->id)->count());
     }
 
     public function test_si_otro_producto_ya_usa_ese_codigo_en_la_temporada_se_salta(): void
