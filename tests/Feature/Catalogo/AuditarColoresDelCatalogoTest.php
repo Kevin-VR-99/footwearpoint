@@ -79,6 +79,18 @@ class AuditarColoresDelCatalogoTest extends TestCase
             ->latest('id')->firstOrFail();
     }
 
+    /**
+     * MySQL reordena las claves de una columna JSON (por longitud y luego
+     * por bytes) y MariaDB no; se ordenan por nombre para comparar igual en
+     * los dos motores.
+     */
+    private function ordenado(array $mapa): array
+    {
+        ksort($mapa);
+
+        return $mapa;
+    }
+
     public function test_registra_mapa_previo_nuevo_y_filas_cambiadas(): void
     {
         $negro = $this->color('Negro');
@@ -103,16 +115,16 @@ class AuditarColoresDelCatalogoTest extends TestCase
         $this->assertSame($this->importacion->id, $a->entidad_id);
 
         $this->assertSame([
-            'HUESO'      => ['color_base_id' => null, 'color' => null],
-            'MIEL'       => ['color_base_id' => $blanco->id, 'color' => 'Blanco'],
-            'MULTICOLOR' => ['color_base_id' => $blanco->id, 'color' => 'Blanco'],
-        ], $a->datos_previos['colores']);
+            'HUESO'      => ['color' => null, 'color_base_id' => null],
+            'MIEL'       => ['color' => 'Blanco', 'color_base_id' => $blanco->id],
+            'MULTICOLOR' => ['color' => 'Blanco', 'color_base_id' => $blanco->id],
+        ], $this->ordenado($a->datos_previos['colores']));
 
         $this->assertSame([
-            'HUESO'      => ['color_base_id' => $blanco->id, 'color' => 'Blanco'],
-            'MIEL'       => ['color_base_id' => $blanco->id, 'color' => 'Blanco'],
-            'MULTICOLOR' => ['color_base_id' => $negro->id, 'color' => 'Negro'],
-        ], $a->datos_nuevos['colores']);
+            'HUESO'      => ['color' => 'Blanco', 'color_base_id' => $blanco->id],
+            'MIEL'       => ['color' => 'Blanco', 'color_base_id' => $blanco->id],
+            'MULTICOLOR' => ['color' => 'Negro', 'color_base_id' => $negro->id],
+        ], $this->ordenado($a->datos_nuevos['colores']));
 
         $this->assertSame(3, $a->datos_nuevos['filas_cambiadas']);
         $this->assertSame(['HUESO' => 1, 'MULTICOLOR' => 2], $a->datos_nuevos['filas_cambiadas_por_nombre']);
@@ -141,7 +153,7 @@ class AuditarColoresDelCatalogoTest extends TestCase
         $this->guardar(['MALVA' => '', 'NEGRO' => $negro->id]);
 
         $a = $this->ultima();
-        $this->assertSame(['color_base_id' => null, 'color' => null], $a->datos_nuevos['colores']['MALVA']);
+        $this->assertSame(['color' => null, 'color_base_id' => null], $a->datos_nuevos['colores']['MALVA']);
         $this->assertSame(['NEGRO' => 1], $a->datos_nuevos['filas_cambiadas_por_nombre']);
     }
 }
