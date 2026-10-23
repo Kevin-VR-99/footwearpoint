@@ -45,7 +45,7 @@ new #[Layout('layouts.guest')] #[Title('Registrar empleado — FootwearPoint')] 
         return [
             'nombre'   => ['required', 'string', 'max:150'],
             'email'    => ['required', 'email', new CorreoConDominioReal(), 'max:190', 'unique:usuarios,email'],
-            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+            'password' => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'confirmed'],
             'telefono' => ['nullable', 'string', 'max:30'],
         ];
     }

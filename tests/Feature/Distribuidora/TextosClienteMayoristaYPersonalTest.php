@@ -104,8 +104,8 @@ class TextosClienteMayoristaYPersonalTest extends TestCase
         $this->postJson('/api/auth/register-empleado', [
             'nombre'                => 'Pedro Ruiz',
             'email'                 => 'pedro.ruiz@calzadosramirez.test',
-            'password'              => 'password123',
-            'password_confirmation' => 'password123',
+            'password'              => 'Tenis.Rojo42',
+            'password_confirmation' => 'Tenis.Rojo42',
         ])
             ->assertCreated()
             ->assertJsonPath('data.distribuidora_id', (int) $this->distribuidora->id)

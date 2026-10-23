@@ -16,7 +16,7 @@ class ResetPasswordRequest extends FormRequest
         return [
             'email'                 => ['required', 'email'],
             'token'                 => ['required', 'string', 'max:255'],
-            'password'              => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+            'password'              => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'confirmed'],
         ];
     }
 

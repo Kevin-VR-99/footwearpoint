@@ -28,7 +28,7 @@ class GuardarClienteDirectoRequest extends FormRequest
             // E3-07 (TG-133): cuenta de acceso a la app, opcional. Se puede
             // mandar al crear o después, en el PATCH. Los dos van juntos.
             'acceso_email'       => ['nullable', 'required_with:acceso_password', 'email', new CorreoConDominioReal(), 'max:190'],
-            'acceso_password'    => ['nullable', 'required_with:acceso_email', 'string', 'min:8', 'max:255', 'confirmed'],
+            'acceso_password'    => ['nullable', 'required_with:acceso_email', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'confirmed'],
         ];
     }
 

@@ -17,7 +17,7 @@ class RegisterEmpleadoRequest extends FormRequest
         return [
             'nombre'   => ['required', 'string', 'max:150'],
             'email'    => ['required', 'email', new CorreoConDominioReal(), 'max:150', 'unique:usuarios,email'],
-            'password' => ['required', 'string', 'min:8', 'max:255'],
+            'password' => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255'],
             'telefono' => ['nullable', 'string', 'max:20'],
         ];
     }

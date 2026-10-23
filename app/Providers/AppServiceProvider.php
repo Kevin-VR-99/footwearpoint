@@ -20,6 +20,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
+use App\Rules\PasswordSegura;
 use Laravel\Sanctum\PersonalAccessToken;
 use Laravel\Sanctum\Sanctum;
 use Livewire\Livewire;
@@ -74,6 +76,16 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // INC-002: política única de contraseñas para todo alta o cambio.
+        // uncompromised() consulta HaveIBeenPwned; solo en producción para
+        // que pruebas y desarrollo no dependan de la red (la lista offline
+        // de PasswordSegura cubre las más comunes en todos los entornos).
+        Password::defaults(function () {
+            $regla = Password::min(8)->letters()->numbers()->rules([new PasswordSegura]);
+
+            return $this->app->environment('production') ? $regla->uncompromised() : $regla;
+        });
+
         // Caché de catálogos por distribuidora: se limpia al guardar o borrar.
         foreach ([\App\Models\Talla::class, \App\Models\Color::class, \App\Models\Marca::class, \App\Models\Linea::class,
             \App\Models\Campana::class, \App\Models\DistribuidoraLinea::class, \App\Models\CicloCompra::class] as $modelo) {

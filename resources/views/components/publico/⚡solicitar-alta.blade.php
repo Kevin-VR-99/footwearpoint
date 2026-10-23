@@ -229,7 +229,7 @@ class extends Component
             'plan_id' => ['required', Rule::exists('planes_suscripcion', 'id')->where('activo', true)],
             'admin_nombre' => ['required', 'string', 'max:150'],
             'admin_email' => ['required', 'email', new CorreoConDominioReal(), 'max:190', Rule::unique('usuarios', 'email')],
-            'admin_password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+            'admin_password' => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'confirmed'],
             'acepta_legales' => ['accepted'],
         ];
     }
