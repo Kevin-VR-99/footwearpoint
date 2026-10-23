@@ -13,6 +13,7 @@ import 'screens/login_screen.dart';
 import 'services/aperturas_push.dart';
 import 'services/api_service.dart';
 import 'services/enlaces_app.dart';
+import 'tema/fp_fluidez.dart';
 import 'tema/fp_tema.dart';
 
 Future<void> main() async {
@@ -59,6 +60,8 @@ class FootwearPointApp extends StatelessWidget {
         navigatorObservers: [observadorDeRutas],
         // Con el estilo del panel web (TG-165).
         theme: FpTema.claro(),
+        // Rebote de iOS al llegar al borde de cualquier lista.
+        scrollBehavior: const FpScrollBehavior(),
         home: const _Raiz(),
       ),
     );
