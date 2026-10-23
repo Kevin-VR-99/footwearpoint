@@ -262,4 +262,13 @@ class EditarDistribuidoraAdminGeneralTest extends TestCase
 
         $this->assertSame('Zapatería Norte', $this->distribuidora->fresh()->nombre_comercial);
     }
+
+    public function test_no_cambia_el_correo_del_admin_a_un_dominio_inexistente(): void
+    {
+        $this->editar(['editar_admin_email' => 'laura@norte.invalid'])
+            ->assertHasErrors(['editar_admin_email'])
+            ->assertSee('Ese correo no parece existir. Usa un correo válido.');
+
+        $this->assertSame('laura@zapaterianorte.test', $this->adminTienda->fresh()->email);
+    }
 }

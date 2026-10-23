@@ -1,5 +1,6 @@
 <?php
 
+use App\Rules\CorreoConDominioReal;
 use App\Models\AceptacionLegal;
 use App\Models\PlanSuscripcion;
 use App\Models\Usuario;
@@ -227,7 +228,7 @@ class extends Component
             'direccion_publica' => ['nullable', 'string', 'max:300'],
             'plan_id' => ['required', Rule::exists('planes_suscripcion', 'id')->where('activo', true)],
             'admin_nombre' => ['required', 'string', 'max:150'],
-            'admin_email' => ['required', 'email', 'max:190', Rule::unique('usuarios', 'email')],
+            'admin_email' => ['required', 'email', new CorreoConDominioReal(), 'max:190', Rule::unique('usuarios', 'email')],
             'admin_password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
             'acepta_legales' => ['accepted'],
         ];
