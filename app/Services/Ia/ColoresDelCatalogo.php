@@ -162,7 +162,7 @@ class ColoresDelCatalogo
     /**
      * nombre comercial => {color_base_id, color} con lo que hoy tienen las filas.
      *
-     * @return array<string, array{color_base_id: ?int, color: ?string}>
+     * @return array<string, array{color: ?string, color_base_id: ?int}>
      */
     private function mapaActual($filas): array
     {
@@ -187,8 +187,9 @@ class ColoresDelCatalogo
         $nombres = Color::whereIn('id', array_filter($mapa))->pluck('nombre', 'id');
 
         return array_map(fn ($id) => [
-            'color_base_id' => $id,
+            // Mismo orden en que MySQL guarda las claves de un JSON.
             'color'         => $id === null ? null : ($nombres[$id] ?? null),
+            'color_base_id' => $id,
         ], $mapa);
     }
 
