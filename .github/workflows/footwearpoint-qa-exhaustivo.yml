@@ -1,4 +1,4 @@
-name: FootwearPoint - QA exhaustivo visual
+name: FootwearPoint - QA diagnostico visual
 
 on:
   workflow_dispatch:
@@ -35,9 +35,10 @@ jobs:
           npm init -y >/dev/null
           npm install --save-dev --no-audit --no-fund @playwright/test@1.56.1 @axe-core/playwright
           npx playwright install --with-deps chromium
-      - name: Preparar suite segura de 254 comprobaciones
+      - name: Preparar suite segura de 264 comprobaciones
         run: |
           cat > qa/tests/qa-exhaustivo.spec.mjs <<'FPEOF_PRUEBAS'
+
           import { test, expect } from '@playwright/test';
           import AxeBuilder from '@axe-core/playwright';
           
@@ -162,12 +163,45 @@ jobs:
             await prepararCaptura(page);
             const img=await page.screenshot({fullPage:true,animations:'disabled',caret:'hide',timeout:35000});
             await info.attach(etiqueta,{body:img,contentType:'image/png'});
+            await info.attach('contexto-de-captura.json',{body:Buffer.from(JSON.stringify({
+              ruta:new URL(page.url()).pathname,
+              titulo:await page.title(),
+              resolucion:page.viewportSize(),
+              dimensiones:await page.evaluate(()=>({altoDocumento:document.documentElement.scrollHeight,anchoDocumento:document.documentElement.scrollWidth})),
+              seccionesPendientes:await page.locator('[data-revelar]:not(.revelado)').count(),
+            },null,2)),contentType:'application/json'});
           }
           async function auditar(page, info) {
             const resultado=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();
-            const problemas=resultado.violations.map(v=>({id:v.id,impact:v.impact,nodos:v.nodes.length,ayuda:v.help}));
-            await info.attach('auditoria-axe.json',{body:Buffer.from(JSON.stringify(problemas,null,2)),contentType:'application/json'});
-            expect(problemas,'Incumplimientos WCAG detectados por axe-core').toEqual([]);
+            const problemas=resultado.violations.map(v=>({
+              regla:v.id, impacto:v.impact, explicacion:v.help, referencia:v.helpUrl,
+              cantidadElementos:v.nodes.length,
+              elementos:v.nodes.map(n=>({
+                selector:(n.target||[]).join(' | ').slice(0,500),
+                html:(n.html||'').slice(0,600),
+                motivo:(n.failureSummary||'').slice(0,1000),
+                datosContraste:n.any?.filter(x=>x.id==='color-contrast').map(x=>x.data).slice(0,2),
+              })),
+            }));
+            await info.attach('auditoria-axe-detallada.json',{body:Buffer.from(JSON.stringify({
+              pantalla:new URL(page.url()).pathname,reglas:problemas
+            },null,2)),contentType:'application/json'});
+            if(problemas.length){
+              // Capturas cercanas: como maximo 3 por regla, sin modificar DOM ni la aplicacion.
+              for(const regla of problemas){
+                for(let i=0;i<Math.min(3,regla.elementos.length);i++){
+                  try{
+                    const selector=regla.elementos[i].selector.split(' | ')[0];
+                    const elemento=page.locator(selector).first();
+                    if(await elemento.count() && await elemento.isVisible()){
+                      const png=await elemento.screenshot({animations:'disabled',timeout:7000});
+                      await info.attach(`DETALLE - ${regla.regla} - elemento ${i+1}`,{body:png,contentType:'image/png'});
+                    }
+                  }catch{/* El selector de axe puede apuntar a iframes o nodos fuera de vista. */}
+                }
+              }
+            }
+            expect(problemas,'Incumplimientos WCAG detectados; consultar auditoria-axe-detallada.json y capturas DETALLE').toEqual([]);
           }
           async function crearSesion(browser,grupo) {
             const email=process.env[grupo.correo]?.trim(); const password=process.env[grupo.clave];
@@ -189,7 +223,26 @@ jobs:
           async function conContexto(browser,info,estado,viewport,cb) {
             const ctx=await browser.newContext({baseURL:BASE,storageState:estado,
               viewport:{width:viewport.width,height:viewport.height},reducedMotion:'reduce'});
-            try {const page=await ctx.newPage(); await cb(page);} finally {await ctx.close();}
+            let pagina;
+            try{
+              pagina=await ctx.newPage();
+              await cb(pagina);
+            } catch(error){
+              if(info && pagina){
+                try{
+                  await info.attach('diagnostico-de-fallo.json',{body:Buffer.from(JSON.stringify({
+                    ruta:new URL(pagina.url()).pathname, resolucion:pagina.viewportSize(),
+                    categoria:error?.name||'Error', mensaje:String(error?.message||'').slice(0,1400),
+                    estadoPagina:pagina.isClosed()?'cerrada':'abierta',
+                  },null,2)),contentType:'application/json'});
+                  if(!pagina.isClosed()){
+                    const png=await pagina.screenshot({fullPage:true,animations:'disabled',timeout:10000});
+                    await info.attach('CAPTURA AL FALLAR - contexto completo',{body:png,contentType:'image/png'});
+                  }
+                } catch{/* Conserva siempre el error original */}
+              }
+              throw error;
+            } finally {await ctx.close();}
           }
           async function comprobarPagina(page,info,ruta,obligatoria,etiqueta) {
             const monitor=monitorear(page);
@@ -204,8 +257,12 @@ jobs:
             expect(titulo.trim(),`Titulo ausente: ${ruta}`).not.toBe('');
             const ancho=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,vista:document.documentElement.clientWidth}));
             expect(ancho.doc-ancho.vista,`Desbordamiento horizontal ${ruta}`).toBeLessThanOrEqual(3);
-            const imgMalas=await page.locator('img').evaluateAll(els=>els.filter(img=>img.complete&&img.naturalWidth===0).map(img=>img.currentSrc||img.src));
-            expect(imgMalas,`Imagenes rotas en ${ruta}`).toEqual([]);
+            const imgMalas=await page.locator('img').evaluateAll(els=>els.filter(img=>img.complete&&img.naturalWidth===0).map(img=>({
+              atributoSrc:img.getAttribute('src'),urlResuelta:img.currentSrc||img.src,
+              textoAlternativo:img.alt,html:img.outerHTML.slice(0,550),
+            })));
+            if(imgMalas.length) await info.attach('imagenes-rotas-detalle.json',{body:Buffer.from(JSON.stringify({ruta,imagenes:imgMalas},null,2)),contentType:'application/json'});
+            expect(imgMalas,`Imagenes rotas en ${ruta}; revisar el archivo imagenes-rotas-detalle.json`).toEqual([]);
             await page.waitForTimeout(120);
             expect(monitor.js,`Errores JavaScript: ${ruta}`).toEqual([]);
             expect(monitor.recursos,`Recursos del mismo origen que fallaron: ${ruta}`).toEqual([]);
@@ -329,8 +386,46 @@ jobs:
               });
             }
           });
+          
+          // Evidencia del primer paso de teclado: el estado inicial y el control enfocado.
+          test.describe('Diagnostico de teclado en paginas publicas',()=>{
+            for(const pagina of publicas){
+              test(`Enfoque inicial visible / ${pagina.nombre}`,async({page},info)=>{
+                await entrar(page,pagina.ruta,true);
+                await adjuntar(page,info,'ANTES - pagina sin accion');
+                await page.keyboard.press('Tab');
+                const detalle=await page.evaluate(()=>{
+                  const e=document.activeElement;
+                  return {tipo:e?.tagName||'sin elemento',texto:(e?.innerText||'').slice(0,80),
+                    etiqueta:e?.getAttribute('aria-label')||null,visible:!!e?.getClientRects().length};
+                });
+                await info.attach('despues-del-tab.json',{body:Buffer.from(JSON.stringify(detalle,null,2)),contentType:'application/json'});
+                await adjuntar(page,info,'DESPUES - foco tras pulsar Tab');
+                expect(detalle.visible,'El primer control enfocado debe ser visible').toBe(true);
+                expect(['A','BUTTON','INPUT','SELECT','TEXTAREA','SUMMARY'],'Tab debe enfocar un elemento interactivo').toContain(detalle.tipo);
+              });
+            }
+          });
+          
+          // Nuevas comprobaciones de búsqueda pública con texto imposible. No se envía ningún formulario.
+          test.describe('Buscador publico: lectura y evidencia de interacción',()=>{
+            for(const vp of viewports){
+              test(`Marketplace busqueda sin coincidencias / ${vp.name}`,async({browser},info)=>{
+                const ctx=await browser.newContext({baseURL:BASE,viewport:{width:vp.width,height:vp.height},reducedMotion:'reduce'});
+                try{
+                  const page=await ctx.newPage();
+                  await entrar(page,'/marketplace',true);
+                  await adjuntar(page,info,'ANTES - directorio sin filtrar');
+                  await page.locator('#buscar-distribuidora').fill('qa-sin-coincidencias-xy98z123');
+                  await expect(page.getByText('Ninguna distribuidora coincide con esa búsqueda.')).toBeVisible({timeout:18000});
+                  await adjuntar(page,info,'DESPUES - búsqueda sin resultados');
+                }catch(e){throw e;}finally{await ctx.close();}
+              });
+            }
+          });
           FPEOF_PRUEBAS
           cat > qa/playwright.config.mjs <<'FPEOF_CONFIG'
+
           import { defineConfig } from '@playwright/test';
           export default defineConfig({
             testDir: './tests',
@@ -358,6 +453,7 @@ jobs:
           });
           FPEOF_CONFIG
           cat > qa/scripts/resumir.mjs <<'FPEOF_RESUMEN'
+
           import {readFileSync,writeFileSync,mkdirSync,appendFileSync} from 'node:fs';
           const ruta='reportes/data/resultados.json';
           let datos;
@@ -370,7 +466,7 @@ jobs:
                 rows.push({nombre:sp.title,estado:r.status||'desconocido',tiempo:r.duration||0,
                   capturas:(r.attachments||[]).filter(a=>a.contentType==='image/png').length,
                   auditorias:(r.attachments||[]).filter(a=>a.name==='auditoria-axe.json').length,
-                  error:r.errors?.map(e=>(e.message||'').replace(/\r?\n/g,' ').slice(0,300)).join(' / ')||''});
+                  error:r.errors?.map(e=>(e.message||'').replace(/\r?\n/g,' ').slice(0,900)).join(' / ')||''});
               }
               visit(suite.suites);
             }
@@ -378,18 +474,18 @@ jobs:
           visit(datos.suites);
           const n=(s)=>rows.filter(r=>r.estado===s).length;
           const lines=[
-            '# FootwearPoint — QA extensivo con evidencia visual','',
+            '# FootwearPoint — QA de diagnóstico con evidencias','',
             `Fecha: ${new Date().toISOString()}`,'',
             `**Total:** ${rows.length} | **Aprobadas:** ${n('passed')} | **Fallidas:** ${n('failed')+n('timedOut')} | **Otras:** ${rows.length-n('passed')-n('failed')-n('timedOut')}`,'',
             '> Las pruebas solo cubren las pantallas y condiciones definidas. Un caso aprobado no demuestra cobertura absoluta del sistema.','',
             '| Prueba | Estado | Segundos | Capturas | Axe |','|---|---|---:|---:|---:|',
             ...rows.map(r=>`| ${r.nombre.replace(/\|/g,'\\|')} | ${r.estado} | ${(r.tiempo/1000).toFixed(1)} | ${r.capturas} | ${r.auditorias} |`),'',
-            '## Hallazgos de ejecucion','',
+            '## Hallazgos: regla esperada y resultado observado','',
             ...rows.filter(r=>r.error).map(r=>`- **${r.nombre}:** ${r.error.replace(/\|/g,'\\|')}`),'',
             '## Evidencias','',
-            'Abrir reportes/html/index.html mediante el visor HTML de Playwright; cada prueba guarda las capturas como adjuntos.','',
+            'En cada caso fallido revisar: CAPTURA AL FALLAR, capturas DETALLE, auditoria-axe-detallada.json, imagenes-rotas-detalle.json y contexto-de-captura.json, segun corresponda.','',
             '## Restricciones','',
-            '- Solo lectura: NO se realizaron altas, ediciones, eliminaciones ni pagos.','- La prueba de restauracion de Railway y la fase de persistencia continuan pendientes.','- No se usaron capturas ni trazas durante la introduccion de credenciales.','',
+            '- Solo lectura: NO se realizaron altas, ediciones, eliminaciones ni pagos.','- Restauracion de Railway reportada como APTO el 23/10/2026. Esta suite sigue siendo de solo lectura.','- No se usaron capturas ni trazas durante la introduccion de credenciales.','',
           ];
           mkdirSync('reportes', {recursive:true});
           writeFileSync('reportes/RESUMEN.md',lines.join('\n'));
@@ -410,7 +506,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: FootwearPoint-QA-Exhaustivo-${{ github.run_number }}
+          name: FootwearPoint-QA-Diagnostico-${{ github.run_number }}
           path: |
             qa/reportes/html/
             qa/reportes/data/
