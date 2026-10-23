@@ -459,4 +459,14 @@ class SolicitarAltaTest extends TestCase
 
         Livewire::test('publico.solicitar-alta')->set('enviada', true);
     }
+
+    public function test_un_correo_con_dominio_inexistente_no_pide_alta(): void
+    {
+        $this->formulario(['admin_email' => 'lucia@calzadodelsur.invalid'])
+            ->call('enviar')
+            ->assertHasErrors(['admin_email'])
+            ->assertSee('Ese correo no parece existir. Usa un correo válido.');
+
+        $this->assertNull($this->distribuidoraCreada());
+    }
 }

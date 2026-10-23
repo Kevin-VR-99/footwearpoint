@@ -1,5 +1,6 @@
 <?php
 
+use App\Rules\CorreoConDominioReal;
 use App\Models\DistribuidoraStaff;
 use App\Models\Usuario;
 use App\Support\Tenant;
@@ -43,7 +44,7 @@ new #[Layout('layouts.guest')] #[Title('Registrar empleado — FootwearPoint')] 
     {
         return [
             'nombre'   => ['required', 'string', 'max:150'],
-            'email'    => ['required', 'email', 'max:190', 'unique:usuarios,email'],
+            'email'    => ['required', 'email', new CorreoConDominioReal(), 'max:190', 'unique:usuarios,email'],
             'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
             'telefono' => ['nullable', 'string', 'max:30'],
         ];

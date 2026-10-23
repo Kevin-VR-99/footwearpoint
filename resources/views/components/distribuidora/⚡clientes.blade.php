@@ -1,5 +1,6 @@
 <?php
 
+use App\Rules\CorreoConDominioReal;
 use App\Models\ClienteDirecto;
 use App\Services\Auth\EnviarEnlaceRestablecerPanelAction;
 use App\Services\Correo\IntentarEnviarCorreoAction;
@@ -240,10 +241,10 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
         $datos = $this->validate([
             'cliente_nombre' => ['required', 'string', 'max:150'],
             'cliente_telefono' => ['nullable', 'string', 'max:30'],
-            'cliente_email' => ['nullable', 'email', 'max:190'],
+            'cliente_email' => ['nullable', 'email', new CorreoConDominioReal(), 'max:190'],
             'cliente_direccion_contacto' => ['nullable', 'string', 'max:300'],
             // E3-07: opcionales, pero si se llena uno se exige el otro.
-            'cliente_acceso_email' => ['nullable', 'required_with:cliente_acceso_password', 'email', 'max:190'],
+            'cliente_acceso_email' => ['nullable', 'required_with:cliente_acceso_password', 'email', new CorreoConDominioReal(), 'max:190'],
             'cliente_acceso_password' => ['nullable', 'required_with:cliente_acceso_email', 'string', 'min:8', 'max:255', 'same:cliente_acceso_password_confirmation'],
         ], [
             'cliente_acceso_password.max' => 'La contraseña no puede tener más de 255 caracteres.',

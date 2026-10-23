@@ -1,5 +1,6 @@
 <?php
 
+use App\Rules\CorreoConDominioReal;
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\Distribuidora;
 use App\Models\PlanSuscripcion;
@@ -185,7 +186,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             'nuevo_horario_publico' => ['nullable', 'string', 'max:300'],
             // TG-194: el administrador de la tienda es obligatorio.
             'admin_nombre' => ['required', 'string', 'max:150'],
-            'admin_email' => ['required', 'email', 'max:190', 'unique:usuarios,email'],
+            'admin_email' => ['required', 'email', new CorreoConDominioReal(), 'max:190', 'unique:usuarios,email'],
             'admin_password' => ['required', 'string', 'min:8', 'max:255'],
         ], [
             'admin_password.max' => 'La contraseña no puede tener más de 255 caracteres.',

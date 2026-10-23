@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Distribuidora;
 
+use App\Rules\CorreoConDominioReal;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +22,7 @@ class GuardarRevendedorRequest extends FormRequest
             // "revendedor_distribuidora" — ver LEEME de este bloque.
             'nombre'         => [$requerido, 'string', 'max:150'],
             'telefono'       => ['nullable', 'string', 'max:30'],
-            'email'          => ['nullable', 'email', 'max:190'],
+            'email'          => ['nullable', 'email', new CorreoConDominioReal(), 'max:190'],
 
             // Estos sí viven en "revendedor_distribuidora" (la afiliación).
             'codigo_interno' => ['nullable', 'string', 'max:60'],
@@ -30,7 +31,7 @@ class GuardarRevendedorRequest extends FormRequest
 
             // E3-07 (TG-133): cuenta de acceso a la app, opcional. Se puede
             // mandar al crear o después, en el PATCH. Los dos van juntos.
-            'acceso_email'    => ['nullable', 'required_with:acceso_password', 'email', 'max:190'],
+            'acceso_email'    => ['nullable', 'required_with:acceso_password', 'email', new CorreoConDominioReal(), 'max:190'],
             'acceso_password' => ['nullable', 'required_with:acceso_email', 'string', 'min:8', 'max:255', 'confirmed'],
         ];
     }

@@ -5,7 +5,7 @@ Cómo manda correo el sistema, y la trampa que ya nos costó dos días una vez.
 ## Cómo está montado
 
 Todo el correo sale por **SMTP de Gmail**, desde la cuenta del equipo
-`mvpla.footwearpoint@gmail.com`, por el puerto **587**.
+`footwearpoint.mx@gmail.com`, por el puerto **587**.
 
 Las variables viven en Railway y están en **tres servicios**, porque los tres
 mandan correo:
@@ -23,7 +23,8 @@ Si se cambia una variable de correo, hay que cambiarla **en los tres**.
 | `MAIL_MAILER` | `smtp` |
 | `MAIL_HOST` | `smtp.gmail.com` |
 | `MAIL_PORT` | `587` |
-| `MAIL_USERNAME` | `mvpla.footwearpoint@gmail.com` (la dirección completa) |
+| `MAIL_USERNAME` | `footwearpoint.mx@gmail.com` (la dirección completa) |
+| `MAIL_FROM_ADDRESS` | `footwearpoint.mx@gmail.com` (igual que MAIL_USERNAME: Gmail no deja mandar como otra dirección) |
 | `MAIL_PASSWORD` | Una **contraseña de aplicación** de Google, 16 caracteres, sin espacios |
 | `MAIL_TIMEOUT` | `10` |
 
@@ -45,7 +46,7 @@ Pasó en octubre de 2026: alguien cambió la contraseña de la cuenta de Google 
 el correo dejó de salir en todo el sistema. Nadie lo relacionó, porque la
 cuenta de Gmail se seguía abriendo con normalidad.
 
-**Antes de tocar la contraseña de `mvpla.footwearpoint@gmail.com`, avisa al
+**Antes de tocar la contraseña de `footwearpoint.mx@gmail.com`, avisa al
 equipo.** Si ya se cambió, hay que generar una contraseña de aplicación nueva
 y reemplazar `MAIL_PASSWORD` en los tres servicios.
 
@@ -106,3 +107,14 @@ alcanzar si esto crece:
 Cuando estorbe, la salida es un proveedor por API (Resend, Postmark, Brevo)
 con el dominio `footwearpoint.app` verificado. Además va por HTTPS, así que
 se acaban también los problemas de puertos SMTP bloqueados.
+
+## Correos que no existen (rechazo por dominio)
+
+Al dar de alta una cuenta (solicitud de distribuidora, empleado, cliente
+mayorista, cliente directo, edición del admin de una distribuidora, y la API
+de la app) el correo se valida con `App\Rules\CorreoConDominioReal`: si el
+dominio no tiene registro MX, A ni AAAA, se rechaza con «Ese correo no parece
+existir. Usa un correo válido.». El resultado se guarda en caché 10 minutos
+(1 minuto si no existe). Las pruebas no consultan DNS: `tests/TestCase.php`
+registra `VerificadorDominioCorreo::falso()`, que trata como inexistente todo
+dominio `.invalid`.

@@ -1,5 +1,6 @@
 <?php
 
+use App\Rules\CorreoConDominioReal;
 use App\Models\DistribuidoraStaff;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Usuario;
@@ -219,7 +220,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
     {
         $this->validate([
             'empleado_nombre' => ['required', 'string', 'max:150'],
-            'empleado_email' => ['required', 'email', 'max:190', 'unique:usuarios,email'],
+            'empleado_email' => ['required', 'email', new CorreoConDominioReal(), 'max:190', 'unique:usuarios,email'],
             'empleado_telefono' => ['nullable', 'string', 'max:30'],
             'empleado_password' => ['required', 'string', 'min:8', 'max:255', 'same:empleado_password_confirmation'],
         ], [
@@ -392,9 +393,9 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         $datos = $this->validate([
             'revendedor_nombre' => ['required', 'string', 'max:150'],
             'revendedor_telefono' => ['nullable', 'string', 'max:30'],
-            'revendedor_email' => ['nullable', 'email', 'max:190'],
+            'revendedor_email' => ['nullable', 'email', new CorreoConDominioReal(), 'max:190'],
             'revendedor_codigo_interno' => ['nullable', 'string', 'max:60'],
-            'revendedor_acceso_email' => ['nullable', 'required_with:revendedor_acceso_password', 'email', 'max:190'],
+            'revendedor_acceso_email' => ['nullable', 'required_with:revendedor_acceso_password', 'email', new CorreoConDominioReal(), 'max:190'],
             'revendedor_acceso_password' => ['nullable', 'required_with:revendedor_acceso_email', 'string', 'min:8', 'max:255', 'same:revendedor_acceso_password_confirmation'],
         ], [
             'revendedor_acceso_password.max' => 'La contraseña no puede tener más de 255 caracteres.',

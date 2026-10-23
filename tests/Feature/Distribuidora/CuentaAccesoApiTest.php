@@ -175,4 +175,27 @@ class CuentaAccesoApiTest extends TestCase
 
         $this->assertNull($cliente->fresh()->usuario_id);
     }
+
+    public function test_la_api_rechaza_correos_de_dominio_inexistente(): void
+    {
+        $this->comoAdmin();
+
+        $this->postJson('/api/distribuidora/revendedores', [
+            'nombre'                       => 'María López',
+            'acceso_email'                 => 'maria@revendedor.invalid',
+            'acceso_password'              => 'clave-segura-1',
+            'acceso_password_confirmation' => 'clave-segura-1',
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.acceso_email.0', 'Ese correo no parece existir. Usa un correo válido.');
+
+        $this->postJson('/api/distribuidora/clientes-directos', [
+            'nombre' => 'Ana Ruiz',
+            'email'  => 'ana@cliente.invalid',
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'Ese correo no parece existir. Usa un correo válido.');
+
+        $this->assertFalse(Usuario::where('email', 'maria@revendedor.invalid')->exists());
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services\Distribuidora;
 
+use App\Rules\CorreoConDominioReal;
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\Distribuidora;
 use App\Models\DistribuidoraStaff;
@@ -69,7 +70,7 @@ class ActualizarAdminDistribuidoraAction
 
         Validator::make($datos, [
             'nombre'   => ['required', 'string', 'max:150'],
-            'email'    => ['required', 'email', 'max:190', Rule::unique('usuarios', 'email')->ignore($usuario->id)],
+            'email'    => ['required', 'email', new CorreoConDominioReal(), 'max:190', Rule::unique('usuarios', 'email')->ignore($usuario->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ], [
             'nombre.required'    => 'El nombre del administrador es obligatorio.',

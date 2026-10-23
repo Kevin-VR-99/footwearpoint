@@ -146,4 +146,40 @@ class TextosClienteMayoristaYPersonalTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('errors.propietario_tipo.0', 'El propietario debe ser cliente directo (cliente_directo) o cliente mayorista (revendedor).');
     }
+
+    public function test_no_registra_empleado_con_correo_de_dominio_inexistente(): void
+    {
+        Livewire::test('auth.register-empleado')
+            ->set('nombre', 'Luisa Pérez')
+            ->set('email', 'luisa@gmial.invalid')
+            ->set('password', 'clave-segura-1')
+            ->set('password_confirmation', 'clave-segura-1')
+            ->call('registrar')
+            ->assertHasErrors(['email'])
+            ->assertSee('Ese correo no parece existir. Usa un correo válido.');
+
+        Sanctum::actingAs(Usuario::where('email', DemoDistribuidoraSeeder::ADMIN)->firstOrFail());
+
+        $this->postJson('/api/auth/register-empleado', [
+            'nombre'                => 'Pedro Ruiz',
+            'email'                 => 'pedro@gmial.invalid',
+            'password'              => 'password123',
+            'password_confirmation' => 'password123',
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'Ese correo no parece existir. Usa un correo válido.');
+
+        $this->assertFalse(Usuario::where('email', 'like', '%gmial.invalid')->exists());
+    }
+
+    public function test_el_panel_no_acepta_correos_de_dominio_inexistente_para_personal_y_clientes(): void
+    {
+        Livewire::test('distribuidora.usuarios', ['seccion' => 'empleados'])
+            ->set('empleado_nombre', 'Luisa Pérez')
+            ->set('empleado_email', 'luisa@nada.invalid')
+            ->set('empleado_password', 'clave-segura-1')
+            ->set('empleado_password_confirmation', 'clave-segura-1')
+            ->call('guardarEmpleado')
+            ->assertHasErrors(['empleado_email']);
+    }
 }
