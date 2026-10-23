@@ -20,4 +20,8 @@ Route::prefix('perfil')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [PerfilUsuarioController::class, 'show']);
     Route::patch('/', [PerfilUsuarioController::class, 'update']);
     Route::post('/password', [PerfilUsuarioController::class, 'cambiarPassword']);
+    Route::post('/foto', [PerfilUsuarioController::class, 'foto']);
+    // Cambiar correo o teléfono: solo se aplica al abrir el enlace del correo.
+    Route::post('/correo', [PerfilUsuarioController::class, 'cambiarCorreo'])->middleware('throttle:6,1');
+    Route::post('/telefono', [PerfilUsuarioController::class, 'cambiarTelefono'])->middleware('throttle:6,1');
 });

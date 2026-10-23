@@ -6,17 +6,23 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../screens/pedido_detalle_screen.dart';
+import '../screens/perfil_screen.dart';
 import '../screens/producto_detalle_screen.dart';
 import 'aperturas_push.dart';
 import 'catalogo_service.dart';
 
 /// A dónde lleva un enlace https://footwearpoint.app/abrir/...
 class DestinoEnlace {
-  const DestinoEnlace.pedido(this.id) : esProducto = false;
-  const DestinoEnlace.producto(this.id) : esProducto = true;
+  const DestinoEnlace.pedido(this.id) : esProducto = false, esPerfil = false;
+  const DestinoEnlace.producto(this.id) : esProducto = true, esPerfil = false;
+
+  /// /abrir/perfil: lo manda la página que confirma un cambio de correo o
+  /// teléfono, para ver el dato ya actualizado.
+  const DestinoEnlace.perfil() : id = 0, esProducto = false, esPerfil = true;
 
   final int id;
   final bool esProducto;
+  final bool esPerfil;
 }
 
 DestinoEnlace? destinoDeEnlace(Uri uri) {
@@ -25,6 +31,9 @@ DestinoEnlace? destinoDeEnlace(Uri uri) {
   if (!hostNuestro) return null;
 
   final partes = uri.pathSegments;
+  if (partes.length == 2 && partes[0] == 'abrir' && partes[1] == 'perfil') {
+    return const DestinoEnlace.perfil();
+  }
   if (partes.length < 3 || partes[0] != 'abrir') return null;
   final id = int.tryParse(partes[2]);
   if (id == null || id <= 0) return null;
@@ -85,6 +94,11 @@ class EnlacesApp {
     final navegador = navegadorRaiz.currentState;
     final contexto = navegadorRaiz.currentContext;
     if (navegador == null || contexto == null) return;
+
+    if (destino.esPerfil) {
+      navegador.push(MaterialPageRoute<void>(builder: (_) => const PerfilScreen()));
+      return;
+    }
 
     if (!destino.esProducto) {
       navegador.push(

@@ -77,6 +77,8 @@ void main() {
     expect(destinoDeEnlace(Uri.parse('https://footwearpoint.app/abrir/pedido/15'))?.esProducto, isFalse);
     expect(destinoDeEnlace(Uri.parse('https://footwearpoint.app/abrir/producto/8'))?.esProducto, isTrue);
     expect(destinoDeEnlace(Uri.parse('https://example.com/abrir/pedido/15')), isNull);
+    expect(destinoDeEnlace(Uri.parse('https://footwearpoint.app/abrir/perfil'))?.esPerfil, isTrue);
+    expect(destinoDeEnlace(Uri.parse('https://footwearpoint.app/abrir/perfil/9')), isNull);
     expect(conEnlaceDeApp('Hola', enlaceAbrirPedido(4)), 'Hola\nAbrir en la app: https://footwearpoint.app/abrir/pedido/4');
     expect(conEnlaceDeApp('https://footwearpoint.app/abrir/pedido/4', enlaceAbrirPedido(4)), 'https://footwearpoint.app/abrir/pedido/4');
   });

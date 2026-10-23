@@ -633,3 +633,18 @@ form[data-loading] button[type=submit]:not(:has([wire\:loading]))::before {
 @media (prefers-reduced-motion: reduce) {
     [data-cargando] { animation: none !important; backdrop-filter: none; }
 }
+
+/* Avatares de empleados y clientes mayoristas: entran suaves y crecen un poco
+   al pasar el cursor por su renglón. Se apaga con prefers-reduced-motion. */
+@layer components {
+    .fp-avatar { animation: fp-desvanecer .25s ease-out backwards; transition: transform .2s cubic-bezier(.22, .8, .36, 1), box-shadow .2s ease; }
+    tr:hover .fp-avatar { transform: scale(1.06); box-shadow: 0 4px 10px -4px color-mix(in oklab, var(--color-fp-primary) 45%, transparent); }
+    .fp-foto-vista { animation: fp-emerger .25s cubic-bezier(.22, .8, .36, 1) backwards; }
+    .fp-fila-persona { transition: background-color .15s ease; }
+    .fp-fila-persona:hover { background-color: var(--color-fp-page); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .fp-avatar, .fp-foto-vista { animation: none !important; }
+    .fp-avatar, .fp-fila-persona { transition: none !important; }
+    tr:hover .fp-avatar { transform: none !important; }
+}

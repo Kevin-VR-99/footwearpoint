@@ -18,10 +18,16 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Livewire\WithFileUploads;
+use App\Services\Distribuidora\CodigoInternoRevendedor;
+use App\Services\Distribuidora\EliminarPersonaAction;
+use App\Services\Perfil\FotoPerfil;
+use App\Support\MensajeError;
 use Spatie\Permission\PermissionRegistrar;
 
 new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class extends Component {
     use \App\Livewire\Concerns\GestionaBajasDeAcceso;
+    use WithFileUploads;
 
     private function despuesDeCambioDeAcceso(): void
     {
@@ -38,6 +44,19 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
     public ?string $empleado_telefono = null;
     public string $empleado_password = '';
     public string $empleado_password_confirmation = '';
+    #[Locked]
+    public ?int $empleadoEditandoId = null;
+    #[Locked]
+    public ?string $empleado_email_actual = null;
+    #[Locked]
+    public ?string $empleado_foto_actual = null;
+    /** Foto nueva (temporal de Livewire) del empleado. */
+    public $empleado_foto = null;
+
+    /** Eliminar definitivamente: ['tipo' => 'empleado'|'revendedor', 'id' => int, 'nombre' => string]. */
+    #[Locked]
+    public ?array $porEliminar = null;
+    public ?string $errorEliminar = null;
 
     public ?string $avisoEnlace = null;
     public bool $avisoEnlaceEsError = false;
@@ -54,8 +73,11 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
 
     public ?string $revendedor_cuenta_email_actual = null;
     public ?string $revendedor_acceso_email = null;
-    public string $revendedor_acceso_password = '';
-    public string $revendedor_acceso_password_confirmation = '';
+    /** Si ya escribieron a mano el correo de acceso, el de contacto deja de copiarse. */
+    public bool $accesoEditadoAMano = false;
+    #[Locked]
+    public ?string $revendedor_foto_actual = null;
+    public $revendedor_foto = null;
 
     #[\Livewire\Attributes\Url(except: '')]
     public string $buscar = '';
@@ -201,6 +223,10 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
 
     public function abrirFormularioInvitarEmpleado(): void
     {
+        $this->empleadoEditandoId = null;
+        $this->empleado_email_actual = null;
+        $this->empleado_foto_actual = null;
+        $this->empleado_foto = null;
         $this->empleado_nombre = '';
         $this->empleado_email = '';
         $this->empleado_telefono = null;
@@ -210,19 +236,52 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         $this->mostrandoFormularioEmpleado = true;
     }
 
+    public function abrirFormularioEditarEmpleado(int $id): void
+    {
+        $staff = DistribuidoraStaff::with('usuario')->where('tipo', 'empleado')->findOrFail($id);
+        abort_if(! $staff->usuario, 404);
+
+        $this->empleadoEditandoId = $staff->id;
+        $this->empleado_email_actual = $staff->usuario->email;
+        $this->empleado_foto_actual = $staff->usuario->foto_url;
+        $this->empleado_foto = null;
+        $this->empleado_nombre = (string) $staff->usuario->nombre;
+        $this->empleado_email = (string) $staff->usuario->email;
+        $this->empleado_telefono = $staff->usuario->telefono;
+        $this->empleado_password = '';
+        $this->empleado_password_confirmation = '';
+        $this->resetErrorBag();
+        $this->mostrandoFormularioEmpleado = true;
+    }
+
     public function cancelarFormularioEmpleado(): void
     {
         $this->mostrandoFormularioEmpleado = false;
+        $this->empleadoEditandoId = null;
+        $this->empleado_foto = null;
         $this->resetErrorBag();
+    }
+
+    public function quitarFotoNuevaEmpleado(): void
+    {
+        $this->empleado_foto = null;
+        $this->resetErrorBag('empleado_foto');
     }
 
     public function guardarEmpleado(): void
     {
+        if ($this->empleadoEditandoId) {
+            $this->actualizarEmpleado();
+
+            return;
+        }
+
         $this->validate([
             'empleado_nombre' => ['required', 'string', 'max:150'],
             'empleado_email' => ['required', 'email', new CorreoConDominioReal(), 'max:190', 'unique:usuarios,email'],
             'empleado_telefono' => ['nullable', 'string', 'max:30'],
             'empleado_password' => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'same:empleado_password_confirmation'],
+            'empleado_foto' => ['nullable', ...FotoPerfil::reglas()],
         ], [
             'empleado_password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'empleado_nombre.required' => 'El nombre es obligatorio.',
@@ -231,17 +290,21 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             'empleado_password.required' => 'La contraseña es obligatoria.',
             'empleado_password.min' => 'Mínimo 8 caracteres.',
             'empleado_password.same' => 'Las contraseñas no coinciden.',
+            ...FotoPerfil::mensajes('empleado_foto'),
         ]);
 
         $distribuidoraId = Tenant::id();
         abort_if($distribuidoraId === null, 403);
 
-        DB::transaction(function () use ($distribuidoraId) {
+        $foto = $this->empleado_foto ? app(FotoPerfil::class)->guardar($this->empleado_foto, 'empleados') : null;
+
+        DB::transaction(function () use ($distribuidoraId, $foto) {
             $usuario = Usuario::create([
                 'nombre' => $this->empleado_nombre,
                 'email' => $this->empleado_email,
                 'password' => Hash::make($this->empleado_password),
                 'telefono' => $this->empleado_telefono ?: null,
+                'foto_url' => $foto,
                 'estado' => 'activo',
             ]);
 
@@ -258,8 +321,96 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         });
 
         $this->mostrandoFormularioEmpleado = false;
+        $this->empleado_foto = null;
         $this->cargarEmpleados();
         $this->dispatch('guardado', mensaje: 'Empleado registrado correctamente.');
+    }
+
+    /** Editar: nombre, teléfono y foto. El correo es su acceso y no se cambia aquí. */
+    private function actualizarEmpleado(): void
+    {
+        $this->validate([
+            'empleado_nombre' => ['required', 'string', 'max:150'],
+            'empleado_telefono' => ['nullable', 'string', 'max:30'],
+            'empleado_foto' => ['nullable', ...FotoPerfil::reglas()],
+        ], [
+            'empleado_nombre.required' => 'El nombre es obligatorio.',
+            ...FotoPerfil::mensajes('empleado_foto'),
+        ]);
+
+        $staff = DistribuidoraStaff::with('usuario')->where('tipo', 'empleado')->findOrFail($this->empleadoEditandoId);
+        $usuario = $staff->usuario;
+        abort_if(! $usuario, 404);
+
+        $antes = ['nombre' => $usuario->nombre, 'telefono' => $usuario->telefono, 'foto_url' => $usuario->foto_url];
+
+        $datos = [
+            'nombre' => trim($this->empleado_nombre),
+            'telefono' => trim((string) $this->empleado_telefono) ?: null,
+        ];
+
+        if ($this->empleado_foto) {
+            $datos['foto_url'] = app(FotoPerfil::class)->guardar($this->empleado_foto, 'empleados', $usuario->foto_url);
+        }
+
+        $usuario->forceFill($datos)->save();
+
+        app(\App\Services\Auditoria\RegistrarAuditoriaAction::class)->ejecutar(
+            'empleado.actualizado', 'distribuidora_staff', (int) $staff->id, $antes, $datos,
+        );
+
+        $this->mostrandoFormularioEmpleado = false;
+        $this->empleadoEditandoId = null;
+        $this->empleado_foto = null;
+        $this->cargarEmpleados();
+        $this->dispatch('guardado', mensaje: 'Empleado actualizado.');
+    }
+
+    /** Abre el modal de «Eliminar definitivamente». */
+    public function pedirEliminar(string $tipo, int $id): void
+    {
+        abort_unless(in_array($tipo, ['empleado', 'revendedor'], true), 404);
+
+        $nombre = $tipo === 'empleado'
+            ? DistribuidoraStaff::with('usuario')->where('tipo', 'empleado')->findOrFail($id)->usuario?->nombreVisible()
+            : RevendedorDistribuidora::with('revendedor')->findOrFail($id)->revendedor?->nombre;
+
+        $this->porEliminar = ['tipo' => $tipo, 'id' => $id, 'nombre' => (string) ($nombre ?: 'Sin nombre')];
+        $this->errorEliminar = null;
+    }
+
+    public function cancelarEliminar(): void
+    {
+        $this->porEliminar = null;
+        $this->errorEliminar = null;
+    }
+
+    public function eliminarDefinitivamente(): void
+    {
+        if ($this->porEliminar === null) {
+            return;
+        }
+
+        ['tipo' => $tipo, 'id' => $id, 'nombre' => $nombre] = $this->porEliminar;
+
+        try {
+            $accion = app(EliminarPersonaAction::class);
+            $tipo === 'empleado' ? $accion->empleado($id) : $accion->revendedor($id);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            $this->errorEliminar = 'Ya no existe: alguien más lo eliminó.';
+
+            return;
+        } catch (\Throwable $e) {
+            $this->errorEliminar = MensajeError::paraUsuario($e, 'No se pudo eliminar.');
+
+            return;
+        }
+
+        $this->porEliminar = null;
+        $this->errorEliminar = null;
+        $this->cargarEmpleados();
+        $this->cargarRevendedores();
+        $this->dispatch('guardado', mensaje: $nombre.' quedó eliminado definitivamente.');
     }
 
     public function abrirFormularioAfiliarRevendedor(): void
@@ -268,9 +419,11 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         $this->revendedor_nombre = '';
         $this->revendedor_telefono = null;
         $this->revendedor_email = null;
-        $this->revendedor_codigo_interno = null;
+        // Solo de muestra: el código real se toma al guardar.
+        $this->revendedor_codigo_interno = app(CodigoInternoRevendedor::class)->siguiente((int) Tenant::id());
         $this->revendedor_estado = 'activo';
         $this->limpiarAccesoRevendedor();
+        $this->resetErrorBag();
         $this->mostrandoFormularioRevendedor = true;
     }
 
@@ -285,6 +438,8 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         $this->revendedor_estado = $afiliacion->estado;
         $this->limpiarAccesoRevendedor();
         $this->revendedor_cuenta_email_actual = $afiliacion->revendedor->usuario?->email;
+        $this->revendedor_foto_actual = $afiliacion->revendedor->foto_url;
+        $this->resetErrorBag();
         $this->mostrandoFormularioRevendedor = true;
     }
 
@@ -388,21 +543,40 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         $this->limpiarAccesoRevendedor();
     }
 
+    /**
+     * El correo de contacto se copia al de acceso mientras nadie haya escrito
+     * en este último (se puede cambiar después).
+     */
+    public function updatedRevendedorEmail($valor): void
+    {
+        if ($this->revendedor_cuenta_email_actual === null && ! $this->accesoEditadoAMano) {
+            $this->revendedor_acceso_email = $valor ?: null;
+        }
+    }
+
+    public function updatedRevendedorAccesoEmail($valor): void
+    {
+        $this->accesoEditadoAMano = filled($valor) && $valor !== $this->revendedor_email;
+    }
+
+    public function quitarFotoNuevaRevendedor(): void
+    {
+        $this->revendedor_foto = null;
+        $this->resetErrorBag('revendedor_foto');
+    }
+
     public function guardarRevendedor(): void
     {
         $datos = $this->validate([
             'revendedor_nombre' => ['required', 'string', 'max:150'],
             'revendedor_telefono' => ['nullable', 'string', 'max:30'],
             'revendedor_email' => ['nullable', 'email', new CorreoConDominioReal(), 'max:190'],
-            'revendedor_codigo_interno' => ['nullable', 'string', 'max:60'],
-            'revendedor_acceso_email' => ['nullable', 'required_with:revendedor_acceso_password', 'email', new CorreoConDominioReal(), 'max:190'],
-            'revendedor_acceso_password' => ['nullable', 'required_with:revendedor_acceso_email', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'same:revendedor_acceso_password_confirmation'],
+            'revendedor_acceso_email' => ['nullable', 'email', new CorreoConDominioReal(), 'max:190'],
+            'revendedor_foto' => ['nullable', ...FotoPerfil::reglas()],
         ], [
-            'revendedor_acceso_password.max' => 'La contraseña no puede tener más de 255 caracteres.',
-            'revendedor_acceso_email.required_with' => 'Para dar acceso a la app escribe también el correo.',
-            'revendedor_acceso_password.required_with' => 'Para dar acceso a la app escribe también la contraseña.',
-            'revendedor_acceso_password.min' => 'La contraseña debe tener al menos 8 caracteres.',
-            'revendedor_acceso_password.same' => 'La confirmación de la contraseña no coincide.',
+            'revendedor_nombre.required' => 'El nombre es obligatorio.',
+            'revendedor_acceso_email.email' => 'Escribe un correo válido para entrar a la app.',
+            ...FotoPerfil::mensajes('revendedor_foto'),
         ]);
 
         $payload = [
@@ -411,25 +585,39 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             ...($this->revendedor_cuenta_email_actual === null
                 ? ['email' => $datos['revendedor_email']]
                 : []),
-            'codigo_interno' => $datos['revendedor_codigo_interno'],
             'estado' => $this->revendedor_estado,
         ];
 
         $accion = app(GestionarRevendedorAction::class);
+        $darAcceso = filled($datos['revendedor_acceso_email']) && $this->revendedor_cuenta_email_actual === null;
+        // PR #252: la única forma de alta es con contraseña temporal generada
+        // (cumple Password::defaults); se le pide cambiarla al entrar.
+        $passwordTemporal = $darAcceso ? app(GenerarPasswordTemporalAction::class)->generar() : null;
+        $fotoNueva = null;
 
         try {
-            DB::transaction(function () use ($accion, $payload, $datos) {
+            $afiliacion = DB::transaction(function () use ($accion, $payload, $datos, $darAcceso, $passwordTemporal) {
                 $afiliacion = $this->revendedorEditandoId
                     ? $accion->actualizar(RevendedorDistribuidora::findOrFail($this->revendedorEditandoId), $payload)
                     : $accion->afiliar($payload);
 
-                if (filled($datos['revendedor_acceso_email']) && $this->revendedor_cuenta_email_actual === null) {
-                    app(ActivarCuentaAccesoAction::class)->paraRevendedor(
+                if ($darAcceso) {
+                    $cuenta = app(ActivarCuentaAccesoAction::class)->paraRevendedor(
                         $afiliacion->fresh('revendedor'),
                         $datos['revendedor_acceso_email'],
-                        $datos['revendedor_acceso_password'],
+                        $passwordTemporal,
+                        temporal: true,
+                    );
+
+                    app(\App\Services\Auditoria\RegistrarAuditoriaAction::class)->ejecutar(
+                        accion: 'password.temporal_generada',
+                        entidadTipo: 'revendedor',
+                        entidadId: (int) $afiliacion->revendedor_id,
+                        datosNuevos: ['email' => $cuenta->email, 'alta' => true],
                     );
                 }
+
+                return $afiliacion;
             });
         } catch (ValidationException $e) {
             foreach ($e->errors() as $campo => $mensajes) {
@@ -437,6 +625,17 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             }
 
             return;
+        }
+
+        if ($this->revendedor_foto) {
+            $revendedor = $afiliacion->revendedor()->first();
+            $fotoNueva = app(FotoPerfil::class)->guardar($this->revendedor_foto, 'revendedores', $revendedor->foto_url);
+            $revendedor->forceFill(['foto_url' => $fotoNueva])->save();
+        }
+
+        if ($darAcceso) {
+            session()->now('aviso_password_temporal', 'Contraseña temporal para '.trim($datos['revendedor_acceso_email']).': '.$passwordTemporal
+                .'. Anótala ahora, no se vuelve a mostrar. Se le pedirá cambiarla al entrar.');
         }
 
         $this->mostrandoFormularioRevendedor = false;
@@ -450,8 +649,9 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
     {
         $this->revendedor_cuenta_email_actual = null;
         $this->revendedor_acceso_email = null;
-        $this->revendedor_acceso_password = '';
-        $this->revendedor_acceso_password_confirmation = '';
+        $this->accesoEditadoAMano = false;
+        $this->revendedor_foto_actual = null;
+        $this->revendedor_foto = null;
     }
 
 };
@@ -466,11 +666,11 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             subtitulo="Revendedores afiliados a tu distribuidora." class="mb-6" />
     @endif
 
-    {{-- Empleados: listado o formulario inline --}}
+
+    {{-- Empleados --}}
     @if ($seccion === 'empleados')
-    <div class="relative fp-tarjeta p-5 sm:p-6 max-w-3xl fp-formulario fp-aparecer">
+    <div class="relative fp-tarjeta p-5 sm:p-6 max-w-3xl fp-aparecer">
         <x-ui.cargando objetivo="guardarPermisos,toggleEstadoEmpleado,gotoPage,nextPage,previousPage" />
-        @if (! $mostrandoFormularioEmpleado)
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Empleados</h2>
                 <button type="button" wire:click="abrirFormularioInvitarEmpleado"
@@ -481,7 +681,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-slate-500 border-b">
-                        <th class="py-2">Nombre</th>
+                        <th class="py-2" colspan="2">Nombre</th>
                         <th class="py-2">Correo</th>
                         <th class="py-2">Teléfono</th>
                         <th class="py-2">Estado</th>
@@ -490,7 +690,8 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                 </thead>
                 <tbody>
                     @foreach ($empleados as $empleado)
-                        <tr class="border-b last:border-0 align-top">
+                        <tr class="fp-fila-persona border-b last:border-0 align-top" wire:key="empleado-{{ $empleado->id }}">
+                            <td class="w-11 py-2 pr-2"><x-ui.avatar :url="$empleado->usuario?->foto_url" :nombre="$empleado->usuario?->nombreVisible()" /></td>
                             <td class="py-2">{{ $empleado->usuario?->nombreVisible() ?? '—' }}</td>
                             <td class="py-2">
                                 {{ $empleado->usuario?->email ?? '—' }}
@@ -508,6 +709,10 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                                     class="text-fp-primary text-xs font-medium">
                                     {{ $empleado->estado === 'activo' ? 'Desactivar' : 'Activar' }}
                                 </button>
+                                <button type="button" wire:click="abrirFormularioEditarEmpleado({{ $empleado->id }})"
+                                    class="ml-3 text-fp-primary text-xs font-medium" data-editar="empleado-{{ $empleado->id }}">Editar</button>
+                                <button type="button" wire:click="pedirEliminar('empleado', {{ $empleado->id }})"
+                                    class="ml-3 text-xs font-medium text-fp-danger transition-opacity hover:opacity-75" data-eliminar="empleado-{{ $empleado->id }}">Eliminar</button>
                                 <div class="mt-2 space-y-1 text-left text-xs text-slate-600">
                                     @foreach (\App\Services\Auth\PermisoModuloService::ETIQUETAS_MODULO
                                         + array_map(fn ($p) => $p[0], \App\Services\Auth\PermisoModuloService::PERMISOS_FINOS) as $permiso => $etiqueta)
@@ -526,48 +731,81 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     @endforeach
                 </tbody>
             </table>
-        @else
-            <form wire:submit="guardarEmpleado" class="space-y-4">
-                <h2 class="text-sm font-semibold text-slate-700">Invitar empleado</h2>
-                <div class="grid grid-cols-2 gap-4">
+    </div>
+
+    @if ($mostrandoFormularioEmpleado)
+        <x-panel.modal :titulo="$empleadoEditandoId ? 'Editar empleado' : 'Invitar empleado'"
+            :subtitulo="$empleadoEditandoId ? 'Cambia su nombre, teléfono o foto.' : 'Entrará al panel con este correo y contraseña.'"
+            cerrar="cancelarFormularioEmpleado" formulario="guardarEmpleado" ancho="max-w-xl" class="fp-formulario" data-modal="empleado">
+            <div class="space-y-4">
+                <div class="flex items-center gap-4" data-foto="empleado">
+                    @if ($empleado_foto && method_exists($empleado_foto, 'isPreviewable') && $empleado_foto->isPreviewable())
+                        <img src="{{ $empleado_foto->temporaryUrl() }}" alt="Vista previa de la foto nueva" class="fp-foto-vista h-16 w-16 rounded-full object-cover ring-2 ring-fp-primary/30">
+                    @else
+                        <x-ui.avatar :url="$empleado_foto_actual" :nombre="$empleado_nombre" tamano="h-16 w-16 text-base" />
+                    @endif
+                    <div class="text-sm">
+                        <label for="usuarios-empleado-foto" class="fp-btn fp-btn-secundario cursor-pointer focus-within:ring-2 focus-within:ring-fp-primary">
+                            <span wire:loading.remove wire:target="empleado_foto">{{ $empleado_foto_actual || $empleado_foto ? 'Cambiar foto' : 'Subir foto' }}</span>
+                            <span wire:loading wire:target="empleado_foto">Subiendo…</span>
+                            <input id="usuarios-empleado-foto" type="file" wire:model="empleado_foto" accept="image/jpeg,image/png,image/webp" class="sr-only">
+                        </label>
+                        @if ($empleado_foto)
+                            <button type="button" wire:click="quitarFotoNuevaEmpleado" class="ml-2 text-xs font-medium text-slate-600 hover:text-fp-danger">Quitar</button>
+                        @endif
+                        <p class="mt-1 text-xs text-fp-text-muted">JPG, PNG o WebP, máximo 2 MB.</p>
+                        @error('empleado_foto') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
                     <div class="fp-campo">
                         <label for="usuarios-empleado-nombre" class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                        <input id="usuarios-empleado-nombre" type="text" wire:model="empleado_nombre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                        @error('empleado_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
-                    </div>
-                    <div class="fp-campo">
-                        <label for="usuarios-empleado-email" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-                        <input id="usuarios-empleado-email" type="email" wire:model="empleado_email" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                        @error('empleado_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                        <input id="usuarios-empleado-nombre" type="text" wire:model="empleado_nombre" autofocus required class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        @error('empleado_nombre') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
                     </div>
                     <div class="fp-campo">
                         <label for="usuarios-empleado-telefono" class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                        <input id="usuarios-empleado-telefono" type="text" wire:model="empleado_telefono" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        <input id="usuarios-empleado-telefono" type="tel" wire:model="empleado_telefono" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        @error('empleado_telefono') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
                     </div>
-                    <div></div>
-                    <div class="fp-campo">
-                        <label for="usuarios-empleado-password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-                        <input id="usuarios-empleado-password" type="password" wire:model="empleado_password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                        @error('empleado_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                    <div class="fp-campo sm:col-span-2">
+                        <label for="usuarios-empleado-email" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
+                        @if ($empleadoEditandoId)
+                            <input id="usuarios-empleado-email" type="email" value="{{ $empleado_email_actual }}" readonly aria-describedby="usuarios-empleado-email-ayuda"
+                                class="w-full rounded-lg bg-slate-100 text-sm text-slate-500 shadow-sm">
+                            <p id="usuarios-empleado-email-ayuda" class="mt-1 text-xs text-fp-text-muted">Es su correo para entrar al panel; no se cambia aquí.</p>
+                        @else
+                            <input id="usuarios-empleado-email" type="email" wire:model="empleado_email" required class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                            @error('empleado_email') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
+                        @endif
                     </div>
-                    <div class="fp-campo">
-                        <label for="usuarios-empleado-password-confirmation" class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-                        <input id="usuarios-empleado-password-confirmation" type="password" wire:model="empleado_password_confirmation" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                    </div>
+                    @unless ($empleadoEditandoId)
+                        <div class="fp-campo">
+                            <label for="usuarios-empleado-password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+                            <input id="usuarios-empleado-password" type="password" wire:model="empleado_password" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                            @error('empleado_password') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="fp-campo">
+                            <label for="usuarios-empleado-password-confirmation" class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
+                            <input id="usuarios-empleado-password-confirmation" type="password" wire:model="empleado_password_confirmation" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        </div>
+                    @endunless
                 </div>
-                <div class="flex gap-2">
-                    <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled">Guardar</button>
-                    <button type="button" wire:click="cancelarFormularioEmpleado" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
-                </div>
-            </form>
-        @endif
-    </div>
+            </div>
+            <x-slot:pie>
+                <button type="button" wire:click="cancelarFormularioEmpleado" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled" wire:target="guardarEmpleado,empleado_foto">
+                    <span wire:loading.remove wire:target="guardarEmpleado">Guardar</span>
+                    <span wire:loading wire:target="guardarEmpleado">Guardando…</span>
+                </button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
     @endif
 
     {{-- Revendedores --}}
     @if ($seccion === 'mayoristas')
-    <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl fp-formulario fp-aparecer">
-        @if (! $mostrandoFormularioRevendedor)
+    <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl fp-aparecer">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-sm font-semibold text-slate-700">Clientes mayoristas</h2>
                 <button type="button" wire:click="abrirFormularioAfiliarRevendedor"
@@ -603,7 +841,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-slate-500 border-b">
-                        <th class="py-2">Nombre</th>
+                        <th class="py-2" colspan="2">Nombre</th>
                         <th class="py-2">Teléfono</th>
                         <th class="py-2">Correo</th>
                         <th class="py-2">Estado</th>
@@ -613,8 +851,14 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                 </thead>
                 <tbody>
                     @foreach ($revendedores as $afiliacion)
-                        <tr class="border-b last:border-0">
-                            <td class="py-2">{{ $afiliacion->revendedor->nombre }}</td>
+                        <tr class="fp-fila-persona border-b last:border-0" wire:key="revendedor-{{ $afiliacion->id }}">
+                            <td class="w-11 py-2 pr-2"><x-ui.avatar :url="$afiliacion->revendedor->foto_url" :nombre="$afiliacion->revendedor->nombre" /></td>
+                            <td class="py-2">
+                                {{ $afiliacion->revendedor->nombre }}
+                                @if ($afiliacion->codigo_interno)
+                                    <span class="block font-mono text-xs text-fp-text-muted">{{ $afiliacion->codigo_interno }}</span>
+                                @endif
+                            </td>
                             <td class="py-2">{{ $afiliacion->revendedor->telefono }}</td>
                             <td class="py-2">
                                 {{ $afiliacion->revendedor->emailVisible() ?: '—' }}
@@ -664,67 +908,84 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                                         wire:confirm="¿Reactivar el acceso de {{ $afiliacion->revendedor->nombre }}?"
                                         class="ml-3 text-xs font-medium text-emerald-700 transition-opacity hover:opacity-75">Reactivar</button>
                                 @endif
+                                <button type="button" wire:click="pedirEliminar('revendedor', {{ $afiliacion->id }})"
+                                    class="ml-3 text-xs font-medium text-fp-danger transition-opacity hover:opacity-75" data-eliminar="revendedor-{{ $afiliacion->id }}">Eliminar</button>
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
-        @else
-            <form wire:submit="guardarRevendedor" class="space-y-4">
-                <h2 class="text-sm font-semibold text-slate-700">
-                    {{ $revendedorEditandoId ? 'Editar cliente mayorista' : 'Afiliar nuevo cliente mayorista' }}
-                </h2>
-                <div class="grid grid-cols-2 gap-4">
+    </div>
+
+    @if ($mostrandoFormularioRevendedor)
+        <x-panel.modal :titulo="$revendedorEditandoId ? 'Editar cliente mayorista' : 'Afiliar nuevo cliente mayorista'"
+            subtitulo="Sus datos de contacto y, si quieres, acceso a la app."
+            cerrar="cancelarFormularioRevendedor" formulario="guardarRevendedor" ancho="max-w-xl" class="fp-formulario" data-modal="revendedor">
+            <div class="space-y-4">
+                <div class="flex items-center gap-4" data-foto="revendedor">
+                    @if ($revendedor_foto && method_exists($revendedor_foto, 'isPreviewable') && $revendedor_foto->isPreviewable())
+                        <img src="{{ $revendedor_foto->temporaryUrl() }}" alt="Vista previa de la foto nueva" class="fp-foto-vista h-16 w-16 rounded-full object-cover ring-2 ring-fp-primary/30">
+                    @else
+                        <x-ui.avatar :url="$revendedor_foto_actual" :nombre="$revendedor_nombre" tamano="h-16 w-16 text-base" />
+                    @endif
+                    <div class="text-sm">
+                        <label for="usuarios-revendedor-foto" class="fp-btn fp-btn-secundario cursor-pointer focus-within:ring-2 focus-within:ring-fp-primary">
+                            <span wire:loading.remove wire:target="revendedor_foto">{{ $revendedor_foto_actual || $revendedor_foto ? 'Cambiar foto' : 'Subir foto' }}</span>
+                            <span wire:loading wire:target="revendedor_foto">Subiendo…</span>
+                            <input id="usuarios-revendedor-foto" type="file" wire:model="revendedor_foto" accept="image/jpeg,image/png,image/webp" class="sr-only">
+                        </label>
+                        @if ($revendedor_foto)
+                            <button type="button" wire:click="quitarFotoNuevaRevendedor" class="ml-2 text-xs font-medium text-slate-600 hover:text-fp-danger">Quitar</button>
+                        @endif
+                        <p class="mt-1 text-xs text-fp-text-muted">JPG, PNG o WebP, máximo 2 MB.</p>
+                        @error('revendedor_foto') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
                     <div class="fp-campo">
                         <label for="usuarios-revendedor-nombre" class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                        <input id="usuarios-revendedor-nombre" type="text" wire:model="revendedor_nombre" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                        @error('revendedor_nombre') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
+                        <input id="usuarios-revendedor-nombre" type="text" wire:model="revendedor_nombre" autofocus required class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        @error('revendedor_nombre') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
                     </div>
                     <div class="fp-campo">
                         <label for="usuarios-revendedor-codigo-interno" class="block text-sm font-medium text-slate-700 mb-1">Código interno</label>
-                        <input id="usuarios-revendedor-codigo-interno" type="text" wire:model="revendedor_codigo_interno" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        <input id="usuarios-revendedor-codigo-interno" type="text" value="{{ $revendedor_codigo_interno }}" readonly aria-readonly="true" aria-describedby="usuarios-revendedor-codigo-ayuda"
+                            class="w-full rounded-lg bg-slate-100 font-mono text-sm text-slate-600 shadow-sm" data-codigo-interno>
+                        <p id="usuarios-revendedor-codigo-ayuda" class="mt-1 text-xs text-fp-text-muted">
+                            {{ $revendedorEditandoId ? 'Lo asigna el sistema; no se edita.' : 'Se asigna al guardar.' }}
+                        </p>
                     </div>
                     <div class="fp-campo">
                         <label for="usuarios-revendedor-telefono" class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                        <input id="usuarios-revendedor-telefono" type="text" wire:model="revendedor_telefono" placeholder="+52 55 1234 5678" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        <input id="usuarios-revendedor-telefono" type="tel" wire:model="revendedor_telefono" placeholder="+52 55 1234 5678" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        @error('revendedor_telefono') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
                     </div>
                     <div class="fp-campo">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
+                        <label for="usuarios-revendedor-email" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
                         @if ($revendedor_cuenta_email_actual !== null)
-                            <input type="email" value="{{ $revendedor_cuenta_email_actual }}" disabled
+                            <input id="usuarios-revendedor-email" type="email" value="{{ $revendedor_cuenta_email_actual }}" readonly
                                 class="w-full rounded-lg bg-slate-100 text-sm text-slate-500 shadow-sm">
                             <p class="mt-1 text-xs text-fp-text-muted">Es su correo para entrar a la app.</p>
                         @else
-                            <input type="email" wire:model="revendedor_email" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                            <input id="usuarios-revendedor-email" type="email" wire:model.live.debounce.400ms="revendedor_email" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                            @error('revendedor_email') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
                         @endif
                     </div>
                 </div>
                 <div class="border-t border-slate-200 pt-4">
-                    <h3 class="text-sm font-semibold text-slate-700 mb-1">Acceso a la app</h3>
+                    <h4 class="text-sm font-semibold text-slate-700 mb-1">Acceso a la app</h4>
                     @if ($revendedor_cuenta_email_actual)
                         <p class="text-sm text-slate-600">
                             Ya tiene cuenta: <span class="font-medium">{{ $revendedor_cuenta_email_actual }}</span>
                         </p>
                     @else
-                        <p class="text-xs text-slate-500 mb-3">
-                            Opcional. Si le das un correo y una contraseña, podrá entrar a la app móvil con ellos.
+                        <p class="text-xs text-slate-500 mb-3" id="usuarios-revendedor-acceso-ayuda">
+                            Opcional. Usamos su correo de contacto (puedes cambiarlo). Al guardar se genera una contraseña temporal que verás una sola vez; se le pedirá cambiarla al entrar.
                         </p>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="col-span-2">
-                                <label for="usuarios-revendedor-acceso-email" class="block text-sm font-medium text-slate-700 mb-1">Correo para entrar a la app</label>
-                                <input id="usuarios-revendedor-acceso-email" type="email" wire:model="revendedor_acceso_email" autocomplete="off" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                                @error('revendedor_acceso_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
-                            </div>
-                            <div class="fp-campo">
-                                <label for="usuarios-revendedor-acceso-password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-                                <input id="usuarios-revendedor-acceso-password" type="password" wire:model="revendedor_acceso_password" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                                @error('revendedor_acceso_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
-                            </div>
-                            <div class="fp-campo">
-                                <label for="usuarios-revendedor-acceso-password-confirmation" class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-                                <input id="usuarios-revendedor-acceso-password-confirmation" type="password" wire:model="revendedor_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                            </div>
-                        </div>
+                        <label for="usuarios-revendedor-acceso-email" class="block text-sm font-medium text-slate-700 mb-1">Correo para entrar a la app</label>
+                        <input id="usuarios-revendedor-acceso-email" type="email" wire:model.live.blur="revendedor_acceso_email" autocomplete="off"
+                            aria-describedby="usuarios-revendedor-acceso-ayuda" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        @error('revendedor_acceso_email') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
                     @endif
                 </div>
                 @if ($revendedorEditandoId)
@@ -737,12 +998,37 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                         </select>
                     </div>
                 @endif
-                <div class="flex gap-2">
-                    <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled">Guardar</button>
-                    <button type="button" wire:click="cancelarFormularioRevendedor" class="text-slate-600 px-4 py-2 rounded-md text-sm font-medium">Cancelar</button>
+            </div>
+            <x-slot:pie>
+                <button type="button" wire:click="cancelarFormularioRevendedor" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled" wire:target="guardarRevendedor,revendedor_foto">
+                    <span wire:loading.remove wire:target="guardarRevendedor">Guardar</span>
+                    <span wire:loading wire:target="guardarRevendedor">Guardando…</span>
+                </button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
+    @endif
+
+    @if ($porEliminar)
+        <x-panel.modal titulo="Eliminar definitivamente" cerrar="cancelarEliminar" ancho="max-w-md" data-modal="eliminar">
+            <p class="text-sm text-slate-700">
+                Vas a borrar a <span class="font-semibold">{{ $porEliminar['nombre'] }}</span> para siempre.
+                No se puede deshacer. Si tiene pedidos u otros movimientos no se podrá eliminar: en ese caso dale de baja.
+            </p>
+            @if ($errorEliminar)
+                <div class="fp-emerger mt-4 rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-badge-danger-fg" role="alert" data-error-eliminar>
+                    {{ $errorEliminar }}
                 </div>
-            </form>
-        @endif
-    </div>
+            @endif
+            <x-slot:pie>
+                <button type="button" wire:click="cancelarEliminar" class="fp-btn fp-btn-secundario" autofocus>Cancelar</button>
+                <button type="button" wire:click="eliminarDefinitivamente" class="fp-btn fp-btn-peligro"
+                    wire:loading.attr="disabled" wire:target="eliminarDefinitivamente" @disabled($errorEliminar)>
+                    <span wire:loading.remove wire:target="eliminarDefinitivamente">Eliminar definitivamente</span>
+                    <span wire:loading wire:target="eliminarDefinitivamente">Eliminando…</span>
+                </button>
+            </x-slot:pie>
+        </x-panel.modal>
     @endif
 </div>

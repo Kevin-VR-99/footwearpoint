@@ -892,6 +892,40 @@ La nueva sigue las mismas reglas que el cambio por enlace: mínimo 8 caracteres 
 - `errors.password_actual` = `"La contraseña actual no es correcta."`
 - `errors.password` si es corta o no coincide la confirmación.
 
+### Campos nuevos en el objeto `usuario` (perfiles de revendedor)
+
+`GET /api/perfil`, `PATCH /api/perfil` y los tres endpoints de abajo regresan además:
+
+- `foto_url`: URL pública de la foto de perfil, o `null`.
+- `cambios_pendientes`: objeto con lo que falta confirmar por correo, p. ej. `{ "email": "nuevo@gmail.com" }` o `{ "telefono": "9611234567" }`. Vacío si no hay nada pendiente. Mientras no se confirma, `email` y `telefono` siguen siendo los actuales.
+
+**Cambio en `PATCH /api/perfil` para clientes mayoristas:** ya no cambian `telefono` aquí. Si lo mandan distinto al actual responde **422** en `errors.telefono` pidiendo usar `POST /api/perfil/telefono`. El nombre se sigue editando igual.
+
+### POST `/api/perfil/foto`
+
+**Entrada:** `multipart/form-data` con el archivo en `foto` (jpg, jpeg, png o webp; máximo 2 MB). Cualquier usuario con sesión puede cambiar su foto.
+
+**Salida (200):** `{ "data": { ...usuario... }, "message": "Foto actualizada." }`
+**Error (422):** `errors.foto`.
+
+### POST `/api/perfil/correo` (solo cliente mayorista)
+
+**Entrada:** `{ "email": "nuevo@gmail.com" }`
+
+No cambia el correo al momento: manda un enlace firmado (vence en 60 minutos) al correo **nuevo** y un aviso al correo **actual**. El cambio se aplica cuando se abre el enlace; la página de confirmación ofrece abrir la app (`https://footwearpoint.app/abrir/perfil`) o descargarla.
+
+**Salida (200):** `{ "data": { ...usuario con cambios_pendientes.email... }, "message": "..." }`
+**Errores:** 422 en `errors.email` (inválido, es el mismo, ya lo usa otra cuenta). 403 si no es cliente mayorista.
+
+### POST `/api/perfil/telefono` (solo cliente mayorista)
+
+**Entrada:** `{ "telefono": "9611234567" }` (7 a 30 caracteres: números, `+`, espacios, guiones o paréntesis).
+
+Manda un enlace firmado (60 minutos) al correo actual; el teléfono cambia al abrirlo.
+
+**Salida (200):** `{ "data": { ...usuario con cambios_pendientes.telefono... }, "message": "..." }`
+**Errores:** 422 en `errors.telefono`; 403 si no es cliente mayorista.
+
 ---
 
 ## 8. Marketplace (directorio público)

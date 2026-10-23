@@ -77,8 +77,6 @@ class AfiliarConCorreoCaidoTest extends TestCase
             ->set('revendedor_nombre', 'Zapatería del Centro')
             ->set('revendedor_telefono', '9611234567')
             ->set('revendedor_acceso_email', $correo)
-            ->set('revendedor_acceso_password', 'ClaveDePrueba1')
-            ->set('revendedor_acceso_password_confirmation', 'ClaveDePrueba1')
             ->call('guardarRevendedor')
             ->assertHasNoErrors();
 
@@ -111,8 +109,6 @@ class AfiliarConCorreoCaidoTest extends TestCase
             ->call('abrirFormularioAfiliarRevendedor')
             ->set('revendedor_nombre', 'Calzado La Esperanza')
             ->set('revendedor_acceso_email', $correo)
-            ->set('revendedor_acceso_password', 'ClaveDePrueba1')
-            ->set('revendedor_acceso_password_confirmation', 'ClaveDePrueba1')
             ->call('guardarRevendedor')
             ->assertHasNoErrors();
 
