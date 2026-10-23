@@ -7,13 +7,14 @@ use App\Models\Auditoria;
 use App\Models\ImportacionCatalogo;
 use App\Models\ProductoImportadoStaging;
 use App\Models\Usuario;
-use App\Services\Catalogo\SubirCatalogoParaImportarAction;
 use App\Services\Ia\ContarPaginasPdf;
 use App\Services\Ia\ExtraerProductosDelCatalogoAction;
 use App\Services\Ia\LectorDeCatalogos;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
+use Database\Seeders\AdminGeneralSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\MaxAttemptsExceededException;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -48,8 +49,8 @@ class ExtraerProductosConIaTest extends TestCase
         config(['ia.paginas_por_bloque' => 10]);
 
         $this->lector = new LectorDeCatalogosFalso([
-            3  => ['marca' => 'Impuls', 'modelo' => '355-37', 'color' => 'Miel', 'precio_publico' => 699.0, 'dudosos' => []],
-            7  => ['marca' => null, 'modelo' => '355-38', 'color' => 'Negro', 'precio_publico' => 629.0, 'dudosos' => ['marca']],
+            3 => ['marca' => 'Impuls', 'modelo' => '355-37', 'color' => 'Miel', 'precio_publico' => 699.0, 'dudosos' => []],
+            7 => ['marca' => null, 'modelo' => '355-38', 'color' => 'Negro', 'precio_publico' => 629.0, 'dudosos' => ['marca']],
             14 => ['marca' => 'Impuls', 'modelo' => '355-39', 'color' => 'Hueso', 'precio_publico' => 749.0, 'dudosos' => []],
             23 => ['marca' => 'Impuls', 'modelo' => '355-40', 'color' => 'Azul', 'precio_publico' => 799.0, 'dudosos' => ['precio_publico']],
         ]);
@@ -59,7 +60,7 @@ class ExtraerProductosConIaTest extends TestCase
 
     private function adminGeneral(): Usuario
     {
-        return Usuario::where('email', \Database\Seeders\AdminGeneralSeeder::EMAIL)->firstOrFail();
+        return Usuario::where('email', AdminGeneralSeeder::EMAIL)->firstOrFail();
     }
 
     /** Un PDF con el número de páginas que se le pida, como los de verdad. */
@@ -131,6 +132,8 @@ class ExtraerProductosConIaTest extends TestCase
 
         $importacion->refresh();
         $this->assertSame(25, (int) $importacion->paginas);
+        $this->assertSame(25, (int) $importacion->paginas_leidas);
+        $this->assertNull($importacion->leyendo_hasta);
         // Nadie publica nada: queda esperando a una persona.
         $this->assertSame('requiere_revision', $importacion->estado);
         $this->assertSame(4, $importacion->productosStaging()->count());
@@ -381,7 +384,7 @@ class ExtraerProductosConIaTest extends TestCase
         $importacion->update(['estado' => 'procesando']);
 
         (new ProcesarCatalogoConIa($importacion->id))
-            ->failed(new \Illuminate\Queue\MaxAttemptsExceededException('attempted too many times'));
+            ->failed(new MaxAttemptsExceededException('attempted too many times'));
 
         $importacion->refresh();
         $this->assertSame('error', $importacion->estado);

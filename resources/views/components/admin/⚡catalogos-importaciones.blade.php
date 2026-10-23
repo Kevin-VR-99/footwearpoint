@@ -116,7 +116,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         return [
             'archivo.required'  => 'Elige el archivo del catálogo.',
             'archivo.mimes'     => 'Solo se aceptan archivos PDF.',
-            'archivo.max'       => 'El archivo pesa más de 40 MB. Si el catálogo es más grande, divídelo.',
+            'archivo.max'       => 'El archivo pesa más de 250 MB. Si el catálogo es más grande, divídelo.',
             'linea_id.required' => 'Elige a qué línea pertenece el catálogo.',
             'linea_id.exists'   => 'Esa línea no existe.',
             'campana_id.exists' => 'Esa temporada no existe.',
@@ -169,7 +169,13 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         // una cuesta dinero y duplicaria los productos).
         $tomada = ImportacionCatalogo::where('id', $importacion->id)
             ->whereIn('estado', ['cargado', 'error'])
-            ->update(['estado' => 'procesando', 'mensaje_error' => null, 'procesamiento_iniciado_at' => now()]);
+            ->update([
+                'estado' => 'procesando',
+                'mensaje_error' => null,
+                'procesamiento_iniciado_at' => now(),
+                'paginas_leidas' => 0,
+                'leyendo_hasta' => null,
+            ]);
 
         if ($tomada !== 1) {
             $this->mensaje = 'Ese catalogo ya se esta procesando o ya se proceso.';
@@ -419,7 +425,13 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         <x-panel.alerta :tipo="$esError ? 'error' : 'exito'">{{ $mensaje }}</x-panel.alerta>
     @endif
 
-    <form wire:submit="subir" class="fp-formulario fp-aparecer p-5 sm:p-6 space-y-4 max-w-2xl">
+    <form wire:submit="subir" class="fp-formulario fp-aparecer p-5 sm:p-6 space-y-4 max-w-2xl"
+        x-data="{ avance: 0, subiendo: false }"
+        x-on:livewire-upload-start="subiendo = true; avance = 0"
+        x-on:livewire-upload-progress="avance = $event.detail.progress"
+        x-on:livewire-upload-finish="subiendo = false"
+        x-on:livewire-upload-error="subiendo = false"
+        x-on:livewire-upload-cancel="subiendo = false">
         <div class="grid gap-4 sm:grid-cols-2">
             <div class="fp-campo">
                 <label for="catalogos-importaciones-linea-id" class="block text-sm font-medium text-slate-700 mb-1">Línea</label>
@@ -449,10 +461,15 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         <div class="fp-campo">
             <label for="catalogos-importaciones-archivo" class="block text-sm font-medium text-slate-700 mb-1">Archivo del catálogo</label>
             <input id="catalogos-importaciones-archivo" type="file" wire:model="archivo" accept=".pdf,application/pdf" class="w-full text-sm">
-            <p class="mt-1 text-xs text-slate-500">PDF. Hasta 40 MB.</p>
+            <p class="mt-1 text-xs text-slate-500">PDF. Hasta 250 MB.</p>
             @error('archivo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
 
-            <div wire:loading wire:target="archivo" class="mt-2 text-xs text-slate-500">Subiendo el archivo…</div>
+            <div x-show="subiendo" x-cloak class="mt-2" data-avance-subida>
+                <div class="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div class="h-full rounded-full bg-fp-primary" :style="`width: ${avance}%`"></div>
+                </div>
+                <p class="mt-1 text-xs text-slate-500" x-text="`Subiendo el archivo… ${avance}%`"></p>
+            </div>
         </div>
 
         <button type="submit" wire:loading.attr="disabled"
@@ -473,10 +490,23 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         <h2 class="text-sm font-semibold text-slate-700 mb-3">Catálogos subidos</h2>
 
         @if ($this->hayTrabajo)
-            <p class="mb-3 flex items-start gap-2 rounded-xl bg-fp-badge-info-bg px-3 py-2 text-sm text-fp-badge-info-fg"><span class="fp-insignia-viva mt-1.5 inline-flex"><span class="fp-insignia-punto" aria-hidden="true"></span></span><span>
-                La IA está leyendo un catálogo. Va de {{ config('ia.paginas_por_bloque') }} en
-                {{ config('ia.paginas_por_bloque') }} páginas y puede tardar varios minutos; esta página se actualiza sola.
-            </span></p>
+            @foreach ($this->importaciones->where('estado', 'procesando') as $enCurso)
+                <div class="mb-3 rounded-xl px-3 py-2 text-sm {{ $enCurso->pareceTrabada() ? 'bg-fp-badge-danger-bg text-fp-badge-danger-fg' : 'bg-fp-badge-info-bg text-fp-badge-info-fg' }}" data-avance-lectura>
+                    <p class="flex items-start gap-2">
+                        <span class="fp-insignia-viva mt-1.5 inline-flex"><span class="fp-insignia-punto" aria-hidden="true"></span></span>
+                        <span>{{ $enCurso->textoDeAvance() }} Esta página se actualiza sola.</span>
+                    </p>
+                    <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/70"
+                        role="progressbar"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        aria-valuenow="{{ $enCurso->porcentajeDeAvance() }}"
+                        aria-label="Avance de la lectura del catálogo {{ $enCurso->id }}">
+                        <div class="h-full rounded-full {{ $enCurso->pareceTrabada() ? 'bg-fp-danger' : 'bg-fp-primary' }}"
+                            style="width: {{ $enCurso->porcentajeDeAvance() }}%"></div>
+                    </div>
+                </div>
+            @endforeach
         @endif
 
         @if ($this->importaciones->isEmpty())
@@ -514,7 +544,13 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                                     <p class="mt-1 text-xs text-fp-danger">{{ $importacion->mensaje_error }}</p>
                                 @endif
                             </td>
-                            <td class="px-4 py-3">{{ $importacion->paginas ?? '—' }}</td>
+                            <td class="px-4 py-3">
+                                @if ($importacion->estado === 'procesando' && $importacion->paginas)
+                                    {{ (int) $importacion->paginas_leidas }} / {{ $importacion->paginas }}
+                                @else
+                                    {{ $importacion->paginas ?? '—' }}
+                                @endif
+                            </td>
                             <td class="px-4 py-3">{{ $importacion->productos_staging_count ?: '—' }}</td>
                             <td class="px-4 py-3">{{ $importacion->costo_usd ? '$'.number_format((float) $importacion->costo_usd, 2).' USD' : '—' }}</td>
                             <td class="px-4 py-3">{{ $importacion->iniciadaPor?->nombreVisible() }}</td>

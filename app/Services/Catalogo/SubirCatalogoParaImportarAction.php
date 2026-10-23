@@ -31,8 +31,8 @@ use RuntimeException;
  */
 class SubirCatalogoParaImportarAction
 {
-    /** Tamano maximo en kilobytes. Los catalogos reales pesan unos 28 MB. */
-    public const MAXIMO_KB = 40960;
+    /** Tamaño máximo en kilobytes. 250 MB; un catálogo de fábrica anda en unos 28. */
+    public const MAXIMO_KB = 250 * 1024;
 
     /**
      * Lo que se acepta. El enum de la tabla tambien contempla imagenes, pero

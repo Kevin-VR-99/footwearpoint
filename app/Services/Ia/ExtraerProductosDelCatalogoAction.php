@@ -34,8 +34,7 @@ class ExtraerProductosDelCatalogoAction
         private RegistrarAuditoriaAction $auditoria,
         private LimitesDeGastoIa $limites,
         private ProponerRecortesDeFotosAction $recortes,
-    ) {
-    }
+    ) {}
 
     public function ejecutar(ImportacionCatalogo $importacion): void
     {
@@ -48,6 +47,7 @@ class ExtraerProductosDelCatalogoAction
                 throw new RuntimeException($motivo);
             }
 
+            $importacion->touch();
             $contenido = $this->contenidoDelArchivo($importacion);
             $paginas = $this->contador->contar($contenido);
 
@@ -61,7 +61,13 @@ class ExtraerProductosDelCatalogoAction
                 throw new RuntimeException($motivo);
             }
 
-            $importacion->update(['estado' => 'procesando', 'paginas' => $paginas, 'mensaje_error' => null]);
+            $importacion->update([
+                'estado' => 'procesando',
+                'paginas' => $paginas,
+                'paginas_leidas' => 0,
+                'leyendo_hasta' => null,
+                'mensaje_error' => null,
+            ]);
 
             $archivoIa = $this->archivoEnLaIa($importacion, $contenido);
 
@@ -70,8 +76,8 @@ class ExtraerProductosDelCatalogoAction
             // desaparecería de la cuenta.
             $gastoPrevio = [
                 'entrada' => (int) $importacion->tokens_entrada,
-                'salida'  => (int) $importacion->tokens_salida,
-                'costo'   => (float) $importacion->costo_usd,
+                'salida' => (int) $importacion->tokens_salida,
+                'costo' => (float) $importacion->costo_usd,
             ];
 
             $uso = new UsoDeTokens;
@@ -88,6 +94,11 @@ class ExtraerProductosDelCatalogoAction
             // dibujando páginas no puede estropearlo. Si no hay pdftoppm, o
             // un recorte sale mal, los productos quedan sin foto y se suben a
             // mano desde el catálogo maestro.
+            $importacion->update([
+                'paginas_leidas' => $paginas,
+                'leyendo_hasta' => null,
+            ]);
+
             try {
                 $this->recortes->ejecutar($importacion, $contenido);
             } catch (Throwable $e) {
@@ -104,7 +115,7 @@ class ExtraerProductosDelCatalogoAction
                 entidadTipo: 'importacion_catalogo',
                 entidadId: $importacion->id,
                 datosNuevos: [
-                    'paginas'   => $paginas,
+                    'paginas' => $paginas,
                     'productos' => $importacion->productosStaging()->count(),
                     'costo_usd' => (float) $importacion->costo_usd,
                 ],
@@ -137,6 +148,10 @@ class ExtraerProductosDelCatalogoAction
      */
     private function leerRango(ImportacionCatalogo $importacion, string $archivoIa, int $desde, int $hasta, UsoDeTokens $uso, array $gastoPrevio): UsoDeTokens
     {
+        // Se anota al empezar: mientras la petición está en curso no hay otro
+        // escrito, y la pantalla usa esta hora para saber si se trabó.
+        $importacion->update(['leyendo_hasta' => $hasta]);
+
         try {
             $bloque = $this->lector->leerBloque($archivoIa, $desde, $hasta);
         } catch (RespuestaCortadaPorTokens $e) {
@@ -161,6 +176,10 @@ class ExtraerProductosDelCatalogoAction
         // de verdad y, si truena, queda registrado lo que ya se gastó.
         $uso = $uso->mas($bloque->uso);
         $this->anotarGasto($importacion, $uso, $gastoPrevio);
+        $importacion->update([
+            'paginas_leidas' => max((int) $importacion->paginas_leidas, $hasta),
+            'leyendo_hasta' => null,
+        ]);
 
         return $uso;
     }
@@ -230,10 +249,10 @@ class ExtraerProductosDelCatalogoAction
             unset($producto['dudosos']);
 
             ProductoImportadoStaging::create([
-                'importacion_id'  => $importacion->id,
+                'importacion_id' => $importacion->id,
                 'datos_extraidos' => $producto,
-                'campos_dudosos'  => is_array($dudosos) ? array_values($dudosos) : [],
-                'estado'          => 'pendiente',
+                'campos_dudosos' => is_array($dudosos) ? array_values($dudosos) : [],
+                'estado' => 'pendiente',
             ]);
         }
     }
@@ -242,11 +261,11 @@ class ExtraerProductosDelCatalogoAction
     private function anotarGasto(ImportacionCatalogo $importacion, UsoDeTokens $uso, array $gastoPrevio): void
     {
         $importacion->update([
-            'proveedor_ia'    => 'anthropic',
-            'modelo_ia'       => (string) config('ia.modelo'),
-            'tokens_entrada'  => $gastoPrevio['entrada'] + $uso->totalDeEntrada(),
-            'tokens_salida'   => $gastoPrevio['salida'] + $uso->salida,
-            'costo_usd'       => round($gastoPrevio['costo'] + $uso->costo(), 4),
+            'proveedor_ia' => 'anthropic',
+            'modelo_ia' => (string) config('ia.modelo'),
+            'tokens_entrada' => $gastoPrevio['entrada'] + $uso->totalDeEntrada(),
+            'tokens_salida' => $gastoPrevio['salida'] + $uso->salida,
+            'costo_usd' => round($gastoPrevio['costo'] + $uso->costo(), 4),
         ]);
     }
 

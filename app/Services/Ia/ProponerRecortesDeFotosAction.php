@@ -4,6 +4,8 @@ namespace App\Services\Ia;
 
 use App\Models\ImportacionCatalogo;
 use App\Models\ProductoImportadoStaging;
+use Illuminate\Http\File;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -49,14 +51,15 @@ class ProponerRecortesDeFotosAction
     public function __construct(
         private RasterizarPaginaPdf $rasterizador,
         private RecortarFotoDelCatalogo $recortador,
-    ) {
-    }
+    ) {}
 
     /**
      * @param  string  $contenido  el PDF, tal como se leyó del bucket
      */
     public function ejecutar(ImportacionCatalogo $importacion, string $contenido): void
     {
+        $importacion->touch();
+
         if (! $this->rasterizador->disponible()) {
             // En local pasa siempre: XAMPP no trae poppler. No es un error,
             // y decirlo ayuda a entender por qué no hubo fotos.
@@ -76,6 +79,7 @@ class ProponerRecortesDeFotosAction
         try {
             // Por página, para dibujarla UNA vez aunque tenga tres colores.
             foreach ($this->porPagina($importacion) as $pagina => $productos) {
+                $importacion->touch();
                 $this->proponerDeUnaPagina($pdf, (int) $pagina, $productos);
             }
         } finally {
@@ -84,7 +88,7 @@ class ProponerRecortesDeFotosAction
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, ProductoImportadoStaging>  $productos
+     * @param  Collection<int, ProductoImportadoStaging>  $productos
      */
     private function proponerDeUnaPagina(string $pdf, int $pagina, $productos): void
     {
@@ -114,7 +118,7 @@ class ProponerRecortesDeFotosAction
         }
 
         try {
-            $ruta = Storage::disk('s3')->putFile(self::CARPETA, new \Illuminate\Http\File($recorte));
+            $ruta = Storage::disk('s3')->putFile(self::CARPETA, new File($recorte));
 
             if ($ruta === false) {
                 // El disco s3 esta con 'throw' => false: una subida fallida
@@ -127,7 +131,7 @@ class ProponerRecortesDeFotosAction
 
             $producto->update([
                 'foto_propuesta_url' => Storage::disk('s3')->url($ruta),
-                'foto_estado'        => 'propuesta',
+                'foto_estado' => 'propuesta',
             ]);
         } finally {
             @unlink($recorte);
@@ -150,7 +154,7 @@ class ProponerRecortesDeFotosAction
         $producto->update(['campos_dudosos' => array_values($dudosos)]);
     }
 
-    /** @return \Illuminate\Support\Collection<int, \Illuminate\Support\Collection<int, ProductoImportadoStaging>> */
+    /** @return Collection<int, Collection<int, ProductoImportadoStaging>> */
     private function porPagina(ImportacionCatalogo $importacion)
     {
         return ProductoImportadoStaging::where('importacion_id', $importacion->id)

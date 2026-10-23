@@ -146,12 +146,12 @@ return [
         // antes de que el codigo los viera.
         //
         // Este es el tope DURO, el que evita que alguien llene el disco. Se
-        // deja por encima del limite real (40 MB, en la pantalla) a
+        // deja por encima del limite real (250 MB, en la pantalla) a
         // proposito: el aviso de Livewire sale en ingles y diciendo
         // "archivo", asi que conviene que el que vea la gente sea el de la
         // pantalla, que esta en espanol. Que tipo de archivo se acepta
         // tambien lo decide la pantalla, no esto.
-        'rules' => ['required', 'file', 'max:51200'], // 50 MB
+        'rules' => ['required', 'file', 'max:276480'], // 270 MB
         'directory' => null,                                  // Example: 'tmp'                     | Default: 'livewire-tmp'
         'middleware' => null,                                 // Example: 'throttle:5,1'            | Default: 'throttle:60,1'
         'preview_mimes' => [                                  // Supported file types for temporary pre-signed file URLs...

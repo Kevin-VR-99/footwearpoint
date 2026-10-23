@@ -166,7 +166,7 @@ class SubirCatalogoImportacionTest extends TestCase
         // Y el aviso se entiende, en espanol: el tope duro de Livewire queda
         // mas arriba justamente para que el que salga sea este.
         $this->assertStringContainsString(
-            'pesa más de 40 MB',
+            'pesa más de 250 MB',
             $componente->errors()->first('archivo')
         );
 
@@ -419,5 +419,42 @@ class SubirCatalogoImportacionTest extends TestCase
             ->assertHasErrors(['archivo' => 'mimes']);
 
         $this->assertSame(0, ImportacionCatalogo::count());
+    }
+
+    public function test_la_pantalla_acepta_hasta_250_mb_y_muestra_el_avance_de_la_lectura(): void
+    {
+        $this->actingAs($this->adminGeneral());
+
+        $html = Livewire::test('admin.catalogos-importaciones')->html();
+        $this->assertStringContainsString('Hasta 250 MB', $html);
+        $this->assertStringContainsString('livewire-upload-progress', $html);
+
+        $importacion = ImportacionCatalogo::create([
+            'linea_id' => 1,
+            'archivo_url' => 'catalogos-ia/2026/10/en-curso.pdf',
+            'tipo_archivo' => 'pdf',
+            'estado' => 'procesando',
+            'paginas' => 76,
+            'paginas_leidas' => 20,
+            'leyendo_hasta' => 30,
+            'iniciada_por_usuario_id' => $this->adminGeneral()->id,
+        ]);
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->assertSee('Van 20 de 76 páginas')
+            ->assertSee('Faltan 56')
+            ->assertSee('Leyendo hasta la página 30')
+            ->assertSee('20 / 76')
+            ->assertSee('width: 26%')
+            ->assertDontSee('Puede haberse trabado');
+
+        $limite = max(60, (int) config('ia.segundos_por_peticion')) + 180;
+        ImportacionCatalogo::where('id', $importacion->id)->update([
+            'updated_at' => now()->subSeconds($limite),
+        ]);
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->assertSee('Puede haberse trabado')
+            ->assertSee('no la reintentes');
     }
 }
