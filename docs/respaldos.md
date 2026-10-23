@@ -59,7 +59,7 @@ Además, el servicio necesita las mismas variables de la aplicación para arranc
 1. En el proyecto: **New** → **GitHub Repo** → `Kevin-VR-99/footwearpoint` (rama `main`). Nombre sugerido: `footwearpoint-respaldo`.
 2. **Settings → Deploy → Custom Start Command:** `php artisan respaldo:base-de-datos`
 3. **Settings → Cron Schedule:** `0 9 * * *` (09:00 UTC = 03:00 en Ciudad de México). Railway corre el comando a esa hora y el contenedor termina al acabar; si una ejecución sigue corriendo, la siguiente se salta.
-4. **Cliente de MySQL en la imagen** (solo en este servicio): agregar la variable de build del constructor que instala paquetes del sistema, por ejemplo `RAILPACK_DEPLOY_APT_PACKAGES=default-mysql-client` (Railpack) o `NIXPACKS_PKGS=mysql80` (Nixpacks), según el constructor que use el servicio. Comprobar con `railway ssh --service footwearpoint-respaldo -- mysqldump --version` o en el log de la primera ejecución.
+4. **Cliente de MySQL en la imagen**: lo instala `railpack.json` (`deploy.aptPackages` incluye `default-mysql-client`). Como el repo tiene `railpack.json`, la variable `RAILPACK_DEPLOY_APT_PACKAGES` del servicio no basta. Comprobar en el log de build (`install apt packages: ... default-mysql-client`) o con `railway ssh --service footwearpoint-respaldo -- mysqldump --version`.
 5. Sin dominio público ni puerto: no atiende peticiones.
 6. Variables: las de la tabla anterior más las de la aplicación (ver arriba).
 7. Probar una vez a mano (**Deploy** del servicio) y revisar el log: debe decir `Respaldo guardado: respaldos/AAAA/MM/footwearpoint-....sql.gz`.
