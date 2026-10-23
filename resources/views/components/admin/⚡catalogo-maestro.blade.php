@@ -618,9 +618,17 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     }
 
     /** @return array<int, string> producto_campana_id => url */
+    /**
+     * Las fotos de lo que SE ESTÁ VIENDO, no de las últimas 50.
+     *
+     * La tabla dibuja productosFiltrados; si esto se queda con productos, al
+     * buscar algo que no esté entre las últimas 50 publicaciones el renglón
+     * sale sin miniatura aunque el producto sí tenga foto. Pasó con los DÚO
+     * del Cklass: la ficha enseñaba la foto y la lista no.
+     */
     public function getFotosProperty(): array
     {
-        return app(ImagenDeProducto::class)->porProductoCampana($this->productos->pluck('id'));
+        return app(ImagenDeProducto::class)->porProductoCampana($this->productosFiltrados->pluck('id'));
     }
 
     // ------------------------------------------------------------------
