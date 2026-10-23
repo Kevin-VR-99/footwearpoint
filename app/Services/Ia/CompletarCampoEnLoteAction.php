@@ -36,16 +36,23 @@ class CompletarCampoEnLoteAction
             return 0;
         }
 
+        $esBooleano = CamposDelProductoImportado::esBooleano($campo);
+        $valorBooleano = in_array(mb_strtolower($valor), ['1', 'si', 'sí', 'true'], true);
+
+        if ($esBooleano && ! in_array(mb_strtolower($valor), ['1', '0', 'si', 'sí', 'no', 'true', 'false'], true)) {
+            throw new InvalidArgumentException("El campo {$campo} solo acepta sí o no.");
+        }
+
         $rellenados = 0;
 
         foreach ($importacion->productosStaging()->where('estado', '!=', 'descartado')->get() as $fila) {
             $datos = $fila->datos_extraidos ?? [];
 
-            if (($datos[$campo] ?? null) !== null && trim((string) $datos[$campo]) !== '') {
+            if (! $this->estaVacio($datos[$campo] ?? null, $campo)) {
                 continue;
             }
 
-            $datos[$campo] = $valor;
+            $datos[$campo] = $esBooleano ? $valorBooleano : $valor;
 
             $fila->update([
                 'datos_extraidos' => $datos,
@@ -67,5 +74,24 @@ class CompletarCampoEnLoteAction
         }
 
         return $rellenados;
+    }
+
+    /**
+     * Qué cuenta como vacío.
+     *
+     * En un booleano, false NO es vacío: es una respuesta. El catálogo que
+     * dice "solo enteros" ya contestó, y rellenar en lote no debe pisarlo,
+     * igual que no pisa una marca que la IA sí leyó. Solo null está vacío.
+     *
+     * (La comprobación vieja hacía trim((string) false) = "" y lo trataba
+     * como hueco, así que habría pisado esas lecturas.)
+     */
+    private function estaVacio(mixed $valor, string $campo): bool
+    {
+        if (CamposDelProductoImportado::esBooleano($campo)) {
+            return $valor === null;
+        }
+
+        return $valor === null || trim((string) $valor) === '';
     }
 }
