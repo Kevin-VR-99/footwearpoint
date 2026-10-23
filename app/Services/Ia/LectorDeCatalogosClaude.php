@@ -51,7 +51,14 @@ class LectorDeCatalogosClaude implements LectorDeCatalogos
         $respuesta = $this->claude->messages->create(
             model: (string) config('ia.modelo'),
             maxTokens: (int) config('ia.max_tokens_por_bloque'),
-            outputConfig: ['format' => ['type' => 'json_schema', 'schema' => self::esquema()]],
+            // El "effort" manda cuanto piensa antes de contestar. En Opus 5.5
+            // el pensamiento no se puede apagar y se cobra como salida, asi
+            // que esto es lo unico que mueve esa parte de la factura. Ver
+            // config/ia.php para por que sigue en medium.
+            outputConfig: [
+                'format' => ['type' => 'json_schema', 'schema' => self::esquema()],
+                'effort' => (string) config('ia.effort'),
+            ],
             messages: [[
                 'role' => 'user',
                 'content' => [

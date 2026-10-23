@@ -26,6 +26,23 @@ return [
     'max_tokens_por_bloque' => (int) env('IA_MAX_TOKENS_BLOQUE', 16000),
 
     /*
+    | Cuanto piensa el modelo antes de contestar. En Opus 5.5 el pensamiento
+    | NO se puede apagar y se cobra como salida; esta es la unica palanca.
+    |
+    | Importa mas de lo que parece: medido con el catalogo Cklass, de los 248
+    | tokens de salida por producto, unos 160 son pensamiento. Dos tercios de
+    | la salida, y la salida es casi la mitad de lo que cuesta un catalogo.
+    |
+    | Se queda en "medium" (lo que el modelo usa por omision) hasta que una
+    | medicion diga que "low" no empeora los datos. Leer un catalogo es
+    | extraccion, que suele aguantar poco pensamiento, pero el recuadro de la
+    | foto puede ser otra cosa: eso se mide, no se supone.
+    |
+    | Valores: low, medium, high, xhigh, max.
+    */
+    'effort' => env('IA_EFFORT', 'medium'),
+
+    /*
     | Cuanto vive el archivo subido a Anthropic. Al terminar se borra, pero
     | esto es el respaldo por si el proceso muere a la mitad. El minimo que
     | acepta el API es una hora.
