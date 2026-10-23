@@ -100,6 +100,14 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
     public string $errorMsg = '';
 
+    /**
+     * Qué alta está abierta en modal ('linea', 'marca', 'temporada',
+     * 'producto', 'color' o ''). Crear y editar se hacen en la misma
+     * pantalla: antes el formulario de edición salía arriba de todo y había
+     * que subir hasta él, lo que se sentía como ir a otra página.
+     */
+    public string $creando = '';
+
     private const TIPOS = ['linea', 'marca', 'temporada', 'producto', 'color'];
 
     public function mount(): void
@@ -131,6 +139,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         $this->autorizar();
         $this->errorMsg = '';
         $this->resetValidation();
+        $this->creando = '';
 
         try {
             $registro = $this->buscar($tipo, $id);
@@ -149,6 +158,23 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         $this->editar_modelo = $tipo === 'producto' ? (string) $registro->modelo : '';
         $this->editar_estado = $tipo === 'temporada' ? (string) $registro->estado : '';
         $this->editar_hex = $tipo === 'color' ? (string) $registro->codigo_hex : '';
+    }
+
+    public function abrirCrear(string $tipo): void
+    {
+        $this->autorizar();
+        abort_unless(in_array($tipo, self::TIPOS, true), 404);
+
+        $this->cancelarEdicion();
+        $this->errorMsg = '';
+        $this->resetValidation();
+        $this->creando = $tipo;
+    }
+
+    public function cerrarCrear(): void
+    {
+        $this->creando = '';
+        $this->resetValidation();
     }
 
     public function cancelarEdicion(): void
@@ -370,6 +396,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         ]);
 
         $this->reset('linea_nombre', 'linea_descripcion');
+        $this->cerrarCrear();
         $this->dispatch('guardado', mensaje: 'Línea creada.');
     }
 
@@ -392,6 +419,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         ]);
 
         $this->reset('marca_nombre', 'marca_descripcion');
+        $this->cerrarCrear();
         $this->dispatch('guardado', mensaje: 'Marca creada.');
     }
 
@@ -416,6 +444,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
         $this->reset('temporada_linea_id', 'temporada_nombre');
         $this->temporada_estado = 'borrador';
+        $this->cerrarCrear();
         $this->dispatch('guardado', mensaje: 'Temporada creada.');
     }
 
@@ -467,6 +496,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             'producto_codigo',
             'producto_precio',
         );
+        $this->cerrarCrear();
         $this->dispatch('guardado', mensaje: 'Producto publicado en la temporada.');
     }
 
@@ -609,6 +639,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         }
 
         $this->reset('color_nombre', 'color_hex');
+        $this->cerrarCrear();
         $this->dispatch('guardado', mensaje: 'Color agregado a la paleta.');
     }
 
@@ -645,7 +676,8 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         $this->fotosDeNombre = trim(($publicacion->producto?->nombre ?? 'Producto').' '.($publicacion->producto?->modelo ?? ''));
         $this->fotoNueva = null;
         $this->errorMsg = '';
-        $this->resetValidation();
+        $this->creando = '';
+        $this->cancelarEdicion();
     }
 
     public function cerrarFotos(): void
@@ -768,9 +800,12 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         @php
             $titulos = ['linea' => 'Editar línea', 'marca' => 'Editar marca', 'temporada' => 'Editar temporada', 'producto' => 'Editar producto', 'color' => 'Editar color'];
         @endphp
-        <form wire:submit="guardarEdicion" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5" data-edicion-catalogo>
-            <h2 class="text-base font-semibold text-fp-sidebar">{{ $titulos[$editando_tipo] ?? 'Editar' }}</h2>
-            <input type="text" wire:model="editar_nombre" placeholder="Nombre" class="rounded-lg text-sm">
+        <x-panel.modal :titulo="$titulos[$editando_tipo] ?? 'Editar'" cerrar="cancelarEdicion" formulario="guardarEdicion" data-edicion-catalogo>
+            <div class="grid grid-cols-1 gap-3">
+                @if ($errorMsg !== '')
+                    <x-panel.alerta tipo="error">{{ $errorMsg }}</x-panel.alerta>
+                @endif
+            <input type="text" wire:model="editar_nombre" aria-label="Nombre" placeholder="Nombre" class="rounded-lg text-sm">
             @if ($editando_tipo === 'color')
                 <input type="text" wire:model="editar_hex" placeholder="Color en hexadecimal, por ejemplo #7E22CE" class="rounded-lg text-sm">
                 @error('editar_hex') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
@@ -806,11 +841,12 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             @endif
             <input type="text" wire:model="editar_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
             @error('editar_descripcion') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <div class="flex gap-2">
-                <button class="fp-btn fp-btn-primario w-fit">Guardar cambios</button>
-                <button type="button" wire:click="cancelarEdicion" class="fp-btn fp-btn-secundario w-fit">Cancelar</button>
             </div>
-        </form>
+            <x-slot:pie>
+                <button type="button" wire:click="cancelarEdicion" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button class="fp-btn fp-btn-primario">Guardar cambios</button>
+            </x-slot:pie>
+        </x-panel.modal>
     @endif
 
     {{-- E5-05: las fotos del catálogo. Hasta ahora las pantallas las
@@ -819,14 +855,8 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
          catálogo compartido, por eso las pone el admin general y las ven
          todas las distribuidoras y la app. --}}
     @if ($fotosDe !== null)
-        <div class="fp-formulario fp-aparecer max-w-xl space-y-4 p-5" data-fotos-publicacion>
-            <div class="flex items-start justify-between gap-3">
-                <div>
-                    <h2 class="text-base font-semibold text-fp-sidebar">Fotos de {{ $fotosDeNombre }}</h2>
-                    <p class="text-xs text-slate-500">La primera que subas queda como principal.</p>
-                </div>
-                <button type="button" wire:click="cerrarFotos" class="fp-accion">Cerrar</button>
-            </div>
+        <x-panel.modal :titulo="'Fotos de '.$fotosDeNombre" subtitulo="La primera que subas queda como principal." ancho="max-w-xl" cerrar="cerrarFotos" data-fotos-publicacion>
+            <div class="space-y-4">
 
             @if ($this->fotosDeLaPublicacion->isEmpty())
                 <p class="text-sm text-slate-500">Todavía no tiene ninguna foto.</p>
@@ -858,7 +888,11 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 <div wire:loading wire:target="fotoNueva" class="text-xs text-slate-500">Subiendo la foto…</div>
                 <button class="fp-btn fp-btn-primario w-fit" wire:loading.attr="disabled" wire:target="fotoNueva,subirFoto">Guardar foto</button>
             </form>
-        </div>
+            </div>
+            <x-slot:pie>
+                <button type="button" wire:click="cerrarFotos" class="fp-btn fp-btn-secundario">Cerrar</button>
+            </x-slot:pie>
+        </x-panel.modal>
     @endif
 
     <div class="fp-pestanas" role="tablist" aria-label="Secciones del catálogo">
@@ -870,12 +904,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     </div>
 
     @if ($pestana === 'lineas')
-        <form wire:submit="guardarLinea" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
-            <input type="text" wire:model="linea_nombre" aria-label="Nombre de la línea" placeholder="Nombre de la línea" class="rounded-lg text-sm">
-            @error('linea_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <input type="text" wire:model="linea_descripcion" aria-label="Descripción de la línea" placeholder="Descripción" class="rounded-lg text-sm">
-            <button class="fp-btn fp-btn-primario w-fit">Crear línea</button>
-        </form>
+        <button type="button" wire:click="abrirCrear('linea')" class="fp-btn fp-btn-primario w-fit" aria-haspopup="dialog">Crear línea</button>
         <x-ui.buscador wire:model.live.debounce.300ms="buscarLinea" placeholder="Buscar línea…" etiqueta="Buscar líneas" class="w-full sm:w-80" data-buscador-catalogo="buscarLinea" />
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead><tr><th class="px-4 py-3 font-semibold">Nombre</th><th class="px-4 py-3 font-semibold">Temporadas</th><th class="px-4 py-3 font-semibold">Estado</th><th class="px-4 py-3 font-semibold">Acciones</th></tr></thead>
@@ -897,12 +926,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             </tbody>
         </table></div></div>
     @elseif ($pestana === 'marcas')
-        <form wire:submit="guardarMarca" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
-            <input type="text" wire:model="marca_nombre" placeholder="Nombre de la marca" class="rounded-lg text-sm">
-            @error('marca_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <input type="text" wire:model="marca_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
-            <button class="fp-btn fp-btn-primario w-fit">Crear marca</button>
-        </form>
+        <button type="button" wire:click="abrirCrear('marca')" class="fp-btn fp-btn-primario w-fit" aria-haspopup="dialog">Crear marca</button>
         <x-ui.buscador wire:model.live.debounce.300ms="buscarMarca" placeholder="Buscar marca o línea…" etiqueta="Buscar marcas por nombre o línea" class="w-full sm:w-80" data-buscador-catalogo="buscarMarca" />
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead><tr><th class="px-4 py-3 font-semibold">Nombre</th><th class="px-4 py-3 font-semibold">Productos</th><th class="px-4 py-3 font-semibold">Estado</th><th class="px-4 py-3 font-semibold">Acciones</th></tr></thead>
@@ -924,24 +948,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             </tbody>
         </table></div></div>
     @elseif ($pestana === 'temporadas')
-        <form wire:submit="guardarTemporada" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
-            <select wire:model="temporada_linea_id" class="rounded-lg text-sm">
-                <option value="">Línea</option>
-                @foreach ($this->lineas as $linea)
-                    <option value="{{ $linea->id }}">{{ $linea->nombre }}</option>
-                @endforeach
-            </select>
-            @error('temporada_linea_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <input type="text" wire:model="temporada_nombre" placeholder="Nombre de la temporada" class="rounded-lg text-sm">
-            @error('temporada_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <select wire:model="temporada_estado" class="rounded-lg text-sm">
-                <option value="borrador">Borrador</option>
-                <option value="activa">Activa</option>
-                <option value="cerrada">Cerrada</option>
-            </select>
-            @error('estado') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <button class="fp-btn fp-btn-primario w-fit">Crear temporada</button>
-        </form>
+        <button type="button" wire:click="abrirCrear('temporada')" class="fp-btn fp-btn-primario w-fit" aria-haspopup="dialog">Crear temporada</button>
         <x-ui.buscador wire:model.live.debounce.300ms="buscarTemporada" placeholder="Buscar temporada o línea…" etiqueta="Buscar temporadas" class="w-full sm:w-80" data-buscador-catalogo="buscarTemporada" />
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead><tr><th class="px-4 py-3 font-semibold">Temporada</th><th class="px-4 py-3 font-semibold">Línea</th><th class="px-4 py-3 font-semibold">Productos</th><th class="px-4 py-3 font-semibold">Estado</th><th class="px-4 py-3 font-semibold">Acciones</th></tr></thead>
@@ -964,39 +971,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         </table></div></div>
 
     @else
-        <form wire:submit="guardarProducto" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
-            <x-ui.buscador wire:model.live.debounce.300ms="buscarMarcaOpcion" placeholder="Filtrar marcas…" etiqueta="Filtrar la lista de marcas" data-buscador-opciones="producto_marca_id" />
-            <select wire:model="producto_marca_id" aria-label="Marca" class="rounded-lg text-sm">
-                <option value="">Marca</option>
-                @foreach ($this->marcasOpciones as $marca)
-                    <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
-                @endforeach
-            </select>
-            @error('producto_marca_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <select wire:model="producto_categoria_id" class="rounded-lg text-sm">
-                <option value="">Categoría</option>
-                @foreach ($this->categorias as $categoria)
-                    <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
-                @endforeach
-            </select>
-            @error('producto_categoria_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <input type="text" wire:model="producto_modelo" placeholder="Modelo" class="rounded-lg text-sm">
-            @error('producto_modelo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <input type="text" wire:model="producto_nombre" placeholder="Nombre" class="rounded-lg text-sm">
-            @error('producto_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <select wire:model="producto_campana_id" class="rounded-lg text-sm">
-                <option value="">Temporada</option>
-                @foreach ($this->temporadas as $temporada)
-                    <option value="{{ $temporada->id }}">{{ $temporada->linea?->nombre }} — {{ $temporada->nombre }}</option>
-                @endforeach
-            </select>
-            @error('producto_campana_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <input type="text" wire:model="producto_codigo" placeholder="Código de catálogo" class="rounded-lg text-sm">
-            @error('producto_codigo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <input type="number" step="0.01" wire:model="producto_precio" placeholder="Precio de menudeo" class="rounded-lg text-sm">
-            @error('producto_precio') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <button class="fp-btn fp-btn-primario w-fit">Publicar producto</button>
-        </form>
+        <button type="button" wire:click="abrirCrear('producto')" class="fp-btn fp-btn-primario w-fit" aria-haspopup="dialog">Publicar producto</button>
         <x-ui.buscador wire:model.live.debounce.300ms="buscarProducto" placeholder="Producto, modelo, marca, línea o código…" etiqueta="Buscar productos publicados" class="w-full sm:w-80" data-buscador-catalogo="buscarProducto" />
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead>
@@ -1047,18 +1022,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
          sale lo que se le manda a la IA al leer un catálogo, así que un color
          que falte aquí es un color que ella no va a poder asignar. --}}
     @if ($pestana === 'colores')
-        <form wire:submit="guardarColor" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
-            <p class="text-sm text-slate-600">
-                Esta paleta es la que se le ofrece a la IA cuando lee un catálogo: solo puede
-                elegir de aquí. Si falta un color, lo deja sin resolver y hay que decidirlo a
-                mano en cada importación.
-            </p>
-            <input type="text" wire:model="color_nombre" aria-label="Nombre del color" placeholder="Nombre del color, por ejemplo Marino" class="rounded-lg text-sm">
-            @error('color_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <input type="text" wire:model="color_hex" aria-label="Color en hexadecimal" placeholder="Hexadecimal (opcional), por ejemplo #1E293B" class="rounded-lg text-sm">
-            @error('color_hex') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            <button class="fp-btn fp-btn-primario w-fit">Agregar color</button>
-        </form>
+        <button type="button" wire:click="abrirCrear('color')" class="fp-btn fp-btn-primario w-fit" aria-haspopup="dialog">Agregar color</button>
 
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead>
@@ -1092,6 +1056,117 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 @endforelse
             </tbody>
         </table></div></div>
+    @endif
+
+    @if ($creando === 'linea')
+        <x-panel.modal titulo="Nueva línea" cerrar="cerrarCrear" formulario="guardarLinea" data-alta-catalogo="linea">
+            <div class="grid grid-cols-1 gap-3">
+                <input type="text" wire:model="linea_nombre" aria-label="Nombre de la línea" placeholder="Nombre de la línea" class="rounded-lg text-sm">
+                @error('linea_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                <input type="text" wire:model="linea_descripcion" aria-label="Descripción de la línea" placeholder="Descripción" class="rounded-lg text-sm">
+            </div>
+            <x-slot:pie>
+                <button type="button" wire:click="cerrarCrear" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button class="fp-btn fp-btn-primario">Crear línea</button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
+    @if ($creando === 'marca')
+        <x-panel.modal titulo="Nueva marca" cerrar="cerrarCrear" formulario="guardarMarca" data-alta-catalogo="marca">
+            <div class="grid grid-cols-1 gap-3">
+                <input type="text" wire:model="marca_nombre" placeholder="Nombre de la marca" class="rounded-lg text-sm">
+                @error('marca_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                <input type="text" wire:model="marca_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
+            </div>
+            <x-slot:pie>
+                <button type="button" wire:click="cerrarCrear" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button class="fp-btn fp-btn-primario">Crear marca</button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
+    @if ($creando === 'temporada')
+        <x-panel.modal titulo="Nueva temporada" cerrar="cerrarCrear" formulario="guardarTemporada" data-alta-catalogo="temporada">
+            <div class="grid grid-cols-1 gap-3">
+                <select wire:model="temporada_linea_id" class="rounded-lg text-sm">
+                    <option value="">Línea</option>
+                    @foreach ($this->lineas as $linea)
+                        <option value="{{ $linea->id }}">{{ $linea->nombre }}</option>
+                    @endforeach
+                </select>
+                @error('temporada_linea_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                <input type="text" wire:model="temporada_nombre" placeholder="Nombre de la temporada" class="rounded-lg text-sm">
+                @error('temporada_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                <select wire:model="temporada_estado" class="rounded-lg text-sm">
+                    <option value="borrador">Borrador</option>
+                    <option value="activa">Activa</option>
+                    <option value="cerrada">Cerrada</option>
+                </select>
+                @error('estado') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+            </div>
+            <x-slot:pie>
+                <button type="button" wire:click="cerrarCrear" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button class="fp-btn fp-btn-primario">Crear temporada</button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
+    @if ($creando === 'producto')
+        <x-panel.modal titulo="Nuevo producto" cerrar="cerrarCrear" formulario="guardarProducto" data-alta-catalogo="producto">
+            <div class="grid grid-cols-1 gap-3">
+                <x-ui.buscador wire:model.live.debounce.300ms="buscarMarcaOpcion" placeholder="Filtrar marcas…" etiqueta="Filtrar la lista de marcas" data-buscador-opciones="producto_marca_id" />
+                <select wire:model="producto_marca_id" aria-label="Marca" class="rounded-lg text-sm">
+                    <option value="">Marca</option>
+                    @foreach ($this->marcasOpciones as $marca)
+                        <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
+                    @endforeach
+                </select>
+                @error('producto_marca_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                <select wire:model="producto_categoria_id" class="rounded-lg text-sm">
+                    <option value="">Categoría</option>
+                    @foreach ($this->categorias as $categoria)
+                        <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
+                    @endforeach
+                </select>
+                @error('producto_categoria_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                <input type="text" wire:model="producto_modelo" placeholder="Modelo" class="rounded-lg text-sm">
+                @error('producto_modelo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                <input type="text" wire:model="producto_nombre" placeholder="Nombre" class="rounded-lg text-sm">
+                @error('producto_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                <select wire:model="producto_campana_id" class="rounded-lg text-sm">
+                    <option value="">Temporada</option>
+                    @foreach ($this->temporadas as $temporada)
+                        <option value="{{ $temporada->id }}">{{ $temporada->linea?->nombre }} — {{ $temporada->nombre }}</option>
+                    @endforeach
+                </select>
+                @error('producto_campana_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                <input type="text" wire:model="producto_codigo" placeholder="Código de catálogo" class="rounded-lg text-sm">
+                @error('producto_codigo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                <input type="number" step="0.01" wire:model="producto_precio" placeholder="Precio de menudeo" class="rounded-lg text-sm">
+                @error('producto_precio') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+            </div>
+            <x-slot:pie>
+                <button type="button" wire:click="cerrarCrear" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button class="fp-btn fp-btn-primario">Publicar producto</button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
+    @if ($creando === 'color')
+        <x-panel.modal titulo="Nuevo color" cerrar="cerrarCrear" formulario="guardarColor" data-alta-catalogo="color">
+            <div class="grid grid-cols-1 gap-3">
+                <p class="text-sm text-slate-600">
+                    Esta paleta es la que se le ofrece a la IA cuando lee un catálogo: solo puede
+                    elegir de aquí. Si falta un color, lo deja sin resolver y hay que decidirlo a
+                    mano en cada importación.
+                </p>
+                <input type="text" wire:model="color_nombre" aria-label="Nombre del color" placeholder="Nombre del color, por ejemplo Marino" class="rounded-lg text-sm">
+                @error('color_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                <input type="text" wire:model="color_hex" aria-label="Color en hexadecimal" placeholder="Hexadecimal (opcional), por ejemplo #1E293B" class="rounded-lg text-sm">
+                @error('color_hex') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+            </div>
+            <x-slot:pie>
+                <button type="button" wire:click="cerrarCrear" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button class="fp-btn fp-btn-primario">Agregar color</button>
+            </x-slot:pie>
+        </x-panel.modal>
     @endif
 
     @if ($porEliminarId)
