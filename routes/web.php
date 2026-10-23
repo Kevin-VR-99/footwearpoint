@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AbrirEnLaAppController;
 use App\Http\Controllers\ArchivoCatalogoImportacionController;
+use App\Http\Controllers\DescargarApkMovilController;
 use App\Http\Controllers\ComprobanteVentaController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -309,6 +310,10 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_general'])->group(function
 
     Route::livewire('/admin/ingresos', 'admin.ingresos-mercadopago')
         ->name('admin.ingresos');
+
+    // Siempre el mismo APK: el objeto se reemplaza cuando hay versión nueva.
+    Route::get('/admin/app-movil', DescargarApkMovilController::class)
+        ->name('admin.app-movil');
 
     // Las categorías del directorio ya no se usan. La dirección vieja regresa al inicio del admin.
     Route::redirect('/admin/categorias-directorio', '/admin')->name('admin.categorias-directorio');
