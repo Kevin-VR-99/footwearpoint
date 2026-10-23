@@ -260,8 +260,6 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 'suscripciones' => function ($q) {
                     $q->where('estado', 'activa')->latest('id');
                 },
-                // TG-197: sus categorías activas, para mostrarlas en la tabla.
-                'categoriasDirectorio' => fn ($q) => $q->activas()->orderBy('nombre'),
             ])
             ->orderByDesc('id');
 
@@ -1199,13 +1197,6 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         <td class="px-4 py-3">
                             <div class="font-medium">{{ $d->nombre_comercial }}</div>
                             <div class="text-xs text-slate-400">{{ $d->slug }}</div>
-                            @if ($d->categoriasDirectorio->isNotEmpty())
-                                <div class="mt-1 flex flex-wrap gap-1">
-                                    @foreach ($d->categoriasDirectorio as $categoria)
-                                        <x-panel.insignia class="text-[11px]">{{ $categoria->nombre }}</x-panel.insignia>
-                                    @endforeach
-                                </div>
-                            @endif
                         </td>
                         <td class="px-4 py-3">
                             <x-panel.insignia :variante="['activa' => 'success', 'pendiente' => 'warning', 'suspendida' => 'danger'][$d->estado] ?? 'neutral'"
