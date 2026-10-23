@@ -59,7 +59,35 @@ class SesionPersistenteTest extends TestCase
     public function test_la_configuracion_no_cierra_la_sesion_sola(): void
     {
         $this->assertFalse(config('session.expire_on_close'));
-        $this->assertGreaterThanOrEqual(5256000, config('session.lifetime'));
+    }
+
+    /** Evalua config/session.php con SESSION_LIFETIME puesta o sin poner. */
+    private function lifetimeCon(?string $valor): int
+    {
+        $antes = getenv('SESSION_LIFETIME');
+        $antesEnv = $_ENV['SESSION_LIFETIME'] ?? null;
+        $antesServer = $_SERVER['SESSION_LIFETIME'] ?? null;
+        unset($_ENV['SESSION_LIFETIME'], $_SERVER['SESSION_LIFETIME']);
+        putenv($valor === null ? 'SESSION_LIFETIME' : 'SESSION_LIFETIME='.$valor);
+
+        try {
+            return (require config_path('session.php'))['lifetime'];
+        } finally {
+            putenv($antes === false ? 'SESSION_LIFETIME' : 'SESSION_LIFETIME='.$antes);
+            if ($antesEnv !== null) { $_ENV['SESSION_LIFETIME'] = $antesEnv; }
+            if ($antesServer !== null) { $_SERVER['SESSION_LIFETIME'] = $antesServer; }
+        }
+    }
+
+    public function test_sin_variable_la_sesion_dura_diez_anios(): void
+    {
+        $this->assertSame(5256000, $this->lifetimeCon(null));
+    }
+
+    public function test_la_variable_session_lifetime_se_respeta(): void
+    {
+        $this->assertSame(120, $this->lifetimeCon('120'));
+        $this->assertSame(9000000, $this->lifetimeCon('9000000'));
     }
 
     #[DataProvider('usuariosDelPanel')]
