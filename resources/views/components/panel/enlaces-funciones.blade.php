@@ -9,7 +9,7 @@
     $enlacesFunciones = [
         ['caja.index', 'Caja y cortes', \App\Services\Auth\PermisoModuloService::CAJA_OPERAR, 'caja.*'],
         ['clientes.historial', 'Historial de clientes', \App\Services\Auth\PermisoModuloService::CLIENTES_VER, 'clientes.historial*'],
-        ['comisiones.index', 'Comisiones y metas', \App\Services\Auth\PermisoModuloService::COMISIONES_VER, 'comisiones.*'],
+        ['comisiones.index', 'Comisiones', \App\Services\Auth\PermisoModuloService::COMISIONES_VER, 'comisiones.*'],
     ];
 @endphp
 @foreach ($enlacesFunciones as [$ruta, $texto, $permiso, $patron])

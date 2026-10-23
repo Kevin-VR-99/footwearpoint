@@ -147,17 +147,20 @@ class ComisionesMetasTest extends TestCase
         $this->getJson('/api/distribuidora/comisiones')->assertForbidden();
     }
 
-    public function test_la_pantalla_guarda_porcentaje_y_meta(): void
+    public function test_la_pantalla_guarda_el_porcentaje_y_no_pide_meta(): void
     {
         [$a] = $this->afiliaciones();
         Livewire::test('comisiones.index', ['periodo' => self::PERIODO])
             ->set('periodo', self::PERIODO)
-            ->set("porcentajes.{$a->id}", '7.5')->set("metas.{$a->id}", '1500')
+            ->assertDontSee('Meta del mes')
+            ->assertDontSee('Metas cumplidas')
+            ->assertDontSee('Sin meta')
+            ->set("porcentajes.{$a->id}", '7.5')
             ->call('guardarFila', $a->id)->assertSet('errorMsg', '');
 
         $this->assertEquals(7.5, (float) $a->fresh()->comision_porcentaje);
         $fila = collect(app(ComisionesService::class)->reporte(self::PERIODO))->firstWhere('afiliacion_id', $a->id);
-        $this->assertEquals(1500, $fila['meta']);
+        $this->assertNull($fila['meta']);
 
         // Otra distribuidora no ve a este cliente mayorista.
         $this->comoPanel(self::OTRA_ADMIN);

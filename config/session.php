@@ -25,14 +25,14 @@ return [
     | Session Lifetime
     |--------------------------------------------------------------------------
     |
-    | Here you may specify the number of minutes that you wish the session
-    | to be allowed to remain idle before it expires. If you want them
-    | to expire immediately when the browser is closed then you may
-    | indicate that via the expire_on_close configuration option.
+    | El panel no cierra la sesión por inactividad. Laravel exige un número de
+    | minutos y con 0 la cerraría al momento, así que el valor de respaldo es
+    | de diez años. Cada visita renueva la cookie. Cerrar el navegador no
+    | cierra la sesión: expire_on_close sigue en falso.
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    'lifetime' => (int) env('SESSION_LIFETIME', 60 * 24 * 365 * 10),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 
