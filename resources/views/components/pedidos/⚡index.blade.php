@@ -12,6 +12,7 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
 
     public string $filtro_estado = '';
     public string $filtro_tipo = '';
+    public string $buscar = '';
 
     public function mount()
     {
@@ -35,6 +36,11 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
         $this->resetPage();
     }
 
+    public function updatedBuscar(): void
+    {
+        $this->resetPage();
+    }
+
     /** Misma consulta para la pantalla y para la exportación (App\Services\Exportar\ExportarPedidos). */
     private function consulta()
     {
@@ -43,7 +49,7 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
 
     private function filtros(): array
     {
-        return ['estado' => $this->filtro_estado, 'tipo' => $this->filtro_tipo];
+        return ['estado' => $this->filtro_estado, 'tipo' => $this->filtro_tipo, 'buscar' => $this->buscar];
     }
 
     public function getPedidosProperty()
@@ -100,6 +106,8 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
     @endif
 
     <x-panel.filtros class="mb-4">
+        <x-ui.buscador wire:model.live.debounce.300ms="buscar" placeholder="Folio o cliente…" etiqueta="Buscar pedidos por folio o cliente" class="w-full sm:w-72" data-buscador-pedidos />
+
         <select wire:model.live="filtro_estado" aria-label="Filtrar por estado"
                 class="rounded-lg text-sm focus:ring-fp-primary">
             <option value="">Todos los estados</option>

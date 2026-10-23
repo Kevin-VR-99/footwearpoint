@@ -27,6 +27,8 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     // Entrada por modelo: producto + color y una cantidad por talla.
     public string $modelo_producto_id = '';
     public string $modelo_color_id = '';
+    /** Filtra el selector de modelo por nombre, modelo, marca, línea, SKU o código de catálogo. */
+    public string $buscarModelo = '';
     /** @var array<int|string, string> variante_id => cantidad */
     public array $modelo_cantidades = [];
     public string $modelo_motivo = '';
@@ -240,10 +242,23 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     /** Productos que tienen variantes, para el selector de modelo. */
     public function getProductosModeloProperty()
     {
+        $termino = trim($this->buscarModelo);
+        $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $termino).'%';
+
         return \App\Models\Producto::query()
             ->whereHas('variantes')
+            ->when($termino !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('nombre', 'like', $like)
+                ->orWhere('modelo', 'like', $like)
+                ->orWhereHas('marca', fn ($m) => $m->where('nombre', 'like', $like))
+                ->orWhereHas('variantes', fn ($v) => $v->where('sku', 'like', $like))
+                ->orWhereHas('publicacionesCampana', fn ($p) => $p->where('codigo_catalogo', 'like', $like)
+                    ->orWhereHas('campana.linea', fn ($l) => $l->where('nombre', 'like', $like)))
+                // El modelo ya elegido no desaparece del selector al seguir escribiendo.
+                ->when($this->modelo_producto_id !== '', fn ($o) => $o->orWhere('id', (int) $this->modelo_producto_id))))
+            ->with('marca:id,nombre')
             ->orderBy('nombre')
-            ->get(['id', 'nombre', 'modelo']);
+            ->get(['id', 'nombre', 'modelo', 'marca_id']);
     }
 
     public function getColoresModeloProperty()
@@ -757,6 +772,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="fp-campo">
                             <label for="modelo-producto" class="block text-sm font-medium text-slate-700 mb-1">Modelo</label>
+                            <x-ui.buscador wire:model.live.debounce.300ms="buscarModelo" placeholder="Modelo, marca, línea, SKU o código…" etiqueta="Buscar modelo por nombre, marca, línea, SKU o código" class="mb-2 w-full" data-buscador-modelo />
                             <div class="flex items-center gap-2">
                                 @if ($modelo_producto_id !== '')
                                     <x-ui.imagen-ampliable :url="$this->fotoModelo" :alt="$this->productosModelo->firstWhere('id', (int) $modelo_producto_id)?->nombre ?? 'Producto'" />
@@ -764,7 +780,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                             <select id="modelo-producto" wire:model.live="modelo_producto_id" class="w-full rounded-lg text-sm focus:ring-fp-primary">
                                 <option value="">— Elegir modelo —</option>
                                 @foreach ($this->productosModelo as $producto)
-                                    <option value="{{ $producto->id }}">{{ $producto->nombre }}{{ $producto->modelo ? ' ('.$producto->modelo.')' : '' }}</option>
+                                    <option value="{{ $producto->id }}">{{ $producto->nombre }}{{ $producto->modelo ? ' ('.$producto->modelo.')' : '' }}{{ $producto->marca ? ' - '.$producto->marca->nombre : '' }}</option>
                                 @endforeach
                             </select>
                             </div>

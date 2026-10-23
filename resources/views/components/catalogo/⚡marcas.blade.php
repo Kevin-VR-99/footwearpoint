@@ -12,14 +12,25 @@ use Livewire\Component;
  * propias pantallas.
  */
 new class extends Component {
+    public string $buscar = '';
+
+    /** Por nombre de la marca o de la línea en la que se vende. */
     public function getMarcasProperty()
     {
-        return Marca::query()->orderBy('nombre')->get();
+        return Marca::query()
+            ->when(trim($this->buscar) !== '', function ($q) {
+                $t = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], trim($this->buscar)).'%';
+                $q->where(fn ($w) => $w->where('nombre', 'like', $t)
+                    ->orWhereHas('lineas', fn ($l) => $l->where('nombre', 'like', $t)));
+            })
+            ->orderBy('nombre')->get();
     }
 }; ?>
 
 <div class="space-y-4">
     <x-catalogo.aviso-solo-lectura />
+
+    <x-ui.buscador wire:model.live.debounce.300ms="buscar" placeholder="Buscar marca o línea…" etiqueta="Buscar marcas" class="w-full sm:w-80" data-buscador-marcas />
 
     <div class="overflow-hidden fp-tarjeta fp-aparecer">
         <table class="fp-tabla min-w-full divide-y divide-slate-200 text-sm">
