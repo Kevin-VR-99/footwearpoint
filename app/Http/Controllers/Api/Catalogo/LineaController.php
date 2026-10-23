@@ -27,8 +27,9 @@ class LineaController extends Controller
     public function store(GuardarLineaRequest $request, GestionarLineaAction $accion): LineaResource
     {
         $linea = $accion->crear(
-            $request->safe()->except('marca_ids'),
-            $request->input('marca_ids', [])
+            $request->safe()->except(['marca_ids', 'logotipo', 'quitar_logotipo']),
+            $request->input('marca_ids', []),
+            $request->file('logotipo')
         );
 
         return new LineaResource($linea);
@@ -40,8 +41,10 @@ class LineaController extends Controller
 
         $linea = $accion->actualizar(
             $linea,
-            $request->safe()->except(['marca_ids']),
-            $marcaIds
+            $request->safe()->except(['marca_ids', 'logotipo', 'quitar_logotipo']),
+            $marcaIds,
+            $request->file('logotipo'),
+            $request->boolean('quitar_logotipo')
         );
 
         return new LineaResource($linea);

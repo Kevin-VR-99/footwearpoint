@@ -16,6 +16,7 @@ use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\GestionarLineaAction;
 use App\Services\Catalogo\GestionarMarcaAction;
 use App\Services\Catalogo\GestionarProductoAction;
+use App\Services\Catalogo\LogotipoDeCatalogo;
 use App\Support\MensajeError;
 use App\Support\Tenant;
 use Illuminate\Validation\Rule;
@@ -45,6 +46,13 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
     public string $marca_nombre = '';
     public string $marca_descripcion = '';
+
+    /** Logos de líneas y marcas: el archivo recién elegido en el alta o en la edición. */
+    public $linea_logotipo = null;
+    public $marca_logotipo = null;
+    public $editar_logotipo = null;
+    public ?string $editar_logotipo_actual = null;
+    public bool $editar_quitar_logotipo = false;
 
     #[Locked]
     public string $porEliminarTipo = '';
@@ -154,6 +162,20 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         $this->editar_categoria_id = $tipo === 'producto' ? (string) $registro->categoria_id : '';
         $this->editar_modelo = $tipo === 'producto' ? (string) $registro->modelo : '';
         $this->editar_hex = $tipo === 'color' ? (string) $registro->codigo_hex : '';
+        $this->editar_logotipo_actual = in_array($tipo, ['linea', 'marca'], true) ? $registro->logotipo_url : null;
+    }
+
+    /** Quita el logo en la edición; se borra al guardar. */
+    public function quitarLogotipo(): void
+    {
+        $this->editar_logotipo = null;
+        $this->editar_quitar_logotipo = true;
+        $this->resetValidation('editar_logotipo');
+    }
+
+    public function updatedEditarLogotipo(): void
+    {
+        $this->editar_quitar_logotipo = false;
     }
 
     public function abrirCrear(string $tipo): void
@@ -170,6 +192,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     public function cerrarCrear(): void
     {
         $this->creando = '';
+        $this->reset('linea_logotipo', 'marca_logotipo');
         $this->resetValidation();
     }
 
@@ -178,7 +201,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         $this->reset(
             'editando_tipo', 'editando_id', 'editar_nombre', 'editar_descripcion',
             'editar_marca_id', 'editar_categoria_id', 'editar_modelo', 'editar_estado',
-            'editar_hex',
+            'editar_hex', 'editar_logotipo', 'editar_logotipo_actual', 'editar_quitar_logotipo',
         );
         $this->resetValidation();
     }
@@ -203,16 +226,18 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             'editar_modelo.required' => 'El modelo es obligatorio.',
             'editar_estado.in' => 'Ese estado no existe.',
             'editar_descripcion.max' => 'La descripción no puede tener más de :max caracteres.',
-        ];
+        ] + LogotipoDeCatalogo::mensajes('editar_logotipo');
 
         $datos = $this->validate(match ($tipo) {
             'linea' => [
                 'editar_nombre' => ['required', 'string', 'max:150', Rule::unique('lineas', 'nombre')->ignore($id)],
                 'editar_descripcion' => ['nullable', 'string', 'max:500'],
+                'editar_logotipo' => LogotipoDeCatalogo::reglas(),
             ],
             'marca' => [
                 'editar_nombre' => ['required', 'string', 'max:150', Rule::unique('marcas', 'nombre')->ignore($id)],
                 'editar_descripcion' => ['nullable', 'string', 'max:500'],
+                'editar_logotipo' => LogotipoDeCatalogo::reglas(),
             ],
             'producto' => [
                 'editar_nombre' => ['required', 'string', 'max:200'],
@@ -236,8 +261,8 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             $registro = $this->buscar($tipo, $id);
 
             match ($tipo) {
-                'linea' => app(GestionarLineaAction::class)->actualizar($registro, $comunes),
-                'marca' => app(GestionarMarcaAction::class)->actualizar($registro, $comunes),
+                'linea' => app(GestionarLineaAction::class)->actualizar($registro, $comunes, null, $this->editar_logotipo, $this->editar_quitar_logotipo),
+                'marca' => app(GestionarMarcaAction::class)->actualizar($registro, $comunes, $this->editar_logotipo, $this->editar_quitar_logotipo),
                 'producto' => app(GestionarProductoAction::class)->actualizar($registro, $comunes + [
                     'marca_id' => (int) $datos['editar_marca_id'],
                     'categoria_id' => (int) $datos['editar_categoria_id'],
@@ -369,18 +394,24 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         $datos = $this->validate([
             'linea_nombre' => ['required', 'string', 'max:150', 'unique:lineas,nombre'],
             'linea_descripcion' => ['nullable', 'string', 'max:500'],
+            'linea_logotipo' => LogotipoDeCatalogo::reglas(),
         ], [
             'linea_nombre.required' => 'El nombre es obligatorio.',
             'linea_nombre.unique' => 'Esa línea ya existe.',
-        ]);
+        ] + LogotipoDeCatalogo::mensajes('linea_logotipo'));
 
-        Linea::create([
-            'nombre' => $datos['linea_nombre'],
-            'descripcion' => $datos['linea_descripcion'] ?: null,
-            'activa' => true,
-        ]);
+        try {
+            app(GestionarLineaAction::class)->crear([
+                'nombre' => $datos['linea_nombre'],
+                'descripcion' => $datos['linea_descripcion'] ?: null,
+            ], [], $this->linea_logotipo);
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo crear la línea.');
 
-        $this->reset('linea_nombre', 'linea_descripcion');
+            return;
+        }
+
+        $this->reset('linea_nombre', 'linea_descripcion', 'linea_logotipo');
         $this->cerrarCrear();
         $this->dispatch('guardado', mensaje: 'Línea creada.');
     }
@@ -392,18 +423,24 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         $datos = $this->validate([
             'marca_nombre' => ['required', 'string', 'max:150', 'unique:marcas,nombre'],
             'marca_descripcion' => ['nullable', 'string', 'max:500'],
+            'marca_logotipo' => LogotipoDeCatalogo::reglas(),
         ], [
             'marca_nombre.required' => 'El nombre es obligatorio.',
             'marca_nombre.unique' => 'Esa marca ya existe.',
-        ]);
+        ] + LogotipoDeCatalogo::mensajes('marca_logotipo'));
 
-        Marca::create([
-            'nombre' => $datos['marca_nombre'],
-            'descripcion' => $datos['marca_descripcion'] ?: null,
-            'activa' => true,
-        ]);
+        try {
+            app(GestionarMarcaAction::class)->crear([
+                'nombre' => $datos['marca_nombre'],
+                'descripcion' => $datos['marca_descripcion'] ?: null,
+            ], $this->marca_logotipo);
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo crear la marca.');
 
-        $this->reset('marca_nombre', 'marca_descripcion');
+            return;
+        }
+
+        $this->reset('marca_nombre', 'marca_descripcion', 'marca_logotipo');
         $this->cerrarCrear();
         $this->dispatch('guardado', mensaje: 'Marca creada.');
     }
@@ -806,10 +843,31 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             @endif
             <input type="text" wire:model="editar_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
             @error('editar_descripcion') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+            @if (in_array($editando_tipo, ['linea', 'marca'], true))
+            <div class="fp-campo" x-data="{ subiendo: false }" x-on:livewire-upload-start="subiendo = true" x-on:livewire-upload-finish="subiendo = false" x-on:livewire-upload-error="subiendo = false" data-campo-logotipo>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Logo</label>
+                <div class="flex items-center gap-3">
+                    @if (\App\Rules\SvgSeguro::previsualizable($editar_logotipo))
+                        <x-ui.logotipo :url="$editar_logotipo->temporaryUrl()" nombre="Vista previa" tamano="h-16 w-16" />
+                    @elseif ($editar_logotipo_actual && ! $editar_quitar_logotipo)
+                        <x-ui.logotipo :url="$editar_logotipo_actual" :nombre="$editar_nombre" tamano="h-16 w-16" />
+                    @endif
+                    <input type="file" wire:model="editar_logotipo" aria-label="Logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="text-sm">
+                </div>
+                @if ($editar_logotipo || ($editar_logotipo_actual && ! $editar_quitar_logotipo))
+                    <button type="button" wire:click="quitarLogotipo" class="fp-accion fp-accion-peligro mt-1">Quitar logo</button>
+                @elseif ($editar_quitar_logotipo)
+                    <p class="mt-1 text-xs text-slate-500">El logo se quitará al guardar.</p>
+                @endif
+                <p class="mt-1 text-xs text-slate-500">JPG, PNG, WebP o SVG; hasta 2 MB.</p>
+                <p x-show="subiendo" x-cloak class="text-xs text-fp-text-muted mt-1">Subiendo logo…</p>
+                @error('editar_logotipo') <span class="block text-xs text-fp-danger">{{ $message }}</span> @enderror
+            </div>
+            @endif
             </div>
             <x-slot:pie>
                 <button type="button" wire:click="cancelarEdicion" class="fp-btn fp-btn-secundario">Cancelar</button>
-                <button class="fp-btn fp-btn-primario">Guardar cambios</button>
+                <button class="fp-btn fp-btn-primario" wire:loading.attr="disabled" wire:target="editar_logotipo,guardarEdicion">Guardar cambios</button>
             </x-slot:pie>
         </x-panel.modal>
     @endif
@@ -876,7 +934,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             <tbody>
                 @forelse ($this->lineasFiltradas as $linea)
                     <tr class="border-t border-slate-100">
-                        <td class="px-4 py-3">{{ $linea->nombre }}</td>
+                        <td class="px-4 py-3"><span class="flex items-center gap-3"><x-ui.logotipo :url="$linea->logotipo_url" :nombre="$linea->nombre" /><span>{{ $linea->nombre }}</span></span></td>
                         <td class="px-4 py-3">{{ $linea->campanas_count }}</td>
                         <td class="px-4 py-3"><x-panel.insignia :variante="$linea->activa ? 'success' : 'neutral'" punto>{{ $linea->activa ? 'Activa' : 'Inactiva' }}</x-panel.insignia></td>
                         <td class="px-4 py-3 whitespace-nowrap">
@@ -898,7 +956,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             <tbody>
                 @forelse ($this->marcasFiltradas as $marca)
                     <tr class="border-t border-slate-100">
-                        <td class="px-4 py-3">{{ $marca->nombre }}</td>
+                        <td class="px-4 py-3"><span class="flex items-center gap-3"><x-ui.logotipo :url="$marca->logotipo_url" :nombre="$marca->nombre" /><span>{{ $marca->nombre }}</span></span></td>
                         <td class="px-4 py-3">{{ $marca->productos_count }}</td>
                         <td class="px-4 py-3"><x-panel.insignia :variante="$marca->activa ? 'success' : 'neutral'" punto>{{ $marca->activa ? 'Activa' : 'Inactiva' }}</x-panel.insignia></td>
                         <td class="px-4 py-3 whitespace-nowrap">
@@ -1026,10 +1084,26 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 <input type="text" wire:model="linea_nombre" aria-label="Nombre de la línea" placeholder="Nombre de la línea" class="rounded-lg text-sm">
                 @error('linea_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
                 <input type="text" wire:model="linea_descripcion" aria-label="Descripción de la línea" placeholder="Descripción" class="rounded-lg text-sm">
+                <div class="fp-campo" x-data="{ subiendo: false }" x-on:livewire-upload-start="subiendo = true" x-on:livewire-upload-finish="subiendo = false" x-on:livewire-upload-error="subiendo = false" data-campo-logotipo>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Logo de la línea</label>
+                <div class="flex items-center gap-3">
+                    @if (\App\Rules\SvgSeguro::previsualizable($linea_logotipo))
+                        <x-ui.logotipo :url="$linea_logotipo->temporaryUrl()" nombre="Vista previa" tamano="h-16 w-16" />
+                    
+                    @endif
+                    <input type="file" wire:model="linea_logotipo" aria-label="Logo de la línea" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="text-sm">
+                </div>
+                @if ($linea_logotipo)
+                    <button type="button" wire:click="$set('linea_logotipo', null)" class="fp-accion fp-accion-peligro mt-1">Quitar logo</button>
+                @endif
+                <p class="mt-1 text-xs text-slate-500">JPG, PNG, WebP o SVG; hasta 2 MB.</p>
+                <p x-show="subiendo" x-cloak class="text-xs text-fp-text-muted mt-1">Subiendo logo…</p>
+                @error('linea_logotipo') <span class="block text-xs text-fp-danger">{{ $message }}</span> @enderror
+            </div>
             </div>
             <x-slot:pie>
                 <button type="button" wire:click="cerrarCrear" class="fp-btn fp-btn-secundario">Cancelar</button>
-                <button class="fp-btn fp-btn-primario">Crear línea</button>
+                <button class="fp-btn fp-btn-primario" wire:loading.attr="disabled" wire:target="linea_logotipo,guardarLinea">Crear línea</button>
             </x-slot:pie>
         </x-panel.modal>
     @endif
@@ -1039,10 +1113,26 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 <input type="text" wire:model="marca_nombre" placeholder="Nombre de la marca" class="rounded-lg text-sm">
                 @error('marca_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
                 <input type="text" wire:model="marca_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
+                <div class="fp-campo" x-data="{ subiendo: false }" x-on:livewire-upload-start="subiendo = true" x-on:livewire-upload-finish="subiendo = false" x-on:livewire-upload-error="subiendo = false" data-campo-logotipo>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Logo de la marca</label>
+                <div class="flex items-center gap-3">
+                    @if (\App\Rules\SvgSeguro::previsualizable($marca_logotipo))
+                        <x-ui.logotipo :url="$marca_logotipo->temporaryUrl()" nombre="Vista previa" tamano="h-16 w-16" />
+                    
+                    @endif
+                    <input type="file" wire:model="marca_logotipo" aria-label="Logo de la marca" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="text-sm">
+                </div>
+                @if ($marca_logotipo)
+                    <button type="button" wire:click="$set('marca_logotipo', null)" class="fp-accion fp-accion-peligro mt-1">Quitar logo</button>
+                @endif
+                <p class="mt-1 text-xs text-slate-500">JPG, PNG, WebP o SVG; hasta 2 MB.</p>
+                <p x-show="subiendo" x-cloak class="text-xs text-fp-text-muted mt-1">Subiendo logo…</p>
+                @error('marca_logotipo') <span class="block text-xs text-fp-danger">{{ $message }}</span> @enderror
+            </div>
             </div>
             <x-slot:pie>
                 <button type="button" wire:click="cerrarCrear" class="fp-btn fp-btn-secundario">Cancelar</button>
-                <button class="fp-btn fp-btn-primario">Crear marca</button>
+                <button class="fp-btn fp-btn-primario" wire:loading.attr="disabled" wire:target="marca_logotipo,guardarMarca">Crear marca</button>
             </x-slot:pie>
         </x-panel.modal>
     @endif

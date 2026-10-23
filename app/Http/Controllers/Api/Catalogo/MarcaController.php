@@ -25,7 +25,7 @@ class MarcaController extends Controller
     public function store(GuardarMarcaRequest $request, GestionarMarcaAction $accion): MarcaResource
     {
         $marca = $accion->crear(
-            $request->safe()->except('logotipo'),
+            $request->safe()->except(['logotipo', 'quitar_logotipo']),
             $request->file('logotipo')
         );
 
@@ -36,8 +36,9 @@ class MarcaController extends Controller
     {
         $marca = $accion->actualizar(
             $marca,
-            $request->safe()->except('logotipo'),
-            $request->file('logotipo')
+            $request->safe()->except(['logotipo', 'quitar_logotipo']),
+            $request->file('logotipo'),
+            $request->boolean('quitar_logotipo')
         );
 
         return new MarcaResource($marca);

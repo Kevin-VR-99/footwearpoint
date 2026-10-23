@@ -7,13 +7,13 @@ use App\Exceptions\OperacionInvalidaException;
 use Illuminate\Support\Facades\DB;
 use App\Models\Marca;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 
 class GestionarMarcaAction
 {
     public function __construct(
         private AuditarCambios $auditar,
         private DependenciasCatalogo $dependencias,
+        private LogotipoDeCatalogo $logotipos,
     )
     {
     }
@@ -22,7 +22,7 @@ class GestionarMarcaAction
     {
         // El cupo del plan cuenta líneas (GestionarLineaAction), no marcas.
         if ($logo) {
-            $datos['logotipo_url'] = $this->subirLogo($logo);
+            $datos['logotipo_url'] = $this->logotipos->subir($logo, 'marcas');
         }
 
         $marca = Marca::create([
@@ -36,14 +36,27 @@ class GestionarMarcaAction
         return $marca;
     }
 
-    public function actualizar(Marca $marca, array $datos, ?UploadedFile $logo = null): Marca
+    /**
+     * Con $logo se reemplaza el logotipo; con $quitarLogo se quita. En ambos
+     * casos el archivo anterior se borra del almacenamiento, y el cambio de
+     * logotipo_url queda en la auditoría como cualquier otro campo.
+     */
+    public function actualizar(Marca $marca, array $datos, ?UploadedFile $logo = null, bool $quitarLogo = false): Marca
     {
+        $anterior = $marca->logotipo_url;
+
         if ($logo) {
-            $datos['logotipo_url'] = $this->subirLogo($logo);
+            $datos['logotipo_url'] = $this->logotipos->subir($logo, 'marcas');
+        } elseif ($quitarLogo) {
+            $datos['logotipo_url'] = null;
         }
 
         $marca->fill($datos);
         $this->auditar->guardar($marca, 'catalogo.marca.actualizada', 'marca');
+
+        if ($anterior !== $marca->logotipo_url) {
+            $this->logotipos->borrar($anterior, 'marcas');
+        }
 
         return $marca->fresh();
     }
@@ -68,12 +81,5 @@ class GestionarMarcaAction
             $marca->lineas()->detach();
             $marca->delete();
         });
-    }
-
-    private function subirLogo(UploadedFile $logo): string
-    {
-        $ruta = $logo->store('marcas/logotipos', 's3');
-
-        return Storage::disk('s3')->url($ruta);
     }
 }
