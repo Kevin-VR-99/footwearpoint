@@ -94,11 +94,20 @@ class AprobarProductosImportadosAction
             ->count();
 
         foreach ($filas as $fila) {
+            // Los contadores suben DENTRO de aprobarUno, antes de que la fila
+            // pueda fallar. Si falla, la transacción revierte la base pero el
+            // contador en memoria no se entera, y el resumen decía "148
+            // productos nuevos" cuando solo habían entrado 138. Por eso se
+            // guarda cómo estaba y se restaura si no salió.
+            $antes = $resumen;
+
             try {
                 DB::transaction(function () use ($fila, $campanaId, $categoriaPorOmision, $marcaPorOmision, &$resumen) {
                     $this->aprobarUno($fila, $campanaId, $categoriaPorOmision, $marcaPorOmision, $resumen);
                 });
             } catch (Throwable $e) {
+                $resumen = $antes;
+
                 // Uno que falla no detiene a los demás, y se dice cuál y por qué.
                 $resumen['saltados'][] = $this->identificar($fila).': '.$e->getMessage();
             }

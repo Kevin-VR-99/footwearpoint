@@ -23,12 +23,12 @@ class RangoDeTallas
      */
     public function valores(mixed $desde, mixed $hasta, bool $conMedios = false): array
     {
-        if (! $this->esNumero($desde) || ! $this->esNumero($hasta)) {
+        $inicio = $this->aNumero($desde);
+        $fin = $this->aNumero($hasta);
+
+        if ($inicio === null || $fin === null) {
             return [];
         }
-
-        $inicio = (float) $desde;
-        $fin = (float) $hasta;
 
         // Una sola talla es válido; al revés no.
         if ($fin < $inicio) {
@@ -49,9 +49,48 @@ class RangoDeTallas
         return $valores;
     }
 
-    private function esNumero(mixed $valor): bool
+    /**
+     * La talla como número, o null si no se entiende.
+     *
+     * Los catálogos imprimen las medias tallas como fracción, no como
+     * decimal: el Cklass dice "2 AL 6½". La IA lo transcribe fiel —"6 1/2"—
+     * y eso no es un error suyo, así que el que tiene que entenderlo es
+     * esto. Por no hacerlo, 15 productos de un catálogo real se quedaron
+     * fuera con "no se entendió el rango de tallas".
+     *
+     * Se aceptan "6 1/2", "6½", "6.5", "6,5" y "1/2" suelto. Cualquier otra
+     * cosa sigue devolviendo null: inventar una talla es peor que reportar.
+     */
+    private function aNumero(mixed $valor): ?float
     {
-        return is_numeric(is_string($valor) ? trim($valor) : $valor);
+        if (is_int($valor) || is_float($valor)) {
+            return (float) $valor;
+        }
+
+        if (! is_string($valor)) {
+            return null;
+        }
+
+        $texto = trim($valor);
+
+        // Los símbolos de fracción, a su forma escrita.
+        $texto = strtr($texto, ['½' => ' 1/2', '¼' => ' 1/4', '¾' => ' 3/4', '⅓' => ' 1/3', '⅔' => ' 2/3']);
+
+        // La coma decimal que se usa aquí.
+        $texto = str_replace(',', '.', $texto);
+        $texto = trim(preg_replace('/\s+/', ' ', $texto));
+
+        // "6 1/2": entero más fracción.
+        if (preg_match('#^(\d+)\s+(\d+)/(\d+)$#', $texto, $p) === 1 && (int) $p[3] !== 0) {
+            return (float) $p[1] + (int) $p[2] / (int) $p[3];
+        }
+
+        // "1/2" suelto.
+        if (preg_match('#^(\d+)/(\d+)$#', $texto, $p) === 1 && (int) $p[2] !== 0) {
+            return (int) $p[1] / (int) $p[2];
+        }
+
+        return is_numeric($texto) ? (float) $texto : null;
     }
 
     /** 22.0 se guarda como "22" y 22.5 como "22.5", igual que en la tabla. */
