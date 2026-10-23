@@ -320,7 +320,7 @@ class RecorteDeFotosDeLaIaTest extends TestCase
         );
     }
 
-    public function test_una_propuesta_que_nadie_miro_no_entra_al_catalogo(): void
+    public function test_una_propuesta_que_nadie_miro_tambien_entra_al_catalogo(): void
     {
         $this->conRasterizador($this->paginaFalsa);
 
@@ -336,9 +336,9 @@ class RecorteDeFotosDeLaIaTest extends TestCase
 
         $this->assertNotNull($producto->producto_campana_creado_id, 'El producto sí debe aprobarse.');
         $this->assertSame(
-            0,
+            1,
             ProductoImagen::where('producto_campana_id', $producto->producto_campana_creado_id)->count(),
-            'Una foto que nadie confirmó NO debe publicarse.'
+            'La foto que recortó la IA debe publicarse aunque nadie la haya revisado.'
         );
     }
 
@@ -376,6 +376,7 @@ class RecorteDeFotosDeLaIaTest extends TestCase
 
         $this->assertSame(1, $resumen['aprobados']);
         $this->assertNotNull($producto->refresh()->producto_campana_creado_id);
+        $this->assertSame(0, ProductoImagen::where('producto_campana_id', $producto->producto_campana_creado_id)->count());
     }
 
     // ------------------------------------------------------------------
