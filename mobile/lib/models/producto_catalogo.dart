@@ -230,7 +230,7 @@ class ProductoCatalogo {
     }
 
     for (final tallas in grupos.values) {
-      tallas.sort((a, b) => _compararTallas(a.talla, b.talla));
+      tallas.sort((a, b) => compararTallas(a.talla, b.talla));
     }
 
     return grupos;
@@ -324,7 +324,7 @@ class LineaCatalogo {
 
 /// Ordena tallas como números cuando se puede ("22", "22.5", "23") y como
 /// texto cuando no ("CH", "M").
-int _compararTallas(String a, String b) {
+int compararTallas(String a, String b) {
   final numeroA = double.tryParse(a);
   final numeroB = double.tryParse(b);
 
