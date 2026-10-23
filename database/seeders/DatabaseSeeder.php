@@ -38,6 +38,7 @@ class DatabaseSeeder extends Seeder
             AdminGeneralSeeder::class,
             DemoDistribuidoraSeeder::class,
             CatalogoMaestroDemoSeeder::class,
+            LineasMarcasSeeder::class,
             DemoCatalogoDistribuidorasSeeder::class,
             DemoContactosSeeder::class,
             CategoriaDirectorioSeeder::class,
