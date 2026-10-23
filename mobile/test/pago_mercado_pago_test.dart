@@ -135,12 +135,13 @@ void main() {
     final servidor = _Servidor(pedido: _pedido(anticipo: true));
     await abrir(tester, servidor);
 
-    expect(find.text('Puedes pagar con Mercado Pago o en mostrador.'), findsOneWidget);
-    await tocar(tester, 'Pagar anticipo con Mercado Pago');
+    expect(find.text('Puedes pagar con tarjeta o en mostrador.'), findsOneWidget);
+    await tocar(tester, 'Pagar anticipo con tarjeta');
 
     expect(find.text('Anticipo'), findsOneWidget);
     expect(find.text(r'$200.00'), findsOneWidget);
-    await tocar(tester, 'Pagar con Mercado Pago');
+    await tester.tap(find.byKey(const Key('abrir_pago_tarjeta')));
+    await tester.pumpAndSettle();
 
     expect(servidor.rutas, contains('POST /pedidos/5/anticipo/mercado-pago'));
     expect(abiertos, [Uri.parse(_initPoint)]);
@@ -155,7 +156,7 @@ void main() {
     await tocar(tester, 'Volver al pedido');
     // Se recarga el pedido al volver.
     expect(servidor.rutas.where((r) => r == 'GET /pedidos/5').length, 2);
-    expect(find.text('Pagar anticipo con Mercado Pago'), findsNothing);
+    expect(find.text('Pagar anticipo con tarjeta'), findsNothing);
   });
 
   testWidgets('si se vuelve a la app antes de que el navegador suelte la llamada, igual verifica', (tester) async {
@@ -167,8 +168,9 @@ void main() {
     };
     await abrir(tester, servidor);
 
-    await tocar(tester, 'Pagar anticipo con Mercado Pago');
-    await tocar(tester, 'Pagar con Mercado Pago');
+    await tocar(tester, 'Pagar anticipo con tarjeta');
+    await tester.tap(find.byKey(const Key('abrir_pago_tarjeta')));
+    await tester.pumpAndSettle();
 
     expect(servidor.rutas, contains('POST /pedidos/5/anticipo/mercado-pago/verificar'));
     expect(find.text('Recibimos el pago de tu pedido. ¡Gracias!'), findsOneWidget);
@@ -178,9 +180,10 @@ void main() {
     final servidor = _Servidor(pedido: _pedido(tipo: 'revendedor', total: true));
     await abrir(tester, servidor);
 
-    await tocar(tester, 'Pagar con Mercado Pago');
+    await tocar(tester, 'Pagar con tarjeta');
     expect(find.text('Total del pedido'), findsWidgets);
-    await tocar(tester, 'Pagar con Mercado Pago');
+    await tester.tap(find.byKey(const Key('abrir_pago_tarjeta')));
+    await tester.pumpAndSettle();
 
     expect(servidor.rutas, contains('POST /pedidos/5/total/mercado-pago'));
     expect(abiertos, hasLength(1));
@@ -214,8 +217,8 @@ void main() {
     await tocar(tester, 'Verificar pago');
 
     expect(find.textContaining('no coincide'), findsOneWidget);
-    expect(find.text('Pagar con Mercado Pago'), findsNothing);
-    expect(find.text('Abrir Mercado Pago otra vez'), findsNothing);
+    expect(find.byKey(const Key('abrir_pago_tarjeta')), findsNothing);
+    expect(find.text('Abrir el pago con tarjeta otra vez'), findsNothing);
     expect(find.text('Volver al pedido'), findsOneWidget);
   });
 
@@ -230,7 +233,7 @@ void main() {
     await tocar(tester, 'Verificar pago');
 
     expect(find.textContaining('rechazó el pago'), findsOneWidget);
-    expect(find.text('Pagar con Mercado Pago'), findsOneWidget);
+    expect(find.byKey(const Key('abrir_pago_tarjeta')), findsOneWidget);
   });
 
   testWidgets('el error del servidor se muestra tal cual', (tester) async {
@@ -240,8 +243,9 @@ void main() {
     );
     await abrir(tester, servidor);
 
-    await tocar(tester, 'Pagar anticipo con Mercado Pago');
-    await tocar(tester, 'Pagar con Mercado Pago');
+    await tocar(tester, 'Pagar anticipo con tarjeta');
+    await tester.tap(find.byKey(const Key('abrir_pago_tarjeta')));
+    await tester.pumpAndSettle();
 
     expect(find.text('Esta distribuidora todavía no recibe pagos con Mercado Pago. Puedes pagar en mostrador.'), findsOneWidget);
     expect(abiertos, isEmpty);

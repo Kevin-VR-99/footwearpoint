@@ -89,7 +89,7 @@ void main() {
           'id': pagina,
           'folio': 'VAL-$pagina',
           'monto_original': 100.0,
-          'saldo_disponible': 100.0,
+          'saldo_actual': 100.0,
           'estado': 'activo',
           'fecha_emision': '2026-09-01',
           'fecha_vencimiento': '2026-12-01',
@@ -101,6 +101,36 @@ void main() {
 
     final vales = await ValeService(api: api).listarValesVigentes();
     expect(vales.length, 3);
+  });
+
+  test('un vale aplicado no conserva su folio en la lista vigente', () async {
+    final api = ApiService(
+      cliente: MockClient((peticion) async {
+        expect(peticion.url.queryParameters['estado'], 'activo');
+        return _json({
+          'data': [
+            {
+              'id': 1,
+              'folio': 'VAL-VIVO',
+              'monto_original': 100.0,
+              'saldo_actual': 40.0,
+              'estado': 'activo',
+            },
+            {
+              'id': 2,
+              'folio': 'VAL-USADO',
+              'monto_original': 100.0,
+              'saldo_actual': 0.0,
+              'estado': 'agotado',
+            },
+          ],
+          'meta': _meta(1, 1),
+        });
+      }),
+    );
+
+    final vales = await ValeService(api: api).listarValesVigentes();
+    expect(vales.map((v) => v.folio), ['VAL-VIVO']);
   });
 
   testWidgets('Mis pedidos pide la siguiente página al llegar al final', (tester) async {

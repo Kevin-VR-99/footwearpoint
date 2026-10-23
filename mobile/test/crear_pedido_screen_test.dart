@@ -211,24 +211,24 @@ void main() {
     await abrir(tester, _Servidor(mercadoPago: true));
     await enviar(tester);
 
-    expect(find.text('Pagar anticipo con Mercado Pago'), findsOneWidget);
-    expect(find.text('Paga tu anticipo con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.'), findsOneWidget);
+    expect(find.text('Pagar anticipo con tarjeta'), findsOneWidget);
+    expect(find.text('Paga tu anticipo con tarjeta o en mostrador. Te avisaremos cuando tu pedido llegue.'), findsOneWidget);
   });
 
   testWidgets('TG-268: con el anticipo ya pagado, lo dice y no ofrece pagarlo otra vez', (tester) async {
     await abrir(tester, _Servidor(mercadoPago: true, anticipoPagado: true));
     await enviar(tester);
 
-    expect(find.text('Anticipo pagado. El resto se paga cuando tu pedido llegue, con Mercado Pago o en mostrador.'), findsOneWidget);
+    expect(find.text('Anticipo pagado. El resto se paga cuando tu pedido llegue, con tarjeta o en mostrador.'), findsOneWidget);
     expect(find.textContaining('Paga tu anticipo'), findsNothing);
-    expect(find.text('Pagar anticipo con Mercado Pago'), findsNothing);
+    expect(find.text('Pagar anticipo con tarjeta'), findsNothing);
   });
 
   testWidgets('TG-118: si el servidor no lo permite, no ofrece Mercado Pago', (tester) async {
     await abrir(tester, _Servidor());
     await enviar(tester);
 
-    expect(find.text('Pagar anticipo con Mercado Pago'), findsNothing);
+    expect(find.text('Pagar anticipo con tarjeta'), findsNothing);
   });
 
   testWidgets('el vale se aplica al pedido real, como máximo por lo que se debe', (tester) async {

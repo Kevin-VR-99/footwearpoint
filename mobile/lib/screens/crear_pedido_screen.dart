@@ -225,8 +225,8 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
         _Nota(
           icono: Icons.storefront_outlined,
           texto: _esRevendedor
-              ? 'Paga con Mercado Pago o en mostrador. Al enviar tu pedido te diremos cuánto queda pendiente.'
-              : 'El anticipo se paga con Mercado Pago o en mostrador. Al enviar tu pedido te diremos cuánto es.',
+              ? 'Paga con tarjeta o en mostrador. Al enviar tu pedido te diremos cuánto queda pendiente.'
+              : 'El anticipo se paga con tarjeta o en mostrador. Al enviar tu pedido te diremos cuánto es.',
         ),
         if (_error != null) ...[
           const SizedBox(height: 16),
@@ -253,11 +253,11 @@ class _CrearPedidoScreenState extends State<CrearPedidoScreen> {
   /// regresar de pagarlo con Mercado Pago), ya no se le pide (TG-268).
   String _notaDespuesDeEnviar(PedidoResumen pedido) {
     if (pedido.saldo <= 0) return 'Tu pedido ya está pagado. Te avisaremos cuando llegue.';
-    if (_esRevendedor) return 'Paga con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.';
+    if (_esRevendedor) return 'Paga con tarjeta o en mostrador. Te avisaremos cuando tu pedido llegue.';
     if (pedido.anticipoPendiente <= 0) {
-      return 'Anticipo pagado. El resto se paga cuando tu pedido llegue, con Mercado Pago o en mostrador.';
+      return 'Anticipo pagado. El resto se paga cuando tu pedido llegue, con tarjeta o en mostrador.';
     }
-    return 'Paga tu anticipo con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.';
+    return 'Paga tu anticipo con tarjeta o en mostrador. Te avisaremos cuando tu pedido llegue.';
   }
 
   /// Después de pagar con Mercado Pago: los importes al día.
