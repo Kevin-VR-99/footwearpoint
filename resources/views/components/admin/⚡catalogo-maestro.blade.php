@@ -990,7 +990,10 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             </tbody>
         </table></div></div>
 
-    @else
+    {{-- Condicion explicita, no @else: con el cajon de sastre, cualquier
+         pestaña que no fuera de las tres de arriba —Colores— caia aqui y
+         pintaba los productos encima. --}}
+    @elseif ($pestana === 'productos')
         <button type="button" wire:click="abrirCrear('producto')" class="fp-btn fp-btn-primario w-fit" aria-haspopup="dialog">Publicar producto</button>
         <x-ui.buscador wire:model.live.debounce.300ms="buscarProducto" placeholder="Producto, modelo, marca, línea o código…" etiqueta="Buscar productos publicados" class="w-full sm:w-80" data-buscador-catalogo="buscarProducto" />
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
@@ -1036,12 +1039,11 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 @endforelse
             </tbody>
         </table></div></div>
-    @endif
 
     {{-- TG-282: la paleta. No es solo para los formularios: de esta lista
          sale lo que se le manda a la IA al leer un catálogo, así que un color
          que falte aquí es un color que ella no va a poder asignar. --}}
-    @if ($pestana === 'colores')
+    @elseif ($pestana === 'colores')
         <button type="button" wire:click="abrirCrear('color')" class="fp-btn fp-btn-primario w-fit" aria-haspopup="dialog">Agregar color</button>
 
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
