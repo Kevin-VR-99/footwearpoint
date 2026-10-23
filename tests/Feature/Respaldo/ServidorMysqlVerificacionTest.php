@@ -27,8 +27,10 @@ class ServidorMysqlVerificacionTest extends TestCase
         config(['database.connections.mysql.password' => 'contrasena-que-no-debe-salir']);
         $comando = [];
         $opciones = '';
-        Process::fake(function (PendingProcess $p) use (&$comando, &$opciones) {
+        $entrada = null;
+        Process::fake(function (PendingProcess $p) use (&$comando, &$opciones, &$entrada) {
             $comando = (array) $p->command;
+            $entrada = $p->input;
             foreach ($comando as $a) {
                 if (str_starts_with($a, '--defaults-extra-file=')) {
                     $opciones = (string) file_get_contents(substr($a, 22));
@@ -38,12 +40,17 @@ class ServidorMysqlVerificacionTest extends TestCase
             return Process::result();
         });
 
-        app(ServidorMysqlVerificacion::class)->cargar('footwearpoint_restaurada', '/tmp/x.sql');
+        $sql = tempnam(sys_get_temp_dir(), 'fwp-test-');
+        file_put_contents($sql, 'SELECT 1;');
+        app(ServidorMysqlVerificacion::class)->cargar('footwearpoint_restaurada', $sql);
+        @unlink($sql);
 
         $this->assertStringNotContainsString('contrasena-que-no-debe-salir', implode(' ', $comando));
         $this->assertStringContainsString('contrasena-que-no-debe-salir', $opciones);
         $this->assertContains('--database=footwearpoint_restaurada', $comando);
-        $this->assertContains('--execute=source /tmp/x.sql', $comando);
+        // El .sql va por stdin (si falla una sentencia, mysql sale con error).
+        $this->assertEmpty(array_filter($comando, fn ($a) => str_starts_with($a, '--execute')));
+        $this->assertNotNull($entrada);
         $this->assertStringContainsString('loose-ssl-verify-server-cert=0', $opciones);
     }
 

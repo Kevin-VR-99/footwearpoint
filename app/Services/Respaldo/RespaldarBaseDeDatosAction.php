@@ -4,6 +4,7 @@ namespace App\Services\Respaldo;
 
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
@@ -48,8 +49,10 @@ class RespaldarBaseDeDatosAction
 
         try {
             $this->escribirOpciones($opciones, $conexion);
-            $this->volcar($opciones, $sql, $conexion['database']);
+            $generadas = $this->tablasConColumnasGeneradas($conexion['database']);
+            $this->volcar($opciones, $sql, $conexion['database'], array_keys($generadas));
             $this->revisarVolcado($sql);
+            $this->anexarDatosConColumnasGeneradas($sql, $generadas);
             $this->comprimir($sql, $gz);
 
             $archivo = $this->ruta($ahora);
@@ -145,7 +148,8 @@ class RespaldarBaseDeDatosAction
         @chmod($ruta, 0600);
     }
 
-    private function volcar(string $opciones, string $sql, string $baseDeDatos): void
+    /** @param list<string> $sinDatos tablas cuyos datos se vuelcan aparte (columnas generadas) */
+    private function volcar(string $opciones, string $sql, string $baseDeDatos, array $sinDatos = []): void
     {
         $comando = array_merge(
             [(string) config('respaldos.mysqldump'), '--defaults-extra-file='.$opciones],
@@ -158,6 +162,7 @@ class RespaldarBaseDeDatosAction
                 '--default-character-set=utf8mb4',
                 '--result-file='.$sql,
             ],
+            array_map(fn (string $tabla) => '--ignore-table-data='.$baseDeDatos.'.'.$tabla, $sinDatos),
             preg_split('/\s+/', trim((string) config('respaldos.opciones_extra')), -1, PREG_SPLIT_NO_EMPTY),
             [$baseDeDatos],
         );
@@ -173,6 +178,71 @@ class RespaldarBaseDeDatosAction
 
             throw new RespaldoException(RespaldoException::VOLCADO_FALLO);
         }
+    }
+
+    /**
+     * Tablas con columnas generadas (p. ej. campanas.linea_activa_id). El
+     * mysqldump de MariaDB que trae la imagen incluye esas columnas en los
+     * INSERT y MySQL los rechaza al restaurar ("The value specified for
+     * generated column ... is not allowed"), así que esas tablas se volcaban
+     * pero no se podían recuperar. Sus datos se escriben aparte, sin ellas.
+     *
+     * @return array<string, list<string>> tabla => columnas normales
+     */
+    public function tablasConColumnasGeneradas(string $base): array
+    {
+        $filas = DB::select(
+            "SELECT c.table_name AS t, c.column_name AS c, c.extra AS e
+               FROM information_schema.columns c
+               JOIN information_schema.tables t ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+              WHERE c.table_schema = ? AND t.table_type = 'BASE TABLE'
+              ORDER BY c.table_name, c.ordinal_position",
+            [$base]
+        );
+
+        $columnas = [];
+        $conGeneradas = [];
+        foreach ($filas as $fila) {
+            // DEFAULT_GENERATED (timestamps) no cuenta: esa sí se puede insertar.
+            if (preg_match('/\b(STORED|VIRTUAL|PERSISTENT)( GENERATED)?\b/i', (string) $fila->e) === 1
+                && stripos((string) $fila->e, 'DEFAULT_GENERATED') === false) {
+                $conGeneradas[(string) $fila->t] = true;
+
+                continue;
+            }
+            $columnas[(string) $fila->t][] = (string) $fila->c;
+        }
+
+        return array_intersect_key($columnas, $conGeneradas);
+    }
+
+    /** @param array<string, list<string>> $tablas */
+    private function anexarDatosConColumnasGeneradas(string $sql, array $tablas): void
+    {
+        if ($tablas === []) {
+            return;
+        }
+
+        $pdo = DB::connection()->getPdo();
+        $zona = (string) DB::selectOne('SELECT @@session.time_zone AS z')->z;
+        $archivo = fopen($sql, 'ab');
+
+        fwrite($archivo, "\n-- FootwearPoint: datos de tablas con columnas generadas (sin esas columnas).\n"
+            ."SET @FWP_FK = @@FOREIGN_KEY_CHECKS, @FWP_TZ = @@TIME_ZONE;\n"
+            ."SET FOREIGN_KEY_CHECKS = 0, TIME_ZONE = ".$pdo->quote($zona).";\n");
+
+        foreach ($tablas as $tabla => $columnas) {
+            $lista = implode(', ', array_map([ServidorMysqlVerificacion::class, 'identificador'], $columnas));
+            $insert = 'INSERT INTO '.ServidorMysqlVerificacion::identificador($tabla).' ('.$lista.') VALUES (';
+
+            foreach (DB::cursor('SELECT '.$lista.' FROM '.ServidorMysqlVerificacion::identificador($tabla)) as $fila) {
+                $valores = array_map(fn ($v) => $v === null ? 'NULL' : $pdo->quote((string) $v), array_values((array) $fila));
+                fwrite($archivo, $insert.implode(',', $valores).");\n");
+            }
+        }
+
+        fwrite($archivo, "SET FOREIGN_KEY_CHECKS = @FWP_FK, TIME_ZONE = @FWP_TZ;\n".self::FIN_DEL_VOLCADO." (FootwearPoint)\n");
+        fclose($archivo);
     }
 
     private function revisarVolcado(string $sql): void

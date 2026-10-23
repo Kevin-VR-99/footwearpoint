@@ -6,6 +6,7 @@ use App\Services\Respaldo\RespaldarBaseDeDatosAction;
 use App\Services\Respaldo\RespaldoException;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
@@ -37,6 +38,10 @@ class RespaldoBaseDeDatosTest extends TestCase
         parent::setUp();
 
         Carbon::setTestNow(Carbon::parse('2026-10-09 09:00:00', 'UTC'));
+
+        // La acción lee information_schema: se conecta antes de cambiar la
+        // contraseña de prueba (esa solo debe llegar al archivo de opciones).
+        DB::connection()->getPdo();
 
         config([
             'filesystems.disks.respaldos.key'      => 'llave-de-prueba',
@@ -80,7 +85,8 @@ class RespaldoBaseDeDatosTest extends TestCase
             ->assertSuccessful();
 
         Storage::disk('respaldos')->assertExists(self::ARCHIVO);
-        $this->assertSame($this->volcado, gzdecode(Storage::disk('respaldos')->get(self::ARCHIVO)));
+        // Después del volcado puede ir el bloque de tablas con columnas generadas.
+        $this->assertStringStartsWith($this->volcado, gzdecode(Storage::disk('respaldos')->get(self::ARCHIVO)));
 
         $comando = $this->comandos[0];
         $this->assertSame('mysqldump', $comando[0]);
@@ -172,5 +178,27 @@ class RespaldoBaseDeDatosTest extends TestCase
         config(['respaldos.retencion_dias' => 0]);
         Carbon::setTestNow(Carbon::parse('2027-10-09 09:00:00', 'UTC'));
         $this->assertSame([], app(RespaldarBaseDeDatosAction::class)->ejecutar()['borrados']);
+    }
+
+    public function test_las_tablas_con_columnas_generadas_se_respaldan_sin_esas_columnas(): void
+    {
+        DB::statement('DROP TABLE IF EXISTS fwp_prueba_generada');
+        DB::statement("CREATE TABLE fwp_prueba_generada (id INT PRIMARY KEY, estado VARCHAR(10), activa_id INT AS (IF(estado = 'activa', id, NULL)) STORED)");
+        DB::table('fwp_prueba_generada')->insert([['id' => 1, 'estado' => 'activa'], ['id' => 2, 'estado' => "fin'al"]]);
+
+        try {
+            $this->artisan('respaldo:base-de-datos')->assertSuccessful();
+        } finally {
+            DB::statement('DROP TABLE IF EXISTS fwp_prueba_generada');
+        }
+
+        $base = (string) config('database.connections.mysql.database');
+        $this->assertContains('--ignore-table-data='.$base.'.fwp_prueba_generada', (array) $this->comandos[0]);
+
+        $sql = gzdecode(Storage::disk('respaldos')->get(self::ARCHIVO));
+        $this->assertStringContainsString("INSERT INTO `fwp_prueba_generada` (`id`, `estado`) VALUES ('1','activa');", $sql);
+        $this->assertStringContainsString("INSERT INTO `fwp_prueba_generada` (`id`, `estado`) VALUES ('2','fin\\'al');", $sql);
+        $this->assertStringNotContainsString('activa_id', $sql);
+        $this->assertStringEndsWith("-- Dump completed (FootwearPoint)\n", $sql);
     }
 }
