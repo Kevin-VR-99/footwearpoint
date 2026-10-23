@@ -364,6 +364,26 @@ Un revendedor o cliente directo solo ve y toca **sus** pedidos. El empleado ve t
 
 **Salida (200):** `{ "data": [ ...pedidos... ] }` — cada uno con la forma de abajo, pero **sin** `lineas`.
 
+### GET `/api/pedidos/resumen`
+
+Lo usa el inicio de la app. El listado se queda en 100, así que el conteo de la portada sale de aquí.
+
+**Salida (200)**
+
+```json
+{
+  "data": {
+    "en_curso": 2,
+    "por_pagar": 1500.5,
+    "ultimos": []
+  }
+}
+```
+
+`en_curso` cuenta los pedidos que no están en `borrador`, `descartado`, `entregado` ni `rechazado`. `por_pagar` es la suma del saldo de esos mismos, con dos decimales. `ultimos` son los 3 más nuevos que no son borrador, con la misma forma del listado y sin `lineas`. Cada quien ve solo los suyos; el empleado ve los de su distribuidora.
+
+**403** si no se pudo determinar la distribuidora.
+
 ### GET `/api/pedidos/{id}`
 
 **Salida (200)**
@@ -748,6 +768,14 @@ Roles: `admin_distribuidora`, `empleado`, `revendedor`, `cliente_directo`. Cada 
 `entidad_tipo` y `entidad_id` sirven para que al tocar la notificación la app abra la pantalla correspondiente.
 
 `grupo` (TG-196, campo nuevo, solo lectura) agrupa las notificaciones como la campana del panel: `pedidos` (Pedidos y entregas: `pedido_estado`, `pedido_llegada`, `pedido_anticipo_pendiente`), `pagos` (Pagos y vales: `pago_mercado_pago`, `pago_suscripcion`, `vale_por_vencer`), `promociones` (tipos que empiecen con `promo` o `campana`) y `generales` (todo lo demás). El mapa vive en `app/Support/GruposNotificacion.php`. La app puede ignorarlo sin romper nada.
+
+### POST `/api/notificaciones/marcar-todas-leidas`
+
+Sin cuerpo. Marca como leídos los avisos de quien llama. No toca los de otra persona.
+
+**Salida (200):** `{ "message": "Avisos marcados como leídos.", "marcadas": 2 }`
+
+`marcadas` es cuántas estaban sin leer. **403** si no se pudo determinar la distribuidora.
 
 ### POST `/api/notificaciones/{id}/marcar-leida`
 
