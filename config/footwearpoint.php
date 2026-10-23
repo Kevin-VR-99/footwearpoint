@@ -43,6 +43,10 @@ return [
     */
 
     'solicitudes_alta' => [
+        // Buzón que recibe el aviso de una solicitud nueva. No es el correo
+        // con el que se entra al panel (admin general).
+        'correo' => env('FOOTWEARPOINT_SOLICITUDES_EMAIL', 'footwearpoint.mx@gmail.com'),
+
         'por_hora_por_ip' => (int) env('FOOTWEARPOINT_SOLICITUDES_POR_HORA', 3),
 
         // Segundo límite: intentos de envío en diez minutos, se guarden o no.

@@ -25,7 +25,7 @@ use Tests\TestCase;
  * TG-220 (E2-08) — El formulario público "Solicitar mi alta".
  *
  * La solicitud queda como distribuidora PENDIENTE con su administrador, el
- * admin general recibe aviso, y hay defensa contra envíos automáticos.
+ * aviso llega a footwearpoint.mx@gmail.com, y hay defensa contra envíos automáticos.
  */
 class SolicitarAltaTest extends TestCase
 {
@@ -257,17 +257,19 @@ class SolicitarAltaTest extends TestCase
     // 3. El admin general recibe aviso
     // ------------------------------------------------------------------
 
-    public function test_avisa_por_correo_a_los_admin_general(): void
+    public function test_avisa_por_correo_al_buzon_de_footwearpoint(): void
     {
         Mail::fake();
 
         $this->formulario()->call('enviar')->assertHasNoErrors();
 
         Mail::assertSent(SolicitudAltaDistribuidoraMail::class, function ($correo) {
-            return $correo->hasTo(\Database\Seeders\AdminGeneralSeeder::EMAIL)
+            return $correo->hasTo('footwearpoint.mx@gmail.com')
+                && ! $correo->hasTo(\Database\Seeders\AdminGeneralSeeder::EMAIL)
                 && $correo->nombreDistribuidora === self::NOMBRE
                 && $correo->emailAdministrador === self::EMAIL_ADMIN;
         });
+        Mail::assertSent(SolicitudAltaDistribuidoraMail::class, 1);
     }
 
     public function test_al_administrador_le_llega_el_acuse_de_su_solicitud(): void
@@ -279,6 +281,7 @@ class SolicitarAltaTest extends TestCase
         Mail::assertSent(SolicitudAltaRecibidaMail::class, function ($correo) {
             return $correo->hasTo(self::EMAIL_ADMIN)
                 && ! $correo->hasTo(\Database\Seeders\AdminGeneralSeeder::EMAIL)
+                && ! $correo->hasTo('footwearpoint.mx@gmail.com')
                 && $correo->nombreDistribuidora === self::NOMBRE;
         });
         Mail::assertSent(SolicitudAltaRecibidaMail::class, 1);
@@ -296,11 +299,11 @@ class SolicitarAltaTest extends TestCase
         $correo->assertSeeInHtml('todavía no podrás entrar al panel', false);
     }
 
-    public function test_si_falla_solo_el_acuse_la_solicitud_se_guarda_y_el_admin_general_recibe_aviso(): void
+    public function test_si_falla_solo_el_acuse_la_solicitud_se_guarda_y_el_buzon_recibe_aviso(): void
     {
         Mail::fake();
         Mail::shouldReceive('to')->with(self::EMAIL_ADMIN)->andThrow(new \RuntimeException('sin servidor de correo'));
-        Mail::shouldReceive('to')->with(\Database\Seeders\AdminGeneralSeeder::EMAIL)->andReturnSelf();
+        Mail::shouldReceive('to')->with('footwearpoint.mx@gmail.com')->andReturnSelf();
         Mail::shouldReceive('send')->once();
 
         $this->formulario()->call('enviar')->assertHasNoErrors()->assertSet('enviada', true);

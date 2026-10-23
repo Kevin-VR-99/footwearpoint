@@ -81,9 +81,27 @@ class RolAdminGeneralUnicoTest extends TestCase
         $this->assertNotNull($admin->email_verified_at);
     }
 
-    public function test_el_aviso_de_solicitud_de_alta_le_llega_al_admin_general(): void
+    public function test_el_aviso_de_solicitud_de_alta_llega_al_buzon_de_footwearpoint(): void
     {
         Mail::fake();
+
+        $distribuidora = Distribuidora::query()->firstOrFail();
+        $solicitante = Usuario::where('email', DemoDistribuidoraSeeder::ADMIN)->firstOrFail();
+
+        $enviado = app(NotificarSolicitudAltaAction::class)->ejecutar($distribuidora, $solicitante);
+
+        $this->assertTrue($enviado);
+        $this->assertSame('footwearpoint.mx@gmail.com', config('footwearpoint.solicitudes_alta.correo'));
+        Mail::assertSent(SolicitudAltaDistribuidoraMail::class, function ($correo) {
+            return $correo->hasTo('footwearpoint.mx@gmail.com')
+                && ! $correo->hasTo(AdminGeneralSeeder::EMAIL);
+        });
+    }
+
+    public function test_sin_buzon_de_solicitudes_el_aviso_cae_en_el_admin_general(): void
+    {
+        Mail::fake();
+        config(['footwearpoint.solicitudes_alta.correo' => '']);
 
         $distribuidora = Distribuidora::query()->firstOrFail();
         $solicitante = Usuario::where('email', DemoDistribuidoraSeeder::ADMIN)->firstOrFail();
