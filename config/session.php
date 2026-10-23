@@ -32,9 +32,9 @@ return [
     |
     */
 
-    // Sesion persistente: nunca menos de diez anios, aunque SESSION_LIFETIME
-    // traiga un valor menor por error.
-    'lifetime' => max((int) env('SESSION_LIFETIME', 5256000), 5256000),
+    // Sesion persistente: diez anios por defecto. SESSION_LIFETIME (Railway)
+    // lo controla si esta definida.
+    'lifetime' => (int) env('SESSION_LIFETIME', 5256000),
 
     // Sesion persistente: cerrar el navegador nunca cierra la sesion.
     'expire_on_close' => false,
