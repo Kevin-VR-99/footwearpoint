@@ -216,7 +216,7 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
         </div>
         <table class="fp-tabla min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-fp-page">
-                <tr class="text-left text-xs font-semibold uppercase tracking-wide text-fp-text-muted">
+                <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                     <th class="px-6 py-3">SKU</th>
                     <th class="px-6 py-3">Talla</th>
                     <th class="px-6 py-3">Color</th>

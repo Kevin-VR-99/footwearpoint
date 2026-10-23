@@ -183,7 +183,7 @@ new #[Layout('layouts.admin')] #[Title('Categorías del directorio — Admin')] 
 
     <div class="fp-tarjeta fp-tabla overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
                     <th class="text-left px-4 py-3 font-medium">Categoría</th>
                     <th class="text-left px-4 py-3 font-medium">Distribuidoras</th>

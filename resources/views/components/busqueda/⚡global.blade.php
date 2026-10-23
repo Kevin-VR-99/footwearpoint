@@ -48,9 +48,9 @@ new class extends Component {
         {{-- Campo del navbar: abre el modal. --}}
         <button type="button" @click="abrir()"
             class="group hidden items-center gap-2 rounded-xl border border-slate-200 bg-fp-page/70 px-3 py-1.5 text-sm text-fp-text-muted transition hover:border-fp-primary/40 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40 motion-reduce:transition-none sm:inline-flex sm:w-56 lg:w-72"
-            aria-haspopup="dialog" aria-label="Buscar en el panel (Ctrl+K)" data-abrir-busqueda>
+            aria-haspopup="dialog" aria-keyshortcuts="Control+K" data-abrir-busqueda>
             <svg class="h-4 w-4 shrink-0 text-slate-400 group-hover:text-fp-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.3-4.3M10.5 18a7.5 7.5 0 110-15 7.5 7.5 0 010 15z"/></svg>
-            <span class="flex-1 truncate text-left">Buscar…</span>
+            <span class="flex-1 truncate text-left text-slate-600">Buscar…<span class="sr-only"> en el panel</span></span>
             <kbd class="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 font-sans text-[10px] font-semibold text-slate-500"><span x-text="/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'">Ctrl</span> K</kbd>
         </button>
         <button type="button" @click="abrir()" class="fp-accion fp-accion-neutra sm:hidden" aria-label="Buscar en el panel">

@@ -71,7 +71,7 @@ new #[Layout('layouts.panel')] #[Title('Historial de clientes — FootwearPoint'
 
         <div class="fp-tarjeta overflow-x-auto fp-aparecer">
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr><th class="px-4 py-2">Cliente</th><th class="px-4 py-2">Tipo</th><th class="px-4 py-2">Teléfono</th><th class="px-4 py-2">Estado</th><th></th></tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -137,7 +137,7 @@ new #[Layout('layouts.panel')] #[Title('Historial de clientes — FootwearPoint'
                                         @break
                                     @case('vales')
                                         <td class="py-2">{{ $f['folio'] }}</td><td class="py-2 text-xs text-slate-500">Vence {{ $f['vence'] ?? '—' }}</td><td class="py-2">{{ ucfirst($f['estado']) }}</td>
-                                        <td class="py-2 text-right">{{ $mxn($f['saldo']) }} <span class="text-xs text-slate-400">de {{ $mxn($f['original']) }}</span></td>
+                                        <td class="py-2 text-right">{{ $mxn($f['saldo']) }} <span class="text-xs text-slate-500">de {{ $mxn($f['original']) }}</span></td>
                                         @break
                                     @case('cambios')
                                         <td class="py-2">

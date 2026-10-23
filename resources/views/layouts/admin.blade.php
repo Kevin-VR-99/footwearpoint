@@ -23,7 +23,7 @@
         {{-- TG-234: barra lateral plegable con el mismo patrón que layouts/panel (Alpine sidebarOpen). --}}
         <aside
             class="sticky top-0 z-40 flex h-screen shrink-0 flex-col overflow-hidden bg-gradient-to-b from-fp-sidebar via-fp-sidebar to-fp-accent text-white shadow-xl shadow-fp-sidebar/30 transition-[width] duration-200 ease-out"
-            :class="sidebarOpen ? 'w-64' : 'w-0'" :aria-hidden="(!sidebarOpen).toString()" data-admin-sidebar>
+            :class="sidebarOpen ? 'w-64' : 'w-0'" aria-hidden="true" inert :aria-hidden="(!sidebarOpen).toString()" :inert="!sidebarOpen" data-admin-sidebar>
             <div class="flex h-full w-64 flex-col">
             <div class="h-0.5 w-full bg-gradient-to-r from-fp-primary via-white/40 to-fp-danger"></div>
             <div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4">
@@ -68,7 +68,7 @@
                     <button x-show="!sidebarOpen" x-cloak x-transition.opacity type="button"
                         class="group flex items-center gap-2.5 rounded-xl py-1 pr-2.5 pl-1 text-left transition hover:bg-fp-page focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40"
                         @click="sidebarOpen = !sidebarOpen" :aria-expanded="sidebarOpen.toString()"
-                        aria-label="Abrir o cerrar menú">
+                        aria-label="Footwear Point Admin, abrir o cerrar menú">
                         <span
                             class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-fp-sidebar shadow-sm ring-2 ring-fp-primary/20 transition group-hover:ring-fp-primary/40">
                             <img src="{{ asset('brand/logo-mark-white-40.png') }}" alt=""

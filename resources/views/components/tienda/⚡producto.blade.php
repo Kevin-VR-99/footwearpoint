@@ -63,7 +63,7 @@ new class extends Component {
                     </div>
                 @endif
             @else
-                <div class="aspect-square flex items-center justify-center text-slate-400">
+                <div class="aspect-square flex items-center justify-center text-slate-500">
                     {{ $producto['marca'] ?? 'Sin foto' }}
                 </div>
             @endif

@@ -356,7 +356,7 @@ new class extends Component {
     @endif
 
     @if ($error !== '')
-        <div class="fp-emerger rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-danger">
+        <div class="fp-emerger rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-badge-danger-fg">
             {{ $error }}
         </div>
     @endif
@@ -366,7 +366,7 @@ new class extends Component {
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-slate-900">Plan {{ $suscripcion['plan'] }}</span>
                 @if ($suscripcion['vencida'])
-                    <span class="inline-flex rounded-full bg-fp-danger-soft px-2.5 py-0.5 text-[11px] font-medium text-fp-danger">Vencida</span>
+                    <span class="inline-flex rounded-full bg-fp-danger-soft px-2.5 py-0.5 text-[11px] font-medium text-fp-badge-danger-fg">Vencida</span>
                 @else
                     <span class="inline-flex rounded-full bg-fp-badge-success-bg px-2.5 py-0.5 text-[11px] font-medium text-fp-badge-success-fg">Activa</span>
                 @endif

@@ -8,7 +8,7 @@
         <table class="fp-tabla min-w-full text-sm">
             @isset($encabezado)
                 <thead @class([
-                    'bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted',
+                    'bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600',
                     'sticky top-0 z-10' => $encabezadoSticky,
                 ])>
                     {{ $encabezado }}

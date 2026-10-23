@@ -642,7 +642,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         </x-panel.metrica>
     </div>
     @if ($comparacion === null)
-        <p class="mb-4 text-[11px] text-fp-text-muted" data-sin-comparacion>Elige fecha Desde y Hasta para comparar contra el periodo anterior de la misma duración.</p>
+        <p class="mb-4 text-[11px] text-slate-600" data-sin-comparacion>Elige fecha Desde y Hasta para comparar contra el periodo anterior de la misma duración.</p>
     @endif
 
     {{-- Secciones en pestañas (todas se renderizan; la pestaña solo decide cuál se ve). --}}
@@ -664,7 +664,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             <x-panel.seccion titulo="Movimientos del periodo" nota="Abonos (cobros a clientes), cargos (reembolsos y suscripción) y saldo acumulado.">
         <div class="overflow-x-auto">
         <table class="fp-tabla min-w-full text-sm">
-            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
                     <th class="px-4 py-2">Fecha</th>
                     <th class="px-4 py-2">Concepto</th>
@@ -701,7 +701,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                     <div class="p-4 sm:p-5"><x-ui.barras :items="$graficaEstados" /></div>
                     <div class="overflow-x-auto border-t border-slate-100">
         <table class="fp-tabla min-w-full text-sm">
-            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
                     <th class="px-4 py-2">Estado</th>
                     <th class="px-4 py-2 text-right">Cantidad</th>
@@ -726,7 +726,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                     <div class="p-4 sm:p-5"><x-ui.barras :items="$graficaCiclos" tono="oscuro" /></div>
                     <div class="overflow-x-auto border-t border-slate-100">
         <table class="fp-tabla min-w-full text-sm">
-            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
                     <th class="px-4 py-2">Ciclo</th>
                     <th class="px-4 py-2 text-right">Cantidad</th>
@@ -751,7 +751,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             <x-panel.seccion id="movimientos" titulo="Detalle de pedidos" nota="Máximo 100 del periodo.">
         <div class="overflow-x-auto">
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="px-4 py-2">Folio</th>
                         <th class="px-4 py-2">Quién</th>
@@ -770,11 +770,11 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                             </td>
                             <td class="px-4 py-3">
                                 <div class="text-slate-800">{{ $pedido['quien'] }}</div>
-                                <div class="text-xs text-slate-400">
+                                <div class="text-xs text-slate-500">
                                     {{ $pedido['tipo'] === 'Revendedor' ? 'Cliente mayorista' : $pedido['tipo'] }}
                                 </div>
                                 @if (!empty($pedido['capturado_por']))
-                                    <div class="text-xs text-slate-400">Capturó: {{ $pedido['capturado_por'] }}</div>
+                                    <div class="text-xs text-slate-500">Capturó: {{ $pedido['capturado_por'] }}</div>
                                 @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-slate-600">
@@ -812,7 +812,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             <x-panel.seccion titulo="Detalle de ventas (venta local)" nota="Máximo 100 del periodo.">
         <div class="overflow-x-auto">
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="px-4 py-2">Folio</th>
                         <th class="px-4 py-2">Quién</th>
@@ -833,10 +833,10 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                             <td class="px-4 py-3">
                                 <div class="text-slate-800">{{ $venta['quien'] }}</div>
                                 @if (!empty($venta['sucursal']))
-                                    <div class="text-xs text-slate-400">{{ $venta['sucursal'] }}</div>
+                                    <div class="text-xs text-slate-500">{{ $venta['sucursal'] }}</div>
                                 @endif
                                 @if (!empty($venta['capturado_por']))
-                                    <div class="text-xs text-slate-400">Registró: {{ $venta['capturado_por'] }}</div>
+                                    <div class="text-xs text-slate-500">Registró: {{ $venta['capturado_por'] }}</div>
                                 @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-slate-600">
@@ -880,7 +880,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         @endif
         <div class="overflow-x-auto">
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="px-4 py-2">Cliente mayorista</th>
                         <th class="px-4 py-2 text-right">Pedidos</th>
@@ -932,7 +932,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         <div class="overflow-x-auto border-t border-slate-100">
             <p class="px-4 pt-3 text-sm font-medium text-slate-700">Clientes</p>
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="px-4 py-2">Cliente</th>
                         <th class="px-4 py-2 text-right">Pedidos con saldo</th>
@@ -995,7 +995,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         <div class="overflow-x-auto border-t border-slate-100">
             <p class="px-4 pt-3 text-sm font-medium text-slate-700">Clientes mayoristas</p>
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="px-4 py-2">Cliente mayorista</th>
                         <th class="px-4 py-2 text-right">Pedidos con saldo</th>
@@ -1059,7 +1059,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             <x-panel.seccion titulo="Vales vigentes" :nota="$pendientes['vales_vigentes']['totales']['vales'].' vales · saldo disponible '.$dinero($pendientes['vales_vigentes']['totales']['saldo'])">
         <div class="overflow-x-auto">
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="px-4 py-2">Folio</th>
                         <th class="px-4 py-2">Dueño</th>
@@ -1101,7 +1101,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         <div class="overflow-x-auto border-t border-slate-100">
             <p class="px-4 pt-3 text-sm font-medium text-slate-700">Marcas</p>
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr><th class="px-4 py-2">Marca</th><th class="px-4 py-2 text-right">Piezas</th><th class="px-4 py-2 text-right">Pedidos</th><th class="px-4 py-2 text-right">Modelos</th><th class="px-4 py-2 text-right">Monto</th></tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -1116,7 +1116,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         <div class="overflow-x-auto border-t border-slate-100">
             <p class="px-4 pt-3 text-sm font-medium text-slate-700">Productos más solicitados <span class="text-xs font-normal text-slate-500">(los 20 con más piezas)</span></p>
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr><th class="px-4 py-2">Producto</th><th class="px-4 py-2">Marca</th><th class="px-4 py-2">Temporada</th><th class="px-4 py-2 text-right">Piezas</th><th class="px-4 py-2 text-right">Pedidos</th><th class="px-4 py-2 text-right">Monto</th></tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -1131,7 +1131,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         <div class="overflow-x-auto border-t border-slate-100">
             <p class="px-4 pt-3 text-sm font-medium text-slate-700">Temporadas</p>
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr><th class="px-4 py-2">Temporada</th><th class="px-4 py-2">Línea</th><th class="px-4 py-2 text-right">Piezas</th><th class="px-4 py-2 text-right">Pedidos</th><th class="px-4 py-2 text-right">Monto</th></tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">

@@ -88,7 +88,7 @@ class RedisenoMarketplaceTest extends TestCase
             ->assertSee('data-admin-sidebar', false)
             ->assertSee("sidebarOpen ? 'w-64' : 'w-0'", false)
             ->assertSee('transition-[width] duration-200 ease-out', false)
-            ->assertSee('aria-label="Abrir o cerrar menú"', false)
+            ->assertSee('aria-label="Footwear Point Admin, abrir o cerrar menú"', false)
             ->assertSee('aria-label="Cerrar menú"', false);
 
         $html = $this->get(route('admin.dashboard'))->getContent();

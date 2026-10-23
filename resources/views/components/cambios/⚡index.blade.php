@@ -230,7 +230,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                                             <span class="block text-xs text-slate-500">Hasta {{ \Illuminate\Support\Carbon::parse($cambio['fecha_limite'])->format('d/m/Y') }}</span>
                                         @endif
                                     @else
-                                        <span class="text-xs text-slate-400">Fuera de plazo</span>
+                                        <span class="text-xs text-slate-500">Fuera de plazo</span>
                                     @endif
                                 </td>
                             </tr>
@@ -254,7 +254,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
     <div class="relative overflow-x-auto fp-tarjeta fp-aparecer">
         <x-ui.cargando objetivo="estado,gotoPage,nextPage,previousPage" />
         <table class="fp-tabla min-w-full text-sm">
-            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
                     <th class="px-4 py-2">Solicitud</th>
                     <th class="px-4 py-2">Cliente</th>

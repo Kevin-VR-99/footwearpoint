@@ -118,7 +118,7 @@ new #[Layout('layouts.admin')] #[Title('Mercado Pago — Admin')] class extends 
             <p class="px-4 py-6 text-sm text-slate-600">Todavía no hay mensualidades cobradas.</p>
         @else
             <table class="w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="px-4 py-3 font-medium">Plan</th>
                         <th class="px-4 py-3 font-medium">Cobros</th>
@@ -144,7 +144,7 @@ new #[Layout('layouts.admin')] #[Title('Mercado Pago — Admin')] class extends 
             <p class="px-4 py-6 text-sm text-slate-600">No hay mensualidades aplicadas ni enlaces pendientes.</p>
         @else
             <table class="w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="px-4 py-3 font-medium">Fecha</th>
                         <th class="px-4 py-3 font-medium">Distribuidora</th>

@@ -214,7 +214,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
 
     <div class="fp-tarjeta fp-tabla overflow-hidden">
         <table class="w-full text-sm">
-            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
                     <th class="text-left px-4 py-3 font-medium">Plan</th>
                     <th class="text-left px-4 py-3 font-medium">Base</th>
@@ -229,7 +229,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
                     <tr>
                         <td class="px-4 py-3">
                             <div class="font-medium">{{ $plan->nombre }}</div>
-                            <div class="text-xs text-slate-400">{{ Str::limit($plan->descripcion, 40) }}</div>
+                            <div class="text-xs text-slate-500">{{ Str::limit($plan->descripcion, 40) }}</div>
                         </td>
                         <td class="px-4 py-3">${{ number_format($plan->precio_base_mensual, 2) }}</td>
                         <td class="px-4 py-3">{{ $plan->lineas_incluidas }}</td>

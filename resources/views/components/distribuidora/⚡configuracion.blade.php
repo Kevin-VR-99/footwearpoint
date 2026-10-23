@@ -44,7 +44,7 @@ new #[Layout('layouts.panel')] class extends Component {
     <x-panel.encabezado eyebrow="Administración" titulo="Configuración" nivel="h1"
         subtitulo="Anticipos, ciclos, Mercado Pago y suscripción." class="mb-6">
         <x-slot:acciones>
-        <span class="inline-flex items-center gap-1.5 self-start rounded-full border border-fp-danger/20 bg-fp-danger-soft px-2.5 py-1 text-[11px] font-medium text-fp-danger">
+        <span class="inline-flex items-center gap-1.5 self-start rounded-full border border-fp-danger/20 bg-fp-danger-soft px-2.5 py-1 text-[11px] font-medium text-fp-badge-danger-fg">
             <span class="h-1.5 w-1.5 rounded-full bg-fp-danger"></span>
             Solo admin
         </span>

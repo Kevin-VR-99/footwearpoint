@@ -205,7 +205,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
 
         <div class="overflow-x-auto">
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="text-left font-medium px-4 py-3">Folio</th>
                         <th class="text-left font-medium px-4 py-3">Propietario</th>

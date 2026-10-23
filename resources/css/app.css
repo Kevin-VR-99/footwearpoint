@@ -294,11 +294,11 @@ html.fp-js [data-revelar]:not(.revelado) {
     .fp-btn-contorno:hover:not(:disabled) { background-color: color-mix(in oklab, var(--color-fp-primary) 8%, white); }
     .fp-btn-peligro { background-color: var(--color-fp-danger); color: #fff; }
     .fp-btn-peligro:hover:not(:disabled) { background-color: color-mix(in oklab, var(--color-fp-danger) 88%, black); }
-    .fp-btn-fantasma { box-shadow: none; background-color: transparent; color: var(--color-fp-text-muted); }
+    .fp-btn-fantasma { box-shadow: none; background-color: transparent; color: var(--color-slate-600); }
     .fp-btn-fantasma:hover:not(:disabled) { box-shadow: none; transform: none; background-color: var(--color-fp-page); color: var(--color-fp-sidebar); }
 
     /* Tablas: fila resaltada al pasar el mouse. */
-    .fp-tabla thead { background-color: var(--color-fp-page); text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .025em; color: var(--color-fp-text-muted); }
+    .fp-tabla thead { background-color: var(--color-fp-page); text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .025em; color: var(--color-slate-600); }
     .fp-tabla tbody tr { transition: background-color .15s ease; }
     .fp-tabla tbody tr:hover { background-color: color-mix(in oklab, var(--color-fp-page) 75%, white); }
 

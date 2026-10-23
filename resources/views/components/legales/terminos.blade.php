@@ -15,4 +15,4 @@
     <li>FootwearPoint no es el vendedor final del calzado; actúa como plataforma tecnológica.</li>
 </ul>
 <p>El incumplimiento de pagos o mal uso de la cuenta puede derivar en suspensión del acceso.</p>
-<p class="text-xs text-slate-400">Versión 1.0 — FootwearPoint MVP</p>
+<p class="text-xs text-slate-500">Versión 1.0 — FootwearPoint MVP</p>

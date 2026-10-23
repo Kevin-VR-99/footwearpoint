@@ -58,7 +58,7 @@
         <form method="POST" action="{{ route('logout') }}" class="p-1.5">
             @csrf
             <button type="submit"
-                class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium text-fp-danger transition hover:bg-fp-danger-soft"
+                class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium text-fp-danger transition hover:bg-fp-danger-soft hover:text-fp-badge-danger-fg"
                 role="menuitem">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor" stroke-width="2" aria-hidden="true">

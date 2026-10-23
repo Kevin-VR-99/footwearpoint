@@ -253,7 +253,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
         <x-ui.cargando objetivo="busqueda,filtro,guardarPrecio,quitarPrecio,ocultar,mostrar,gotoPage,nextPage,previousPage" />
         <table class="fp-tabla min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-fp-page">
-                <tr class="text-left text-xs font-semibold uppercase tracking-wide text-fp-text-muted">
+                <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                     <th class="px-4 py-3">Producto</th>
                     <th class="px-4 py-3">Línea / temporada</th>
                     <th class="px-4 py-3 text-right">Menudeo</th>
