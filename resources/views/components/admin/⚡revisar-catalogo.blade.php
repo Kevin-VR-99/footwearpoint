@@ -12,12 +12,15 @@ use App\Models\Marca;
 use App\Services\Ia\AprobarProductosImportadosAction;
 use App\Services\Ia\ColoresDelCatalogo;
 use App\Services\Ia\CorregirProductoImportadoAction;
+use App\Services\Ia\ProponerRecortesDeFotosAction;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /*
  * TG-239 (A9 / E5-03) — Revisar y corregir lo que propuso la IA.
@@ -34,6 +37,8 @@ use Livewire\Component;
  */
 new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class extends Component
 {
+    use WithFileUploads;
+
     #[Locked]
     public int $importacionId;
 
@@ -192,6 +197,98 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         $accion->recuperar($this->fila($id));
 
         $this->mensaje = 'Producto recuperado; queda por revisar otra vez.';
+        $this->esError = false;
+    }
+
+    /*
+     * TG-282 (E5-05) — La foto que propuso la IA.
+     *
+     * Tres salidas y las tres dejan aprobar: quedarse con el recorte, subir
+     * otra foto, o dejarlo sin foto. Lo que NO pasa es que una propuesta sin
+     * mirar se publique sola: una foto del zapato de al lado es peor que el
+     * hueco vacío, y el hueco se llena después desde el catálogo maestro.
+     */
+
+    /** La foto de la fila que se está mirando de cerca. */
+    public $fotoNueva = null;
+
+    #[Locked]
+    public ?int $subiendoFotoDe = null;
+
+    public function confirmarFoto(int $id): void
+    {
+        $fila = $this->fila($id);
+
+        if (! $fila->foto_propuesta_url) {
+            return;
+        }
+
+        $fila->update(['foto_estado' => 'confirmada']);
+
+        $this->mensaje = 'Foto confirmada. Entrará al catálogo cuando apruebes el producto.';
+        $this->esError = false;
+    }
+
+    public function descartarFoto(int $id): void
+    {
+        $this->fila($id)->update(['foto_estado' => 'descartada']);
+
+        $this->mensaje = 'El producto se aprobará sin foto. Puedes subirla después desde el catálogo maestro.';
+        $this->esError = false;
+    }
+
+    public function pedirFoto(int $id): void
+    {
+        // Que la fila exista y sea de esta importación antes de abrir nada.
+        $this->fila($id);
+
+        $this->subiendoFotoDe = $id;
+        $this->fotoNueva = null;
+        $this->resetValidation();
+    }
+
+    public function cancelarFoto(): void
+    {
+        $this->subiendoFotoDe = null;
+        $this->fotoNueva = null;
+        $this->resetValidation();
+    }
+
+    /** Las mismas reglas que el resto de las fotos de producto. */
+    public function subirFoto(): void
+    {
+        $this->validate([
+            'fotoNueva' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
+        ], [
+            'fotoNueva.required' => 'Elige una foto.',
+            'fotoNueva.mimes'    => 'La foto tiene que ser jpg o png.',
+            'fotoNueva.max'      => 'La foto no puede pasar de 5 MB.',
+        ]);
+
+        $fila = $this->fila($this->subiendoFotoDe);
+
+        $ruta = Storage::disk('s3')->putFile(
+            ProponerRecortesDeFotosAction::CARPETA,
+            $this->fotoNueva
+        );
+
+        if ($ruta === false) {
+            $this->mensaje = 'No se pudo guardar la foto. Inténtalo otra vez.';
+            $this->esError = true;
+
+            return;
+        }
+
+        // Queda confirmada de una vez: alguien la eligió a mano, no hay nada
+        // más que revisar.
+        $fila->update([
+            'foto_propuesta_url' => Storage::disk('s3')->url($ruta),
+            'foto_estado'        => 'confirmada',
+        ]);
+
+        $this->subiendoFotoDe = null;
+        $this->fotoNueva = null;
+        $this->mensaje = 'Foto guardada. Entrará al catálogo cuando apruebes el producto.';
         $this->esError = false;
     }
 
@@ -533,6 +630,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                 <th class="px-4 py-3">Tallas</th>
                 <th class="px-4 py-3">Precio</th>
                 <th class="px-4 py-3">Dudoso</th>
+                <th class="px-4 py-3">Foto</th>
                 <th class="px-4 py-3"></th>
             </tr>
         </x-slot:encabezado>
@@ -579,6 +677,41 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                     @endif
                 </td>
 
+                {{-- TG-282 (E5-05): el recorte que propuso la IA. Las tres
+                     salidas dejan aprobar; lo que no se hace es publicar una
+                     propuesta que nadie miró. --}}
+                <td class="px-4 py-3">
+                    @if ($producto->foto_propuesta_url)
+                        <img src="{{ $producto->foto_propuesta_url }}"
+                            alt="Foto propuesta para {{ $datos['codigo_catalogo'] ?? 'el producto' }}"
+                            width="96" height="96" loading="lazy" decoding="async"
+                            class="h-24 w-24 rounded object-cover {{ $producto->foto_estado === 'confirmada' ? 'ring-2 ring-fp-primary' : 'ring-1 ring-slate-200' }}">
+                    @else
+                        <span class="text-xs text-fp-text-muted">Sin foto</span>
+                    @endif
+
+                    @if ($producto->estado !== 'descartado')
+                        <div class="mt-1 space-y-1">
+                            @if ($producto->foto_estado === 'confirmada')
+                                <p class="text-xs font-semibold text-fp-primary">Confirmada</p>
+                            @elseif ($producto->foto_estado === 'descartada')
+                                <p class="text-xs text-fp-text-muted">Se aprueba sin foto</p>
+                            @elseif ($producto->foto_propuesta_url)
+                                <button type="button" wire:click="confirmarFoto({{ $producto->id }})"
+                                    class="fp-accion w-full">Usar esta</button>
+                            @endif
+
+                            <button type="button" wire:click="pedirFoto({{ $producto->id }})"
+                                class="fp-accion w-full">{{ $producto->foto_propuesta_url ? 'Subir otra' : 'Subir foto' }}</button>
+
+                            @if ($producto->foto_propuesta_url && $producto->foto_estado !== 'descartada')
+                                <button type="button" wire:click="descartarFoto({{ $producto->id }})"
+                                    class="fp-accion w-full">Dejar sin foto</button>
+                            @endif
+                        </div>
+                    @endif
+                </td>
+
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                     @if ($producto->estado === 'descartado')
                         <button type="button" wire:click="recuperar({{ $producto->id }})"
@@ -593,9 +726,30 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                 </td>
             </tr>
 
+            @if ($subiendoFotoDe === $producto->id)
+                <tr>
+                    <td colspan="9" class="bg-fp-page px-4 py-4">
+                        <form wire:submit="subirFoto" class="flex flex-wrap items-end gap-3">
+                            <div>
+                                <label for="revisar-foto-{{ $producto->id }}" class="mb-1 block text-sm font-medium">
+                                    Foto para {{ $datos['codigo_catalogo'] ?? 'este producto' }}
+                                </label>
+                                <input type="file" id="revisar-foto-{{ $producto->id }}" wire:model="fotoNueva"
+                                    accept="image/jpeg,image/png" class="rounded-lg text-sm">
+                                <p class="mt-1 text-xs text-fp-text-muted">jpg o png, hasta 5 MB.</p>
+                                @error('fotoNueva') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                            </div>
+                            <button class="fp-btn fp-btn-primario" wire:loading.attr="disabled" wire:target="fotoNueva,subirFoto">Guardar foto</button>
+                            <button type="button" wire:click="cancelarFoto" class="fp-btn fp-btn-secundario">Cancelar</button>
+                            <span wire:loading wire:target="fotoNueva" class="text-xs text-fp-text-muted">Subiendo…</span>
+                        </form>
+                    </td>
+                </tr>
+            @endif
+
             @if ($editandoId === $producto->id)
                 <tr>
-                    <td colspan="8" class="bg-fp-page px-4 py-4">
+                    <td colspan="9" class="bg-fp-page px-4 py-4">
                         <form wire:submit="guardar" class="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                             @foreach ($nombresDeCampos as $campo => $titulo)
                                 <div>
@@ -637,7 +791,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                 </tr>
             @endif
         @empty
-            <x-panel.vacio colspan="8"
+            <x-panel.vacio colspan="9"
                 :mensaje="$filtro === 'por_revisar' ? 'No queda nada por revisar en este catálogo.' : 'No hay productos que mostrar.'" />
         @endforelse
     </x-panel.tabla>

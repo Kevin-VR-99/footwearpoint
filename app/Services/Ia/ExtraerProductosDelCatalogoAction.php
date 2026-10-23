@@ -33,6 +33,7 @@ class ExtraerProductosDelCatalogoAction
         private ContarPaginasPdf $contador,
         private RegistrarAuditoriaAction $auditoria,
         private LimitesDeGastoIa $limites,
+        private ProponerRecortesDeFotosAction $recortes,
     ) {
     }
 
@@ -80,6 +81,20 @@ class ExtraerProductosDelCatalogoAction
                 $hasta = min($desde + $porBloque - 1, $paginas);
 
                 $uso = $this->leerRango($importacion, $archivoIa, $desde, $hasta, $uso, $gastoPrevio);
+            }
+
+            // Las fotos van aquí y no dentro del bucle a propósito: lo que la
+            // IA leyó ya está guardado y pagado, así que un problema
+            // dibujando páginas no puede estropearlo. Si no hay pdftoppm, o
+            // un recorte sale mal, los productos quedan sin foto y se suben a
+            // mano desde el catálogo maestro.
+            try {
+                $this->recortes->ejecutar($importacion, $contenido);
+            } catch (Throwable $e) {
+                Log::warning('No se pudieron proponer las fotos del catálogo', [
+                    'importacion' => $importacion->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             $importacion->update(['estado' => 'requiere_revision']);

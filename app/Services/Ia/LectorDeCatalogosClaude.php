@@ -142,6 +142,14 @@ class LectorDeCatalogosClaude implements LectorDeCatalogos
           exactamente de esta lista y escríbelo igual: {$paleta}. Si de verdad no se parece
           a ninguno, ponlo en null y agrega "color_base" a dudosos.
         - Si un dato no aparece en la página, ponlo en null.
+        - "foto_x", "foto_y", "foto_ancho", "foto_alto": dónde está la foto DE ESE ZAPATO
+          dentro de la página, en números de 0 a 1 respecto de la página completa. El 0,0 es
+          la esquina de arriba a la izquierda de la página; "foto_x" y "foto_y" son la esquina
+          de arriba a la izquierda del recuadro, y "foto_ancho" y "foto_alto" lo que mide.
+          Si en la página hay varios colores del mismo modelo, cada uno lleva el recuadro de
+          SU propia foto: no se copian entre colores. Si no hay una foto clara de ese zapato,
+          o es una foto de grupo donde no se puede separar cuál color es cuál, pon los cuatro
+          en null y agrega "foto" a dudosos.
 
         "dudosos" es lo más importante para quien va a revisar: pon ahí el nombre de cada campo
         que hayas tenido que suponer, deducir o que no se lea bien. Si la marca no aparece en la
@@ -176,12 +184,17 @@ class LectorDeCatalogosClaude implements LectorDeCatalogos
                             'talla_hasta'     => $texto,
                             'medios_numeros'  => ['type' => ['boolean', 'null']],
                             'disponibilidad'  => $texto,
+                            'foto_x'          => ['type' => ['number', 'null']],
+                            'foto_y'          => ['type' => ['number', 'null']],
+                            'foto_ancho'      => ['type' => ['number', 'null']],
+                            'foto_alto'       => ['type' => ['number', 'null']],
                             'dudosos'         => ['type' => 'array', 'items' => ['type' => 'string']],
                         ],
                         'required' => [
                             'pagina', 'marca', 'modelo', 'nombre', 'color', 'color_base',
                             'codigo_catalogo', 'precio_publico', 'talla_desde', 'talla_hasta',
-                            'medios_numeros', 'disponibilidad', 'dudosos',
+                            'medios_numeros', 'disponibilidad',
+                            'foto_x', 'foto_y', 'foto_ancho', 'foto_alto', 'dudosos',
                         ],
                         'additionalProperties' => false,
                     ],
