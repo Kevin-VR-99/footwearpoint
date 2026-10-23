@@ -150,3 +150,20 @@ Verificación: `curl -I https://footwearpoint.app/build/assets/app-XXXX.css` tra
 - Cron opcional `footwearpoint-limpiar-exportaciones`: start command `php artisan exportaciones:limpiar`,
   schedule `15 11 * * *` (5:15 CDMX), restart policy Never.
 - Migración nueva: `2026_10_21_130000_crea_exportaciones` (la corre el pre-deploy).
+
+---
+
+# Regla: `db:seed` nunca se corre en producción
+
+**Nunca** corras `php artisan db:seed` ni `migrate --seed` / `migrate:fresh --seed` en producción.
+
+- Los seeders de demostración (`DemoDistribuidoraSeeder`, `CatalogoMaestroDemoSeeder`, `DemoCatalogoDistribuidorasSeeder`, `DemoContactosSeeder`) usan `firstOrCreate`: un `db:seed` en producción **volvería a crear** el catálogo demo, las distribuidoras y los contactos de prueba que se limpiaron con `pruebas:limpiar-produccion` / `catalogo:borrar-demo`.
+- Candado: en `APP_ENV=production` esos seeders se saltan solos (`Database\Seeders\Support\DemoEnProduccion`). Solo corren si se pone a propósito `SEED_DEMO_EN_PRODUCCION=true`. No lo pongas en Railway.
+- Lo que sí se puede correr en producción, de forma explícita: `php artisan db:seed --class=LineasMarcasSeeder --force` (catálogo de líneas y marcas; ya se usó así).
+- **No borres el seeder de demostración**: unas 1586 pruebas dependen de él (entre ellas `BorrarCatalogoDemoTest` y `Sprint4/CatalogoDemoTest`). Fuera de producción sigue funcionando igual.
+
+## Limpiar producción para pruebas (`pruebas:limpiar-produccion`)
+
+1. Verifica que haya respaldo de menos de 24 h (`respaldo:ejecutar` si no).
+2. Simulación: `php artisan pruebas:limpiar-produccion --conservar-importacion=5` y revisa importaciones, vales con saldo y filas por tabla.
+3. Aplicar: `php artisan pruebas:limpiar-produccion --conservar-importacion=5 --confirmar` (añade `--incluir-vales-con-saldo` solo si se confirmó que esos vales son de prueba).

@@ -13,6 +13,7 @@ use App\Services\Distribuidora\ActivarLineaDistribuidoraAction;
 use App\Services\Distribuidora\FijarDescuentoMayoristaAction;
 use App\Services\Distribuidora\GestionarOfertaDistribuidoraAction;
 use App\Support\Tenant;
+use Database\Seeders\Support\DemoEnProduccion;
 use Illuminate\Database\Seeder;
 
 /**
@@ -35,6 +36,10 @@ class DemoCatalogoDistribuidorasSeeder extends Seeder
 {
     public function run(): void
     {
+        if (DemoEnProduccion::bloqueada($this, $this->command)) {
+            return;
+        }
+
         // Dos líneas como mucho: es lo que incluye el plan Básico, así ninguna
         // demo arranca pagando línea extra.
         $this->paraDistribuidora(

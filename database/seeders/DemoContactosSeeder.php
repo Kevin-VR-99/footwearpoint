@@ -8,6 +8,7 @@ use App\Models\Revendedor;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Usuario;
 use App\Services\Distribuidora\ActivarCuentaAccesoAction;
+use Database\Seeders\Support\DemoEnProduccion;
 use Database\Seeders\Support\PasswordDePrueba;
 use Illuminate\Database\Seeder;
 
@@ -20,6 +21,10 @@ class DemoContactosSeeder extends Seeder
 
     public function run(): void
     {
+        if (DemoEnProduccion::bloqueada($this, $this->command)) {
+            return;
+        }
+
         $distribuidora = Distribuidora::where('slug', 'calzados-ramirez')->firstOrFail();
 
         // --- 2 revendedores de prueba ---
@@ -41,7 +46,7 @@ class DemoContactosSeeder extends Seeder
             RevendedorDistribuidora::firstOrCreate(
                 ['distribuidora_id' => $distribuidora->id, 'revendedor_id' => $revendedor->id],
                 [
-                    'codigo_interno' => 'REV-' . str_pad($i + 1, 3, '0', STR_PAD_LEFT),
+                    'codigo_interno' => 'REV-'.str_pad($i + 1, 3, '0', STR_PAD_LEFT),
                     'estado' => 'activo',
                     'fecha_alta' => now(),
                 ]
