@@ -25,6 +25,9 @@ class ProductoImportadoStaging extends Model
         // miró. Nunca se publica solo.
         'foto_propuesta_url',
         'foto_estado',
+        // La foto que este recorte dejó en la galería de una publicación que
+        // ya tenía foto (segundo color del mismo modelo). Evita duplicarla.
+        'producto_imagen_galeria_id',
     ];
 
     protected $casts = [
