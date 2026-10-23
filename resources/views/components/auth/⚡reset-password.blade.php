@@ -19,6 +19,9 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
     public string $password = '';
     public string $password_confirmation = '';
 
+    /** Ya se guardo: en vez del formulario se muestra el aviso de exito. */
+    public bool $restablecida = false;
+
     protected function rules(): array
     {
         return [
@@ -54,8 +57,13 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
         }
 
         if ($accion->ejecutar($this->email, $this->password, $this->password_confirmation, $this->token)) {
-            session()->flash('status', 'Contraseña restablecida. Ya puedes iniciar sesión.');
-            return $this->redirect(route('login'), navigate: true);
+            // Casi siempre quien llega aqui usa la app (revendedor o cliente):
+            // mandarlo al login web lo confundia. Se queda en esta pagina con
+            // el aviso y los botones para abrir o descargar la app.
+            $this->restablecida = true;
+            $this->reset('password', 'password_confirmation');
+
+            return;
         }
 
         // Mismo mensaje exista o no el correo, para no revelar cuentas.
@@ -89,6 +97,14 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
         <p class="text-sm text-slate-500 mt-1">Define tu nueva contraseña de acceso</p>
     </div>
 
+    @if ($restablecida)
+    <div class="text-center" role="status" data-password-restablecida>
+        <p class="text-base font-semibold text-slate-900">Listo, se ha restablecido tu contraseña.</p>
+        <p class="text-sm text-slate-600 mt-2">Ya puedes volver a iniciar sesión desde la app con tu nueva contraseña.</p>
+        <x-app-movil.botones destino="perfil" />
+        <p class="text-xs text-slate-500 mt-6">¿Usas el panel web? <a href="{{ route('login') }}" class="fp-enlace">Inicia sesión aquí</a>.</p>
+    </div>
+    @else
     <form wire:submit="resetPassword" class="space-y-5">
         <div class="fp-campo">
             <label for="reset-password-email" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
@@ -141,4 +157,5 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
             </a>
         </div>
     </form>
+    @endif
 </div>

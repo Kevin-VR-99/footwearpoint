@@ -46,6 +46,9 @@ class RestablecerPasswordAction
             function (Usuario $usuario, string $password) {
                 $usuario->forceFill([
                     'password' => Hash::make($password),
+                    // La puso la propia persona desde su correo: ya no es
+                    // temporal. Sin esto la app le seguia pidiendo cambiarla.
+                    'debe_cambiar_password' => false,
                 ])->setRememberToken(Str::random(60));
 
                 $usuario->save();
