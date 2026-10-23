@@ -32,9 +32,12 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 60 * 24 * 365 * 10),
+    // Sesion persistente: nunca menos de diez anios, aunque SESSION_LIFETIME
+    // traiga un valor menor por error.
+    'lifetime' => max((int) env('SESSION_LIFETIME', 5256000), 5256000),
 
-    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
+    // Sesion persistente: cerrar el navegador nunca cierra la sesion.
+    'expire_on_close' => false,
 
     /*
     |--------------------------------------------------------------------------

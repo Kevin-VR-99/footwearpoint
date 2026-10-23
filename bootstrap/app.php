@@ -95,6 +95,20 @@ return Application::configure(basePath: dirname(__DIR__))
                 : new AccessDeniedHttpException(RespuestaErrorApi::SIN_PERMISO, $e)
         );
 
+        // Sesion persistente: un formulario normal (no Livewire, no API) con
+        // el token CSRF vencido no muestra "Page Expired" (parece que se
+        // cerro la sesion): regresa a la pagina, que ya trae un token nuevo.
+        $exceptions->render(function (Throwable $e, Request $request) {
+            if ($e instanceof HttpException && $e->getPrevious() instanceof \Illuminate\Session\TokenMismatchException
+                && ! $request->isMethodSafe()
+                && ! $request->is('api/*') && ! $request->expectsJson()
+                && ! $request->hasHeader('X-Livewire')) {
+                return redirect()->back(fallback: url('/'))->withInput($request->except(['password', 'password_confirmation', '_token']));
+            }
+
+            return null;
+        });
+
         // Respuesta JSON en español para /api; un 500 nunca muestra detalles,
         // ni con APP_DEBUG=true (regla del equipo).
         $exceptions->render(fn (Throwable $e, Request $request) => RespuestaErrorApi::render($e, $request));

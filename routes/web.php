@@ -136,7 +136,9 @@ require __DIR__.'/web/funciones.php';
 
 Route::middleware(['auth', 'tenant.team'])->group(function () {
     Route::post('/logout', function () {
-        Auth::logout();
+        // Solo este dispositivo: Auth::logout() cambia el remember_token y
+        // sacaria al usuario de todos sus otros navegadores.
+        Auth::logoutCurrentDevice();
         request()->session()->invalidate();
         request()->session()->regenerateToken();
 

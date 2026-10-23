@@ -38,7 +38,17 @@ if (document.readyState === 'loading') {
 document.addEventListener('livewire:navigated', () => { ocultarCapasDeCarga(); revelarAlHacerScroll(); });
 document.addEventListener('livewire:init', () => {
     window.Livewire.hook('request', ({ respond, fail }) => {
-        fail(() => setTimeout(ocultarCapasDeCarga, 0));
+        fail(({ status, preventDefault }) => {
+            setTimeout(ocultarCapasDeCarga, 0);
+            // Sesion persistente: con el token CSRF vencido (419) Livewire
+            // pregunta "This page has expired" y parece que se cerro la
+            // sesion. Se recarga sola: la cookie "remember" mantiene al
+            // usuario dentro y la pagina trae un token nuevo.
+            if (status === 419) {
+                preventDefault();
+                window.location.reload();
+            }
+        });
         respond(() => setTimeout(() => {
             // Tras responder, si no queda ninguna petición en curso, ninguna capa debe seguir visible.
             if (!document.querySelector('[wire\\:loading][data-loading], [data-loading]')) ocultarCapasDeCarga();
