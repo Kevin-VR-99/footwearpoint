@@ -144,6 +144,10 @@ class LectorDeCatalogosClaude implements LectorDeCatalogos
         - "medios_numeros": true solo si el catálogo dice que hay medias tallas. Si dice
           "enteros", es false.
         - "disponibilidad": cópiala tal cual si aparece ("hasta agotar existencias").
+        - "nombre": los catálogos no imprimen un nombre de producto, así que compónlo tú
+          con el tipo de calzado y lo que se vea ("Balerina", "Mocasín", "Zueco"). Componerlo
+          es lo normal: NO lo pongas en dudosos por eso. Solo si ni siquiera se alcanza a ver
+          qué tipo de calzado es.
         - "color": el nombre tal cual del catálogo ("MIEL", "HUESO").
         - "color_base": a cuál de estos colores se parece más, MIRANDO LA FOTO. Elige uno
           exactamente de esta lista y escríbelo igual: {$paleta}. Si de verdad no se parece
@@ -157,6 +161,11 @@ class LectorDeCatalogosClaude implements LectorDeCatalogos
           SU propia foto: no se copian entre colores. Si no hay una foto clara de ese zapato,
           o es una foto de grupo donde no se puede separar cuál color es cuál, pon los cuatro
           en null y agrega "foto" a dudosos.
+          El recuadro tiene que encerrar SOLO la fotografía del zapato, pegado a su contorno.
+          Al lado de cada foto suele haber un letrero con el código, el color, las tallas y el
+          precio, y a veces sellos de "piel" o "plantilla": eso queda FUERA del recuadro. Ante
+          la duda recorta de menos: vale más un recuadro algo chico centrado en el zapato que
+          uno grande con el letrero dentro.
 
         "dudosos" es lo más importante para quien va a revisar: pon ahí el nombre de cada campo
         que hayas tenido que suponer, deducir o que no se lea bien. Si la marca no aparece en la
