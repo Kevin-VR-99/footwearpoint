@@ -7,7 +7,9 @@ use App\Models\Marca;
 use App\Models\Producto;
 use App\Models\ProductoCampana;
 use App\Models\ProductoImagen;
+use App\Models\Color;
 use App\Services\Catalogo\GestionarCampanaAction;
+use App\Services\Catalogo\GestionarColorAction;
 use App\Services\Catalogo\GestionarImagenProductoCampanaAction;
 use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\GestionarLineaAction;
@@ -66,6 +68,11 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     public string $editar_modelo = '';
     public string $editar_estado = '';
 
+    /* TG-282: la paleta. De ella sale la lista que se le manda a la IA. */
+    public string $color_nombre = '';
+    public string $color_hex = '';
+    public string $editar_hex = '';
+
     /*
      * E5-05 — Fotos de una publicación.
      *
@@ -83,7 +90,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
     public string $errorMsg = '';
 
-    private const TIPOS = ['linea', 'marca', 'temporada', 'producto'];
+    private const TIPOS = ['linea', 'marca', 'temporada', 'producto', 'color'];
 
     public function mount(): void
     {
@@ -105,6 +112,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             'marca' => Marca::findOrFail($id),
             'temporada' => Campana::findOrFail($id),
             'producto' => Producto::findOrFail($id),
+            'color' => Color::findOrFail($id),
         };
     }
 
@@ -130,6 +138,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         $this->editar_categoria_id = $tipo === 'producto' ? (string) $registro->categoria_id : '';
         $this->editar_modelo = $tipo === 'producto' ? (string) $registro->modelo : '';
         $this->editar_estado = $tipo === 'temporada' ? (string) $registro->estado : '';
+        $this->editar_hex = $tipo === 'color' ? (string) $registro->codigo_hex : '';
     }
 
     public function cancelarEdicion(): void
@@ -137,6 +146,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         $this->reset(
             'editando_tipo', 'editando_id', 'editar_nombre', 'editar_descripcion',
             'editar_marca_id', 'editar_categoria_id', 'editar_modelo', 'editar_estado',
+            'editar_hex',
         );
         $this->resetValidation();
     }
@@ -184,6 +194,10 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 'editar_categoria_id' => ['required', 'exists:categorias_producto,id'],
                 'editar_modelo' => ['required', 'string', 'max:120'],
             ],
+            'color' => [
+                'editar_nombre' => ['required', 'string', 'max:60', Rule::unique('colores', 'nombre')->ignore($id)],
+                'editar_hex' => ['nullable', 'string', 'max:7'],
+            ],
         }, $mensajes);
 
         $comunes = [
@@ -202,6 +216,11 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                     'marca_id' => (int) $datos['editar_marca_id'],
                     'categoria_id' => (int) $datos['editar_categoria_id'],
                     'modelo' => $datos['editar_modelo'],
+                ]),
+                // La tabla de colores no tiene descripción.
+                'color' => app(GestionarColorAction::class)->actualizar($registro, [
+                    'nombre' => $datos['editar_nombre'],
+                    'codigo_hex' => $datos['editar_hex'] ?? null,
                 ]),
             };
         } catch (\Throwable $e) {
@@ -227,6 +246,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 'linea' => app(GestionarLineaAction::class)->actualizar($registro, ['activa' => ! $registro->activa]),
                 'marca' => app(GestionarMarcaAction::class)->actualizar($registro, ['activa' => ! $registro->activa]),
                 'producto' => app(GestionarProductoAction::class)->actualizar($registro, ['activo' => ! $registro->activo]),
+                'color' => app(GestionarColorAction::class)->actualizar($registro, ['activo' => ! $registro->activo]),
                 default => abort(404),
             };
         } catch (\Throwable $e) {
@@ -259,6 +279,10 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             'producto' => [
                 'Eliminar producto',
                 '¿Eliminar el producto «'.$registro->nombre.'» de todo el catálogo, con sus tallas y publicaciones? Esta acción no se puede deshacer.',
+            ],
+            'color' => [
+                'Eliminar color',
+                '¿Eliminar el color «'.$registro->nombre.'» de la paleta? Solo se puede si ninguna variante lo usa; si lo usan, desactívalo.',
             ],
         };
 
@@ -299,6 +323,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             match ($tipo) {
                 'linea' => app(GestionarLineaAction::class)->eliminar($registro),
                 'marca' => app(GestionarMarcaAction::class)->eliminar($registro),
+                'color' => app(GestionarColorAction::class)->eliminar($registro),
                 'temporada' => app(GestionarCampanaAction::class)->eliminar($registro),
                 'producto' => app(GestionarProductoAction::class)->eliminar($registro),
             };
@@ -312,7 +337,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             $this->cancelarEdicion();
         }
 
-        $nombres = ['linea' => 'Línea eliminada.', 'marca' => 'Marca eliminada.', 'temporada' => 'Temporada eliminada.', 'producto' => 'Producto eliminado.'];
+        $nombres = ['linea' => 'Línea eliminada.', 'marca' => 'Marca eliminada.', 'temporada' => 'Temporada eliminada.', 'producto' => 'Producto eliminado.', 'color' => 'Color eliminado de la paleta.'];
         $this->dispatch('guardado', mensaje: $nombres[$tipo]);
     }
 
@@ -464,6 +489,47 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             ->get();
     }
 
+    /**
+     * TG-282 — Un color nuevo en la paleta.
+     *
+     * Esto no es solo para los formularios: la paleta es la lista que se le
+     * manda a la IA al leer un catálogo, así que agregar un color aquí hace
+     * que la próxima importación lo reconozca sola. Con los ocho sembrados,
+     * "MALVA" y "MAQUILLAJE" no tenían a dónde ir.
+     */
+    public function guardarColor(): void
+    {
+        $this->autorizar();
+        $this->errorMsg = '';
+
+        $datos = $this->validate([
+            'color_nombre' => ['required', 'string', 'max:60', Rule::unique('colores', 'nombre')],
+            'color_hex'    => ['nullable', 'string', 'max:7'],
+        ], [
+            'color_nombre.required' => 'El nombre es obligatorio.',
+            'color_nombre.unique'   => 'Ese color ya está en la paleta.',
+        ]);
+
+        try {
+            app(GestionarColorAction::class)->crear([
+                'nombre'     => $datos['color_nombre'],
+                'codigo_hex' => $datos['color_hex'] ?? null,
+            ]);
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo crear el color.');
+
+            return;
+        }
+
+        $this->reset('color_nombre', 'color_hex');
+        $this->dispatch('guardado', mensaje: 'Color agregado a la paleta.');
+    }
+
+    public function getColoresProperty()
+    {
+        return Color::query()->orderBy('nombre')->get();
+    }
+
     /** @return array<int, string> producto_campana_id => url */
     public function getFotosProperty(): array
     {
@@ -605,11 +671,15 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
     @if ($editando_tipo !== '')
         @php
-            $titulos = ['linea' => 'Editar línea', 'marca' => 'Editar marca', 'temporada' => 'Editar temporada', 'producto' => 'Editar producto'];
+            $titulos = ['linea' => 'Editar línea', 'marca' => 'Editar marca', 'temporada' => 'Editar temporada', 'producto' => 'Editar producto', 'color' => 'Editar color'];
         @endphp
         <form wire:submit="guardarEdicion" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5" data-edicion-catalogo>
             <h2 class="text-base font-semibold text-fp-sidebar">{{ $titulos[$editando_tipo] ?? 'Editar' }}</h2>
             <input type="text" wire:model="editar_nombre" placeholder="Nombre" class="rounded-lg text-sm">
+            @if ($editando_tipo === 'color')
+                <input type="text" wire:model="editar_hex" placeholder="Color en hexadecimal, por ejemplo #7E22CE" class="rounded-lg text-sm">
+                @error('editar_hex') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+            @endif
             @error('editar_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             @if ($editando_tipo === 'producto')
                 <input type="text" wire:model="editar_modelo" placeholder="Modelo" class="rounded-lg text-sm">
@@ -700,6 +770,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         <button type="button" role="tab" wire:click="$set('pestana', 'marcas')" aria-selected="{{ $pestana === 'marcas' ? 'true' : 'false' }}" class="fp-pestana">Marcas</button>
         <button type="button" role="tab" wire:click="$set('pestana', 'temporadas')" aria-selected="{{ $pestana === 'temporadas' ? 'true' : 'false' }}" class="fp-pestana">Temporadas</button>
         <button type="button" role="tab" wire:click="$set('pestana', 'productos')" aria-selected="{{ $pestana === 'productos' ? 'true' : 'false' }}" class="fp-pestana">Productos</button>
+        <button type="button" role="tab" wire:click="$set('pestana', 'colores')" aria-selected="{{ $pestana === 'colores' ? 'true' : 'false' }}" class="fp-pestana">Colores</button>
     </div>
 
     @if ($pestana === 'lineas')
@@ -866,6 +937,57 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                     </tr>
                 @empty
                     <x-panel.vacio colspan="7" mensaje="Aún no hay productos publicados." />
+                @endforelse
+            </tbody>
+        </table></div></div>
+    @endif
+
+    {{-- TG-282: la paleta. No es solo para los formularios: de esta lista
+         sale lo que se le manda a la IA al leer un catálogo, así que un color
+         que falte aquí es un color que ella no va a poder asignar. --}}
+    @if ($pestana === 'colores')
+        <form wire:submit="guardarColor" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
+            <p class="text-sm text-slate-600">
+                Esta paleta es la que se le ofrece a la IA cuando lee un catálogo: solo puede
+                elegir de aquí. Si falta un color, lo deja sin resolver y hay que decidirlo a
+                mano en cada importación.
+            </p>
+            <input type="text" wire:model="color_nombre" aria-label="Nombre del color" placeholder="Nombre del color, por ejemplo Marino" class="rounded-lg text-sm">
+            @error('color_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+            <input type="text" wire:model="color_hex" aria-label="Color en hexadecimal" placeholder="Hexadecimal (opcional), por ejemplo #1E293B" class="rounded-lg text-sm">
+            @error('color_hex') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+            <button class="fp-btn fp-btn-primario w-fit">Agregar color</button>
+        </form>
+
+        <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
+            <thead>
+                <tr>
+                    <th class="px-4 py-3 font-semibold">Color</th>
+                    <th class="px-4 py-3 font-semibold">Hexadecimal</th>
+                    <th class="px-4 py-3 font-semibold">Estado</th>
+                    <th class="px-4 py-3 font-semibold">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($this->colores as $color)
+                    <tr class="border-t border-slate-100">
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-block h-5 w-5 shrink-0 rounded-full ring-1 ring-slate-300"
+                                    style="background: {{ $color->codigo_hex ?: '#FFFFFF' }}"></span>
+                                <span>{{ $color->nombre }}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3">{{ $color->codigo_hex ?: '—' }}</td>
+                        <td class="px-4 py-3"><x-panel.insignia :variante="$color->activo ? 'success' : 'neutral'" punto>{{ $color->activo ? 'Activo' : 'Inactivo' }}</x-panel.insignia></td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <button type="button" wire:click="editar('color', {{ $color->id }})" class="fp-accion fp-accion-primaria">Editar</button>
+                            <button type="button" wire:click="alternarActivo('color', {{ $color->id }})" class="fp-accion fp-accion-neutra">{{ $color->activo ? 'Desactivar' : 'Activar' }}</button>
+                            <button type="button" wire:click="pedirEliminar('color', {{ $color->id }})" class="fp-accion fp-accion-peligro">Eliminar</button>
+                        </td>
+                    </tr>
+                @empty
+                    <x-panel.vacio colspan="4" mensaje="La paleta está vacía." />
                 @endforelse
             </tbody>
         </table></div></div>
