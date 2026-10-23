@@ -19,7 +19,7 @@ use Tests\TestCase;
 /**
  * catalogo:publicar-fotos-ia --galeria
  *
- * El segundo color de un modelo D{U}O comparte publicación con el primero, y
+ * El segundo color de un modelo DÚO comparte publicación con el primero, y
  * esa publicación ya tiene foto: el modo normal lo salta. Con --galeria su
  * recorte entra como una foto más de la galería, sin tocar la principal.
  */
