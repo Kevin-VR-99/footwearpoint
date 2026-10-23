@@ -147,6 +147,8 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     // TG-281: el buscador va fijo arriba y no dentro del scroll. Si se
     // fuera con la lista, para buscar otra cosa habria que subir primero.
     return Column(
+      // Sin stretch los filtros quedaban centrados y movidos a la derecha.
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -164,7 +166,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   Widget _filtros() {
     final marcas = opcionesDe(_productos.map((p) => p.marca?.nombre));
     final categorias = opcionesDe(_productos.map((p) => p.categoria?.nombre));
-    final tallas = opcionesDe(_productos.expand((p) => p.variantes.map((v) => v.talla)));
+    final tallas = opcionesDe(_productos.expand((p) => p.variantes.map((v) => v.talla)), comoTallas: true);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),

@@ -19,19 +19,22 @@ List<ProductoCatalogo> aplicarFiltroCatalogo(List<ProductoCatalogo> productos, F
   return productos.where((producto) {
     if (filtro.marca != null && producto.marca?.nombre != filtro.marca) return false;
     if (filtro.categoria != null && producto.categoria?.nombre != filtro.categoria) return false;
-    if (filtro.talla != null && !producto.variantes.any((v) => v.talla == filtro.talla)) return false;
-    if (filtro.disponibilidad == 'disponible' && producto.mejorDisponibilidad != Disponibilidad.disponible) {
-      return false;
-    }
-    if (filtro.disponibilidad == 'bajo_pedido' && producto.mejorDisponibilidad != Disponibilidad.bajoPedido) {
-      return false;
-    }
-    return true;
+    if (filtro.talla == null && filtro.disponibilidad == null) return true;
+
+    // Se revisa variante por variante: un modelo con tallas disponibles y
+    // otras bajo pedido debe salir en los dos filtros, y con talla elegida
+    // cuenta la disponibilidad de esa talla, no la del modelo completo.
+    return producto.variantes.any((v) {
+      if (filtro.talla != null && v.talla != filtro.talla) return false;
+      if (filtro.disponibilidad == 'disponible') return v.disponibilidad == Disponibilidad.disponible;
+      if (filtro.disponibilidad == 'bajo_pedido') return v.disponibilidad == Disponibilidad.bajoPedido;
+      return true;
+    });
   }).toList();
 }
 
-List<String> opcionesDe(Iterable<String?> valores) {
+List<String> opcionesDe(Iterable<String?> valores, {bool comoTallas = false}) {
   final unicos = {for (final valor in valores) if (valor != null && valor.isNotEmpty) valor};
-  final lista = unicos.toList()..sort();
+  final lista = unicos.toList()..sort(comoTallas ? compararTallas : null);
   return lista;
 }
