@@ -42,9 +42,8 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_general'])->group(
     Route::patch('lineas/{linea}', [LineaController::class, 'update']);
     Route::delete('lineas/{linea}', [LineaController::class, 'destroy']);
 
-    Route::post('campanas', [CampanaController::class, 'store']);
-    Route::patch('campanas/{campana}', [CampanaController::class, 'update']);
-    Route::delete('campanas/{campana}', [CampanaController::class, 'destroy']);
+    // Las temporadas son globales y se calculan por fecha: ya no se crean,
+    // editan ni borran a mano (solo se consultan con GET campanas).
 
     Route::post('productos', [ProductoController::class, 'store']);
     Route::patch('productos/{producto}', [ProductoController::class, 'update']);

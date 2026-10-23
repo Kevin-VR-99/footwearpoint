@@ -171,7 +171,7 @@ class DetallesPanelTest extends TestCase
 
         Campana::query()
             ->whereIn('id', $this->publicacionesActivas($pc->producto_id)->pluck('campana_id'))
-            ->update(['estado' => 'finalizada']);
+            ->update(['temporada_id' => \App\Models\Temporada::siguiente()->id]);
 
         $this->get(route('catalogo.producto.detalle', $pc->producto_id))
             ->assertOk()
@@ -227,7 +227,8 @@ class DetallesPanelTest extends TestCase
     public function test_nuevo_pedido_sin_temporada_activa_lo_dice(): void
     {
         $this->como(self::EMPLEADO);
-        Campana::query()->update(['estado' => 'finalizada']);
+        // Ninguna línea tiene publicación en la temporada en curso.
+        $this->travelTo(now()->addYears(5));
 
         $this->borradorEnPantalla()
             ->assertSee('Tus líneas asociadas no tienen una temporada activa')

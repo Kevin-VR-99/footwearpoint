@@ -13,7 +13,8 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * El catálogo es uno solo, pero cada distribuidora vende solo un pedazo:
  *
- *   - productos de temporadas ACTIVAS,
+ *   - productos de la temporada VIGENTE (por fecha, zona de México: solo
+ *     una para todas las líneas; la próxima queda oculta hasta su fecha),
  *   - de las LÍNEAS que tiene activas (K3),
  *   - que el admin general no haya retirado de la temporada (activo),
  *   - y que ella misma no haya ocultado (su oferta, K5).
@@ -44,7 +45,7 @@ class CatalogoVisible
         return ProductoCampana::query()
             ->where('activo', true)
             ->whereHas('campana', fn (Builder $campana) => $campana
-                ->where('estado', 'activa')
+                ->vigentes()
                 ->whereIn('linea_id', DistribuidoraLinea::query()->vigentes()->select('linea_id'))
             );
     }

@@ -15,13 +15,12 @@ new class extends Component {
     public function getCampanasProperty()
     {
         return Campana::query()
-            ->with('linea')
+            ->with(['linea', 'temporada'])
             ->when(trim($this->buscar) !== '', function ($q) {
                 $t = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], trim($this->buscar)).'%';
                 $q->where(fn ($w) => $w->where('nombre', 'like', $t)
                     ->orWhereHas('linea', fn ($l) => $l->where('nombre', 'like', $t)));
             })
-            ->orderBy('estado')
             ->orderByDesc('fecha_inicio')
             ->get();
     }
@@ -53,8 +52,8 @@ new class extends Component {
                             {{ $campana->fecha_fin?->format('d/m/Y') ?? '—' }}
                         </td>
                         <td class="px-6 py-3.5">
-                            <span class=\"fp-insignia {{ $campana->estado === 'activa' ? 'fp-insignia-success' : 'fp-insignia-neutral' }}\">
-                                {{ ucfirst(str_replace('_', ' ', $campana->estado)) }}
+                            <span class=\"fp-insignia {{ $campana->estadoPorFecha() === 'activa' ? 'fp-insignia-success' : 'fp-insignia-neutral' }}\">
+                                {{ $campana->temporada?->etiquetaVigencia() ?? ucfirst(str_replace('_', ' ', $campana->estado)) }}
                             </span>
                         </td>
                     </tr>

@@ -68,16 +68,17 @@ class SubirCatalogoImportacionTest extends TestCase
 
         Livewire::test('admin.catalogos-importaciones')
             ->set('linea_id', 1)
-            ->set('campana_id', 1)
+            ->set('temporada_id', \App\Models\Temporada::actual()->id)
             ->set('archivo', $this->pdfDePrueba())
             ->call('subir')
             ->assertHasNoErrors()
             ->assertSet('esError', false);
 
-        $importacion = ImportacionCatalogo::latest('id')->firstOrFail();
+        $importacion = ImportacionCatalogo::with('campana')->latest('id')->firstOrFail();
 
         $this->assertSame(1, (int) $importacion->linea_id);
-        $this->assertSame(1, (int) $importacion->campana_id);
+        $this->assertSame(1, (int) $importacion->campana->linea_id);
+        $this->assertSame(\App\Models\Temporada::actual()->id, (int) $importacion->campana->temporada_id);
         $this->assertSame('pdf', $importacion->tipo_archivo);
         // "cargado" es lo que mira A8 para saber que hay trabajo pendiente.
         $this->assertSame('cargado', $importacion->estado);
@@ -104,18 +105,34 @@ class SubirCatalogoImportacionTest extends TestCase
         Storage::disk(self::DISCO)->assertExists($ruta);
     }
 
-    public function test_la_temporada_es_opcional(): void
+    public function test_por_omision_entra_a_la_temporada_actual(): void
     {
-        // Se puede subir el catalogo antes de decidir a que temporada entra.
+        // La temporada es global: si la línea aún no tenía su publicación en
+        // ella, se crea sola.
         $this->actingAs($this->adminGeneral());
 
         Livewire::test('admin.catalogos-importaciones')
+            ->assertSet('temporada_id', \App\Models\Temporada::actual()->id)
             ->set('linea_id', 3)
             ->set('archivo', $this->pdfDePrueba())
             ->call('subir')
             ->assertHasNoErrors();
 
-        $this->assertNull(ImportacionCatalogo::latest('id')->firstOrFail()->campana_id);
+        $campana = ImportacionCatalogo::latest('id')->firstOrFail()->campana;
+        $this->assertSame(3, (int) $campana->linea_id);
+        $this->assertSame(\App\Models\Temporada::actual()->id, (int) $campana->temporada_id);
+    }
+
+    public function test_no_se_importa_a_una_temporada_pasada(): void
+    {
+        $this->actingAs($this->adminGeneral());
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->set('linea_id', 1)
+            ->set('temporada_id', \App\Models\Temporada::actual()->anterior()->id)
+            ->set('archivo', $this->pdfDePrueba())
+            ->call('subir')
+            ->assertHasErrors(['temporada_id']);
     }
 
     public function test_un_admin_de_distribuidora_no_puede_ni_abrir_la_pantalla(): void
@@ -196,19 +213,6 @@ class SubirCatalogoImportacionTest extends TestCase
             ->set('archivo', $this->pdfDePrueba())
             ->call('subir')
             ->assertHasErrors(['linea_id' => 'required']);
-    }
-
-    public function test_al_cambiar_de_linea_se_olvida_la_temporada_elegida(): void
-    {
-        // Las temporadas son de una linea: dejar la anterior mezclaria
-        // el catalogo de una linea con la temporada de otra.
-        $this->actingAs($this->adminGeneral());
-
-        Livewire::test('admin.catalogos-importaciones')
-            ->set('linea_id', 1)
-            ->set('campana_id', 1)
-            ->set('linea_id', 3)
-            ->assertSet('campana_id', null);
     }
 
     public function test_la_carga_queda_en_la_bitacora_de_auditoria(): void

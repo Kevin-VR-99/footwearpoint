@@ -115,12 +115,12 @@ class DemoCatalogoDistribuidorasSeeder extends Seeder
         );
     }
 
-    /** El producto de ese modelo en la temporada que está activa. */
+    /** El producto de ese modelo en la temporada actual. */
     private function productoCampana(string $modelo): ProductoCampana
     {
         return ProductoCampana::query()
             ->whereRelation('producto', 'modelo', $modelo)
-            ->whereRelation('campana', 'estado', 'activa')
+            ->whereHas('campana', fn ($c) => $c->vigentes())
             ->firstOrFail();
     }
 
@@ -138,7 +138,7 @@ class DemoCatalogoDistribuidorasSeeder extends Seeder
             ->firstOrFail();
 
         foreach ($lineas as $linea) {
-            $campana = Campana::where('linea_id', $linea->id)->where('estado', 'activa')->first();
+            $campana = Campana::where('linea_id', $linea->id)->vigentes()->first();
 
             if (! $campana) {
                 continue;

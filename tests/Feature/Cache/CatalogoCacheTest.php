@@ -3,6 +3,7 @@
 namespace Tests\Feature\Cache;
 
 use App\Models\Campana;
+use App\Models\Temporada;
 use App\Models\CicloCompra;
 use App\Models\Color;
 use App\Models\DistribuidoraLinea;
@@ -175,15 +176,16 @@ class CatalogoCacheTest extends TestCase
         $idA = Tenant::id();
         $temporadas = $this->cache()->temporadasParaFiltro();
         $this->assertNotEmpty($temporadas);
-        $this->assertNotNull($temporadas->first()->linea?->nombre);
+        $this->assertContains('actual', $temporadas->pluck('vigencia')->all());
+        // La llave lleva la temporada vigente: cambia sola al cambiar de semestre.
+        $llave = CatalogoCache::llave($idA, 'temporadas_filtro:'.Temporada::actual()->id);
+        $this->assertTrue(Cache::has($llave));
 
-        $campana = Campana::query()->whereKey($temporadas->first()->id)->firstOrFail();
-        $campana->nombre = 'Temporada renombrada';
+        $campana = Campana::query()->where('temporada_id', $temporadas->first()->id)->firstOrFail();
+        $campana->descripcion = 'Cambio de prueba';
         $campana->save();
 
-        $this->assertFalse(Cache::has(CatalogoCache::llave($idA, 'temporadas_filtro')));
-        $this->olvidarMemo();
-        $this->assertContains('Temporada renombrada', $this->cache()->temporadasParaFiltro()->pluck('nombre')->all());
+        $this->assertFalse(Cache::has($llave));
     }
 
     public function test_las_temporadas_respetan_las_lineas_de_cada_distribuidora(): void
@@ -192,7 +194,7 @@ class CatalogoCacheTest extends TestCase
             $this->como($email);
             $lineas = DistribuidoraLinea::withoutGlobalScopes()->where('distribuidora_id', Tenant::id())->pluck('linea_id')->all();
             foreach ($this->cache()->temporadasParaFiltro() as $t) {
-                $this->assertContains($t->linea_id, $lineas);
+                $this->assertTrue(Campana::where('temporada_id', $t->id)->whereIn('linea_id', $lineas)->exists());
             }
         }
     }

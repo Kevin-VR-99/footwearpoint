@@ -105,6 +105,8 @@ class CatalogoConsultableTest extends TestCase
     public function test_un_producto_de_una_temporada_que_no_esta_activa_no_aparece(): void
     {
         $publicacion = $this->publicar('en-borrador', estadoTemporada: 'borrador');
+        // La temporada que no está en curso es la próxima: queda oculta aunque ya esté importada.
+        $publicacion->campana->update(['temporada_id' => \App\Models\Temporada::siguiente()->id]);
         $this->venderEsaLinea($publicacion);
 
         $this->comoEmpleado();

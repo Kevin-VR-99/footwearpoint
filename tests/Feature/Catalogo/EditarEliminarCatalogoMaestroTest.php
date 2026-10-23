@@ -139,45 +139,19 @@ class EditarEliminarCatalogoMaestroTest extends TestCase
         $this->auditado('catalogo.marca.actualizada', $marca->id);
     }
 
-    public function test_edita_una_temporada_y_avanza_su_estado(): void
+    /** Las temporadas son globales y salen de la fecha: no se editan ni se borran a mano. */
+    public function test_las_temporadas_no_se_editan_ni_se_eliminan(): void
     {
         $this->comoAdminGeneral();
-        $temporada = Campana::create([
-            'linea_id' => Linea::create(['nombre' => 'Línea temporada', 'activa' => true])->id,
-            'nombre' => 'PV 2027',
-            'estado' => 'borrador',
-        ]);
+        $temporada = Campana::query()->has('productosCampana')->firstOrFail();
 
-        Livewire::test(self::COMPONENTE)
-            ->call('editar', 'temporada', $temporada->id)
-            ->set('editar_nombre', 'Primavera-Verano 2027')
-            ->set('editar_estado', 'en_importacion')
-            ->call('guardarEdicion')
-            ->assertHasNoErrors()
-            ->assertSet('errorMsg', '');
+        Livewire::test(self::COMPONENTE)->call('editar', 'temporada', $temporada->id)
+            ->assertSet('editando_tipo', '')
+            ->assertNotSet('errorMsg', '');
+        Livewire::test(self::COMPONENTE)->call('eliminar', 'temporada', $temporada->id)
+            ->assertNotSet('errorMsg', '');
 
-        $temporada->refresh();
-        $this->assertSame('Primavera-Verano 2027', $temporada->nombre);
-        $this->assertSame('en_importacion', $temporada->estado);
-        $this->auditado('catalogo.temporada.actualizada', $temporada->id);
-    }
-
-    public function test_una_temporada_no_salta_estados_y_se_explica(): void
-    {
-        $this->comoAdminGeneral();
-        $temporada = Campana::create([
-            'linea_id' => Linea::create(['nombre' => 'Línea saltos', 'activa' => true])->id,
-            'nombre' => 'OI 2027',
-            'estado' => 'borrador',
-        ]);
-
-        Livewire::test(self::COMPONENTE)
-            ->call('editar', 'temporada', $temporada->id)
-            ->set('editar_estado', 'archivada')
-            ->call('guardarEdicion')
-            ->assertSet('errorMsg', fn ($mensaje) => str_contains($mensaje, 'en_importacion'));
-
-        $this->assertSame('borrador', $temporada->fresh()->estado);
+        $this->assertDatabaseHas('campanas', ['id' => $temporada->id, 'nombre' => $temporada->nombre]);
     }
 
     public function test_edita_un_producto_incluida_su_marca(): void
@@ -275,23 +249,6 @@ class EditarEliminarCatalogoMaestroTest extends TestCase
         $this->auditado('catalogo.marca.eliminada', $marca->id);
     }
 
-    public function test_elimina_una_temporada_sin_productos(): void
-    {
-        $this->comoAdminGeneral();
-        $temporada = Campana::create([
-            'linea_id' => Linea::create(['nombre' => 'Línea con temporada vacía', 'activa' => true])->id,
-            'nombre' => 'Temporada vacía',
-            'estado' => 'borrador',
-        ]);
-
-        Livewire::test(self::COMPONENTE)
-            ->call('eliminar', 'temporada', $temporada->id)
-            ->assertSet('errorMsg', '');
-
-        $this->assertDatabaseMissing('campanas', ['id' => $temporada->id]);
-        $this->auditado('catalogo.temporada.eliminada', $temporada->id);
-    }
-
     public function test_elimina_un_producto_sin_operacion_junto_con_sus_tallas_y_publicaciones(): void
     {
         $this->comoAdminGeneral();
@@ -364,20 +321,6 @@ class EditarEliminarCatalogoMaestroTest extends TestCase
         $this->assertDatabaseHas('lineas', ['id' => $linea->id]);
     }
 
-    public function test_no_elimina_una_temporada_con_productos_publicados(): void
-    {
-        $this->comoAdminGeneral();
-        $temporada = Campana::query()->has('productosCampana')->firstOrFail();
-        $publicaciones = $temporada->productosCampana()->count();
-
-        Livewire::test(self::COMPONENTE)
-            ->call('eliminar', 'temporada', $temporada->id)
-            ->assertSet('errorMsg', fn ($mensaje) => str_starts_with($mensaje, "No se puede eliminar la temporada: tiene {$publicaciones} producto"));
-
-        $this->assertDatabaseHas('campanas', ['id' => $temporada->id]);
-        $this->assertSame($publicaciones, $temporada->productosCampana()->count());
-    }
-
     public function test_no_elimina_un_producto_con_stock_de_distribuidoras_ni_toca_el_stock(): void
     {
         $this->comoAdminGeneral();
@@ -438,7 +381,8 @@ class EditarEliminarCatalogoMaestroTest extends TestCase
         $this->deleteJson("/api/marcas/{$marca->id}")->assertForbidden();
         $this->deleteJson("/api/lineas/{$linea->id}")->assertForbidden();
         $this->deleteJson('/api/productos/'.$this->productoNuevo('TG247-P')->id)->assertForbidden();
-        $this->deleteJson('/api/campanas/'.Campana::firstOrFail()->id)->assertForbidden();
+        // Las temporadas ya no se borran por API: la ruta no existe para nadie.
+        $this->deleteJson('/api/campanas/'.Campana::firstOrFail()->id)->assertMethodNotAllowed();
 
         $this->assertDatabaseHas('marcas', ['id' => $marca->id]);
         $this->assertDatabaseHas('lineas', ['id' => $linea->id]);

@@ -2,13 +2,13 @@
 
 namespace App\Support\Cache;
 
-use App\Models\Campana;
 use App\Models\CicloCompra;
 use App\Models\Color;
 use App\Models\Distribuidora;
 use App\Models\DistribuidoraLinea;
 use App\Models\Marca;
 use App\Models\Talla;
+use App\Models\Temporada;
 use App\Support\Tenant;
 use Closure;
 use Illuminate\Support\Collection;
@@ -107,29 +107,33 @@ class CatalogoCache
     }
 
     /**
-     * Temporadas para el filtro de reportes: las de líneas que la distribuidora
-     * tiene o tuvo, con el nombre de su línea.
+     * Temporadas globales para el filtro de reportes: las que tienen
+     * publicaciones de líneas que la distribuidora tiene o tuvo, la más
+     * reciente primero, con su vigencia (actual, próxima o pasada).
      *
-     * @return Collection<int, object{id:int, nombre:string, linea_id:int, linea:?object}>
+     * La llave lleva la temporada vigente: al cruzar el 1 de enero o el 1 de
+     * julio cambia sola y nadie ve la vigencia del semestre anterior.
+     *
+     * @return Collection<int, object{id:int, nombre:string, vigencia:string}>
      */
     public function temporadasParaFiltro(): Collection
     {
-        return collect($this->recordar('temporadas_filtro', fn () => Campana::query()
-            ->with('linea:id,nombre')
-            ->whereIn('linea_id', DistribuidoraLinea::query()->select('linea_id'))
-            ->orderByDesc('fecha_inicio')->orderBy('nombre')
-            ->get(['id', 'nombre', 'linea_id'])
-            ->map(fn (Campana $c) => [
-                'id' => $c->id,
-                'nombre' => $c->nombre,
-                'linea_id' => $c->linea_id,
-                'linea' => $c->linea ? ['id' => $c->linea->id, 'nombre' => $c->linea->nombre] : null,
+        return collect($this->recordar(self::nombreTemporadasFiltro(), fn () => Temporada::query()
+            ->whereHas('campanas', fn ($c) => $c->whereIn('linea_id', DistribuidoraLinea::query()->select('linea_id')))
+            ->orderByDesc('fecha_inicio')
+            ->get(['id', 'nombre', 'fecha_inicio', 'fecha_fin'])
+            ->map(fn (Temporada $t) => [
+                'id' => $t->id,
+                'nombre' => $t->nombre,
+                'vigencia' => $t->vigencia(),
             ])->all()))
-            ->map(function (array $c) {
-                $c['linea'] = $c['linea'] !== null ? (object) $c['linea'] : null;
+            ->map(fn (array $t) => (object) $t);
+    }
 
-                return (object) $c;
-            });
+    /** 'temporadas_filtro:{id de la temporada vigente}' */
+    public static function nombreTemporadasFiltro(): string
+    {
+        return 'temporadas_filtro:'.Temporada::actual()->id;
     }
 
     /** @return Collection<int, object{id:int, nombre:string}> más reciente primero */

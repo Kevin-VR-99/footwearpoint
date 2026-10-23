@@ -28,6 +28,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
     public string $errorPendientes = '';
 
     /** TG-253: filtros propios del reporte de demanda y su error legible. */
+    /** Temporada global (temporadas.id) del filtro de demanda. */
     public string $demandaCampanaId = '';
     public string $demandaMarcaId = '';
     public string $errorDemanda = '';
@@ -597,7 +598,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                     <select id="index-demandaCampanaId" wire:model.live="demandaCampanaId" class="w-full rounded-lg text-sm">
                         <option value="">Todas</option>
                         @foreach ($this->temporadasDemanda as $temporada)
-                            <option value="{{ $temporada->id }}">{{ $temporada->nombre }} · {{ $temporada->linea?->nombre }}</option>
+                            <option value="{{ $temporada->id }}">{{ $temporada->nombre }}{{ $temporada->vigencia === 'actual' ? ' (actual)' : '' }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -1132,13 +1133,13 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             <p class="px-4 pt-3 text-sm font-medium text-slate-700">Temporadas</p>
             <table class="fp-tabla min-w-full text-sm">
                 <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
-                    <tr><th class="px-4 py-2">Temporada</th><th class="px-4 py-2">Línea</th><th class="px-4 py-2 text-right">Piezas</th><th class="px-4 py-2 text-right">Pedidos</th><th class="px-4 py-2 text-right">Monto</th></tr>
+                    <tr><th class="px-4 py-2">Temporada</th><th class="px-4 py-2 text-right">Piezas</th><th class="px-4 py-2 text-right">Pedidos</th><th class="px-4 py-2 text-right">Monto</th></tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($demanda['por_temporada'] as $fila)
-                        <tr><td class="px-4 py-3">{{ $fila['nombre'] }}</td><td class="px-4 py-3">{{ $fila['linea'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['piezas'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['pedidos'] }}</td><td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td></tr>
+                        <tr><td class="px-4 py-3">{{ $fila['nombre'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['piezas'] }}</td><td class="px-4 py-3 text-right tabular-nums">{{ $fila['pedidos'] }}</td><td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['monto'], 2) }}</td></tr>
                     @empty
-                        <x-panel.vacio colspan="5" mensaje="Sin demanda en el periodo" />
+                        <x-panel.vacio colspan="4" mensaje="Sin demanda en el periodo" />
                     @endforelse
                 </tbody>
             </table>
