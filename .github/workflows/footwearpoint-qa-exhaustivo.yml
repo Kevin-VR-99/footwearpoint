@@ -229,7 +229,7 @@ jobs:
             let pagina;
             try{
               pagina=await ctx.newPage();
-              pagina.__qaEscenario=info?.titlePath?.().join(' > ') || 'Control de acceso';
+              pagina.__qaEscenario=(typeof info?.titlePath === 'function' ? info.titlePath().join(' > ') : (info?.title || 'Control de acceso'));
               await cb(pagina);
             } catch(error){
               if(info && pagina){
