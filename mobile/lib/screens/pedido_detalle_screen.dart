@@ -462,7 +462,7 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
                 Expanded(
                   child: Text(
                     pedido.pagoMercadoPagoDisponible != null
-                        ? 'Puedes pagar con Mercado Pago o en mostrador.'
+                        ? 'Puedes pagar con tarjeta o en mostrador.'
                         : 'Los pagos se hacen y se registran en mostrador.',
                   ),
                 ),

@@ -56,6 +56,7 @@ class FootwearPointApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         // Para abrir el historial de un cambio al tocar su push.
         navigatorKey: navegadorRaiz,
+        navigatorObservers: [observadorDeRutas],
         // Con el estilo del panel web (TG-165).
         theme: FpTema.claro(),
         home: const _Raiz(),

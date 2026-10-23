@@ -17,6 +17,7 @@ import '../services/api_service.dart';
 import '../services/notificacion_service.dart';
 import '../tema/fp_colores.dart';
 import '../widgets/fp_componentes.dart';
+import '../widgets/recarga_de_pestana.dart';
 import 'mis_pedidos_screen.dart';
 import 'pedido_revendedor_screen.dart' hide formatoPrecio;
 import 'perfil_screen.dart';
@@ -24,7 +25,10 @@ import 'clientes_privados_screen.dart';
 import 'notificaciones_screen.dart';
 
 class InicioScreen extends StatefulWidget {
-  const InicioScreen({super.key});
+  const InicioScreen({super.key, this.recarga});
+
+  /// El cascarón la usa para volver a pedir las cifras al regresar al Inicio.
+  final RecargaDePestana? recarga;
 
   /// El rol como se lee en pantalla. Si llegara uno nuevo, se muestra tal cual.
   static String nombreRol(String? rol) => switch (rol) {
@@ -48,6 +52,7 @@ class _InicioScreenState extends State<InicioScreen> {
   @override
   void initState() {
     super.initState();
+    widget.recarga?.registrar(_cargarResumen);
     _cargarResumen();
   }
 

@@ -7,7 +7,6 @@ import '../models/usuario.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'cambiar_password_screen.dart';
-import 'mis_cambios_screen.dart';
 import 'inicio_screen.dart';
 import 'login_screen.dart';
 import '../tema/fp_colores.dart';
@@ -222,16 +221,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
       appBar: AppBar(
         title: const Text('Mi perfil'),
         bottom: const FpBordeMarca(),
-        actions: [
-          // Las solicitudes de cambio de producto y su historial.
-          IconButton(
-            tooltip: 'Mis cambios',
-            icon: const Icon(Icons.swap_horiz),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const MisCambiosScreen()),
-            ),
-          ),
-        ],
       ),
       body: SafeArea(child: _contenido(context)),
     );

@@ -147,6 +147,69 @@ void main() {
     expect(find.text('2 vales vigentes'), findsOneWidget);
   });
 
+  testWidgets('un vale ya aplicado no suma ni cuenta en el inicio', (tester) async {
+    await abrir(
+      tester,
+      _servidor(
+        vales: [
+          _vale('VAL-0001', 300),
+          {
+            'id': 9,
+            'folio': 'VAL-USADO',
+            'monto_original': 200.0,
+            'saldo_actual': 0.0,
+            'fecha_vencimiento': '2099-11-30T10:00:00-06:00',
+            'estado': 'agotado',
+          },
+        ],
+      ),
+    );
+
+    expect(find.text(r'$300.00'), findsOneWidget);
+    expect(find.text('1 vale vigente'), findsOneWidget);
+  });
+
+  testWidgets('al volver al inicio vuelve a pedir los vales', (tester) async {
+    var consultas = 0;
+    await abrir(
+      tester,
+      MockClient((peticion) async {
+        final ruta = peticion.url.path.replaceFirst('/api', '');
+        if (ruta == '/auth/me') {
+          return _json({
+            'data': {
+              'usuario': {
+                'id': 7,
+                'nombre': 'María López',
+                'email': 'maria@ejemplo.com',
+                'telefono': null,
+                'estado': 'activo',
+              },
+              'rol': 'revendedor',
+              'legales_aceptados': true,
+              'distribuidora_id': 1,
+              'distribuidora': 'Calzados Ramírez',
+            },
+          }, 200);
+        }
+        if (ruta == '/pedidos/resumen') return _json({'data': _resumenDe(const [])}, 200);
+        if (ruta == '/vales') {
+          consultas++;
+          return _json({'data': [_vale('VAL-0001', 10)]}, 200);
+        }
+        return _json({'data': <Object>[]}, 200);
+      }),
+    );
+
+    expect(consultas, 1);
+    await tester.tap(find.text('Vales'));
+    await tester.pumpAndSettle();
+    expect(consultas, 2);
+    await tester.tap(find.text('Inicio'));
+    await tester.pumpAndSettle();
+    expect(consultas, 3);
+  });
+
   testWidgets('sin pedidos ni vales enseña ceros y no la sección de últimos pedidos', (tester) async {
     await abrir(tester, _servidor());
 

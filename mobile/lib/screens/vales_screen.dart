@@ -6,9 +6,13 @@ import '../models/vale.dart';
 import '../services/vale_service.dart';
 import '../tema/fp_colores.dart';
 import '../widgets/fp_componentes.dart';
+import '../widgets/recarga_de_pestana.dart';
 
 class ValesScreen extends StatefulWidget {
-  const ValesScreen({super.key});
+  const ValesScreen({super.key, this.recarga});
+
+  /// El cascarón la usa para quitar de la lista un folio ya aplicado.
+  final RecargaDePestana? recarga;
 
   @override
   State<ValesScreen> createState() => _ValesScreenState();
@@ -30,7 +34,27 @@ class _ValesScreenState extends State<ValesScreen> {
   @override
   void initState() {
     super.initState();
+    widget.recarga?.registrar(_recargar);
     _cargarVales();
+  }
+
+  /// Vuelve a pedir los vales sin tapar la lista con el indicador de carga.
+  Future<void> _recargar() async {
+    try {
+      final vales = await _valeService.listarValesVigentes();
+      if (!mounted) return;
+      setState(() {
+        _vales = vales;
+        _cargando = false;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted || _vales.isNotEmpty) return;
+      setState(() {
+        _error = e.toString();
+        _cargando = false;
+      });
+    }
   }
 
   Future<void> _cargarVales() async {

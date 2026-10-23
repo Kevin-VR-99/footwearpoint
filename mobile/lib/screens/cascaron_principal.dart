@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../tema/fp_colores.dart';
+import '../widgets/recarga_de_pestana.dart';
 import 'catalogo_screen.dart';
 import 'inicio_screen.dart';
 import 'mis_pedidos_screen.dart';
@@ -27,8 +28,9 @@ import 'vales_screen.dart';
 /// Cada pestaña se arma la PRIMERA vez que se entra, no al abrir la app: si
 /// se armaran todas de golpe, al entrar se dispararían cuatro peticiones al
 /// servidor (catálogo, pedidos, vales y perfil) para ver una sola pantalla.
-/// Una vez armada se queda viva, así que al volver no se recarga ni se
-/// pierde dónde ibas.
+/// Una vez armada se queda viva, para no perder dónde ibas. El Inicio y
+/// Vales sí se vuelven a pedir al entrar otra vez: si no, un vale aplicado
+/// sigue contando y su folio no desaparece.
 ///
 /// Lo que no está en la barra —el carrito y los clientes particulares—
 /// se sigue abriendo desde el Inicio.
@@ -39,8 +41,15 @@ class CascaronPrincipal extends StatefulWidget {
   State<CascaronPrincipal> createState() => _CascaronPrincipalState();
 }
 
-class _CascaronPrincipalState extends State<CascaronPrincipal> {
+/// Avisa al cascarón cuando se cierra una pantalla puesta encima, para
+/// refrescar el Inicio o Vales.
+final RouteObserver<ModalRoute<void>> observadorDeRutas = RouteObserver<ModalRoute<void>>();
+
+class _CascaronPrincipalState extends State<CascaronPrincipal> with RouteAware {
   int _actual = 0;
+
+  final _recargaInicio = RecargaDePestana();
+  final _recargaVales = RecargaDePestana();
 
   /// Null mientras esa pestaña no se haya abierto nunca.
   final List<Widget?> _pestanas = List<Widget?>.filled(5, null);
@@ -58,19 +67,36 @@ class _CascaronPrincipalState extends State<CascaronPrincipal> {
   ];
 
   Widget _construir(int indice) => switch (indice) {
-    0 => const InicioScreen(),
+    0 => InicioScreen(recarga: _recargaInicio),
     1 => const CatalogoScreen(),
     2 => const MisPedidosScreen(),
-    3 => const ValesScreen(),
+    3 => ValesScreen(recarga: _recargaVales),
     _ => const PerfilScreen(),
   };
 
   void _ir(int indice) {
+    final nueva = _pestanas[indice] == null;
     setState(() {
       _pestanas[indice] ??= _construir(indice);
       _actual = indice;
     });
+    if (!nueva) _refrescar(indice);
   }
+
+  void _refrescar(int indice) {
+    if (indice == 0) _recargaInicio.llamar();
+    if (indice == 3) _recargaVales.llamar();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final ruta = ModalRoute.of(context);
+    if (ruta is PageRoute<void>) observadorDeRutas.subscribe(this, ruta);
+  }
+
+  @override
+  void didPopNext() => _refrescar(_actual);
 
   StreamSubscription<RemoteMessage>? _avisos;
 
@@ -88,6 +114,7 @@ class _CascaronPrincipalState extends State<CascaronPrincipal> {
 
   @override
   void dispose() {
+    observadorDeRutas.unsubscribe(this);
     _avisos?.cancel();
     super.dispose();
   }

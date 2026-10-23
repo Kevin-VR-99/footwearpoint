@@ -16,7 +16,7 @@ class ValeService {
     var pagina = 1;
 
     while (true) {
-      final respuesta = await _api.get('vales?page=$pagina&per_page=100');
+      final respuesta = await _api.get('vales?page=$pagina&per_page=100&estado=activo');
       final actual = Pagina.desdeJson(respuesta, Vale.fromJson);
       vales.addAll(actual.elementos);
 
@@ -24,7 +24,11 @@ class ValeService {
       pagina++;
     }
 
-    return vales;
+    // Un vale aplicado hasta el final queda agotado. Su folio ya no se enseña.
+    return [
+      for (final vale in vales)
+        if (vale.estado == 'activo' && vale.saldoActual > 0) vale,
+    ];
   }
 
   Future<void> aplicarVale({
