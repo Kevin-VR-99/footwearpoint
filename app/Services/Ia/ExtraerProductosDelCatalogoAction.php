@@ -2,6 +2,7 @@
 
 namespace App\Services\Ia;
 
+use Anthropic\Core\Exceptions\BadRequestException;
 use App\Models\ImportacionCatalogo;
 use App\Models\ProductoImportadoStaging;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
@@ -240,6 +241,35 @@ class ExtraerProductosDelCatalogoAction
             return $e->getMessage();
         }
 
+        // Sin saldo, "intenta de nuevo" era el peor consejo posible: cada
+        // intento vuelve a subir el PDF y a reescribir el cache, y se cobra.
+        if ($this->pareceSaldoAgotado($e)) {
+            return 'Puede que se haya agotado el saldo de la cuenta de la IA. Avisa al equipo antes de '
+                .'reintentar, porque cada intento cuesta una lectura completa. El detalle quedó en el log.';
+        }
+
         return 'No se pudo leer el catálogo con la IA. Intenta de nuevo; si sigue fallando, avisa al equipo.';
+    }
+
+    /**
+     * Si el 400 del proveedor viene por saldo.
+     *
+     * El SDK no reintenta el 400 por su cuenta (solo 408, 409, 429 y 5xx),
+     * asi que este error llega tal cual y una sola vez.
+     *
+     * Se reconoce por el texto que manda Anthropic, en ingles, dentro del
+     * cuerpo del error. Es lo unico que lo distingue de cualquier otro 400 y
+     * puede cambiar sin avisar: por eso el mensaje para la persona dice
+     * "puede que" y el texto crudo se sigue guardando en el log.
+     */
+    private function pareceSaldoAgotado(Throwable $e): bool
+    {
+        if (! $e instanceof BadRequestException) {
+            return false;
+        }
+
+        $texto = mb_strtolower($e->getMessage());
+
+        return str_contains($texto, 'credit balance') || str_contains($texto, 'insufficient credit');
     }
 }

@@ -25,6 +25,13 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
 {
     use WithFileUploads;
 
+    /**
+     * Para estimar lo que va a cobrar una lectura antes de arrancarla. Sale
+     * del catalogo Cklass: 76 paginas costaron $0.98 USD. Es un numero para
+     * avisar; el real se guarda en costo_usd cuando termina.
+     */
+    private const USD_POR_PAGINA = 0.013;
+
     public $archivo = null;
     public ?int $linea_id = null;
     public ?int $campana_id = null;
@@ -187,6 +194,39 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         $this->mensaje = 'Catálogo quitado.';
         $this->esError = false;
     }
+
+    /**
+     * El texto del wire:confirm de "Procesar" / "Reintentar".
+     *
+     * Son dos casos distintos: el primer Procesar no borra nada, y Reintentar
+     * tira los productos ya leidos y vuelve a pagar la lectura completa. Al
+     * terminar se borra el archivo del proveedor (el finally de
+     * ExtraerProductosDelCatalogoAction) y archivo_ia_id queda en null, asi
+     * que no hay segunda vuelta barata: cada clic vuelve a subir el PDF y a
+     * reescribir el cache entero.
+     *
+     * No se usa costo_usd para el monto: el de una lectura a medias viene
+     * vacio o en centavos y haria creer que reintentar sale baratisimo.
+     *
+     * El estimado solo existe si ya se leyo una vez, porque al subir no se
+     * cuentan las paginas (eso pasa dentro de la lectura). En el primer
+     * Procesar no hay numero que dar y no se inventa uno.
+     */
+    public function avisoAntesDeLeer(ImportacionCatalogo $importacion): string
+    {
+        $costo = $importacion->paginas
+            ? 'Cuesta alrededor de $'.number_format($importacion->paginas * self::USD_POR_PAGINA, 2).' USD.'
+            : 'El costo depende de cuántas páginas tenga; uno de 76 páginas ronda $1 USD.';
+
+        if ($importacion->productos_staging_count > 0) {
+            return 'Ya se leyeron '.$importacion->productos_staging_count.' productos de este catálogo, y eso ya se pagó. '
+                .'Volver a leerlo los borra y cobra la lectura completa otra vez. '.$costo
+                .' Si lo que quieres es revisar lo que ya se leyó, usa el botón Revisar.';
+        }
+
+        return 'Leer este catálogo con la IA cuesta dinero de verdad. '.$costo
+            .' Se cobra aunque al final no apruebes ningún producto.';
+    }
 };
 ?>
 
@@ -201,6 +241,41 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
             icono="M9.75 3.1v5.7a2.25 2.25 0 01-.66 1.6L5 14.5M14.25 3.1v5.7c0 .6.24 1.17.66 1.6L19 14.5M5 14.5l-1.4 4.2A1 1 0 004.6 20h14.8a1 1 0 00.95-1.3L19 14.5M5 14.5h14" />
         <x-panel.metrica titulo="Por revisar" :valor="$porEstado['requiere_revision'] ?? 0" tono="aviso" icono="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.5 12C3.8 7.9 7.6 5 12 5s8.2 2.9 9.5 7c-1.3 4.1-5.1 7-9.5 7S3.8 16.1 2.5 12z" />
         <x-panel.metrica titulo="Aprobados" :valor="$porEstado['aprobado'] ?? 0" tono="exito" icono="M5 13l4 4L19 7" />
+    </div>
+
+    {{-- El gasto de la IA no se veia en ninguna pantalla: solo frenaba al
+         pasarse del tope, asi que nadie sabia cuanto llevaba hasta chocar.
+         Ojo con lo que NO es: el tope es de la app (IA_MAX_USD_MES), no el
+         saldo de la cuenta de la IA. Puede quedar saldo y estar frenado, o
+         haber margen de tope sin saldo. --}}
+    @php($gastoDelMes = app(\App\Services\Ia\LimitesDeGastoIa::class)->gastoDelMes())
+    @php($topeDelMes = (float) config('ia.max_usd_por_mes'))
+    @php($cercaDelTope = $topeDelMes > 0 && $gastoDelMes >= $topeDelMes * 0.8)
+    <div class="fp-tarjeta fp-aparecer p-4 sm:p-5" data-gasto-ia>
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 class="text-sm font-semibold text-slate-700">Gasto de la IA este mes</h2>
+            <p class="text-sm {{ $cercaDelTope ? 'font-semibold text-fp-danger' : 'text-slate-600' }}">
+                ${{ number_format($gastoDelMes, 2) }} USD
+                @if ($topeDelMes > 0)
+                    de ${{ number_format($topeDelMes, 2) }} del tope de la app
+                @else
+                    (sin tope configurado)
+                @endif
+            </p>
+        </div>
+
+        @if ($topeDelMes > 0)
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div class="h-full rounded-full {{ $cercaDelTope ? 'bg-fp-danger' : 'bg-fp-primary' }}"
+                    style="width: {{ min(100, (int) round($gastoDelMes / $topeDelMes * 100)) }}%"></div>
+            </div>
+        @endif
+
+        <p class="mt-2 text-xs text-slate-500">
+            Lo que costaron las lecturas de este mes; vuelve a cero el día 1. El tope es de la app
+            (<code>IA_MAX_USD_MES</code>), no el saldo de la cuenta de la IA, y se revisa al empezar
+            una lectura: la que ya arrancó no se detiene a la mitad.
+        </p>
     </div>
 
     @if ($mensaje)
@@ -308,7 +383,11 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                             <td class="px-4 py-3">{{ $importacion->iniciadaPor?->nombreVisible() }}</td>
                             <td class="px-4 py-3 text-right whitespace-nowrap">
                                 @if (in_array($importacion->estado, ['cargado', 'error'], true))
+                                    {{-- El boton que cuesta dinero pedia menos confirmacion que el
+                                         de Quitar, que es gratis. Cada clic aqui son ~$1 USD y, si
+                                         ya habia productos leidos, se borran. --}}
                                     <button type="button" wire:click="procesar({{ $importacion->id }})"
+                                        wire:confirm="{{ $this->avisoAntesDeLeer($importacion) }}"
                                         wire:loading.attr="disabled"
                                         class="fp-accion fp-accion-primaria">
                                         {{ $importacion->estado === 'error' ? 'Reintentar con IA' : 'Procesar con IA' }}
