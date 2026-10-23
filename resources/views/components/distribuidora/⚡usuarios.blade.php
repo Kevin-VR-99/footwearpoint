@@ -657,7 +657,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
 };
 ?>
 
-<div class="mx-auto max-w-5xl space-y-6">
+<div class="mx-auto w-full max-w-7xl space-y-6">
     @if ($seccion === 'empleados')
         <x-panel.encabezado eyebrow="Distribuidora" titulo="Empleados" nivel="h1"
             subtitulo="Personal que entra al panel de tu distribuidora." class="mb-6" />
@@ -669,94 +669,88 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
 
     {{-- Empleados --}}
     @if ($seccion === 'empleados')
-    <div class="relative fp-tarjeta p-5 sm:p-6 max-w-3xl fp-aparecer">
+    <x-personas.tarjeta titulo="Empleados" data-lista="empleados">
         <x-ui.cargando objetivo="guardarPermisos,toggleEstadoEmpleado,gotoPage,nextPage,previousPage" />
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-sm font-semibold text-slate-700">Empleados</h2>
-                <button type="button" wire:click="abrirFormularioInvitarEmpleado"
-                    class="fp-btn fp-btn-primario">
-                    + Invitar empleado
-                </button>
-            </div>
-            <table class="w-full text-sm">
+        <x-slot:acciones>
+            <button type="button" wire:click="abrirFormularioInvitarEmpleado" class="fp-btn fp-btn-primario">
+                + Invitar empleado
+            </button>
+        </x-slot:acciones>
+            <table class="fp-tabla-personas">
                 <thead>
-                    <tr class="text-left text-slate-500 border-b">
-                        <th class="py-2" colspan="2">Nombre</th>
-                        <th class="py-2">Correo</th>
-                        <th class="py-2">Teléfono</th>
-                        <th class="py-2">Estado</th>
-                        <th class="py-2"></th>
+                    <tr>
+                        <th scope="col" colspan="2">Nombre</th>
+                        <th scope="col">Correo</th>
+                        <th scope="col">Teléfono</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col" class="text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($empleados as $empleado)
-                        <tr class="fp-fila-persona border-b last:border-0 align-top" wire:key="empleado-{{ $empleado->id }}">
-                            <td class="w-11 py-2 pr-2"><x-ui.avatar :url="$empleado->usuario?->foto_url" :nombre="$empleado->usuario?->nombreVisible()" /></td>
-                            <td class="py-2">{{ $empleado->usuario?->nombreVisible() ?? '—' }}</td>
-                            <td class="py-2">
+                        @php($nombreEmpleado = $empleado->usuario?->nombreVisible() ?? 'Sin nombre')
+                        <tr class="fp-fila-persona" wire:key="empleado-{{ $empleado->id }}">
+                            <td class="fp-celda-avatar w-11 pr-0"><x-ui.avatar :url="$empleado->usuario?->foto_url" :nombre="$empleado->usuario?->nombreVisible()" /></td>
+                            <td class="fp-celda-nombre">{{ $empleado->usuario?->nombreVisible() ?? '—' }}</td>
+                            <td class="fp-celda-correo" data-etiqueta="Correo">
                                 {{ $empleado->usuario?->email ?? '—' }}
                                 <x-ui.estado-correo :usuario="$empleado->usuario" />
                             </td>
-                            <td class="py-2">{{ $empleado->usuario?->telefono ?? '—' }}</td>
-                            <td class="py-2">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $empleado->estado === 'activo' ? 'bg-fp-badge-success-bg text-fp-badge-success-fg' : 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg' }}">
-                                    {{ $empleado->estado === 'activo' ? 'Activo' : 'Inactivo' }}
-                                </span>
-                            </td>
-                            <td class="py-2 text-right">
-                                <button type="button" wire:click="toggleEstadoEmpleado({{ $empleado->id }})"
-                                    wire:confirm="{{ $empleado->estado === 'activo' ? '¿Dar de baja a este empleado? Pierde el acceso al panel de inmediato.' : '¿Reactivar a este empleado?' }}"
-                                    class="text-fp-primary text-xs font-medium">
-                                    {{ $empleado->estado === 'activo' ? 'Desactivar' : 'Activar' }}
-                                </button>
-                                <button type="button" wire:click="abrirFormularioEditarEmpleado({{ $empleado->id }})"
-                                    class="ml-3 text-fp-primary text-xs font-medium" data-editar="empleado-{{ $empleado->id }}">Editar</button>
-                                <button type="button" wire:click="pedirEliminar('empleado', {{ $empleado->id }})"
-                                    class="ml-3 text-xs font-medium text-fp-danger transition-opacity hover:opacity-75" data-eliminar="empleado-{{ $empleado->id }}">Eliminar</button>
-                                <div class="mt-2 space-y-1 text-left text-xs text-slate-600">
-                                    @foreach (\App\Services\Auth\PermisoModuloService::ETIQUETAS_MODULO
-                                        + array_map(fn ($p) => $p[0], \App\Services\Auth\PermisoModuloService::PERMISOS_FINOS) as $permiso => $etiqueta)
-                                        <label class="flex items-center gap-1 rounded px-1 transition-colors hover:bg-fp-page">
-                                            <input type="checkbox" wire:model="permisosEmpleado.{{ $empleado->id }}" value="{{ $permiso }}">
-                                            {{ $etiqueta }}
-                                        </label>
-                                    @endforeach
-                                    <button type="button" wire:click="guardarPermisos({{ $empleado->id }})"
-                                        class="mt-1 text-fp-primary text-xs font-medium">
-                                        Guardar permisos
-                                    </button>
+                            <td class="whitespace-nowrap" data-etiqueta="Teléfono">{{ $empleado->usuario?->telefono ?? '—' }}</td>
+                            <td><x-personas.estado :estado="$empleado->estado" /></td>
+                            <td class="fp-celda-acciones">
+                                <div class="fp-acciones-persona">
+                                    <x-personas.accion icono="lapiz" etiqueta="Editar" :persona="$nombreEmpleado"
+                                        wire:click="abrirFormularioEditarEmpleado({{ $empleado->id }})" data-editar="empleado-{{ $empleado->id }}" />
+                                    <div class="relative" x-data="{ abierto: false }" x-on:click.outside="abierto = false" x-on:keydown.escape.stop="abierto = false">
+                                        <button type="button" class="fp-accion-persona" x-on:click="abierto = ! abierto"
+                                            x-bind:aria-expanded="abierto ? 'true' : 'false'" aria-controls="permisos-empleado-{{ $empleado->id }}"
+                                            aria-label="Permisos de {{ $nombreEmpleado }}" title="Permisos de {{ $nombreEmpleado }}">
+                                            <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
+                                            <span>Permisos</span>
+                                        </button>
+                                        <div id="permisos-empleado-{{ $empleado->id }}" class="fp-menu-acciones w-64 space-y-1 text-xs text-slate-600" x-cloak x-show="abierto"
+                                            x-transition:enter="fp-menu-entra" x-transition:enter-start="fp-menu-oculto" x-transition:leave="fp-menu-sale" x-transition:leave-end="fp-menu-oculto">
+                                            @foreach (\App\Services\Auth\PermisoModuloService::ETIQUETAS_MODULO
+                                                + array_map(fn ($p) => $p[0], \App\Services\Auth\PermisoModuloService::PERMISOS_FINOS) as $permiso => $etiqueta)
+                                                <label class="flex items-center gap-2 rounded px-2 py-1 transition-colors hover:bg-fp-page">
+                                                    <input type="checkbox" wire:model="permisosEmpleado.{{ $empleado->id }}" value="{{ $permiso }}">
+                                                    {{ $etiqueta }}
+                                                </label>
+                                            @endforeach
+                                            <div class="fp-menu-separador"></div>
+                                            <button type="button" wire:click="guardarPermisos({{ $empleado->id }})" x-on:click="abierto = false"
+                                                class="fp-btn fp-btn-primario fp-btn-sm w-full justify-center">
+                                                Guardar permisos
+                                            </button>
+                                        </div>
+                                    </div>
+                                    @if ($empleado->estado === 'activo')
+                                        <x-personas.accion icono="baja" etiqueta="Desactivar" :persona="$nombreEmpleado" tono="peligro"
+                                            wire:click="toggleEstadoEmpleado({{ $empleado->id }})"
+                                            wire:confirm="¿Dar de baja a este empleado? Pierde el acceso al panel de inmediato." />
+                                    @else
+                                        <x-personas.accion icono="reactivar" etiqueta="Activar" :persona="$nombreEmpleado" tono="exito"
+                                            wire:click="toggleEstadoEmpleado({{ $empleado->id }})"
+                                            wire:confirm="¿Reactivar a este empleado?" />
+                                    @endif
+                                    <x-personas.accion icono="basura" etiqueta="Eliminar" :persona="$nombreEmpleado" tono="peligro"
+                                        wire:click="pedirEliminar('empleado', {{ $empleado->id }})" data-eliminar="empleado-{{ $empleado->id }}" />
                                 </div>
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
-    </div>
+    </x-personas.tarjeta>
 
     @if ($mostrandoFormularioEmpleado)
         <x-panel.modal :titulo="$empleadoEditandoId ? 'Editar empleado' : 'Invitar empleado'"
             :subtitulo="$empleadoEditandoId ? 'Cambia su nombre, teléfono o foto.' : 'Entrará al panel con este correo y contraseña.'"
             cerrar="cancelarFormularioEmpleado" formulario="guardarEmpleado" ancho="max-w-xl" class="fp-formulario" data-modal="empleado">
             <div class="space-y-4">
-                <div class="flex items-center gap-4" data-foto="empleado">
-                    @if ($empleado_foto && method_exists($empleado_foto, 'isPreviewable') && $empleado_foto->isPreviewable())
-                        <img src="{{ $empleado_foto->temporaryUrl() }}" alt="Vista previa de la foto nueva" class="fp-foto-vista h-16 w-16 rounded-full object-cover ring-2 ring-fp-primary/30">
-                    @else
-                        <x-ui.avatar :url="$empleado_foto_actual" :nombre="$empleado_nombre" tamano="h-16 w-16 text-base" />
-                    @endif
-                    <div class="text-sm">
-                        <label for="usuarios-empleado-foto" class="fp-btn fp-btn-secundario cursor-pointer focus-within:ring-2 focus-within:ring-fp-primary">
-                            <span wire:loading.remove wire:target="empleado_foto">{{ $empleado_foto_actual || $empleado_foto ? 'Cambiar foto' : 'Subir foto' }}</span>
-                            <span wire:loading wire:target="empleado_foto">Subiendo…</span>
-                            <input id="usuarios-empleado-foto" type="file" wire:model="empleado_foto" accept="image/jpeg,image/png,image/webp" class="sr-only">
-                        </label>
-                        @if ($empleado_foto)
-                            <button type="button" wire:click="quitarFotoNuevaEmpleado" class="ml-2 text-xs font-medium text-slate-600 hover:text-fp-danger">Quitar</button>
-                        @endif
-                        <p class="mt-1 text-xs text-fp-text-muted">JPG, PNG o WebP, máximo 2 MB.</p>
-                        @error('empleado_foto') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
-                    </div>
-                </div>
+                <x-personas.foto modelo="empleado_foto" :archivo="$empleado_foto" :actual="$empleado_foto_actual" :nombre="$empleado_nombre"
+                    quitar="quitarFotoNuevaEmpleado" id="usuarios-empleado-foto" datos="empleado" />
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div class="fp-campo">
                         <label for="usuarios-empleado-nombre" class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
@@ -805,21 +799,19 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
 
     {{-- Revendedores --}}
     @if ($seccion === 'mayoristas')
-    <div class="fp-tarjeta p-5 sm:p-6 max-w-3xl fp-aparecer">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-sm font-semibold text-slate-700">Clientes mayoristas</h2>
-                <button type="button" wire:click="abrirFormularioAfiliarRevendedor"
-                    class="fp-btn fp-btn-primario">
-                    + Afiliar cliente mayorista
-                </button>
-            </div>
-        <div class="mb-4 flex flex-wrap items-center gap-2" data-filtros-mayoristas>
+    <x-personas.tarjeta titulo="Clientes mayoristas" data-lista="mayoristas">
+        <x-slot:acciones>
+            <button type="button" wire:click="abrirFormularioAfiliarRevendedor" class="fp-btn fp-btn-primario">
+                + Afiliar cliente mayorista
+            </button>
+        </x-slot:acciones>
+        <x-slot:filtros data-filtros-mayoristas>
             <x-ui.buscador wire:model.live.debounce.300ms="buscar" placeholder="Buscar nombre, código, teléfono o correo" etiqueta="Buscar clientes mayoristas" class="min-w-0 flex-1" />
             <select wire:model.live="filtroEstado" aria-label="Filtrar por estado" class="rounded-lg text-sm">
                 <option value="">Todos los estados</option>
                 <option value="activo">Activo</option>
                 <option value="suspendido">Suspendido</option>
-                    <option value="inactivo">Inactivo</option>
+                <option value="inactivo">Inactivo</option>
             </select>
             <button type="button" wire:click="exportar" data-exportar="clientes-mayoristas" class="fp-btn fp-btn-secundario"
                 wire:loading.attr="disabled" wire:target="exportar">
@@ -827,7 +819,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                 <span wire:loading.remove wire:target="exportar">Exportar Excel</span>
                 <span wire:loading wire:target="exportar">Generando…</span>
             </button>
-        </div>
+        </x-slot:filtros>
             @if (session('aviso_password_temporal'))
                 <div class="mb-4 rounded-lg border border-fp-badge-warning-fg/20 bg-fp-badge-warning-bg px-4 py-3 text-sm text-fp-badge-warning-fg">
                     {{ session('aviso_password_temporal') }}
@@ -838,109 +830,85 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     {{ $avisoEnlace }}
                 </div>
             @endif
-            <table class="w-full text-sm">
+            <table class="fp-tabla-personas">
                 <thead>
-                    <tr class="text-left text-slate-500 border-b">
-                        <th class="py-2" colspan="2">Nombre</th>
-                        <th class="py-2">Teléfono</th>
-                        <th class="py-2">Correo</th>
-                        <th class="py-2">Estado</th>
-                        <th class="py-2">App</th>
-                        <th class="py-2"></th>
+                    <tr>
+                        <th scope="col" colspan="2">Nombre</th>
+                        <th scope="col">Teléfono</th>
+                        <th scope="col">Correo</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">App</th>
+                        <th scope="col" class="text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($revendedores as $afiliacion)
-                        <tr class="fp-fila-persona border-b last:border-0" wire:key="revendedor-{{ $afiliacion->id }}">
-                            <td class="w-11 py-2 pr-2"><x-ui.avatar :url="$afiliacion->revendedor->foto_url" :nombre="$afiliacion->revendedor->nombre" /></td>
-                            <td class="py-2">
+                        @php($nombreRev = $afiliacion->revendedor->nombre)
+                        <tr class="fp-fila-persona" wire:key="revendedor-{{ $afiliacion->id }}">
+                            <td class="fp-celda-avatar w-11 pr-0"><x-ui.avatar :url="$afiliacion->revendedor->foto_url" :nombre="$afiliacion->revendedor->nombre" /></td>
+                            <td class="fp-celda-nombre">
                                 {{ $afiliacion->revendedor->nombre }}
                                 @if ($afiliacion->codigo_interno)
-                                    <span class="block font-mono text-xs text-fp-text-muted">{{ $afiliacion->codigo_interno }}</span>
+                                    <span class="block font-mono text-xs font-normal text-fp-text-muted">{{ $afiliacion->codigo_interno }}</span>
                                 @endif
                             </td>
-                            <td class="py-2">{{ $afiliacion->revendedor->telefono }}</td>
-                            <td class="py-2">
+                            <td class="whitespace-nowrap" data-etiqueta="Teléfono">{{ $afiliacion->revendedor->telefono ?: '—' }}</td>
+                            <td class="fp-celda-correo" data-etiqueta="Correo">
                                 {{ $afiliacion->revendedor->emailVisible() ?: '—' }}
                                 <x-ui.estado-correo :usuario="$afiliacion->revendedor->usuario" />
                             </td>
-                            <td class="py-2">
-                                @php
-                                    $colorEstado = match ($afiliacion->estado) {
-                                        'activo' => 'bg-fp-badge-success-bg text-fp-badge-success-fg',
-                                        'suspendido' => 'bg-fp-badge-warning-bg text-fp-badge-warning-fg',
-                                        default => 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg',
-                                    };
-                                @endphp
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium {{ $colorEstado }}">
-                                    {{ ucfirst($afiliacion->estado) }}
-                                </span>
-                            </td>
-                            <td class="py-2">
+                            <td><x-personas.estado :estado="$afiliacion->estado" /></td>
+                            <td>
                                 @if ($afiliacion->revendedor->usuario_id)
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-fp-badge-success-bg text-fp-badge-success-fg">Con cuenta</span>
+                                    <span class="inline-flex items-center whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium bg-fp-badge-success-bg text-fp-badge-success-fg">Con cuenta</span>
                                 @else
-                                    <span class="text-xs text-slate-500">Sin cuenta</span>
+                                    <span class="whitespace-nowrap text-xs text-slate-500">Sin cuenta</span>
                                 @endif
                             </td>
-                            <td class="py-2 text-right">
-                                @if ($afiliacion->revendedor->usuario_id)
-                                    <button type="button" wire:click="enviarEnlaceRevendedor({{ $afiliacion->id }})"
-                                        wire:loading.attr="disabled"
-                                        class="text-fp-primary text-xs font-medium mr-3">Enviar enlace</button>
-                                    @if (! $afiliacion->revendedor->usuario?->hasVerifiedEmail())
-                                        <button type="button" wire:click="reenviarVerificacionRevendedor({{ $afiliacion->id }})"
-                                            wire:loading.attr="disabled"
-                                            class="text-fp-primary text-xs font-medium mr-3">Reenviar confirmación</button>
+                            <td class="fp-celda-acciones">
+                                <div class="fp-acciones-persona">
+                                    <x-personas.accion icono="lapiz" etiqueta="Editar" :persona="$nombreRev"
+                                        wire:click="abrirFormularioEditarRevendedor({{ $afiliacion->id }})" />
+                                    @if ($afiliacion->estado !== 'inactivo')
+                                        <x-personas.accion icono="baja" etiqueta="Dar de baja" :persona="$nombreRev" tono="peligro"
+                                            wire:click="darDeBaja('revendedor', {{ $afiliacion->id }})"
+                                            wire:confirm="¿Dar de baja a {{ $nombreRev }}? Ya no podrá entrar a la app; su historial se conserva."
+                                            data-baja="revendedor-{{ $afiliacion->id }}" />
+                                    @else
+                                        <x-personas.accion icono="reactivar" etiqueta="Reactivar" :persona="$nombreRev" tono="exito"
+                                            wire:click="reactivar('revendedor', {{ $afiliacion->id }})"
+                                            wire:confirm="¿Reactivar el acceso de {{ $nombreRev }}?" />
                                     @endif
-                                    <button type="button" wire:click="generarPasswordTemporalRevendedor({{ $afiliacion->id }})"
-                                        wire:loading.attr="disabled"
-                                        class="text-fp-primary text-xs font-medium mr-3">Contraseña temporal</button>
-                                @endif
-                                <button type="button" wire:click="abrirFormularioEditarRevendedor({{ $afiliacion->id }})"
-                                    class="text-fp-primary text-xs font-medium">Editar</button>
-                                @if ($afiliacion->estado !== 'inactivo')
-                                    <button type="button" wire:click="darDeBaja('revendedor', {{ $afiliacion->id }})"
-                                        wire:confirm="¿Dar de baja a {{ $afiliacion->revendedor->nombre }}? Ya no podrá entrar a la app; su historial se conserva."
-                                        class="ml-3 text-xs font-medium text-fp-danger transition-opacity hover:opacity-75" data-baja="revendedor-{{ $afiliacion->id }}">Dar de baja</button>
-                                @else
-                                    <button type="button" wire:click="reactivar('revendedor', {{ $afiliacion->id }})"
-                                        wire:confirm="¿Reactivar el acceso de {{ $afiliacion->revendedor->nombre }}?"
-                                        class="ml-3 text-xs font-medium text-emerald-700 transition-opacity hover:opacity-75">Reactivar</button>
-                                @endif
-                                <button type="button" wire:click="pedirEliminar('revendedor', {{ $afiliacion->id }})"
-                                    class="ml-3 text-xs font-medium text-fp-danger transition-opacity hover:opacity-75" data-eliminar="revendedor-{{ $afiliacion->id }}">Eliminar</button>
+                                    <x-personas.mas-acciones :persona="$nombreRev">
+                                        @if ($afiliacion->revendedor->usuario_id)
+                                            <x-personas.accion menu icono="enlace" etiqueta="Enviar enlace" :persona="$nombreRev"
+                                                wire:click="enviarEnlaceRevendedor({{ $afiliacion->id }})" wire:loading.attr="disabled" />
+                                            @if (! $afiliacion->revendedor->usuario?->hasVerifiedEmail())
+                                                <x-personas.accion menu icono="correo" etiqueta="Reenviar confirmación" :persona="$nombreRev"
+                                                    wire:click="reenviarVerificacionRevendedor({{ $afiliacion->id }})" wire:loading.attr="disabled" />
+                                            @endif
+                                            <x-personas.accion menu icono="llave" etiqueta="Contraseña temporal" :persona="$nombreRev"
+                                                wire:click="generarPasswordTemporalRevendedor({{ $afiliacion->id }})" wire:loading.attr="disabled" />
+                                            <div class="fp-menu-separador" role="separator"></div>
+                                        @endif
+                                        <x-personas.accion menu icono="basura" etiqueta="Eliminar" :persona="$nombreRev" tono="peligro"
+                                            wire:click="pedirEliminar('revendedor', {{ $afiliacion->id }})" data-eliminar="revendedor-{{ $afiliacion->id }}" />
+                                    </x-personas.mas-acciones>
+                                </div>
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
-    </div>
+    </x-personas.tarjeta>
 
     @if ($mostrandoFormularioRevendedor)
         <x-panel.modal :titulo="$revendedorEditandoId ? 'Editar cliente mayorista' : 'Afiliar nuevo cliente mayorista'"
             subtitulo="Sus datos de contacto y, si quieres, acceso a la app."
             cerrar="cancelarFormularioRevendedor" formulario="guardarRevendedor" ancho="max-w-xl" class="fp-formulario" data-modal="revendedor">
             <div class="space-y-4">
-                <div class="flex items-center gap-4" data-foto="revendedor">
-                    @if ($revendedor_foto && method_exists($revendedor_foto, 'isPreviewable') && $revendedor_foto->isPreviewable())
-                        <img src="{{ $revendedor_foto->temporaryUrl() }}" alt="Vista previa de la foto nueva" class="fp-foto-vista h-16 w-16 rounded-full object-cover ring-2 ring-fp-primary/30">
-                    @else
-                        <x-ui.avatar :url="$revendedor_foto_actual" :nombre="$revendedor_nombre" tamano="h-16 w-16 text-base" />
-                    @endif
-                    <div class="text-sm">
-                        <label for="usuarios-revendedor-foto" class="fp-btn fp-btn-secundario cursor-pointer focus-within:ring-2 focus-within:ring-fp-primary">
-                            <span wire:loading.remove wire:target="revendedor_foto">{{ $revendedor_foto_actual || $revendedor_foto ? 'Cambiar foto' : 'Subir foto' }}</span>
-                            <span wire:loading wire:target="revendedor_foto">Subiendo…</span>
-                            <input id="usuarios-revendedor-foto" type="file" wire:model="revendedor_foto" accept="image/jpeg,image/png,image/webp" class="sr-only">
-                        </label>
-                        @if ($revendedor_foto)
-                            <button type="button" wire:click="quitarFotoNuevaRevendedor" class="ml-2 text-xs font-medium text-slate-600 hover:text-fp-danger">Quitar</button>
-                        @endif
-                        <p class="mt-1 text-xs text-fp-text-muted">JPG, PNG o WebP, máximo 2 MB.</p>
-                        @error('revendedor_foto') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
-                    </div>
-                </div>
+                <x-personas.foto modelo="revendedor_foto" :archivo="$revendedor_foto" :actual="$revendedor_foto_actual" :nombre="$revendedor_nombre"
+                    quitar="quitarFotoNuevaRevendedor" id="usuarios-revendedor-foto" datos="revendedor" />
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div class="fp-campo">
                         <label for="usuarios-revendedor-nombre" class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
@@ -1011,24 +979,6 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
     @endif
 
     @if ($porEliminar)
-        <x-panel.modal titulo="Eliminar definitivamente" cerrar="cancelarEliminar" ancho="max-w-md" data-modal="eliminar">
-            <p class="text-sm text-slate-700">
-                Vas a borrar a <span class="font-semibold">{{ $porEliminar['nombre'] }}</span> para siempre.
-                No se puede deshacer. Si tiene pedidos u otros movimientos no se podrá eliminar: en ese caso dale de baja.
-            </p>
-            @if ($errorEliminar)
-                <div class="fp-emerger mt-4 rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-badge-danger-fg" role="alert" data-error-eliminar>
-                    {{ $errorEliminar }}
-                </div>
-            @endif
-            <x-slot:pie>
-                <button type="button" wire:click="cancelarEliminar" class="fp-btn fp-btn-secundario" autofocus>Cancelar</button>
-                <button type="button" wire:click="eliminarDefinitivamente" class="fp-btn fp-btn-peligro"
-                    wire:loading.attr="disabled" wire:target="eliminarDefinitivamente" @disabled($errorEliminar)>
-                    <span wire:loading.remove wire:target="eliminarDefinitivamente">Eliminar definitivamente</span>
-                    <span wire:loading wire:target="eliminarDefinitivamente">Eliminando…</span>
-                </button>
-            </x-slot:pie>
-        </x-panel.modal>
+        <x-personas.modal-eliminar :nombre="$porEliminar['nombre']" :error="$errorEliminar" />
     @endif
 </div>
