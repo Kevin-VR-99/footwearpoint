@@ -12,11 +12,13 @@ use App\Services\Distribuidora\CambiarVisibilidadMarketplaceAction;
 use App\Services\Distribuidora\CambioEstadoDistribuidora;
 use App\Services\Distribuidora\CrearDistribuidoraAction;
 use App\Services\Distribuidora\DatosSolicitudDistribuidoraAction;
+use App\Services\Distribuidora\EliminarDistribuidoraAction;
 use App\Services\Distribuidora\ReactivarDistribuidoraAction;
 use App\Services\Distribuidora\RechazarDistribuidoraAction;
 use App\Services\Distribuidora\SuspenderDistribuidoraAction;
 use App\Services\Suscripcion\AsignarSuscripcionAction;
 use App\Support\MensajeError;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -73,6 +75,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     // Revisar los datos antes de aprobar o rechazar (TG-195)
     #[Locked]
     public ?int $distribuidoraDetalleId = null;
+
+    public bool $confirmarBorrado = false;
 
     // Rechazar con motivo (TG-195)
     public ?int $distribuidoraRechazoId = null;
@@ -319,8 +323,16 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     /** TG-195: muestra los datos de la distribuidora para revisarla. */
     public function verDatos(int $id): void
     {
+        $this->exigirAdminGeneral();
+
         $distribuidora = Distribuidora::findOrFail($id);
 
+        $this->cancelarEdicion();
+        $this->cancelarRechazo();
+        $this->cancelarSuspension();
+        $this->mostrarSuscripcion = false;
+        $this->mostrandoFormularioCrear = false;
+        $this->confirmarBorrado = false;
         $this->distribuidoraDetalleId = $distribuidora->id;
         $this->mensaje = '';
     }
@@ -328,6 +340,52 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public function cerrarDatos(): void
     {
         $this->distribuidoraDetalleId = null;
+        $this->confirmarBorrado = false;
+    }
+
+    /** Pide confirmación dentro del mismo modal. Todavía no borra. */
+    public function pedirBorrado(): void
+    {
+        $this->exigirAdminGeneral();
+
+        if ($this->distribuidoraDetalleId === null) {
+            return;
+        }
+
+        $this->confirmarBorrado = true;
+    }
+
+    public function cancelarBorrado(): void
+    {
+        $this->confirmarBorrado = false;
+    }
+
+    /** Borra la distribuidora abierta en «Ver datos» y lo que es solo suyo. */
+    public function eliminarDistribuidora(): void
+    {
+        $this->exigirAdminGeneral();
+
+        if ($this->distribuidoraDetalleId === null || ! $this->confirmarBorrado) {
+            return;
+        }
+
+        try {
+            $nombre = app(EliminarDistribuidoraAction::class)->ejecutar(
+                Distribuidora::findOrFail($this->distribuidoraDetalleId)
+            );
+        } catch (ModelNotFoundException) {
+            $this->cerrarDatos();
+            $this->mensaje = 'Esa distribuidora ya no está.';
+
+            return;
+        } catch (\Throwable $e) {
+            $this->mensaje = MensajeError::paraUsuario($e, 'No se pudo borrar la distribuidora. Intenta de nuevo.');
+
+            return;
+        }
+
+        $this->cerrarDatos();
+        $this->mensaje = "Distribuidora «{$nombre}» borrada del sistema.";
     }
 
     /** Datos del panel "Ver datos" (los mismos que da la API). */
@@ -364,6 +422,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         $this->mensaje = '';
         $this->mostrarSuscripcion = false;
         $this->mostrandoFormularioCrear = false;
+        $this->cerrarDatos();
 
         $this->distribuidoraEdicionId = $distribuidora->id;
         $this->distribuidoraEdicionNombre = $distribuidora->nombre_comercial;
@@ -920,18 +979,20 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 'Fecha de aprobación' => $fecha($detalle['fecha_aprobacion']),
             ];
         @endphp
-        <div class="fp-tarjeta fp-aparecer mb-6 p-5" data-detalle-distribuidora>
-            <div class="flex items-start justify-between gap-4 mb-4">
-                <div>
-                    <h3 class="font-semibold text-slate-800">{{ $detalle['nombre_comercial'] }}</h3>
-                    <p class="mt-1 text-sm text-slate-500">Estado: <x-panel.insignia :variante="['activa' => 'success', 'pendiente' => 'warning', 'suspendida' => 'danger'][$detalle['estado']] ?? 'neutral'" :viva="$detalle['estado'] === 'pendiente'" punto>{{ ucfirst($detalle['estado']) }}</x-panel.insignia></p>
-                </div>
-                <button type="button" wire:click="cerrarDatos" class="fp-btn fp-btn-fantasma fp-btn-sm">
-                    Cerrar
-                </button>
+        <x-panel.modal titulo="Datos de la distribuidora" :subtitulo="'«'.$detalle['nombre_comercial'].'»'" ancho="max-w-3xl" cerrar="cerrarDatos">
+        <div data-detalle-distribuidora>
+            <div class="fp-logo-entrada -mx-6 mb-5 flex flex-col items-center gap-3 border-y border-slate-100 bg-fp-page px-6 py-6">
+                @if ($detalle['logotipo_url'])
+                    <span class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-white shadow-md ring-1 ring-slate-200">
+                        <img src="{{ $detalle['logotipo_url'] }}" alt="Logotipo de {{ $detalle['nombre_comercial'] }}" width="112" height="112" class="h-full w-full object-contain p-3">
+                    </span>
+                @else
+                    <span data-sin-logotipo class="flex h-28 w-28 items-center justify-center rounded-full bg-fp-sidebar text-3xl font-semibold text-white shadow-md ring-4 ring-fp-primary/20">{{ mb_strtoupper(mb_substr($detalle['nombre_comercial'], 0, 1)) }}</span>
+                @endif
+                <x-panel.insignia :variante="['activa' => 'success', 'pendiente' => 'warning', 'suspendida' => 'danger'][$detalle['estado']] ?? 'neutral'" :viva="$detalle['estado'] === 'pendiente'" punto>{{ ucfirst($detalle['estado']) }}</x-panel.insignia>
             </div>
 
-            <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <dl class="fp-datos-cascada grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
                 @foreach ($camposDetalle as $etiqueta => $valor)
                     <div>
                         <dt class="text-slate-500">{{ $etiqueta }}</dt>
@@ -980,7 +1041,25 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     </button>
                 </div>
             @endif
+
+            <div class="mt-6 border-t border-slate-100 pt-5">
+                @if ($confirmarBorrado)
+                    <div class="fp-aparecer rounded-2xl border border-fp-danger/30 bg-fp-danger-soft p-4">
+                        <p class="text-sm text-fp-sidebar">Esto borra «{{ $detalle['nombre_comercial'] }}» y todo lo que es solo suyo: pedidos, ventas, clientes, personal y sucursales. El catálogo compartido se queda. No se puede deshacer.</p>
+                        <div class="mt-4 flex flex-wrap justify-end gap-2">
+                            <button type="button" wire:click="cancelarBorrado" class="fp-btn fp-btn-secundario">Cancelar</button>
+                            <button type="button" wire:click="eliminarDistribuidora" class="fp-btn fp-btn-peligro" data-borrar-distribuidora>Borrar definitivamente</button>
+                        </div>
+                    </div>
+                @else
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <button type="button" wire:click="pedirBorrado" class="fp-btn fp-btn-peligro" data-borrar-distribuidora>Borrar definitivamente</button>
+                        <button type="button" wire:click="cerrarDatos" class="fp-btn fp-btn-secundario">Cerrar</button>
+                    </div>
+                @endif
+            </div>
         </div>
+        </x-panel.modal>
     @endif
 
     {{-- TG-194: editar distribuidora y su administrador --}}
