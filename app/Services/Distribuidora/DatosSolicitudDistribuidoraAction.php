@@ -29,6 +29,7 @@ class DatosSolicitudDistribuidoraAction
         return [
             'id'                  => $distribuidora->id,
             'nombre_comercial'    => $distribuidora->nombre_comercial,
+            'logotipo_url'        => $distribuidora->logotipo_url,
             'razon_social'        => $distribuidora->razon_social,
             'rfc'                 => $distribuidora->rfc,
             'slug'                => $distribuidora->slug,
