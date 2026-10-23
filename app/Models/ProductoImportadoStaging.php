@@ -21,6 +21,10 @@ class ProductoImportadoStaging extends Model
         'estado',
         'producto_creado_id',
         'producto_campana_creado_id',
+        // TG-282 (E5-05): el recorte que la IA propone y si alguien ya lo
+        // miró. Nunca se publica solo.
+        'foto_propuesta_url',
+        'foto_estado',
     ];
 
     protected $casts = [

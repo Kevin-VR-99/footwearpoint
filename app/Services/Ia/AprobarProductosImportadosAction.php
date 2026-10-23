@@ -12,10 +12,13 @@ use App\Models\ProductoImportadoStaging;
 use App\Models\Talla;
 use App\Models\Variante;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
+use App\Services\Catalogo\GestionarImagenProductoCampanaAction;
 use App\Services\Catalogo\GestionarProductoAction;
 use App\Services\Catalogo\GestionarProductoCampanaAction;
 use App\Services\Catalogo\GestionarVarianteAction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Throwable;
@@ -58,6 +61,7 @@ class AprobarProductosImportadosAction
         private GestionarProductoCampanaAction $productosCampana,
         private RangoDeTallas $rangoDeTallas,
         private RegistrarAuditoriaAction $auditoria,
+        private GestionarImagenProductoCampanaAction $imagenes,
     ) {
     }
 
@@ -196,6 +200,8 @@ class AprobarProductosImportadosAction
 
         $this->asegurarDisponibilidad($productoCampana, $producto, $datos);
 
+        $this->publicarFotoConfirmada($fila, $productoCampana);
+
         $fila->update([
             'producto_creado_id'         => $producto->id,
             'producto_campana_creado_id' => $productoCampana->id,
@@ -203,6 +209,71 @@ class AprobarProductosImportadosAction
         ]);
 
         $resumen['aprobados']++;
+    }
+
+    /**
+     * TG-282 (E5-05) — La foto solo pasa al catálogo si alguien la confirmó.
+     *
+     * Una propuesta que el revisor no tocó NO se publica: una foto del zapato
+     * de al lado es peor que el hueco vacío, y el hueco se puede llenar
+     * después desde el catálogo maestro.
+     *
+     * Si la copia falla, el producto se aprueba igual y nace sin foto. Tirar
+     * una aprobación entera por una imagen sería desproporcionado.
+     */
+    private function publicarFotoConfirmada(ProductoImportadoStaging $fila, ProductoCampana $productoCampana): void
+    {
+        if ($fila->foto_estado !== 'confirmada' || ! $fila->foto_propuesta_url) {
+            return;
+        }
+
+        $local = null;
+
+        try {
+            $local = $this->recorteADisco($fila->foto_propuesta_url);
+
+            if ($local === null) {
+                return;
+            }
+
+            $this->imagenes->agregarDesdeRuta($productoCampana, $local, esPrincipal: true);
+        } catch (Throwable $e) {
+            Log::warning('No se pudo publicar la foto confirmada de un producto importado', [
+                'staging' => $fila->id,
+                'error'   => $e->getMessage(),
+            ]);
+        } finally {
+            if ($local !== null) {
+                @unlink($local);
+            }
+        }
+    }
+
+    /** El recorte vive en el bucket; agregarDesdeRuta necesita un archivo. */
+    private function recorteADisco(string $url): ?string
+    {
+        $ruta = ProponerRecortesDeFotosAction::rutaEnElBucket($url);
+
+        if ($ruta === null || ! Storage::disk('s3')->exists($ruta)) {
+            return null;
+        }
+
+        $destino = tempnam(sys_get_temp_dir(), 'confirmada');
+
+        if ($destino === false) {
+            return null;
+        }
+
+        @unlink($destino);
+        $destino .= '.png';
+
+        if (file_put_contents($destino, Storage::disk('s3')->get($ruta)) === false) {
+            @unlink($destino);
+
+            return null;
+        }
+
+        return $destino;
     }
 
     /**
