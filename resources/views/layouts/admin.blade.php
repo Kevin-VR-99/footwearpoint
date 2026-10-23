@@ -103,6 +103,16 @@
                             </svg>
                             Auditoría
                         </a>
+                        <a href="{{ route('admin.ingresos') }}"
+                            class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium transition hover:bg-fp-page {{ request()->routeIs('admin.ingresos') ? 'bg-fp-page text-fp-primary' : 'text-slate-700' }}"
+                            role="menuitem" data-menu-ingresos @if (request()->routeIs('admin.ingresos')) aria-current="page" @endif>
+                            <svg class="h-4 w-4 text-fp-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="1.8" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M3 10h18M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                            </svg>
+                            Mercado Pago
+                        </a>
                     </x-panel.menu-usuario>
                 </div>
             </header>

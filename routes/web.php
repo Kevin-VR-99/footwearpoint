@@ -307,6 +307,9 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_general'])->group(function
     Route::livewire('/admin/auditoria', 'admin.auditoria')
         ->name('admin.auditoria');
 
+    Route::livewire('/admin/ingresos', 'admin.ingresos-mercadopago')
+        ->name('admin.ingresos');
+
     // Las categorías del directorio ya no se usan. La dirección vieja regresa al inicio del admin.
     Route::redirect('/admin/categorias-directorio', '/admin')->name('admin.categorias-directorio');
 
