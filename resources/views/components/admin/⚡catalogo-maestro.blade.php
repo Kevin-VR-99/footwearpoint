@@ -6,7 +6,9 @@ use App\Models\Linea;
 use App\Models\Marca;
 use App\Models\Producto;
 use App\Models\ProductoCampana;
+use App\Models\ProductoImagen;
 use App\Services\Catalogo\GestionarCampanaAction;
+use App\Services\Catalogo\GestionarImagenProductoCampanaAction;
 use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\GestionarLineaAction;
 use App\Services\Catalogo\GestionarMarcaAction;
@@ -18,8 +20,11 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] class extends Component {
+    use WithFileUploads;
+
     public string $pestana = 'lineas';
 
     public string $linea_nombre = '';
@@ -53,6 +58,21 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     public string $editar_categoria_id = '';
     public string $editar_modelo = '';
     public string $editar_estado = '';
+
+    /*
+     * E5-05 — Fotos de una publicación.
+     *
+     * Hasta ahora no había NINGUNA forma de subir la foto de un producto
+     * desde el panel: solo existía la ruta del API, así que en la práctica
+     * las únicas fotos eran las de la semilla. Las pantallas ya las enseñan;
+     * lo que faltaba era ponerlas.
+     */
+    #[Locked]
+    public ?int $fotosDe = null;
+
+    public string $fotosDeNombre = '';
+
+    public $fotoNueva = null;
 
     public string $errorMsg = '';
 
@@ -417,6 +437,110 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     {
         return app(ImagenDeProducto::class)->porProductoCampana($this->productos->pluck('id'));
     }
+
+    // ------------------------------------------------------------------
+    // E5-05 — Fotos de una publicación
+    // ------------------------------------------------------------------
+
+    public function abrirFotos(int $productoCampanaId): void
+    {
+        $this->autorizar();
+
+        $publicacion = ProductoCampana::with('producto')->findOrFail($productoCampanaId);
+
+        $this->fotosDe = $publicacion->id;
+        $this->fotosDeNombre = trim(($publicacion->producto?->nombre ?? 'Producto').' '.($publicacion->producto?->modelo ?? ''));
+        $this->fotoNueva = null;
+        $this->errorMsg = '';
+        $this->resetValidation();
+    }
+
+    public function cerrarFotos(): void
+    {
+        $this->fotosDe = null;
+        $this->fotosDeNombre = '';
+        $this->fotoNueva = null;
+        $this->resetValidation();
+    }
+
+    /** Las mismas reglas que la ruta del API: jpg/png y 5 MB. */
+    public function subirFoto(): void
+    {
+        $this->autorizar();
+
+        $this->validate([
+            'fotoNueva' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
+        ], [
+            'fotoNueva.required' => 'Elige una foto.',
+            'fotoNueva.image'    => 'El archivo tiene que ser una imagen.',
+            'fotoNueva.mimes'    => 'La foto tiene que ser jpg o png.',
+            'fotoNueva.max'      => 'La foto no puede pasar de 5 MB.',
+        ]);
+
+        $publicacion = ProductoCampana::findOrFail($this->fotosDe);
+
+        try {
+            // La primera queda principal sola; eso lo decide la acción.
+            app(GestionarImagenProductoCampanaAction::class)->agregar($publicacion, $this->fotoNueva);
+        } catch (\Throwable $e) {
+            report($e);
+            $this->errorMsg = 'No se pudo guardar la foto. Inténtalo otra vez.';
+
+            return;
+        }
+
+        $this->fotoNueva = null;
+        $this->errorMsg = '';
+    }
+
+    public function hacerPrincipal(int $imagenId): void
+    {
+        $this->autorizar();
+
+        app(GestionarImagenProductoCampanaAction::class)->marcarPrincipal($this->imagenDeLaPublicacion($imagenId));
+    }
+
+    public function quitarFoto(int $imagenId): void
+    {
+        $this->autorizar();
+
+        // Se resuelve FUERA del try a propósito: si quedara dentro, el 404 de
+        // una foto que no es de esta publicación se convertiría en un aviso
+        // suave y el intento pasaría por bueno.
+        $imagen = $this->imagenDeLaPublicacion($imagenId);
+
+        try {
+            app(GestionarImagenProductoCampanaAction::class)->eliminar($imagen);
+        } catch (\Throwable $e) {
+            report($e);
+            // Si el bucket no confirmó el borrado, la fila se queda a
+            // propósito: es el único dato que dice dónde está el archivo.
+            $this->errorMsg = 'No se pudo borrar la foto del almacenamiento, así que sigue en el catálogo. Inténtalo otra vez.';
+        }
+    }
+
+    /**
+     * Que la foto sea de la publicación abierta. Sin esto, el id viaja desde
+     * el navegador y se podría tocar la foto de cualquier otra.
+     */
+    private function imagenDeLaPublicacion(int $imagenId): ProductoImagen
+    {
+        abort_if($this->fotosDe === null, 404);
+
+        return ProductoImagen::where('producto_campana_id', $this->fotosDe)->findOrFail($imagenId);
+    }
+
+    public function getFotosDeLaPublicacionProperty()
+    {
+        if ($this->fotosDe === null) {
+            return collect();
+        }
+
+        return ProductoImagen::where('producto_campana_id', $this->fotosDe)
+            ->orderByDesc('es_principal')
+            ->orderBy('orden')
+            ->get();
+    }
 };
 ?>
 
@@ -489,6 +613,54 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 <button type="button" wire:click="cancelarEdicion" class="fp-btn fp-btn-secundario w-fit">Cancelar</button>
             </div>
         </form>
+    @endif
+
+    {{-- E5-05: las fotos del catálogo. Hasta ahora las pantallas las
+         enseñaban pero no había forma de ponerlas: solo existía la ruta del
+         API, así que las únicas fotos eran las de la semilla. Son del
+         catálogo compartido, por eso las pone el admin general y las ven
+         todas las distribuidoras y la app. --}}
+    @if ($fotosDe !== null)
+        <div class="fp-formulario fp-aparecer max-w-xl space-y-4 p-5" data-fotos-publicacion>
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h2 class="text-base font-semibold text-fp-sidebar">Fotos de {{ $fotosDeNombre }}</h2>
+                    <p class="text-xs text-slate-500">La primera que subas queda como principal.</p>
+                </div>
+                <button type="button" wire:click="cerrarFotos" class="fp-accion">Cerrar</button>
+            </div>
+
+            @if ($this->fotosDeLaPublicacion->isEmpty())
+                <p class="text-sm text-slate-500">Todavía no tiene ninguna foto.</p>
+            @else
+                <ul class="flex flex-wrap gap-3">
+                    @foreach ($this->fotosDeLaPublicacion as $foto)
+                        <li class="w-28 space-y-1">
+                            <img src="{{ $foto->urlMiniatura() }}" alt="Foto de {{ $fotosDeNombre }}"
+                                width="112" height="112" loading="lazy" decoding="async"
+                                class="h-28 w-28 rounded-lg object-cover {{ $foto->es_principal ? 'ring-2 ring-fp-primary' : 'ring-1 ring-slate-200' }}">
+                            @if ($foto->es_principal)
+                                <p class="text-center text-xs font-semibold text-fp-primary">Principal</p>
+                            @else
+                                <button type="button" wire:click="hacerPrincipal({{ $foto->id }})" class="fp-accion w-full">Hacer principal</button>
+                            @endif
+                            <button type="button" wire:click="quitarFoto({{ $foto->id }})"
+                                wire:confirm="¿Quitar esta foto? Se borra del almacenamiento y deja de verse en el panel y en la app."
+                                class="fp-accion fp-accion-peligro w-full">Quitar</button>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+
+            <form wire:submit="subirFoto" class="space-y-2">
+                <label for="catalogo-maestro-foto" class="block text-sm font-medium text-slate-700">Agregar una foto</label>
+                <input type="file" id="catalogo-maestro-foto" wire:model="fotoNueva" accept="image/jpeg,image/png" class="w-full rounded-lg text-sm">
+                <p class="text-xs text-slate-500">jpg o png, hasta 5 MB.</p>
+                @error('fotoNueva') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                <div wire:loading wire:target="fotoNueva" class="text-xs text-slate-500">Subiendo la foto…</div>
+                <button class="fp-btn fp-btn-primario w-fit" wire:loading.attr="disabled" wire:target="fotoNueva,subirFoto">Guardar foto</button>
+            </form>
+        </div>
     @endif
 
     <div class="fp-pestanas" role="tablist" aria-label="Secciones del catálogo">
@@ -660,6 +832,10 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         <td class="px-4 py-3">${{ number_format((float) $fila->precio_publico, 2) }}</td>
                         <td class="px-4 py-3"><x-panel.insignia :variante="$fila->producto?->activo ? 'success' : 'neutral'" punto>{{ $fila->producto?->activo ? 'Activo' : 'Inactivo' }}</x-panel.insignia></td>
                         <td class="px-4 py-3 whitespace-nowrap">
+                            {{-- Va por publicación, no por producto: la foto es de lo que
+                                 se vende en esa temporada (producto_imagenes cuelga de
+                                 producto_campana_id). --}}
+                            <button type="button" wire:click="abrirFotos({{ $fila->id }})" class="fp-accion">Fotos</button>
                             @if ($fila->producto)
                                 <button type="button" wire:click="editar('producto', {{ $fila->producto->id }})" class="fp-accion fp-accion-primaria">Editar</button>
                                 <button type="button" wire:click="alternarActivo('producto', {{ $fila->producto->id }})" class="fp-accion fp-accion-neutra">{{ $fila->producto->activo ? 'Desactivar' : 'Activar' }}</button>
