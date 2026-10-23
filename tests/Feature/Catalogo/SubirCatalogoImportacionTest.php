@@ -2,14 +2,20 @@
 
 namespace Tests\Feature\Catalogo;
 
+use App\Jobs\ProcesarCatalogoConIa;
 use App\Models\Auditoria;
 use App\Models\ImportacionCatalogo;
+use App\Models\Producto;
+use App\Models\ProductoImportadoStaging;
 use App\Models\Usuario;
 use App\Services\Catalogo\SubirCatalogoParaImportarAction;
+use App\Services\Ia\ProponerRecortesDeFotosAction;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
+use Database\Seeders\AdminGeneralSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -43,7 +49,7 @@ class SubirCatalogoImportacionTest extends TestCase
 
     private function adminGeneral(): Usuario
     {
-        return Usuario::where('email', \Database\Seeders\AdminGeneralSeeder::EMAIL)->firstOrFail();
+        return Usuario::where('email', AdminGeneralSeeder::EMAIL)->firstOrFail();
     }
 
     private function adminDeDistribuidora(): Usuario
@@ -160,7 +166,7 @@ class SubirCatalogoImportacionTest extends TestCase
         // Y el aviso se entiende, en espanol: el tope duro de Livewire queda
         // mas arriba justamente para que el que salga sea este.
         $this->assertStringContainsString(
-            'pesa más de 40 MB',
+            'pesa más de 250 MB',
             $componente->errors()->first('archivo')
         );
 
@@ -245,7 +251,64 @@ class SubirCatalogoImportacionTest extends TestCase
         Storage::disk(self::DISCO)->assertMissing($ruta);
     }
 
-    public function test_no_se_puede_quitar_uno_que_la_ia_ya_proceso(): void
+    public function test_se_puede_quitar_uno_ya_leido_sin_tocar_lo_publicado(): void
+    {
+        $this->actingAs($this->adminGeneral());
+        Storage::fake('s3');
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->set('linea_id', 1)
+            ->set('archivo', $this->pdfDePrueba())
+            ->call('subir');
+
+        $importacion = ImportacionCatalogo::latest('id')->firstOrFail();
+        $importacion->update(['estado' => 'requiere_revision']);
+        $rutaPdf = $importacion->archivo_url;
+
+        $producto = Producto::query()->firstOrFail();
+        $recorte = ProponerRecortesDeFotosAction::CARPETA.'/prueba.webp';
+        $fotoPublicada = 'productos/campana/imagenes/queda.webp';
+        Storage::disk('s3')->put($recorte, 'recorte');
+        Storage::disk('s3')->put($fotoPublicada, 'foto');
+
+        ProductoImportadoStaging::create([
+            'importacion_id' => $importacion->id,
+            'datos_extraidos' => ['modelo' => 'publicado'],
+            'estado' => 'aprobado',
+            'producto_creado_id' => $producto->id,
+            'foto_propuesta_url' => Storage::disk('s3')->url($recorte),
+            'foto_estado' => 'confirmada',
+        ]);
+        ProductoImportadoStaging::create([
+            'importacion_id' => $importacion->id,
+            'datos_extraidos' => ['modelo' => 'solo-propuesta'],
+            'estado' => 'pendiente',
+        ]);
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->call('pedirQuitar', $importacion->id)
+            ->assertSee('1 producto que ya se publicó se queda')
+            ->call('cancelarConfirmacion')
+            ->assertDontSee('1 producto que ya se publicó se queda');
+
+        $this->assertSame(1, ImportacionCatalogo::count());
+        Storage::disk(self::DISCO)->assertExists($rutaPdf);
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->call('pedirQuitar', $importacion->id)
+            ->call('confirmarQuitar')
+            ->assertSet('esError', false)
+            ->assertSee('1 producto ya publicado sigue');
+
+        $this->assertSame(0, ImportacionCatalogo::count());
+        $this->assertSame(0, ProductoImportadoStaging::count());
+        $this->assertNotNull($producto->fresh());
+        Storage::disk(self::DISCO)->assertMissing($rutaPdf);
+        Storage::disk('s3')->assertMissing($recorte);
+        Storage::disk('s3')->assertExists($fotoPublicada);
+    }
+
+    public function test_no_se_puede_quitar_uno_que_se_esta_leyendo(): void
     {
         $this->actingAs($this->adminGeneral());
 
@@ -255,14 +318,51 @@ class SubirCatalogoImportacionTest extends TestCase
             ->call('subir');
 
         $importacion = ImportacionCatalogo::latest('id')->firstOrFail();
-        $importacion->update(['estado' => 'requiere_revision']);
+        $importacion->update(['estado' => 'procesando']);
 
         Livewire::test('admin.catalogos-importaciones')
+            ->assertDontSee('wire:confirm')
+            ->assertDontSee('>Quitar<')
+            ->call('pedirQuitar', $importacion->id)
+            ->assertSet('esError', true)
             ->call('eliminar', $importacion->id)
             ->assertSet('esError', true);
 
         $this->assertSame(1, ImportacionCatalogo::count());
         Storage::disk(self::DISCO)->assertExists($importacion->archivo_url);
+    }
+
+    public function test_procesar_con_ia_pide_modal_y_cancelar_no_lee(): void
+    {
+        $this->actingAs($this->adminGeneral());
+        Queue::fake();
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->set('linea_id', 1)
+            ->set('archivo', $this->pdfDePrueba())
+            ->call('subir');
+
+        $importacion = ImportacionCatalogo::latest('id')->firstOrFail();
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->assertDontSee('wire:confirm')
+            ->assertSee('Procesar con IA')
+            ->call('pedirProcesar', $importacion->id)
+            ->assertSee('cuesta dinero de verdad')
+            ->call('cancelarConfirmacion')
+            ->assertDontSee('cuesta dinero de verdad')
+            ->assertSet('confirmarLecturaId', null);
+
+        $this->assertSame('cargado', $importacion->fresh()->estado);
+        Queue::assertNothingPushed();
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->call('pedirProcesar', $importacion->id)
+            ->call('confirmarProcesar')
+            ->assertSet('esError', false);
+
+        $this->assertSame('procesando', $importacion->fresh()->estado);
+        Queue::assertPushed(ProcesarCatalogoConIa::class);
     }
 
     public function test_el_archivo_se_sirve_solo_al_admin_general(): void
@@ -296,7 +396,7 @@ class SubirCatalogoImportacionTest extends TestCase
         $html = Livewire::test('admin.catalogos-importaciones')->html();
         $this->assertStringContainsString('data-visor-archivo', $html);
         $this->assertStringContainsString('data-ver-archivo', $html);
-        $this->assertStringContainsString("abrir-visor", $html);
+        $this->assertStringContainsString('abrir-visor', $html);
         $this->assertStringContainsString('<iframe', $html);
         $this->assertStringContainsString('x-on:keydown.escape.window="abierto = false"', $html);
         $this->assertStringContainsString('x-on:click.self="abierto = false"', $html);
@@ -319,5 +419,42 @@ class SubirCatalogoImportacionTest extends TestCase
             ->assertHasErrors(['archivo' => 'mimes']);
 
         $this->assertSame(0, ImportacionCatalogo::count());
+    }
+
+    public function test_la_pantalla_acepta_hasta_250_mb_y_muestra_el_avance_de_la_lectura(): void
+    {
+        $this->actingAs($this->adminGeneral());
+
+        $html = Livewire::test('admin.catalogos-importaciones')->html();
+        $this->assertStringContainsString('Hasta 250 MB', $html);
+        $this->assertStringContainsString('livewire-upload-progress', $html);
+
+        $importacion = ImportacionCatalogo::create([
+            'linea_id' => 1,
+            'archivo_url' => 'catalogos-ia/2026/10/en-curso.pdf',
+            'tipo_archivo' => 'pdf',
+            'estado' => 'procesando',
+            'paginas' => 76,
+            'paginas_leidas' => 20,
+            'leyendo_hasta' => 30,
+            'iniciada_por_usuario_id' => $this->adminGeneral()->id,
+        ]);
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->assertSee('Van 20 de 76 páginas')
+            ->assertSee('Faltan 56')
+            ->assertSee('Leyendo hasta la página 30')
+            ->assertSee('20 / 76')
+            ->assertSee('width: 26%')
+            ->assertDontSee('Puede haberse trabado');
+
+        $limite = max(60, (int) config('ia.segundos_por_peticion')) + 180;
+        ImportacionCatalogo::where('id', $importacion->id)->update([
+            'updated_at' => now()->subSeconds($limite),
+        ]);
+
+        Livewire::test('admin.catalogos-importaciones')
+            ->assertSee('Puede haberse trabado')
+            ->assertSee('no la reintentes');
     }
 }

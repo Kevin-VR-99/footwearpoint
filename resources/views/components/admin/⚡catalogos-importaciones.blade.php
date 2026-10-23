@@ -7,6 +7,7 @@ use App\Models\Linea;
 use App\Services\Catalogo\SubirCatalogoParaImportarAction;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -38,6 +39,14 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
 
     public string $mensaje = '';
     public bool $esError = false;
+
+    /** El catálogo cuyo «Procesar con IA» está esperando el modal. */
+    #[Locked]
+    public ?int $confirmarLecturaId = null;
+
+    /** El catálogo cuyo «Quitar» está esperando el modal. */
+    #[Locked]
+    public ?int $confirmarQuitarId = null;
 
     public function mount(): void
     {
@@ -72,7 +81,15 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
     public function getImportacionesProperty()
     {
         return ImportacionCatalogo::with(['linea', 'campana', 'iniciadaPor'])
-            ->withCount('productosStaging')
+            ->withCount([
+                'productosStaging',
+                'productosStaging as productos_publicados_count' => function ($consulta) {
+                    $consulta->where(function ($consulta) {
+                        $consulta->whereNotNull('producto_creado_id')
+                            ->orWhereNotNull('producto_campana_creado_id');
+                    });
+                },
+            ])
             ->orderByDesc('id')
             ->get();
     }
@@ -99,7 +116,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         return [
             'archivo.required'  => 'Elige el archivo del catálogo.',
             'archivo.mimes'     => 'Solo se aceptan archivos PDF.',
-            'archivo.max'       => 'El archivo pesa más de 40 MB. Si el catálogo es más grande, divídelo.',
+            'archivo.max'       => 'El archivo pesa más de 250 MB. Si el catálogo es más grande, divídelo.',
             'linea_id.required' => 'Elige a qué línea pertenece el catálogo.',
             'linea_id.exists'   => 'Esa línea no existe.',
             'campana_id.exists' => 'Esa temporada no existe.',
@@ -152,7 +169,13 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         // una cuesta dinero y duplicaria los productos).
         $tomada = ImportacionCatalogo::where('id', $importacion->id)
             ->whereIn('estado', ['cargado', 'error'])
-            ->update(['estado' => 'procesando', 'mensaje_error' => null, 'procesamiento_iniciado_at' => now()]);
+            ->update([
+                'estado' => 'procesando',
+                'mensaje_error' => null,
+                'procesamiento_iniciado_at' => now(),
+                'paginas_leidas' => 0,
+                'leyendo_hasta' => null,
+            ]);
 
         if ($tomada !== 1) {
             $this->mensaje = 'Ese catalogo ya se esta procesando o ya se proceso.';
@@ -169,6 +192,37 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         $this->mensaje = 'Se mando a procesar. La IA va de '.config('ia.paginas_por_bloque')
             .' en '.config('ia.paginas_por_bloque').' paginas; el avance se actualiza solo.';
         $this->esError = false;
+        $this->confirmarLecturaId = null;
+    }
+
+    /** Abre el modal antes de gastar. procesar() sigue siendo el que encola. */
+    public function pedirProcesar(int $id): void
+    {
+        $importacion = ImportacionCatalogo::query()->findOrFail($id);
+
+        if (! in_array($importacion->estado, ['cargado', 'error'], true)) {
+            $this->mensaje = 'Ese catalogo ya se esta procesando o ya se proceso.';
+            $this->esError = true;
+            $this->confirmarLecturaId = null;
+
+            return;
+        }
+
+        $this->confirmarQuitarId = null;
+        $this->confirmarLecturaId = $importacion->id;
+        $this->esError = false;
+    }
+
+    public function confirmarProcesar(): void
+    {
+        $id = $this->confirmarLecturaId;
+        $this->confirmarLecturaId = null;
+
+        if ($id === null) {
+            return;
+        }
+
+        $this->procesar($id);
     }
 
     /** True si hay alguno trabajando: con eso la pantalla se refresca sola. */
@@ -177,26 +231,84 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         return ImportacionCatalogo::where('estado', 'procesando')->exists();
     }
 
-    /** Solo mientras nadie lo haya procesado: después ya hay productos colgando. */
+    /**
+     * Quita el catálogo subido. Los productos ya publicados se quedan.
+     * eliminar() sigue siendo el que borra, para que una prueba pueda llamarlo.
+     */
     public function eliminar(int $id, SubirCatalogoParaImportarAction $accion): void
     {
         $importacion = ImportacionCatalogo::findOrFail($id);
+        $this->confirmarQuitarId = null;
 
-        if (! in_array($importacion->estado, ['cargado', 'error'], true)) {
-            $this->mensaje = 'Ese catálogo ya se procesó, así que no se puede quitar desde aquí.';
+        try {
+            $resumen = $accion->eliminar($importacion);
+        } catch (\RuntimeException $e) {
+            $this->mensaje = $e->getMessage();
             $this->esError = true;
 
             return;
         }
 
-        $accion->eliminar($importacion);
-
-        $this->mensaje = 'Catálogo quitado.';
+        $this->mensaje = $this->mensajeTrasQuitar($resumen);
         $this->esError = false;
     }
 
+    public function pedirQuitar(int $id): void
+    {
+        $importacion = ImportacionCatalogo::query()->findOrFail($id);
+
+        if ($importacion->estado === 'procesando') {
+            $this->mensaje = 'Ese catálogo se está leyendo. Espera a que termine para quitarlo.';
+            $this->esError = true;
+            $this->confirmarQuitarId = null;
+
+            return;
+        }
+
+        $this->confirmarLecturaId = null;
+        $this->confirmarQuitarId = $importacion->id;
+        $this->esError = false;
+    }
+
+    public function confirmarQuitar(SubirCatalogoParaImportarAction $accion): void
+    {
+        $id = $this->confirmarQuitarId;
+
+        if ($id === null) {
+            return;
+        }
+
+        $this->eliminar($id, $accion);
+    }
+
+    public function cancelarConfirmacion(): void
+    {
+        $this->confirmarLecturaId = null;
+        $this->confirmarQuitarId = null;
+    }
+
+    /** @param  array{propuestas: int, publicados: int}  $resumen */
+    private function mensajeTrasQuitar(array $resumen): string
+    {
+        if ($resumen['publicados'] > 0) {
+            $productos = $resumen['publicados'] === 1
+                ? '1 producto ya publicado sigue'
+                : $resumen['publicados'].' productos ya publicados siguen';
+
+            return 'Catálogo quitado. '.$productos.' en el catálogo maestro.';
+        }
+
+        if ($resumen['propuestas'] > 0) {
+            $propuestas = $resumen['propuestas'] === 1 ? '1 propuesta' : $resumen['propuestas'].' propuestas';
+
+            return 'Catálogo quitado. Se borró el archivo y '.$propuestas.'. El catálogo maestro no se tocó.';
+        }
+
+        return 'Catálogo quitado. El catálogo maestro no se tocó.';
+    }
+
     /**
-     * El texto del wire:confirm de "Procesar" / "Reintentar".
+     * El texto del modal de "Procesar" / "Reintentar".
      *
      * Son dos casos distintos: el primer Procesar no borra nada, y Reintentar
      * tira los productos ya leidos y vuelve a pagar la lectura completa. Al
@@ -226,6 +338,37 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
 
         return 'Leer este catálogo con la IA cuesta dinero de verdad. '.$costo
             .' Se cobra aunque al final no apruebes ningún producto.';
+    }
+
+    /** Lo que dice el modal de Quitar, según si ya hay algo publicado. */
+    public function avisoAntesDeQuitar(ImportacionCatalogo $importacion): string
+    {
+        $propuestas = (int) ($importacion->productos_staging_count
+            ?? $importacion->productosStaging()->count());
+        $publicados = (int) ($importacion->productos_publicados_count
+            ?? $importacion->productosStaging()
+                ->where(function ($consulta) {
+                    $consulta->whereNotNull('producto_creado_id')
+                        ->orWhereNotNull('producto_campana_creado_id');
+                })
+                ->count());
+
+        if ($publicados > 0) {
+            $quedan = $publicados === 1
+                ? '1 producto que ya se publicó se queda'
+                : $publicados.' productos que ya se publicaron se quedan';
+
+            return 'Se quita el archivo y las propuestas de esta importación. '.$quedan
+                .' en el catálogo maestro.';
+        }
+
+        if ($propuestas > 0) {
+            $lista = $propuestas === 1 ? '1 propuesta' : $propuestas.' propuestas';
+
+            return 'Se borran el archivo y '.$lista.' de esta importación. Nada de esto está en el catálogo maestro.';
+        }
+
+        return 'Se borra el archivo de este catálogo. El catálogo maestro no se toca.';
     }
 };
 ?>
@@ -282,7 +425,13 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         <x-panel.alerta :tipo="$esError ? 'error' : 'exito'">{{ $mensaje }}</x-panel.alerta>
     @endif
 
-    <form wire:submit="subir" class="fp-formulario fp-aparecer p-5 sm:p-6 space-y-4 max-w-2xl">
+    <form wire:submit="subir" class="fp-formulario fp-aparecer p-5 sm:p-6 space-y-4 max-w-2xl"
+        x-data="{ avance: 0, subiendo: false }"
+        x-on:livewire-upload-start="subiendo = true; avance = 0"
+        x-on:livewire-upload-progress="avance = $event.detail.progress"
+        x-on:livewire-upload-finish="subiendo = false"
+        x-on:livewire-upload-error="subiendo = false"
+        x-on:livewire-upload-cancel="subiendo = false">
         <div class="grid gap-4 sm:grid-cols-2">
             <div class="fp-campo">
                 <label for="catalogos-importaciones-linea-id" class="block text-sm font-medium text-slate-700 mb-1">Línea</label>
@@ -312,10 +461,15 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         <div class="fp-campo">
             <label for="catalogos-importaciones-archivo" class="block text-sm font-medium text-slate-700 mb-1">Archivo del catálogo</label>
             <input id="catalogos-importaciones-archivo" type="file" wire:model="archivo" accept=".pdf,application/pdf" class="w-full text-sm">
-            <p class="mt-1 text-xs text-slate-500">PDF. Hasta 40 MB.</p>
+            <p class="mt-1 text-xs text-slate-500">PDF. Hasta 250 MB.</p>
             @error('archivo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
 
-            <div wire:loading wire:target="archivo" class="mt-2 text-xs text-slate-500">Subiendo el archivo…</div>
+            <div x-show="subiendo" x-cloak class="mt-2" data-avance-subida>
+                <div class="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div class="h-full rounded-full bg-fp-primary" :style="`width: ${avance}%`"></div>
+                </div>
+                <p class="mt-1 text-xs text-slate-500" x-text="`Subiendo el archivo… ${avance}%`"></p>
+            </div>
         </div>
 
         <button type="submit" wire:loading.attr="disabled"
@@ -336,10 +490,23 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         <h2 class="text-sm font-semibold text-slate-700 mb-3">Catálogos subidos</h2>
 
         @if ($this->hayTrabajo)
-            <p class="mb-3 flex items-start gap-2 rounded-xl bg-fp-badge-info-bg px-3 py-2 text-sm text-fp-badge-info-fg"><span class="fp-insignia-viva mt-1.5 inline-flex"><span class="fp-insignia-punto" aria-hidden="true"></span></span><span>
-                La IA está leyendo un catálogo. Va de {{ config('ia.paginas_por_bloque') }} en
-                {{ config('ia.paginas_por_bloque') }} páginas y puede tardar varios minutos; esta página se actualiza sola.
-            </span></p>
+            @foreach ($this->importaciones->where('estado', 'procesando') as $enCurso)
+                <div class="mb-3 rounded-xl px-3 py-2 text-sm {{ $enCurso->pareceTrabada() ? 'bg-fp-badge-danger-bg text-fp-badge-danger-fg' : 'bg-fp-badge-info-bg text-fp-badge-info-fg' }}" data-avance-lectura>
+                    <p class="flex items-start gap-2">
+                        <span class="fp-insignia-viva mt-1.5 inline-flex"><span class="fp-insignia-punto" aria-hidden="true"></span></span>
+                        <span>{{ $enCurso->textoDeAvance() }} Esta página se actualiza sola.</span>
+                    </p>
+                    <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/70"
+                        role="progressbar"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        aria-valuenow="{{ $enCurso->porcentajeDeAvance() }}"
+                        aria-label="Avance de la lectura del catálogo {{ $enCurso->id }}">
+                        <div class="h-full rounded-full {{ $enCurso->pareceTrabada() ? 'bg-fp-danger' : 'bg-fp-primary' }}"
+                            style="width: {{ $enCurso->porcentajeDeAvance() }}%"></div>
+                    </div>
+                </div>
+            @endforeach
         @endif
 
         @if ($this->importaciones->isEmpty())
@@ -377,17 +544,19 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                                     <p class="mt-1 text-xs text-fp-danger">{{ $importacion->mensaje_error }}</p>
                                 @endif
                             </td>
-                            <td class="px-4 py-3">{{ $importacion->paginas ?? '—' }}</td>
+                            <td class="px-4 py-3">
+                                @if ($importacion->estado === 'procesando' && $importacion->paginas)
+                                    {{ (int) $importacion->paginas_leidas }} / {{ $importacion->paginas }}
+                                @else
+                                    {{ $importacion->paginas ?? '—' }}
+                                @endif
+                            </td>
                             <td class="px-4 py-3">{{ $importacion->productos_staging_count ?: '—' }}</td>
                             <td class="px-4 py-3">{{ $importacion->costo_usd ? '$'.number_format((float) $importacion->costo_usd, 2).' USD' : '—' }}</td>
                             <td class="px-4 py-3">{{ $importacion->iniciadaPor?->nombreVisible() }}</td>
                             <td class="px-4 py-3 text-right whitespace-nowrap">
                                 @if (in_array($importacion->estado, ['cargado', 'error'], true))
-                                    {{-- El boton que cuesta dinero pedia menos confirmacion que el
-                                         de Quitar, que es gratis. Cada clic aqui son ~$1 USD y, si
-                                         ya habia productos leidos, se borran. --}}
-                                    <button type="button" wire:click="procesar({{ $importacion->id }})"
-                                        wire:confirm="{{ $this->avisoAntesDeLeer($importacion) }}"
+                                    <button type="button" wire:click="pedirProcesar({{ $importacion->id }})"
                                         wire:loading.attr="disabled"
                                         class="fp-accion fp-accion-primaria">
                                         {{ $importacion->estado === 'error' ? 'Reintentar con IA' : 'Procesar con IA' }}
@@ -400,9 +569,8 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                                 <button type="button" data-ver-archivo
                                     x-on:click="$dispatch('abrir-visor', @js(['url' => route('admin.catalogos.archivo', $importacion->id), 'tipo' => $importacion->tipo_archivo, 'nombre' => 'Catálogo #'.$importacion->id]))"
                                     class="fp-accion">Ver archivo</button>
-                                @if (in_array($importacion->estado, ['cargado', 'error'], true))
-                                    <button type="button" wire:click="eliminar({{ $importacion->id }})"
-                                        wire:confirm="¿Quitar este catálogo? Se borra el archivo."
+                                @if ($importacion->estado !== 'procesando')
+                                    <button type="button" wire:click="pedirQuitar({{ $importacion->id }})"
                                         class="fp-accion fp-accion-peligro">Quitar</button>
                                 @endif
                             </td>
@@ -414,4 +582,31 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
     </div>
 
     <x-ui.visor-archivo />
+
+    @php($lectura = $confirmarLecturaId ? $this->importaciones->firstWhere('id', $confirmarLecturaId) : null)
+    @if ($lectura)
+        <x-panel.modal
+            :titulo="$lectura->estado === 'error' ? 'Reintentar con IA' : 'Procesar con IA'"
+            ancho="max-w-md"
+            cerrar="cancelarConfirmacion">
+            <p class="text-sm text-slate-600">{{ $this->avisoAntesDeLeer($lectura) }}</p>
+            <x-slot:pie>
+                <button type="button" wire:click="cancelarConfirmacion" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button type="button" wire:click="confirmarProcesar" class="fp-btn fp-btn-primario">
+                    {{ $lectura->estado === 'error' ? 'Reintentar' : 'Procesar' }}
+                </button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
+
+    @php($quitar = $confirmarQuitarId ? $this->importaciones->firstWhere('id', $confirmarQuitarId) : null)
+    @if ($quitar)
+        <x-panel.modal titulo="Quitar catálogo" ancho="max-w-md" cerrar="cancelarConfirmacion">
+            <p class="text-sm text-slate-600">{{ $this->avisoAntesDeQuitar($quitar) }}</p>
+            <x-slot:pie>
+                <button type="button" wire:click="cancelarConfirmacion" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button type="button" wire:click="confirmarQuitar" class="fp-btn fp-btn-peligro">Quitar</button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
 </div>

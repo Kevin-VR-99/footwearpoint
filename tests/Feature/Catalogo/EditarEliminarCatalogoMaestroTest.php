@@ -13,6 +13,7 @@ use App\Models\ProductoCampana;
 use App\Models\Talla;
 use App\Models\Usuario;
 use App\Models\Variante;
+use App\Support\Auditoria\EtiquetasAuditoria;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -221,6 +222,30 @@ class EditarEliminarCatalogoMaestroTest extends TestCase
     // Eliminar sin dependencias
     // ------------------------------------------------------------------
 
+    public function test_eliminar_una_linea_pide_modal_y_cancelar_la_deja(): void
+    {
+        $this->comoAdminGeneral();
+        $linea = Linea::create(['nombre' => 'Línea del modal', 'activa' => true]);
+
+        Livewire::test(self::COMPONENTE)
+            ->assertDontSee('wire:click="eliminar(')
+            ->call('pedirEliminar', 'linea', $linea->id)
+            ->assertSee('Eliminar línea')
+            ->assertSee('Línea del modal')
+            ->call('cancelarEliminar')
+            ->assertSet('porEliminarId', null);
+
+        $this->assertDatabaseHas('lineas', ['id' => $linea->id]);
+
+        Livewire::test(self::COMPONENTE)
+            ->call('pedirEliminar', 'linea', $linea->id)
+            ->call('confirmarEliminar')
+            ->assertSet('porEliminarId', null)
+            ->assertDispatched('guardado');
+
+        $this->assertDatabaseMissing('lineas', ['id' => $linea->id]);
+    }
+
     public function test_elimina_una_linea_sin_dependencias(): void
     {
         $this->comoAdminGeneral();
@@ -308,8 +333,8 @@ class EditarEliminarCatalogoMaestroTest extends TestCase
             Producto::create([
                 'marca_id' => $marca->id,
                 'categoria_id' => CategoriaProducto::firstOrFail()->id,
-                'modelo' => 'TG247-M' . $letra,
-                'nombre' => 'Producto ' . $letra,
+                'modelo' => 'TG247-M'.$letra,
+                'nombre' => 'Producto '.$letra,
                 'activo' => true,
             ]);
         }
@@ -412,8 +437,8 @@ class EditarEliminarCatalogoMaestroTest extends TestCase
 
         $this->deleteJson("/api/marcas/{$marca->id}")->assertForbidden();
         $this->deleteJson("/api/lineas/{$linea->id}")->assertForbidden();
-        $this->deleteJson('/api/productos/' . $this->productoNuevo('TG247-P')->id)->assertForbidden();
-        $this->deleteJson('/api/campanas/' . Campana::firstOrFail()->id)->assertForbidden();
+        $this->deleteJson('/api/productos/'.$this->productoNuevo('TG247-P')->id)->assertForbidden();
+        $this->deleteJson('/api/campanas/'.Campana::firstOrFail()->id)->assertForbidden();
 
         $this->assertDatabaseHas('marcas', ['id' => $marca->id]);
         $this->assertDatabaseHas('lineas', ['id' => $linea->id]);
@@ -421,9 +446,9 @@ class EditarEliminarCatalogoMaestroTest extends TestCase
 
     public function test_la_auditoria_muestra_los_borrados_en_espanol(): void
     {
-        $this->assertSame('Marca eliminada', \App\Support\Auditoria\EtiquetasAuditoria::ETIQUETAS['catalogo.marca.eliminada']);
-        $this->assertSame('Línea eliminada', \App\Support\Auditoria\EtiquetasAuditoria::ETIQUETAS['catalogo.linea.eliminada']);
-        $this->assertSame('Temporada eliminada', \App\Support\Auditoria\EtiquetasAuditoria::ETIQUETAS['catalogo.temporada.eliminada']);
-        $this->assertSame('Producto eliminado', \App\Support\Auditoria\EtiquetasAuditoria::ETIQUETAS['catalogo.producto.eliminado']);
+        $this->assertSame('Marca eliminada', EtiquetasAuditoria::ETIQUETAS['catalogo.marca.eliminada']);
+        $this->assertSame('Línea eliminada', EtiquetasAuditoria::ETIQUETAS['catalogo.linea.eliminada']);
+        $this->assertSame('Temporada eliminada', EtiquetasAuditoria::ETIQUETAS['catalogo.temporada.eliminada']);
+        $this->assertSame('Producto eliminado', EtiquetasAuditoria::ETIQUETAS['catalogo.producto.eliminado']);
     }
 }

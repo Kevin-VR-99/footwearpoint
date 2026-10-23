@@ -9,6 +9,7 @@ use App\Services\Ia\ExtraerProductosDelCatalogoAction;
 use App\Services\Ia\LectorDeCatalogos;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
+use Database\Seeders\AdminGeneralSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -46,8 +47,8 @@ class CandadosDeGastoIaTest extends TestCase
         Storage::fake(self::DISCO);
         config([
             'filesystems.catalogos_disk' => self::DISCO,
-            'ia.paginas_por_bloque'      => 10,
-            'ia.max_usd_por_mes'         => 12,
+            'ia.paginas_por_bloque' => 10,
+            'ia.max_usd_por_mes' => 12,
         ]);
 
         $this->lector = new LectorDeCatalogosFalso([
@@ -59,7 +60,7 @@ class CandadosDeGastoIaTest extends TestCase
 
     private function adminGeneral(): Usuario
     {
-        return Usuario::where('email', \Database\Seeders\AdminGeneralSeeder::EMAIL)->firstOrFail();
+        return Usuario::where('email', AdminGeneralSeeder::EMAIL)->firstOrFail();
     }
 
     /** Un PDF con el número de páginas que se le pida. */
@@ -80,11 +81,11 @@ class CandadosDeGastoIaTest extends TestCase
         Storage::disk(self::DISCO)->put($ruta, $this->pdfDe(25));
 
         return ImportacionCatalogo::create([
-            'linea_id'                 => 1,
-            'archivo_url'              => $ruta,
-            'tipo_archivo'             => 'pdf',
-            'estado'                   => 'cargado',
-            'iniciada_por_usuario_id'  => $this->adminGeneral()->id,
+            'linea_id' => 1,
+            'archivo_url' => $ruta,
+            'tipo_archivo' => 'pdf',
+            'estado' => 'cargado',
+            'iniciada_por_usuario_id' => $this->adminGeneral()->id,
             ...$extra,
         ]);
     }
@@ -181,9 +182,9 @@ class CandadosDeGastoIaTest extends TestCase
         $importacion = $this->importacion(['estado' => 'error', 'paginas' => 76]);
 
         ProductoImportadoStaging::create([
-            'importacion_id'  => $importacion->id,
+            'importacion_id' => $importacion->id,
             'datos_extraidos' => ['pagina' => 3, 'modelo' => '355-37'],
-            'estado'          => 'pendiente',
+            'estado' => 'pendiente',
         ]);
 
         $aviso = Livewire::actingAs($this->adminGeneral())
@@ -201,18 +202,22 @@ class CandadosDeGastoIaTest extends TestCase
     }
 
     /**
-     * Ojo con cómo se comprueba: buscar «wire:confirm» a secas no prueba
-     * nada, porque el botón de Quitar ya tenía uno desde antes y la prueba
-     * pasaba igual sin el arreglo. Hay que exigir el texto del aviso, que
-     * solo puede venir del botón que cuesta dinero.
+     * El aviso vive en el modal del panel, no en un wire:confirm. Hay que
+     * abrirlo: el texto no está en la tabla hasta que se pide confirmar.
      */
     public function test_el_boton_que_cuesta_dinero_pide_confirmacion(): void
     {
-        $this->importacion();
+        $importacion = $this->importacion();
 
         Livewire::actingAs($this->adminGeneral())
             ->test('admin.catalogos-importaciones')
-            ->assertSeeHtml('wire:confirm="Leer este catálogo con la IA cuesta dinero de verdad');
+            ->assertDontSee('wire:confirm')
+            ->assertDontSee('cuesta dinero de verdad')
+            ->call('pedirProcesar', $importacion->id)
+            ->assertSee('Leer este catálogo con la IA cuesta dinero de verdad')
+            ->call('cancelarConfirmacion');
+
+        $this->assertSame('cargado', $importacion->fresh()->estado);
     }
 
     // ------------------------------------------------------------------
