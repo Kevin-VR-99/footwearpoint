@@ -13,6 +13,7 @@ use App\Models\ProductoCampana;
 use App\Models\ProductoImagen;
 use App\Models\Talla;
 use App\Models\Variante;
+use Database\Seeders\Support\DemoEnProduccion;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
 
@@ -32,6 +33,10 @@ class CatalogoMaestroDemoSeeder extends Seeder
 {
     public function run(): void
     {
+        if (DemoEnProduccion::bloqueada($this, $this->command)) {
+            return;
+        }
+
         $catalogo = require database_path('seeders/datos/catalogo_demo.php');
 
         $subirImagenes = filter_var(env('SEED_IMAGENES', false), FILTER_VALIDATE_BOOL);
@@ -62,7 +67,7 @@ class CatalogoMaestroDemoSeeder extends Seeder
         }
 
         $this->command?->info(
-            "Catálogo maestro: ".count($catalogo)." líneas, {$temporadas} temporadas y {$productos} productos."
+            'Catálogo maestro: '.count($catalogo)." líneas, {$temporadas} temporadas y {$productos} productos."
             .($subirImagenes ? ' Con fotos.' : ' Sin fotos (SEED_IMAGENES).')
         );
     }

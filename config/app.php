@@ -166,4 +166,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    // Seeders de demostración en producción: apagados salvo que se pida (ver DemoEnProduccion).
+    'seed_demo_en_produccion' => (bool) env('SEED_DEMO_EN_PRODUCCION', false),
 ];

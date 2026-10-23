@@ -7,6 +7,7 @@ use App\Models\DistribuidoraStaff;
 use App\Models\Usuario;
 use App\Services\Distribuidora\PrepararDistribuidoraAction;
 use App\Services\Distribuidora\ProvisionarRolesDistribuidoraAction;
+use Database\Seeders\Support\DemoEnProduccion;
 use Database\Seeders\Support\PasswordDePrueba;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -39,6 +40,10 @@ class DemoDistribuidoraSeeder extends Seeder
 
     public function run(): void
     {
+        if (DemoEnProduccion::bloqueada($this, $this->command)) {
+            return;
+        }
+
         $primera = $this->distribuidora([
             'slug' => self::SLUG,
             'nombre_comercial' => 'Calzados Ramírez',
