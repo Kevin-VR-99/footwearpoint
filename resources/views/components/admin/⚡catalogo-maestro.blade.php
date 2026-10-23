@@ -37,8 +37,15 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     public string $temporada_nombre = '';
     public string $temporada_estado = 'borrador';
 
-    public ?int $temporadaPorEliminar = null;
-    public string $temporadaPorEliminarNombre = '';
+    #[Locked]
+    public string $porEliminarTipo = '';
+
+    #[Locked]
+    public ?int $porEliminarId = null;
+
+    public string $porEliminarTitulo = '';
+
+    public string $porEliminarAviso = '';
 
     public string $producto_marca_id = '';
     public string $producto_categoria_id = '';
@@ -231,29 +238,54 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         $this->dispatch('guardado', mensaje: 'Estado actualizado.');
     }
 
-    public function pedirEliminarTemporada(int $id): void
+    public function pedirEliminar(string $tipo, int $id): void
     {
         $this->autorizar();
-        $temporada = Campana::query()->findOrFail($id);
-        $this->temporadaPorEliminar = $temporada->id;
-        $this->temporadaPorEliminarNombre = $temporada->nombre;
+        $registro = $this->buscar($tipo, $id);
+
+        [$titulo, $aviso] = match ($tipo) {
+            'linea' => [
+                'Eliminar línea',
+                '¿Eliminar la línea «'.$registro->nombre.'»? Esta acción no se puede deshacer.',
+            ],
+            'marca' => [
+                'Eliminar marca',
+                '¿Eliminar la marca «'.$registro->nombre.'»? Esta acción no se puede deshacer.',
+            ],
+            'temporada' => [
+                'Eliminar temporada',
+                '¿Eliminar la temporada «'.$registro->nombre.'»? Esta acción no se puede deshacer.',
+            ],
+            'producto' => [
+                'Eliminar producto',
+                '¿Eliminar el producto «'.$registro->nombre.'» de todo el catálogo, con sus tallas y publicaciones? Esta acción no se puede deshacer.',
+            ],
+        };
+
+        $this->porEliminarTipo = $tipo;
+        $this->porEliminarId = $registro->id;
+        $this->porEliminarTitulo = $titulo;
+        $this->porEliminarAviso = $aviso;
     }
 
-    public function cancelarEliminarTemporada(): void
+    public function cancelarEliminar(): void
     {
-        $this->temporadaPorEliminar = null;
-        $this->temporadaPorEliminarNombre = '';
+        $this->porEliminarTipo = '';
+        $this->porEliminarId = null;
+        $this->porEliminarTitulo = '';
+        $this->porEliminarAviso = '';
     }
 
-    public function confirmarEliminarTemporada(): void
+    public function confirmarEliminar(): void
     {
-        if ($this->temporadaPorEliminar === null) {
+        if ($this->porEliminarId === null || $this->porEliminarTipo === '') {
             return;
         }
 
-        $id = $this->temporadaPorEliminar;
-        $this->cancelarEliminarTemporada();
-        $this->eliminar('temporada', $id);
+        $tipo = $this->porEliminarTipo;
+        $id = $this->porEliminarId;
+        $this->cancelarEliminar();
+        $this->eliminar($tipo, $id);
     }
 
     public function eliminar(string $tipo, int $id): void
@@ -688,7 +720,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         <td class="px-4 py-3 whitespace-nowrap">
                             <button type="button" wire:click="editar('linea', {{ $linea->id }})" class="fp-accion fp-accion-primaria">Editar</button>
                             <button type="button" wire:click="alternarActivo('linea', {{ $linea->id }})" class="fp-accion fp-accion-neutra">{{ $linea->activa ? 'Desactivar' : 'Activar' }}</button>
-                            <button type="button" wire:click="eliminar('linea', {{ $linea->id }})" wire:confirm="¿Eliminar la línea «{{ $linea->nombre }}»? Esta acción no se puede deshacer." class="fp-accion fp-accion-peligro">Eliminar</button>
+                            <button type="button" wire:click="pedirEliminar('linea', {{ $linea->id }})" class="fp-accion fp-accion-peligro">Eliminar</button>
                         </td>
                     </tr>
                 @empty
@@ -714,7 +746,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         <td class="px-4 py-3 whitespace-nowrap">
                             <button type="button" wire:click="editar('marca', {{ $marca->id }})" class="fp-accion fp-accion-primaria">Editar</button>
                             <button type="button" wire:click="alternarActivo('marca', {{ $marca->id }})" class="fp-accion fp-accion-neutra">{{ $marca->activa ? 'Desactivar' : 'Activar' }}</button>
-                            <button type="button" wire:click="eliminar('marca', {{ $marca->id }})" wire:confirm="¿Eliminar la marca «{{ $marca->nombre }}»? Esta acción no se puede deshacer." class="fp-accion fp-accion-peligro">Eliminar</button>
+                            <button type="button" wire:click="pedirEliminar('marca', {{ $marca->id }})" class="fp-accion fp-accion-peligro">Eliminar</button>
                         </td>
                     </tr>
                 @empty
@@ -752,7 +784,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         <td class="px-4 py-3"><x-ui.insignia-estado :estado="$temporada->estado" /></td>
                         <td class="px-4 py-3 whitespace-nowrap">
                             <button type="button" wire:click="editar('temporada', {{ $temporada->id }})" class="fp-accion fp-accion-primaria">Editar</button>
-                            <button type="button" wire:click="pedirEliminarTemporada({{ $temporada->id }})" class="fp-accion fp-accion-peligro">Eliminar</button>
+                            <button type="button" wire:click="pedirEliminar('temporada', {{ $temporada->id }})" class="fp-accion fp-accion-peligro">Eliminar</button>
                         </td>
                     </tr>
                 @empty
@@ -761,17 +793,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             </tbody>
         </table></div></div>
 
-        @if ($temporadaPorEliminar)
-            <x-panel.modal titulo="Eliminar temporada" ancho="max-w-md" cerrar="cancelarEliminarTemporada">
-                <p class="text-sm text-slate-600">
-                    ¿Eliminar la temporada «{{ $temporadaPorEliminarNombre }}»? Esta acción no se puede deshacer.
-                </p>
-                <x-slot:pie>
-                    <button type="button" wire:click="cancelarEliminarTemporada" class="fp-btn fp-btn-secundario">Cancelar</button>
-                    <button type="button" wire:click="confirmarEliminarTemporada" class="fp-btn fp-btn-peligro">Eliminar</button>
-                </x-slot:pie>
-            </x-panel.modal>
-        @endif
     @else
         <form wire:submit="guardarProducto" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
             <select wire:model="producto_marca_id" class="rounded-lg text-sm">
@@ -839,7 +860,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                             @if ($fila->producto)
                                 <button type="button" wire:click="editar('producto', {{ $fila->producto->id }})" class="fp-accion fp-accion-primaria">Editar</button>
                                 <button type="button" wire:click="alternarActivo('producto', {{ $fila->producto->id }})" class="fp-accion fp-accion-neutra">{{ $fila->producto->activo ? 'Desactivar' : 'Activar' }}</button>
-                                <button type="button" wire:click="eliminar('producto', {{ $fila->producto->id }})" wire:confirm="¿Eliminar el producto «{{ $fila->producto->nombre }}» de todo el catálogo, con sus tallas y publicaciones? Esta acción no se puede deshacer." class="fp-accion fp-accion-peligro">Eliminar</button>
+                                <button type="button" wire:click="pedirEliminar('producto', {{ $fila->producto->id }})" class="fp-accion fp-accion-peligro">Eliminar</button>
                             @endif
                         </td>
                     </tr>
@@ -848,5 +869,15 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 @endforelse
             </tbody>
         </table></div></div>
+    @endif
+
+    @if ($porEliminarId)
+        <x-panel.modal :titulo="$porEliminarTitulo" ancho="max-w-md" cerrar="cancelarEliminar">
+            <p class="text-sm text-slate-600">{{ $porEliminarAviso }}</p>
+            <x-slot:pie>
+                <button type="button" wire:click="cancelarEliminar" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button type="button" wire:click="confirmarEliminar" class="fp-btn fp-btn-peligro">Eliminar</button>
+            </x-slot:pie>
+        </x-panel.modal>
     @endif
 </div>

@@ -3,11 +3,17 @@
 namespace App\Services\Catalogo;
 
 use App\Models\ImportacionCatalogo;
+use App\Models\ProductoImportadoStaging;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
+use App\Services\Ia\ProponerRecortesDeFotosAction;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * TG-237 (A7 / E5-01) — Subir el catalogo de la fabrica para que lo lea la IA.
@@ -35,9 +41,7 @@ class SubirCatalogoParaImportarAction
      */
     public const EXTENSIONES = ['pdf'];
 
-    public function __construct(private RegistrarAuditoriaAction $auditoria)
-    {
-    }
+    public function __construct(private RegistrarAuditoriaAction $auditoria) {}
 
     /** El disco donde viven los catalogos; se decide en el .env. */
     public static function disco(): string
@@ -55,11 +59,11 @@ class SubirCatalogoParaImportarAction
         Storage::disk(self::disco())->put($ruta, $archivo->get(), 'private');
 
         $importacion = ImportacionCatalogo::create([
-            'linea_id'                => $lineaId,
-            'campana_id'              => $campanaId,
-            'archivo_url'             => $ruta,
-            'tipo_archivo'            => $extension === 'pdf' ? 'pdf' : 'imagen',
-            'estado'                  => 'cargado',
+            'linea_id' => $lineaId,
+            'campana_id' => $campanaId,
+            'archivo_url' => $ruta,
+            'tipo_archivo' => $extension === 'pdf' ? 'pdf' : 'imagen',
+            'estado' => 'cargado',
             'iniciada_por_usuario_id' => Auth::id(),
         ]);
 
@@ -77,20 +81,108 @@ class SubirCatalogoParaImportarAction
     }
 
     /**
-     * Borra una importacion y su archivo. Solo tiene sentido mientras nadie
-     * la haya procesado: despues ya hay productos colgando de ella.
+     * Quita una importación que el admin ya no quiere.
+     *
+     * No toca el catálogo maestro: los productos ya publicados viven en
+     * productos y producto_campana, y la foto publicada es una copia, no el
+     * recorte propuesto. Aquí se van el PDF, las propuestas y esos recortes.
+     *
+     * Mientras el estado es "procesando" no se quita: la lectura sigue en la
+     * cola y borrar la fila a la mitad dejaría el trabajo sin dueño.
+     *
+     * @return array{propuestas: int, publicados: int}
      */
-    public function eliminar(ImportacionCatalogo $importacion): void
+    public function eliminar(ImportacionCatalogo $importacion): array
     {
-        Storage::disk(self::disco())->delete($importacion->archivo_url);
+        if ($importacion->estado === 'procesando') {
+            throw new RuntimeException('Ese catálogo se está leyendo. Espera a que termine para quitarlo.');
+        }
 
-        $this->auditoria->ejecutar(
-            accion: 'importacion_catalogo.eliminada',
-            entidadTipo: 'importacion_catalogo',
-            entidadId: $importacion->id,
-            datosPrevios: ['archivo' => $importacion->archivo_url],
-        );
+        $filas = $importacion->productosStaging()->get();
+        $publicados = $filas->filter(
+            fn ($fila) => $fila->producto_creado_id !== null || $fila->producto_campana_creado_id !== null
+        )->count();
 
-        $importacion->delete();
+        $this->borrarRecortesPropuestos($filas);
+        $this->borrarArchivo($importacion);
+
+        DB::transaction(function () use ($importacion, $filas, $publicados) {
+            $this->auditoria->ejecutar(
+                accion: 'importacion_catalogo.eliminada',
+                entidadTipo: 'importacion_catalogo',
+                entidadId: $importacion->id,
+                datosPrevios: [
+                    'archivo' => $importacion->archivo_url,
+                    'estado' => $importacion->estado,
+                    'propuestas' => $filas->count(),
+                    'publicados' => $publicados,
+                ],
+            );
+
+            // Antes que la fila: el cascade también las borraría, pero así
+            // queda explícito que las propuestas se van y los productos no.
+            $importacion->productosStaging()->delete();
+            $importacion->delete();
+        });
+
+        return [
+            'propuestas' => $filas->count(),
+            'publicados' => $publicados,
+        ];
+    }
+
+    /**
+     * Los recortes viven en el bucket público, aparte de las fotos ya
+     * copiadas al producto. Si el disco no confirma el borrado, la fila se
+     * queda: es el único dato que dice dónde está el archivo.
+     *
+     * @param  Collection<int, ProductoImportadoStaging>  $filas
+     */
+    private function borrarRecortesPropuestos($filas): void
+    {
+        $rutas = [];
+
+        foreach ($filas as $fila) {
+            if (! $fila->foto_propuesta_url) {
+                continue;
+            }
+
+            $ruta = ProponerRecortesDeFotosAction::rutaEnElBucket($fila->foto_propuesta_url);
+
+            if ($ruta === null) {
+                Log::warning('No se pudo sacar la ruta de un recorte propuesto; el archivo queda huérfano', [
+                    'staging' => $fila->id,
+                ]);
+
+                continue;
+            }
+
+            $rutas[$ruta] = $ruta;
+        }
+
+        $pendientes = [];
+
+        foreach ($rutas as $ruta) {
+            if (Storage::disk('s3')->exists($ruta)) {
+                $pendientes[] = $ruta;
+            }
+        }
+
+        if ($pendientes !== [] && ! Storage::disk('s3')->delete($pendientes)) {
+            throw new RuntimeException('No se pudieron borrar las fotos propuestas, así que el catálogo sigue en la lista. Inténtalo otra vez.');
+        }
+    }
+
+    private function borrarArchivo(ImportacionCatalogo $importacion): void
+    {
+        $disco = Storage::disk(self::disco());
+
+        if (! $importacion->archivo_url || ! $disco->exists($importacion->archivo_url)) {
+            return;
+        }
+
+        if (! $disco->delete($importacion->archivo_url)) {
+            throw new RuntimeException('No se pudo borrar el archivo del catálogo, así que sigue en la lista. Inténtalo otra vez.');
+        }
     }
 }
