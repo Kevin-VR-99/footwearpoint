@@ -175,7 +175,23 @@ class AuditoriaAmpliadaTest extends TestCase
     public function test_los_cambios_de_precio_y_visibilidad_quedan_con_antes_y_despues(): void
     {
         $this->como(self::ADMIN);
-        $productoCampana = app(CatalogoVisible::class)->consulta()->firstOrFail();
+
+        // Uno que NO tenga precio de mayoreo todavía: la prueba comprueba que
+        // el "antes" del primer cambio sea null. Tomar el primero de la lista
+        // la hacía depender de en qué orden salen los productos, y al cambiar
+        // la visibilidad a temporadas (TG-282) el primero pasó a ser uno que
+        // la semilla ya trae con $1,990 de mayoreo.
+        $yaConPrecio = \App\Models\OfertaDistribuidora::whereNotNull('precio_mayorista')
+            ->pluck('producto_campana_id');
+
+        // Y con orden explícito: la consulta no lo trae, así que "el primero"
+        // dependía del plan de ejecución y la prueba pasaba sola pero fallaba
+        // dentro de la suite completa.
+        $productoCampana = app(CatalogoVisible::class)->consulta()
+            ->whereNotIn('producto_campana.id', $yaConPrecio)
+            ->orderBy('producto_campana.id')
+            ->firstOrFail();
+
         $precio = round((float) $productoCampana->precio_publico - 10, 2);
         $ofertas = app(GestionarOfertaDistribuidoraAction::class);
 
