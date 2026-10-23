@@ -195,6 +195,54 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         $this->esError = false;
     }
 
+    /**
+     * TG-282 — Dar por revisados los que la IA leyó sin dudar.
+     *
+     * Aprobar solo toma las filas en "corregido", y hasta ahora solo llegaban
+     * ahí de dos formas: abriendo "Corregir" una por una, o de rebote cuando
+     * el relleno en lote las tocaba. Con el Cklass salió gratis porque ningún
+     * producto traía marca, así que el relleno marcó los 166. Con el Impuls
+     * las marcas sí vienen impresas, así que no marcó ninguno y quedaban 23
+     * para abrir de a uno.
+     *
+     * Esto NO aprueba nada ni afloja la revisión: solo deja de exigir que una
+     * persona abra y guarde un producto en el que la IA no marcó ni una duda.
+     * Lo que tiene algo dudoso se queda esperando, que es donde sí hace falta
+     * mirar.
+     */
+    public function darPorRevisadosLosLimpios(CorregirProductoImportadoAction $accion): void
+    {
+        $limpios = $this->importacion->productosStaging()
+            ->where('estado', 'pendiente')
+            ->get()
+            ->filter(fn (ProductoImportadoStaging $fila) => ($fila->campos_dudosos ?? []) === []);
+
+        if ($limpios->isEmpty()) {
+            $this->mensaje = 'No hay productos sin dudas esperando: los que quedan hay que mirarlos uno por uno.';
+            $this->esError = false;
+
+            return;
+        }
+
+        foreach ($limpios as $fila) {
+            $fila->update(['estado' => 'corregido']);
+            $accion->anotarQuienRevisa($fila);
+        }
+
+        $this->mensaje = $limpios->count().' producto(s) sin dudas quedaron listos para aprobar. '
+            .'Los que tienen algún campo dudoso siguen esperando tu revisión.';
+        $this->esError = false;
+    }
+
+    public function getSinDudasPendientesProperty(): int
+    {
+        return $this->importacion->productosStaging()
+            ->where('estado', 'pendiente')
+            ->get()
+            ->filter(fn (ProductoImportadoStaging $fila) => ($fila->campos_dudosos ?? []) === [])
+            ->count();
+    }
+
     public function recuperar(int $id, CambiarEstadoProductoImportadoAction $accion): void
     {
         $accion->recuperar($this->fila($id));
@@ -493,7 +541,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         <form wire:submit="completarEnLote" class="flex flex-wrap items-end gap-3">
             <div>
                 <label for="revisar-catalogo-campoEnLote" class="mb-1 block text-sm font-medium">Campo</label>
-                <select id="revisar-catalogo-campoEnLote" wire:model="campoEnLote" class="rounded-lg text-sm">
+                <select id="revisar-catalogo-campoEnLote" wire:model.live="campoEnLote" class="rounded-lg text-sm">
                     @foreach (\App\Services\Ia\CamposDelProductoImportado::RELLENABLES_EN_LOTE as $campo)
                         <option value="{{ $campo }}">{{ $nombresDeCampos[$campo] }}</option>
                     @endforeach
@@ -501,12 +549,38 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
             </div>
             <div class="min-w-[14rem] flex-1">
                 <label for="revisar-catalogo-valorEnLote" class="mb-1 block text-sm font-medium">Valor</label>
-                <input id="revisar-catalogo-valorEnLote" type="text" wire:model="valorEnLote" placeholder="Por ejemplo: 8 Days"
-                    class="w-full rounded-lg text-sm">
+                {{-- En un campo de sí o no, una caja de texto invita a escribir
+                     "no" y eso se guardaría como sí. --}}
+                @if (\App\Services\Ia\CamposDelProductoImportado::esBooleano($campoEnLote))
+                    <select id="revisar-catalogo-valorEnLote" wire:model="valorEnLote" class="w-full rounded-lg text-sm">
+                        <option value="">Elige</option>
+                        <option value="si">Sí, hay medias tallas</option>
+                        <option value="no">No, solo enteros</option>
+                    </select>
+                @else
+                    <input id="revisar-catalogo-valorEnLote" type="text" wire:model="valorEnLote" placeholder="Por ejemplo: 8 Days"
+                        class="w-full rounded-lg text-sm">
+                @endif
                 @error('valorEnLote') <p class="mt-1 text-xs text-fp-danger">{{ $message }}</p> @enderror
             </div>
             <x-panel.boton type="submit" tamano="md" wire:loading.attr="disabled">Completar</x-panel.boton>
         </form>
+
+        {{-- TG-282: lo que la IA leyó sin dudar no necesita que alguien abra
+             y guarde el formulario para poder aprobarse. --}}
+        @if ($this->sinDudasPendientes > 0)
+            <div class="mt-4 border-t border-slate-100 pt-4">
+                <p class="mb-2 text-sm text-fp-text-muted">
+                    Hay <strong>{{ $this->sinDudasPendientes }}</strong> producto(s) en los que la IA no marcó
+                    ninguna duda. Puedes darlos por revisados de una vez; los que sí tienen algo dudoso
+                    seguirán esperando.
+                </p>
+                <x-panel.boton type="button" tamano="md" wire:click="darPorRevisadosLosLimpios"
+                    wire:loading.attr="disabled" data-dar-por-revisados>
+                    Dar por revisados los {{ $this->sinDudasPendientes }} sin dudas
+                </x-panel.boton>
+            </div>
+        @endif
     </x-panel.tarjeta>
 
     {{-- TG-240 (A10): los colores se resuelven UNA VEZ POR COLOR, no por producto. --}}

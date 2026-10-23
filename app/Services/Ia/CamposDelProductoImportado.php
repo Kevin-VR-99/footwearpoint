@@ -28,8 +28,28 @@ class CamposDelProductoImportado
         'categoria_id'    => 'Categoría',
     ];
 
-    /** Los que se pueden rellenar de golpe en todos los productos de un catálogo. */
-    public const RELLENABLES_EN_LOTE = ['marca', 'disponibilidad'];
+    /**
+     * Los que se pueden rellenar de golpe en todos los productos de un
+     * catálogo: los que un catálogo entero trae o no trae impresos.
+     *
+     * "medios_numeros" entró con el Impuls: ese catálogo no dice en ninguna
+     * página si hay medias tallas, así que la IA lo dejaba en null y lo
+     * marcaba dudoso en 23 de 26 productos. Es un dato del catálogo entero,
+     * no de cada zapato.
+     */
+    public const RELLENABLES_EN_LOTE = ['marca', 'disponibilidad', 'medios_numeros'];
+
+    /**
+     * Los que no son texto. Importa para dos cosas: cómo se pregunta en
+     * pantalla y qué cuenta como "vacío" al rellenar en lote, porque en un
+     * booleano false NO es vacío: es una respuesta.
+     */
+    public const BOOLEANOS = ['medios_numeros'];
+
+    public static function esBooleano(string $campo): bool
+    {
+        return in_array($campo, self::BOOLEANOS, true);
+    }
 
     /** @return array<int, string> */
     public static function todos(): array
