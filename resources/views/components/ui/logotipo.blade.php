@@ -17,11 +17,11 @@
         ->implode('') ?: '?';
 @endphp
 
-<span {{ $attributes->class(['group inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-fp-sidebar/10 hover:border-fp-primary/30 motion-reduce:transform-none', $tamano]) }} data-logotipo>
+<span {{ $attributes->class(['group fp-tarjeta-interactiva inline-flex shrink-0 items-center justify-center overflow-hidden', $tamano]) }} data-logotipo>
     @if (filled($url))
         <span class="flex h-full w-full items-center justify-center overflow-hidden">
             <img src="{{ $url }}" alt="Logo de {{ $nombre }}" loading="lazy" decoding="async" width="40" height="40"
-                 class="h-full w-full object-contain p-0.5 transition duration-300 group-hover:scale-105 motion-reduce:transform-none">
+                 class="h-full w-full object-contain p-0.5 transition duration-300 group-hover:-translate-y-0.5 group-hover:scale-110 motion-reduce:transform-none">
         </span>
     @else
         <span class="flex h-full w-full items-center justify-center bg-fp-primary/10 text-xs font-semibold text-fp-primary" data-logotipo-iniciales>
