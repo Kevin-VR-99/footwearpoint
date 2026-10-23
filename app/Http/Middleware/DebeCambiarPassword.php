@@ -26,6 +26,11 @@ class DebeCambiarPassword
     private const RUTAS_PERMITIDAS = [
         'api/auth/me',
         'api/auth/logout',
+        // La app pide aceptar los legales ANTES del cambio de contrasena;
+        // si se bloquea, el revendedor se queda atorado en esa pantalla.
+        'api/auth/aceptar-legales',
+        // Confirmar el correo no depende de la contrasena.
+        'api/auth/reenviar-verificacion',
         'api/perfil',
         'api/perfil/password',
     ];

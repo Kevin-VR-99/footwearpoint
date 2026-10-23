@@ -130,7 +130,12 @@ class CorreoRecuperacionTest extends TestCase
             ->set('password_confirmation', 'miClaveNueva123')
             ->call('resetPassword')
             ->assertHasNoErrors()
-            ->assertRedirect(route('login'));
+            ->assertNoRedirect()
+            ->assertSet('restablecida', true)
+            ->assertSee('Listo, se ha restablecido tu contraseña.')
+            ->assertSee('Ya puedes volver a iniciar sesión desde la app')
+            ->assertSee('Abrir la app')
+            ->assertSee('Descargar la app');
 
         // La vieja ya no sirve; la nueva si, desde la app.
         $this->postJson('/api/auth/login', ['email' => self::CORREO, 'password' => 'password'])
