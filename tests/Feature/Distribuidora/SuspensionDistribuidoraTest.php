@@ -150,12 +150,32 @@ class SuspensionDistribuidoraTest extends TestCase
         $this->assertSame('activa', $this->distribuidora()->estado);
     }
 
-    public function test_el_boton_suspender_pide_confirmacion(): void
+    public function test_el_boton_suspender_abre_un_modal_y_no_suspende_hasta_confirmar(): void
     {
+        Mail::fake();
+        $id = $this->distribuidora()->id;
         $this->actingAs($this->adminGeneral);
 
         Livewire::test('admin.distribuidoras-index')
-            ->assertSeeHtml('wire:confirm="Su personal, clientes mayoristas y clientes no podrán usar FootwearPoint hasta reactivarla.');
+            ->assertSee('Suspender')
+            ->assertDontSee('wire:confirm')
+            ->assertDontSee('hasta que la reactives')
+            ->call('pedirSuspension', $id)
+            ->assertSee('Suspender distribuidora')
+            ->assertSee('hasta que la reactives')
+            ->assertSee('La información se conserva')
+            ->call('cancelarSuspension')
+            ->assertDontSee('hasta que la reactives');
+
+        $this->assertSame('activa', $this->distribuidora()->estado);
+
+        Livewire::test('admin.distribuidoras-index')
+            ->call('pedirSuspension', $id)
+            ->call('suspender', $id)
+            ->assertSet('distribuidoraSuspensionId', null)
+            ->assertSet('mensaje', 'Distribuidora «Calzados Ramírez» suspendida.');
+
+        $this->assertSame('suspendida', $this->distribuidora()->estado);
     }
 
     public function test_solo_se_suspende_una_activa_y_solo_se_reactiva_una_suspendida(): void
