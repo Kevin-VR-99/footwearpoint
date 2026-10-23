@@ -15,7 +15,7 @@ use Livewire\Component;
 new class extends Component {
     public function getLineasProperty()
     {
-        return Linea::query()->with('campanas')->orderBy('nombre')->get();
+        return Linea::query()->with('campanas.temporada')->orderBy('nombre')->get();
     }
 
     /** Las que esta distribuidora activó, por id de línea. */
@@ -65,7 +65,7 @@ new class extends Component {
                         <td class="px-6 py-3.5 text-slate-600">
                             @forelse ($linea->campanas as $campana)
                                 <span class="mr-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-                                    {{ $campana->nombre }}{{ $campana->estado === 'activa' ? ' · activa' : '' }}
+                                    {{ $campana->nombre }}{{ $campana->estadoPorFecha() === 'activa' ? ' · actual' : '' }}
                                 </span>
                             @empty
                                 —

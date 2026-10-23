@@ -58,7 +58,7 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
         $enTemporadaActiva = ProductoCampana::query()
             ->where('producto_id', $this->productoId)
             ->where('activo', true)
-            ->whereHas('campana', fn ($q) => $q->where('estado', 'activa'))
+            ->whereHas('campana', fn ($q) => $q->vigentes())
             ->with('campana.linea')
             ->get();
 

@@ -26,16 +26,16 @@ class Linea extends Model
         'activa' => 'boolean',
     ];
 
-    /** Cada línea tiene sus propias temporadas (D1). */
+    /** Sus publicaciones, una por temporada global. */
     public function campanas()
     {
         return $this->hasMany(Campana::class, 'linea_id');
     }
 
-    /** La temporada activa de la línea; solo puede haber una (D7). */
+    /** La campaña de la línea en la temporada vigente (por fecha); a lo más una. */
     public function campanaActiva()
     {
-        return $this->hasOne(Campana::class, 'linea_id')->where('estado', 'activa');
+        return $this->hasOne(Campana::class, 'linea_id')->vigentes();
     }
 
     public function marcas()

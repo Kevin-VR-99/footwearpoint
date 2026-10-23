@@ -78,6 +78,8 @@ class ReporteController extends Controller
         abort_unless($permisos->puede($request->user(), PermisoModuloService::REPORTES_FINANCIEROS), 403, 'No tienes permiso para ver reportes financieros.');
 
         $datos = $request->validate([
+            'temporada_id' => ['nullable', 'integer', 'min:1'],
+            // Compatibilidad: antes se filtraba por la temporada de una línea.
             'campana_id' => ['nullable', 'integer', 'min:1'],
             'marca_id' => ['nullable', 'integer', 'min:1'],
             'desde' => ['nullable', 'date_format:Y-m-d'],
@@ -92,7 +94,7 @@ class ReporteController extends Controller
         $entero = fn (string $k) => isset($datos[$k]) ? (int) $datos[$k] : null;
 
         return response()->json([
-            'data' => $accion->ejecutar($entero('campana_id'), $entero('marca_id'), $datos['desde'] ?? null, $datos['hasta'] ?? null, $entero('ciclo_id')),
+            'data' => $accion->ejecutar($entero('temporada_id'), $entero('marca_id'), $datos['desde'] ?? null, $datos['hasta'] ?? null, $entero('ciclo_id'), $entero('campana_id')),
         ]);
     }
 }

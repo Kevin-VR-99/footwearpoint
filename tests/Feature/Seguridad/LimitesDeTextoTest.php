@@ -42,14 +42,15 @@ class LimitesDeTextoTest extends TestCase
             ->assertJsonPath('errors.descripcion.0', 'La descripción no puede tener más de 2000 caracteres.');
     }
 
-    public function test_el_estado_de_la_temporada_solo_acepta_valores_del_enum(): void
+    public function test_el_estado_de_la_temporada_no_se_puede_cambiar_por_api(): void
     {
         $this->comoAdminGeneral();
         $campana = Campana::withoutGlobalScopes()->orderBy('id')->firstOrFail();
 
+        // La temporada vigente se decide por fecha; el estado ya no se edita.
         $this->patchJson("/api/campanas/{$campana->id}", ['estado' => 'inventado'])
-            ->assertStatus(422)
-            ->assertJsonPath('errors.estado.0', 'El estado de la temporada no es válido.');
+            ->assertMethodNotAllowed();
+        $this->assertDatabaseHas('campanas', ['id' => $campana->id, 'estado' => $campana->estado]);
     }
 
     public function test_una_contrasena_enorme_se_rechaza_sin_llegar_a_bcrypt(): void

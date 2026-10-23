@@ -153,7 +153,7 @@ class CatalogoMaestroTest extends TestCase
     }
 
     // ------------------------------------------------------------------
-    // La temporada pertenece a una línea (D1) y solo una está activa (D7)
+    // La publicación de una línea pertenece a una temporada global
     // ------------------------------------------------------------------
 
     public function test_la_temporada_pertenece_a_una_linea(): void
@@ -165,25 +165,19 @@ class CatalogoMaestroTest extends TestCase
         $this->assertSame($campana->id, $campana->linea->campanaActiva->id);
     }
 
-    public function test_una_linea_no_puede_tener_dos_temporadas_activas(): void
+    public function test_una_linea_tiene_una_sola_publicacion_por_temporada(): void
     {
-        $linea = Campana::firstOrFail()->linea;
+        $campana = Campana::firstOrFail();
 
-        try {
-            Campana::create([
-                'linea_id' => $linea->id,
-                'nombre' => 'Otra temporada',
-                'estado' => 'activa',
-            ]);
-            $this->fail('Se activaron dos temporadas en la misma línea.');
-        } catch (ValidationException $e) {
-            $this->assertSame(
-                'Esta línea ya tiene una temporada activa. Cierra la anterior antes de activar otra.',
-                $e->errors()['estado'][0]
-            );
-        }
-
-        $this->assertSame(1, Campana::where('linea_id', $linea->id)->where('estado', 'activa')->count());
+        $this->expectException(QueryException::class);
+        DB::table('campanas')->insert([
+            'linea_id' => $campana->linea_id,
+            'temporada_id' => $campana->temporada_id,
+            'nombre' => 'Duplicada',
+            'estado' => 'borrador',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     public function test_otra_linea_si_puede_tener_su_propia_temporada_activa(): void
@@ -198,22 +192,6 @@ class CatalogoMaestroTest extends TestCase
 
         $this->assertSame('activa', $campana->fresh()->estado);
     }
-
-    /** Ni cambiando el estado por fuera del modelo: la base también lo impide. */
-    public function test_la_regla_tambien_la_cuida_la_base_de_datos(): void
-    {
-        $activa = Campana::where('estado', 'activa')->firstOrFail();
-
-        $borrador = Campana::create([
-            'linea_id' => $activa->linea_id,
-            'nombre' => 'Temporada en borrador',
-            'estado' => 'borrador',
-        ]);
-
-        $this->expectException(QueryException::class);
-        DB::table('campanas')->where('id', $borrador->id)->update(['estado' => 'activa']);
-    }
-
     // ------------------------------------------------------------------
     // Precios del catálogo
     // ------------------------------------------------------------------

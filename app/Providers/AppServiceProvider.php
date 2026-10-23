@@ -92,7 +92,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Caché de catálogos por distribuidora: se limpia al guardar o borrar.
         foreach ([\App\Models\Talla::class, \App\Models\Color::class, \App\Models\Marca::class, \App\Models\Linea::class,
-            \App\Models\Campana::class, \App\Models\DistribuidoraLinea::class, \App\Models\CicloCompra::class] as $modelo) {
+            \App\Models\Campana::class, \App\Models\Temporada::class, \App\Models\DistribuidoraLinea::class, \App\Models\CicloCompra::class] as $modelo) {
             $modelo::observe(\App\Observers\InvalidarCatalogoCache::class);
         }
 

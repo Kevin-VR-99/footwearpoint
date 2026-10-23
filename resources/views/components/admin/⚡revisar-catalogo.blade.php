@@ -6,6 +6,7 @@ use App\Services\Ia\CambiarEstadoProductoImportadoAction;
 use App\Services\Ia\CamposDelProductoImportado;
 use App\Services\Ia\CompletarCampoEnLoteAction;
 use App\Models\Campana;
+use App\Services\Catalogo\CampanaDeTemporada;
 use App\Models\CategoriaProducto;
 use App\Models\Color;
 use App\Models\Marca;
@@ -88,7 +89,9 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         // Que no exista responde 404, igual que en el resto del sistema.
         $fila = ImportacionCatalogo::findOrFail($importacion);
 
-        $this->campanaId = $fila->campana_id;
+        // Por omisión, la temporada actual de la línea del catálogo.
+        $this->campanaId = $fila->campana_id
+            ?? $this->temporadas->first(fn (Campana $c) => $c->temporada?->esActual())?->id;
 
         foreach (app(ColoresDelCatalogo::class)->distintos($fila) as $comercial => $info) {
             $this->coloresBase[$comercial] = (string) ($info['asignado'] ?? $info['sugerido'] ?? '');
@@ -337,10 +340,21 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         return Marca::where('activa', true)->orderBy('nombre')->get();
     }
 
-    /** Las temporadas de la linea del catalogo que se importo. */
+    /**
+     * La temporada actual y la siguiente (globales), ya como la campaña de la
+     * línea del catálogo; si la importación venía de antes con otra, también.
+     */
     public function getTemporadasProperty()
     {
-        return Campana::where('linea_id', $this->importacion->linea_id)->orderByDesc('id')->get();
+        $servicio = app(CampanaDeTemporada::class);
+        $lineaId = (int) $this->importacion->linea_id;
+        $campanas = $servicio->elegibles()->map(fn ($t) => $servicio->paraLinea($lineaId, $t)->setRelation('temporada', $t));
+
+        if ($this->importacion->campana_id && ! $campanas->contains('id', $this->importacion->campana_id)) {
+            $campanas->push(Campana::with('temporada')->find($this->importacion->campana_id));
+        }
+
+        return $campanas->filter()->values();
     }
 
     public function getListosParaAprobarProperty(): int
@@ -366,7 +380,14 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
     public function aprobar(AprobarProductosImportadosAction $accion): void
     {
         $this->validate([
-            'campanaId'           => ['required', 'integer', 'exists:campanas,id'],
+            'campanaId'           => ['required', 'integer', function ($atributo, $valor, $falla) {
+                $campana = Campana::with('temporada')->find($valor);
+                if (! $campana || (int) $campana->linea_id !== (int) $this->importacion->linea_id) {
+                    $falla('Esa temporada no es de la línea del catálogo.');
+                } elseif (! app(CampanaDeTemporada::class)->esElegible($campana->temporada_id)) {
+                    $falla('Solo se puede pasar a la temporada actual o a la siguiente.');
+                }
+            }],
             'categoriaPorOmision' => ['required', 'integer', 'exists:categorias_producto,id'],
             'marcaPorOmision'     => ['required', 'integer', 'exists:marcas,id'],
         ], [
@@ -539,7 +560,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                 <select id="revisar-catalogo-campanaId" wire:model="campanaId" class="w-full rounded-lg text-sm">
                     <option value="">Elige la temporada</option>
                     @foreach ($this->temporadas as $temporada)
-                        <option value="{{ $temporada->id }}">{{ $temporada->nombre }}</option>
+                        <option value="{{ $temporada->id }}">{{ $temporada->temporada?->nombre ?? $temporada->nombre }}{{ $temporada->temporada?->esActual() ? ' (actual)' : ($temporada->temporada?->esFutura() ? ' (próxima, oculta hasta el '.$temporada->temporada->fecha_inicio->format('d/m/Y').')' : '') }}</option>
                     @endforeach
                 </select>
                 @error('campanaId') <p class="mt-1 text-xs text-fp-danger">{{ $message }}</p> @enderror

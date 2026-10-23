@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * TG-253 (R11, E14-04) — Productos más solicitados y marcas con más demanda,
- * por temporada (campaña en el código), para orientar las compras a fábrica.
+ * por temporada global (Primavera-Verano / Otoño-Invierno, iguales para todas
+ * las líneas), para orientar las compras a fábrica.
  *
  * Reglas (decididas por el PO):
  *   - Solo pedidos (no ventas de mostrador): la demanda es lo que se pidió.
@@ -26,14 +27,21 @@ class DemandaPorTemporadaMarcaAction
 
     public const TOP_PRODUCTOS = 20;
 
+    /**
+     * @param  ?int  $temporadaId  temporada global (temporadas.id)
+     * @param  ?int  $campanaId    solo por compatibilidad con la API anterior
+     *                             (campana_id): filtra una línea en una temporada
+     */
     public function ejecutar(
-        ?int $campanaId = null,
+        ?int $temporadaId = null,
         ?int $marcaId = null,
         ?string $desde = null,
         ?string $hasta = null,
         ?int $cicloId = null,
+        ?int $campanaId = null,
     ): array {
-        $base = fn () => $this->base($campanaId, $marcaId, $desde, $hasta, $cicloId);
+        $base = fn () => $this->base($temporadaId, $marcaId, $desde, $hasta, $cicloId)
+            ->when($campanaId, fn ($q) => $q->where('campanas.id', $campanaId));
 
         $porMarca = $base()
             ->selectRaw('marcas.id as id, marcas.nombre as nombre, SUM(pedido_detalle.cantidad) as piezas, SUM(pedido_detalle.subtotal) as monto, COUNT(DISTINCT pedido_detalle.pedido_id) as pedidos, COUNT(DISTINCT productos.id) as modelos')
@@ -50,8 +58,8 @@ class DemandaPorTemporadaMarcaAction
             ])->all();
 
         $productos = $base()
-            ->selectRaw('producto_campana.id as producto_campana_id, productos.nombre as producto, productos.modelo as modelo, marcas.nombre as marca, campanas.nombre as temporada, SUM(pedido_detalle.cantidad) as piezas, SUM(pedido_detalle.subtotal) as monto, COUNT(DISTINCT pedido_detalle.pedido_id) as pedidos')
-            ->groupBy('producto_campana.id', 'productos.nombre', 'productos.modelo', 'marcas.nombre', 'campanas.nombre')
+            ->selectRaw('producto_campana.id as producto_campana_id, productos.nombre as producto, productos.modelo as modelo, marcas.nombre as marca, temporadas.nombre as temporada, SUM(pedido_detalle.cantidad) as piezas, SUM(pedido_detalle.subtotal) as monto, COUNT(DISTINCT pedido_detalle.pedido_id) as pedidos')
+            ->groupBy('producto_campana.id', 'productos.nombre', 'productos.modelo', 'marcas.nombre', 'temporadas.nombre')
             ->orderByDesc('piezas')->orderBy('productos.nombre')
             ->limit(self::TOP_PRODUCTOS)
             ->toBase()->get()
@@ -67,14 +75,13 @@ class DemandaPorTemporadaMarcaAction
             ])->all();
 
         $porTemporada = $base()
-            ->selectRaw('campanas.id as id, campanas.nombre as nombre, lineas.nombre as linea, SUM(pedido_detalle.cantidad) as piezas, SUM(pedido_detalle.subtotal) as monto, COUNT(DISTINCT pedido_detalle.pedido_id) as pedidos')
-            ->groupBy('campanas.id', 'campanas.nombre', 'lineas.nombre')
-            ->orderByDesc('piezas')->orderBy('campanas.nombre')
+            ->selectRaw('temporadas.id as id, temporadas.nombre as nombre, SUM(pedido_detalle.cantidad) as piezas, SUM(pedido_detalle.subtotal) as monto, COUNT(DISTINCT pedido_detalle.pedido_id) as pedidos')
+            ->groupBy('temporadas.id', 'temporadas.nombre')
+            ->orderByDesc('piezas')->orderBy('temporadas.nombre')
             ->toBase()->get()
             ->map(fn ($r) => [
                 'id' => (int) $r->id,
                 'nombre' => (string) $r->nombre,
-                'linea' => (string) $r->linea,
                 'piezas' => (int) $r->piezas,
                 'pedidos' => (int) $r->pedidos,
                 'monto' => round((float) $r->monto, 2),
@@ -85,7 +92,7 @@ class DemandaPorTemporadaMarcaAction
             ->toBase()->first();
 
         return [
-            'filtros' => ['campana_id' => $campanaId, 'marca_id' => $marcaId, 'desde' => $desde, 'hasta' => $hasta, 'ciclo_id' => $cicloId],
+            'filtros' => ['temporada_id' => $temporadaId, 'campana_id' => $campanaId, 'marca_id' => $marcaId, 'desde' => $desde, 'hasta' => $hasta, 'ciclo_id' => $cicloId],
             'por_marca' => $porMarca,
             'productos' => $productos,
             'por_temporada' => $porTemporada,
@@ -97,7 +104,7 @@ class DemandaPorTemporadaMarcaAction
         ];
     }
 
-    /** Temporadas para el filtro: las de líneas que la distribuidora tiene o tuvo. */
+    /** Temporadas globales para el filtro: las que tienen productos de líneas que la distribuidora tiene o tuvo. */
     public function temporadasParaFiltro()
     {
         // Caché por distribuidora (se invalida al cambiar temporadas o líneas).
@@ -109,7 +116,7 @@ class DemandaPorTemporadaMarcaAction
         return app(\App\Support\Cache\CatalogoCache::class)->marcas();
     }
 
-    private function base(?int $campanaId, ?int $marcaId, ?string $desde, ?string $hasta, ?int $cicloId): Builder
+    private function base(?int $temporadaId, ?int $marcaId, ?string $desde, ?string $hasta, ?int $cicloId): Builder
     {
         return PedidoDetalle::query()
             ->join('pedidos', function ($j) {
@@ -118,7 +125,7 @@ class DemandaPorTemporadaMarcaAction
             })
             ->join('producto_campana', 'producto_campana.id', '=', 'pedido_detalle.producto_campana_id')
             ->join('campanas', 'campanas.id', '=', 'producto_campana.campana_id')
-            ->join('lineas', 'lineas.id', '=', 'campanas.linea_id')
+            ->join('temporadas', 'temporadas.id', '=', 'campanas.temporada_id')
             ->join('productos', 'productos.id', '=', 'producto_campana.producto_id')
             ->join('marcas', 'marcas.id', '=', 'productos.marca_id')
             ->whereNotIn('pedidos.estado', self::ESTADOS_EXCLUIDOS)
@@ -126,7 +133,7 @@ class DemandaPorTemporadaMarcaAction
             ->when($desde, fn ($q) => $q->whereDate('pedidos.fecha_colocacion', '>=', $desde))
             ->when($hasta, fn ($q) => $q->whereDate('pedidos.fecha_colocacion', '<=', $hasta))
             ->when($cicloId, fn ($q) => $q->where('pedidos.ciclo_compra_id', $cicloId))
-            ->when($campanaId, fn ($q) => $q->where('campanas.id', $campanaId))
+            ->when($temporadaId, fn ($q) => $q->where('campanas.temporada_id', $temporadaId))
             ->when($marcaId, fn ($q) => $q->where('marcas.id', $marcaId));
     }
 }

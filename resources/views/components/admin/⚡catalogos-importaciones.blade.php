@@ -1,9 +1,10 @@
 <?php
 
 use App\Jobs\ProcesarCatalogoConIa;
-use App\Models\Campana;
 use App\Models\ImportacionCatalogo;
 use App\Models\Linea;
+use App\Models\Temporada;
+use App\Services\Catalogo\CampanaDeTemporada;
 use App\Services\Catalogo\SubirCatalogoParaImportarAction;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -35,7 +36,11 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
 
     public $archivo = null;
     public ?int $linea_id = null;
-    public ?int $campana_id = null;
+    /**
+     * Temporada global a la que entra el catálogo: la actual (por omisión) o
+     * la próxima, que se puede preparar antes y queda oculta hasta su fecha.
+     */
+    public ?int $temporada_id = null;
 
     public string $mensaje = '';
     public bool $esError = false;
@@ -61,6 +66,8 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         if (! Auth::user()->hasRole('admin_general')) {
             abort(403, 'Solo admin general.');
         }
+
+        $this->temporada_id = Temporada::actual()->id;
     }
 
     public function getLineasProperty()
@@ -68,14 +75,10 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         return Linea::orderBy('nombre')->get();
     }
 
-    /** Las temporadas son de una línea, así que la lista depende de cuál se eligió. */
+    /** Solo la temporada actual y la siguiente: son las mismas para todas las líneas. */
     public function getTemporadasProperty()
     {
-        if (! $this->linea_id) {
-            return collect();
-        }
-
-        return Campana::where('linea_id', $this->linea_id)->orderByDesc('id')->get();
+        return collect(app(CampanaDeTemporada::class)->elegibles());
     }
 
     public function getImportacionesProperty()
@@ -94,12 +97,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
             ->get();
     }
 
-    /** Al cambiar de línea, la temporada elegida ya no corresponde. */
-    public function updatedLineaId(): void
-    {
-        $this->campana_id = null;
-    }
-
     protected function rules(): array
     {
         $extensiones = implode(',', SubirCatalogoParaImportarAction::EXTENSIONES);
@@ -107,7 +104,11 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
         return [
             'archivo'    => ['required', 'file', 'mimes:' . $extensiones, 'max:' . SubirCatalogoParaImportarAction::MAXIMO_KB],
             'linea_id'   => ['required', 'integer', 'exists:lineas,id'],
-            'campana_id' => ['nullable', 'integer', 'exists:campanas,id'],
+            'temporada_id' => ['required', 'integer', function ($atributo, $valor, $falla) {
+                if (! app(CampanaDeTemporada::class)->esElegible((int) $valor)) {
+                    $falla('Solo se puede importar a la temporada actual o a la siguiente.');
+                }
+            }],
         ];
     }
 
@@ -119,7 +120,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
             'archivo.max'       => 'El archivo pesa más de 250 MB. Si el catálogo es más grande, divídelo.',
             'linea_id.required' => 'Elige a qué línea pertenece el catálogo.',
             'linea_id.exists'   => 'Esa línea no existe.',
-            'campana_id.exists' => 'Esa temporada no existe.',
+            'temporada_id.required' => 'Elige la temporada.',
         ];
     }
 
@@ -127,9 +128,14 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
     {
         $this->validate();
 
-        $importacion = $accion->ejecutar($this->archivo, (int) $this->linea_id, $this->campana_id);
+        // La publicación de la línea en esa temporada se crea sola si aún no existe.
+        $temporada = Temporada::findOrFail($this->temporada_id);
+        $campana = app(CampanaDeTemporada::class)->paraLinea((int) $this->linea_id, $temporada);
 
-        $this->reset(['archivo', 'campana_id']);
+        $importacion = $accion->ejecutar($this->archivo, (int) $this->linea_id, $campana->id);
+
+        $this->reset(['archivo']);
+        $this->temporada_id = Temporada::actual()->id;
 
         $this->mensaje = 'Catálogo cargado (#' . $importacion->id . '). Ya se puede procesar con la IA.';
         $this->esError = false;
@@ -445,16 +451,15 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
             </div>
 
             <div class="fp-campo">
-                <label for="catalogos-importaciones-campana-id" class="block text-sm font-medium text-slate-700 mb-1">
-                    Temporada <span class="text-slate-500 font-normal">(opcional)</span>
+                <label for="catalogos-importaciones-temporada-id" class="block text-sm font-medium text-slate-700 mb-1">
+                    Temporada
                 </label>
-                <select id="catalogos-importaciones-campana-id" wire:model="campana_id" class="w-full rounded-lg text-sm" @disabled(! $linea_id)>
-                    <option value="">Se decide al aprobar</option>
+                <select id="catalogos-importaciones-temporada-id" wire:model="temporada_id" class="w-full rounded-lg text-sm">
                     @foreach ($this->temporadas as $temporada)
-                        <option value="{{ $temporada->id }}">{{ $temporada->nombre }}</option>
+                        <option value="{{ $temporada->id }}">{{ $temporada->nombre }} ({{ $temporada->esActual() ? 'actual' : 'próxima, queda oculta hasta el '.$temporada->fecha_inicio->format('d/m/Y') }})</option>
                     @endforeach
                 </select>
-                @error('campana_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+                @error('temporada_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             </div>
         </div>
 

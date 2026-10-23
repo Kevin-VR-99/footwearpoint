@@ -8,7 +8,8 @@ use App\Models\Producto;
 use App\Models\ProductoCampana;
 use App\Models\ProductoImagen;
 use App\Models\Color;
-use App\Services\Catalogo\GestionarCampanaAction;
+use App\Models\Temporada;
+use App\Services\Catalogo\CampanaDeTemporada;
 use App\Services\Catalogo\GestionarColorAction;
 use App\Services\Catalogo\GestionarImagenProductoCampanaAction;
 use App\Services\Catalogo\ImagenDeProducto;
@@ -44,10 +45,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
     public string $marca_nombre = '';
     public string $marca_descripcion = '';
-
-    public string $temporada_linea_id = '';
-    public string $temporada_nombre = '';
-    public string $temporada_estado = 'borrador';
 
     #[Locked]
     public string $porEliminarTipo = '';
@@ -101,14 +98,15 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     public string $errorMsg = '';
 
     /**
-     * Qué alta está abierta en modal ('linea', 'marca', 'temporada',
-     * 'producto', 'color' o ''). Crear y editar se hacen en la misma
+     * Qué alta está abierta en modal ('linea', 'marca', 'producto',
+     * 'color' o ''). Las temporadas son globales y se calculan por fecha:
+     * no se crean ni se editan aquí. Crear y editar se hacen en la misma
      * pantalla: antes el formulario de edición salía arriba de todo y había
      * que subir hasta él, lo que se sentía como ir a otra página.
      */
     public string $creando = '';
 
-    private const TIPOS = ['linea', 'marca', 'temporada', 'producto', 'color'];
+    private const TIPOS = ['linea', 'marca', 'producto', 'color'];
 
     public function mount(): void
     {
@@ -128,7 +126,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         return match ($tipo) {
             'linea' => Linea::findOrFail($id),
             'marca' => Marca::findOrFail($id),
-            'temporada' => Campana::findOrFail($id),
             'producto' => Producto::findOrFail($id),
             'color' => Color::findOrFail($id),
         };
@@ -156,7 +153,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         $this->editar_marca_id = $tipo === 'producto' ? (string) $registro->marca_id : '';
         $this->editar_categoria_id = $tipo === 'producto' ? (string) $registro->categoria_id : '';
         $this->editar_modelo = $tipo === 'producto' ? (string) $registro->modelo : '';
-        $this->editar_estado = $tipo === 'temporada' ? (string) $registro->estado : '';
         $this->editar_hex = $tipo === 'color' ? (string) $registro->codigo_hex : '';
     }
 
@@ -218,11 +214,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 'editar_nombre' => ['required', 'string', 'max:150', Rule::unique('marcas', 'nombre')->ignore($id)],
                 'editar_descripcion' => ['nullable', 'string', 'max:500'],
             ],
-            'temporada' => [
-                'editar_nombre' => ['required', 'string', 'max:150'],
-                'editar_descripcion' => ['nullable', 'string', 'max:500'],
-                'editar_estado' => ['required', Rule::in(GestionarCampanaAction::ORDEN_ESTADOS)],
-            ],
             'producto' => [
                 'editar_nombre' => ['required', 'string', 'max:200'],
                 'editar_descripcion' => ['nullable', 'string', 'max:2000'],
@@ -247,7 +238,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             match ($tipo) {
                 'linea' => app(GestionarLineaAction::class)->actualizar($registro, $comunes),
                 'marca' => app(GestionarMarcaAction::class)->actualizar($registro, $comunes),
-                'temporada' => app(GestionarCampanaAction::class)->actualizar($registro, $comunes + ['estado' => $datos['editar_estado']]),
                 'producto' => app(GestionarProductoAction::class)->actualizar($registro, $comunes + [
                     'marca_id' => (int) $datos['editar_marca_id'],
                     'categoria_id' => (int) $datos['editar_categoria_id'],
@@ -308,10 +298,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 'Eliminar marca',
                 '¿Eliminar la marca «'.$registro->nombre.'»? Esta acción no se puede deshacer.',
             ],
-            'temporada' => [
-                'Eliminar temporada',
-                '¿Eliminar la temporada «'.$registro->nombre.'»? Esta acción no se puede deshacer.',
-            ],
             'producto' => [
                 'Eliminar producto',
                 '¿Eliminar el producto «'.$registro->nombre.'» de todo el catálogo, con sus tallas y publicaciones? Esta acción no se puede deshacer.',
@@ -360,7 +346,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 'linea' => app(GestionarLineaAction::class)->eliminar($registro),
                 'marca' => app(GestionarMarcaAction::class)->eliminar($registro),
                 'color' => app(GestionarColorAction::class)->eliminar($registro),
-                'temporada' => app(GestionarCampanaAction::class)->eliminar($registro),
                 'producto' => app(GestionarProductoAction::class)->eliminar($registro),
             };
         } catch (\Throwable $e) {
@@ -373,7 +358,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             $this->cancelarEdicion();
         }
 
-        $nombres = ['linea' => 'Línea eliminada.', 'marca' => 'Marca eliminada.', 'temporada' => 'Temporada eliminada.', 'producto' => 'Producto eliminado.', 'color' => 'Color eliminado de la paleta.'];
+        $nombres = ['linea' => 'Línea eliminada.', 'marca' => 'Marca eliminada.', 'producto' => 'Producto eliminado.', 'color' => 'Color eliminado de la paleta.'];
         $this->dispatch('guardado', mensaje: $nombres[$tipo]);
     }
 
@@ -421,31 +406,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         $this->reset('marca_nombre', 'marca_descripcion');
         $this->cerrarCrear();
         $this->dispatch('guardado', mensaje: 'Marca creada.');
-    }
-
-    public function guardarTemporada(): void
-    {
-        $this->autorizar();
-
-        $datos = $this->validate([
-            'temporada_linea_id' => ['required', 'exists:lineas,id'],
-            'temporada_nombre' => ['required', 'string', 'max:150'],
-            'temporada_estado' => ['required', 'in:borrador,activa,cerrada'],
-        ], [
-            'temporada_linea_id.required' => 'Elige la línea.',
-            'temporada_nombre.required' => 'El nombre es obligatorio.',
-        ]);
-
-        Campana::create([
-            'linea_id' => $datos['temporada_linea_id'],
-            'nombre' => $datos['temporada_nombre'],
-            'estado' => $datos['temporada_estado'],
-        ]);
-
-        $this->reset('temporada_linea_id', 'temporada_nombre');
-        $this->temporada_estado = 'borrador';
-        $this->cerrarCrear();
-        $this->dispatch('guardado', mensaje: 'Temporada creada.');
     }
 
     public function guardarProducto(): void
@@ -564,17 +524,31 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             || str_contains(mb_strtolower($m->nombre), mb_strtolower(trim($this->buscarMarcaOpcion))))->values();
     }
 
+    /**
+     * Temporadas globales (solo lectura): siempre la actual y la próxima,
+     * más las anteriores que tuvieron catálogo; la más reciente primero, con
+     * las líneas publicadas y cuántos productos tiene cada una.
+     */
+    public function getTemporadasGlobalesProperty()
+    {
+        [$actual, $siguiente] = app(CampanaDeTemporada::class)->elegibles();
+
+        return Temporada::query()
+            ->where(fn ($q) => $q->whereIn('id', [$actual->id, $siguiente->id])->orWhereHas('campanas'))
+            ->with(['campanas' => fn ($c) => $c->with('linea')->withCount('productosCampana')])
+            ->orderByDesc('fecha_inicio')
+            ->get();
+    }
+
     public function getTemporadasFiltradasProperty()
     {
-        if (trim($this->buscarTemporada) === '') {
-            return $this->temporadas;
+        $texto = mb_strtolower(trim($this->buscarTemporada));
+        if ($texto === '') {
+            return $this->temporadasGlobales;
         }
-        $t = self::patron($this->buscarTemporada);
 
-        return Campana::query()->with('linea')->withCount('productosCampana')
-            ->where(fn ($q) => $q->where('nombre', 'like', $t)
-                ->orWhereHas('linea', fn ($l) => $l->where('nombre', 'like', $t)))
-            ->orderBy('nombre')->get();
+        return $this->temporadasGlobales->filter(fn (Temporada $t) => str_contains(mb_strtolower($t->nombre), $texto)
+            || $t->campanas->contains(fn ($c) => str_contains(mb_strtolower((string) $c->linea?->nombre), $texto)))->values();
     }
 
     /** Busca en todo el catálogo (no solo en las últimas 50) por nombre, modelo, marca, código o línea. */
@@ -778,7 +752,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             icono="M4 6h16M4 12h16M4 18h10" />
         <x-panel.metrica titulo="Marcas" :valor="$this->marcas->count()" tono="exito" :detalle="$this->marcas->where('activa', true)->count().' activas'"
             icono="M7 7h.01M7 3h5l9 9-7 7-9-9V3z" />
-        <x-panel.metrica titulo="Temporadas" :valor="$this->temporadas->count()" tono="aviso" :detalle="$this->temporadas->where('estado', 'activa')->count().' activas'"
+        <x-panel.metrica titulo="Temporadas" :valor="$this->temporadasGlobales->count()" tono="aviso" :detalle="'Actual: '.Temporada::actual()->nombre"
             icono="M8 7V3m8 4V3M4 11h16M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z" />
         <x-panel.metrica titulo="Productos recientes" :valor="$this->productos->count()" tono="neutral" detalle="Últimas 50 publicaciones"
             icono="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -798,7 +772,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
     @if ($editando_tipo !== '')
         @php
-            $titulos = ['linea' => 'Editar línea', 'marca' => 'Editar marca', 'temporada' => 'Editar temporada', 'producto' => 'Editar producto', 'color' => 'Editar color'];
+            $titulos = ['linea' => 'Editar línea', 'marca' => 'Editar marca', 'producto' => 'Editar producto', 'color' => 'Editar color'];
         @endphp
         <x-panel.modal :titulo="$titulos[$editando_tipo] ?? 'Editar'" cerrar="cancelarEdicion" formulario="guardarEdicion" data-edicion-catalogo>
             <div class="grid grid-cols-1 gap-3">
@@ -829,15 +803,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                     @endforeach
                 </select>
                 @error('editar_categoria_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            @endif
-            @if ($editando_tipo === 'temporada')
-                <select wire:model="editar_estado" class="rounded-lg text-sm">
-                    @foreach (\App\Services\Catalogo\GestionarCampanaAction::ORDEN_ESTADOS as $estado)
-                        <option value="{{ $estado }}">{{ ucfirst(str_replace('_', ' ', $estado)) }}</option>
-                    @endforeach
-                </select>
-                <span class="text-xs text-slate-500">El estado solo avanza un paso a la vez.</span>
-                @error('editar_estado') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             @endif
             <input type="text" wire:model="editar_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
             @error('editar_descripcion') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
@@ -948,21 +913,18 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             </tbody>
         </table></div></div>
     @elseif ($pestana === 'temporadas')
-        <button type="button" wire:click="abrirCrear('temporada')" class="fp-btn fp-btn-primario w-fit" aria-haspopup="dialog">Crear temporada</button>
+        <p class="text-sm text-slate-600">Hay dos temporadas por año, iguales para todas las líneas: Primavera-Verano (1 de enero al 30 de junio) y Otoño-Invierno (1 de julio al 31 de diciembre). Cambian solas por fecha; solo se ve el catálogo de la temporada actual. El de la próxima se puede importar antes y queda oculto hasta que empiece.</p>
         <x-ui.buscador wire:model.live.debounce.300ms="buscarTemporada" placeholder="Buscar temporada o línea…" etiqueta="Buscar temporadas" class="w-full sm:w-80" data-buscador-catalogo="buscarTemporada" />
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
-            <thead><tr><th class="px-4 py-3 font-semibold">Temporada</th><th class="px-4 py-3 font-semibold">Línea</th><th class="px-4 py-3 font-semibold">Productos</th><th class="px-4 py-3 font-semibold">Estado</th><th class="px-4 py-3 font-semibold">Acciones</th></tr></thead>
+            <thead><tr><th class="px-4 py-3 font-semibold">Temporada</th><th class="px-4 py-3 font-semibold">Vigencia</th><th class="px-4 py-3 font-semibold">Líneas</th><th class="px-4 py-3 font-semibold">Productos</th><th class="px-4 py-3 font-semibold">Estado</th></tr></thead>
             <tbody>
                 @forelse ($this->temporadasFiltradas as $temporada)
-                    <tr class="border-t border-slate-100">
+                    <tr class="border-t border-slate-100" data-temporada-global="{{ $temporada->vigencia() }}">
                         <td class="px-4 py-3">{{ $temporada->nombre }}</td>
-                        <td class="px-4 py-3">{{ $temporada->linea?->nombre }}</td>
-                        <td class="px-4 py-3">{{ $temporada->productos_campana_count }}</td>
-                        <td class="px-4 py-3"><x-ui.insignia-estado :estado="$temporada->estado" /></td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            <button type="button" wire:click="editar('temporada', {{ $temporada->id }})" class="fp-accion fp-accion-primaria">Editar</button>
-                            <button type="button" wire:click="pedirEliminar('temporada', {{ $temporada->id }})" class="fp-accion fp-accion-peligro">Eliminar</button>
-                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap">{{ $temporada->fecha_inicio->format('d/m/Y') }} – {{ $temporada->fecha_fin->format('d/m/Y') }}</td>
+                        <td class="px-4 py-3">{{ $temporada->campanas->map(fn ($c) => $c->linea?->nombre)->filter()->sort()->join(', ') ?: '—' }}</td>
+                        <td class="px-4 py-3">{{ $temporada->campanas->sum('productos_campana_count') }}</td>
+                        <td class="px-4 py-3">{{ $temporada->etiquetaVigencia() }}</td>
                     </tr>
                 @empty
                     <x-panel.vacio colspan="5" :mensaje="trim($buscarTemporada) !== '' ? 'Sin coincidencias.' : 'Aún no hay temporadas.'" />
@@ -1081,31 +1043,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             <x-slot:pie>
                 <button type="button" wire:click="cerrarCrear" class="fp-btn fp-btn-secundario">Cancelar</button>
                 <button class="fp-btn fp-btn-primario">Crear marca</button>
-            </x-slot:pie>
-        </x-panel.modal>
-    @endif
-    @if ($creando === 'temporada')
-        <x-panel.modal titulo="Nueva temporada" cerrar="cerrarCrear" formulario="guardarTemporada" data-alta-catalogo="temporada">
-            <div class="grid grid-cols-1 gap-3">
-                <select wire:model="temporada_linea_id" class="rounded-lg text-sm">
-                    <option value="">Línea</option>
-                    @foreach ($this->lineas as $linea)
-                        <option value="{{ $linea->id }}">{{ $linea->nombre }}</option>
-                    @endforeach
-                </select>
-                @error('temporada_linea_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-                <input type="text" wire:model="temporada_nombre" placeholder="Nombre de la temporada" class="rounded-lg text-sm">
-                @error('temporada_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-                <select wire:model="temporada_estado" class="rounded-lg text-sm">
-                    <option value="borrador">Borrador</option>
-                    <option value="activa">Activa</option>
-                    <option value="cerrada">Cerrada</option>
-                </select>
-                @error('estado') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-            </div>
-            <x-slot:pie>
-                <button type="button" wire:click="cerrarCrear" class="fp-btn fp-btn-secundario">Cancelar</button>
-                <button class="fp-btn fp-btn-primario">Crear temporada</button>
             </x-slot:pie>
         </x-panel.modal>
     @endif

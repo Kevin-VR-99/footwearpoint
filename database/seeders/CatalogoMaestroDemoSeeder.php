@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Campana;
+use App\Models\Temporada;
+use App\Services\Catalogo\CampanaDeTemporada;
 use App\Models\CategoriaProducto;
 use App\Models\Color;
 use App\Models\DisponibilidadVarianteCampana;
@@ -72,17 +74,21 @@ class CatalogoMaestroDemoSeeder extends Seeder
         );
     }
 
-    /** Solo una temporada activa por línea; el modelo Campana lo vigila (D7). */
+    /**
+     * Las temporadas son globales y salen de la fecha: 'activa' en los datos
+     * es la temporada actual y 'finalizada' la anterior. El nombre por línea
+     * de los datos ya no se usa: la campaña toma el de la temporada.
+     */
     private function temporada(Linea $linea, array $datos): Campana
     {
-        return Campana::firstOrCreate(
-            ['linea_id' => $linea->id, 'nombre' => $datos['nombre']],
-            [
-                'fecha_inicio' => now()->modify($datos['inicio']),
-                'fecha_fin' => now()->modify($datos['fin']),
-                'estado' => $datos['estado'],
-            ]
-        );
+        $temporada = $datos['estado'] === 'activa' ? Temporada::actual() : Temporada::actual()->anterior();
+
+        $campana = app(CampanaDeTemporada::class)->paraLinea($linea->id, $temporada);
+        if ($campana->estado !== $datos['estado']) {
+            $campana->update(['estado' => $datos['estado']]);
+        }
+
+        return $campana;
     }
 
     private function producto(Campana $campana, array $datos, bool $subirImagenes): void

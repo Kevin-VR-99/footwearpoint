@@ -3,6 +3,7 @@
 namespace Tests\Feature\Reportes;
 
 use App\Models\Campana;
+use App\Models\Temporada;
 use App\Models\CategoriaProducto;
 use App\Models\CicloCompra;
 use App\Models\Distribuidora;
@@ -64,7 +65,8 @@ class DemandaPorTemporadaMarcaTest extends TestCase
             'es_extra' => false, 'activa' => true, 'fecha_activacion' => now(),
         ]);
         $this->temporadaA = Campana::create(['linea_id' => $linea->id, 'nombre' => 'Primavera Demanda', 'estado' => 'activa']);
-        $this->temporadaB = Campana::create(['linea_id' => $linea->id, 'nombre' => 'Otoño Demanda', 'estado' => 'borrador']);
+        // Temporadas globales: la actual y la siguiente de la misma línea.
+        $this->temporadaB = Campana::create(['linea_id' => $linea->id, 'nombre' => 'Otoño Demanda', 'estado' => 'borrador', 'temporada_id' => Temporada::siguiente()->id]);
         $this->marcaX = Marca::create(['nombre' => 'Marca Equis']);
         $this->marcaY = Marca::create(['nombre' => 'Marca Ye']);
     }
@@ -150,8 +152,8 @@ class DemandaPorTemporadaMarcaTest extends TestCase
         $this->assertSame(2, $r['por_marca'][0]['pedidos']);
         $this->assertEqualsWithDelta(700, $r['por_marca'][0]['monto'], 0.001);
         $this->assertSame(['Sandalia Y2', 'Tenis Y1', 'Bota X1'], array_column($r['productos'], 'producto'));
-        $this->assertSame('Otoño Demanda', $r['productos'][0]['temporada']);
-        $this->assertSame([$this->temporadaA->id, $this->temporadaB->id], array_column($r['por_temporada'], 'id'));
+        $this->assertSame(Temporada::siguiente()->nombre, $r['productos'][0]['temporada']);
+        $this->assertSame([$this->temporadaA->temporada_id, $this->temporadaB->temporada_id], array_column($r['por_temporada'], 'id'));
         $this->assertSame(['piezas' => 9, 'pedidos' => 2, 'monto' => 900.0], $r['totales']);
     }
 
@@ -162,9 +164,9 @@ class DemandaPorTemporadaMarcaTest extends TestCase
         $y2 = $this->publicacion($this->marcaY, $this->temporadaB, 'Sandalia Y2');
         $this->pedido([[$x1, 2], [$y1, 3], [$y2, 4]]);
 
-        $this->assertSame(5, $this->reporte($this->temporadaA->id)['totales']['piezas']);
+        $this->assertSame(5, $this->reporte($this->temporadaA->temporada_id)['totales']['piezas']);
         $this->assertSame(7, $this->reporte(null, $this->marcaY->id)['totales']['piezas']);
-        $combinado = $this->reporte($this->temporadaA->id, $this->marcaY->id);
+        $combinado = $this->reporte($this->temporadaA->temporada_id, $this->marcaY->id);
         $this->assertSame(['Tenis Y1'], array_column($combinado['productos'], 'producto'));
         $this->assertSame(3, $combinado['totales']['piezas']);
     }
@@ -233,7 +235,7 @@ class DemandaPorTemporadaMarcaTest extends TestCase
         $this->get(route('reportes.index'))->assertOk()
             ->assertSee('Demanda por temporada y marca')
             ->assertSee('Productos más solicitados')
-            ->assertSee('Primavera Demanda')
+            ->assertSee(Temporada::actual()->nombre)
             ->assertSee('Marca Equis');
 
         Livewire::test('reportes.index')
