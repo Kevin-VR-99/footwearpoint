@@ -1,0 +1,342 @@
+name: FootwearPoint - QA con capturas
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 14 * * 1"  # Lunes 14:00 UTC (08:00 Merida)
+
+permissions:
+  contents: read
+
+concurrency:
+  group: footwearpoint-qa-capturas
+  cancel-in-progress: false
+
+jobs:
+  pruebas-visuales:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: "true"
+      PLAYWRIGHT_BASE_URL: "https://footwearpoint.app"
+      FP_ADMIN_GENERAL_EMAIL: ${{ secrets.FP_ADMIN_GENERAL_EMAIL }}
+      FP_ADMIN_GENERAL_PASSWORD: ${{ secrets.FP_ADMIN_GENERAL_PASSWORD }}
+      FP_ADMIN_DISTRIBUIDORA_EMAIL: ${{ secrets.FP_ADMIN_DISTRIBUIDORA_EMAIL }}
+      FP_ADMIN_DISTRIBUIDORA_PASSWORD: ${{ secrets.FP_ADMIN_DISTRIBUIDORA_PASSWORD }}
+      FP_EMPLEADO_EMAIL: ${{ secrets.FP_EMPLEADO_EMAIL }}
+      FP_EMPLEADO_PASSWORD: ${{ secrets.FP_EMPLEADO_PASSWORD }}
+    steps:
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Instalar Playwright y Chromium
+        run: |
+          mkdir -p qa/tests qa/scripts
+          cd qa
+          npm init -y >/dev/null
+          npm install --save-dev --no-audit --no-fund @playwright/test@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Preparar bateria de solo lectura
+        run: |
+          cat > qa/playwright.evidencias.config.mjs <<'FPEOF_CONFIG'
+          import { defineConfig } from '@playwright/test';
+          
+          // Configuración independiente. No modifica playwright.config.mjs ni las fases previas.
+          export default defineConfig({
+            testDir: './tests',
+            testMatch: '**/evidencias-visuales.spec.mjs',
+            timeout: 90_000,
+            expect: { timeout: 10_000 },
+            forbidOnly: true,
+            retries: 0,
+            workers: 1,
+            outputDir: 'test-results/evidencias/adjuntos',
+            reporter: [
+              ['list', { printSteps: true }],
+              ['html', { outputFolder: 'playwright-report/evidencias', open: 'never' }],
+              ['json', { outputFile: 'test-results/evidencias/resultados.json' }],
+            ],
+            use: {
+              baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://footwearpoint.app',
+              browserName: 'chromium',
+              trace: 'off', // Evita que estados, HTML o tokens terminen dentro de trazas.
+              screenshot: 'off', // Las capturas se adjuntan manualmente después del login.
+              video: 'off', // FP_EVIDENCIAS_VIDEO=1 habilita video SOLO en contexto autenticado de lectura.
+              actionTimeout: 12_000,
+              navigationTimeout: 30_000,
+            },
+          });
+          FPEOF_CONFIG
+
+          cat > qa/tests/evidencias-visuales.spec.mjs <<'FPEOF_TEST'
+          import { test, expect } from '@playwright/test';
+          
+          /**
+           * FootwearPoint · Evidencias visuales — solo lectura, navegador Chromium.
+           * NO envía formularios de negocio, crea registros, elimina datos, ni realiza pagos.
+           * Se adjuntan capturas PNG a pasos de Playwright para visualizarlas en HTML.
+           * La autenticación sucede en un contexto temporal SIN video/capturas/trazas;
+           * la sesión se transfiere únicamente en memoria a un contexto de lectura.
+           * ¡Los paneles pueden mostrar datos personales! Conserva reportes PRIVADOS.
+           */
+          
+          // Sobrescribir opciones heredadas de otros suites: no grabar login accidentalmente.
+          test.use({ screenshot: 'off', video: 'off', trace: 'off' });
+          
+          const BASE_URL = 'https://footwearpoint.app';
+          const baseURL = process.env.PLAYWRIGHT_BASE_URL || BASE_URL;
+          if (new URL(baseURL).origin !== BASE_URL) {
+            throw new Error('Esta batería está limitada al origen https://footwearpoint.app.');
+          }
+          
+          const escenariosPublicos = [
+            { nombre: 'Inicio público', ruta: '/' },
+            { nombre: 'Marketplace', ruta: '/marketplace' },
+            { nombre: 'Solicitud de alta (sin enviar)', ruta: '/solicitar-alta' },
+            { nombre: 'Acceso (sin escribir credenciales)', ruta: '/login' },
+          ];
+          
+          const escenariosRoles = [
+            {
+              nombre: 'Administrador general',
+              email: 'FP_ADMIN_GENERAL_EMAIL',
+              password: 'FP_ADMIN_GENERAL_PASSWORD',
+              inicio: '/admin',
+              rutas: [
+                ['Panel general', '/admin'],
+                ['Planes', '/admin/planes'],
+              ],
+            },
+            {
+              nombre: 'Administrador de distribuidora',
+              email: 'FP_ADMIN_DISTRIBUIDORA_EMAIL',
+              password: 'FP_ADMIN_DISTRIBUIDORA_PASSWORD',
+              inicio: '/dashboard',
+              rutas: [
+                ['Dashboard', '/dashboard'],
+                ['Stock', '/stock'],
+              ],
+            },
+            {
+              nombre: 'Empleado',
+              email: 'FP_EMPLEADO_EMAIL',
+              password: 'FP_EMPLEADO_PASSWORD',
+              inicio: '/dashboard',
+              rutas: [
+                ['Dashboard', '/dashboard'],
+                ['Pedidos (consulta)', '/pedidos'],
+              ],
+            },
+          ];
+          
+          function rutaActual(page) {
+            return new URL(page.url()).pathname.replace(/\/+$/, '') || '/';
+          }
+          
+          async function visitar(page, ruta) {
+            const response = await page.goto(ruta, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            expect(response?.status(), `La ruta ${ruta} no devolvió HTTP 200`).toBe(200);
+            expect(rutaActual(page), `Redirección inesperada al visitar ${ruta}`).toBe(ruta);
+            await expect(page.locator('body')).toBeVisible();
+            // Tiempo corto para terminar de pintar estilos/imagenes; NO depende de networkidle.
+            await page.waitForTimeout(350);
+          }
+          
+          async function capturar(page, testInfo, nombre) {
+            await test.step(`Captura: ${nombre}`, async () => {
+              const png = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' });
+              await testInfo.attach(nombre, { body: png, contentType: 'image/png' });
+            });
+          }
+          
+          // No almacenar estados de sesión, contraseñas o tokens en disco.
+          async function autenticarEnMemoria(browser, rol) {
+            const email = process.env[rol.email]?.trim();
+            const password = process.env[rol.password];
+            if (!email || !password) {
+              throw new Error(`Faltan ${rol.email} y/o ${rol.password} en .env.roles. No compartas esas credenciales.`);
+            }
+            const contexto = await browser.newContext({ baseURL });
+            try {
+              const login = await contexto.newPage();
+              await visitar(login, '/login');
+              await login.waitForFunction(
+                () => typeof window.Livewire?.all === 'function' && window.Livewire.all().length > 0,
+                null,
+                { timeout: 15000 },
+              );
+              await login.locator('#login-email').fill(email);
+              await login.locator('#login-password').fill(password);
+              await login.getByRole('button', { name: 'Entrar', exact: true }).click();
+              try {
+                await login.waitForURL(new RegExp(`${rol.inicio.replace(/\//g, '\\/')}(?:[/?#]|$)`), { timeout: 20000 });
+              } catch {
+                // No incluir HTML, credenciales ni respuestas Livewire en el error.
+                throw new Error(`No se pudo iniciar sesión como ${rol.nombre}; comprueba el acceso manual una vez.`);
+              }
+              // Objeto solo en RAM; nunca se guarda a una ruta.
+              return await contexto.storageState();
+            } finally {
+              await contexto.close();
+            }
+          }
+          
+          for (const escenario of escenariosPublicos) {
+            test(`Público — ${escenario.nombre}`, async ({ page }, testInfo) => {
+              await test.step(`Abrir ${escenario.ruta}`, async () => {
+                await visitar(page, escenario.ruta);
+              });
+              await capturar(page, testInfo, '01 - Página completa');
+              // Evidencia adicional de zonas inferiores, sin interacción destructiva.
+              if (escenario.ruta === '/') {
+                await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+                await capturar(page, testInfo, '02 - Final del inicio');
+              }
+            });
+          }
+          
+          const moviles = [
+            { nombre: 'Inicio móvil', ruta: '/' },
+            { nombre: 'Marketplace móvil', ruta: '/marketplace' },
+          ];
+          for (const escenario of moviles) {
+            test(`Móvil 390×844 — ${escenario.nombre}`, async ({ page }, testInfo) => {
+              await page.setViewportSize({ width: 390, height: 844 });
+              await visitar(page, escenario.ruta);
+              await capturar(page, testInfo, '01 - Vista móvil completa');
+              const anchura = await page.evaluate(() => ({
+                doc: document.documentElement.scrollWidth,
+                ancho: document.documentElement.clientWidth,
+              }));
+              expect(anchura.doc - anchura.ancho, 'Desbordamiento horizontal del documento').toBeLessThanOrEqual(2);
+            });
+          }
+          
+          for (const rol of escenariosRoles) {
+            test(`Rol — ${rol.nombre}: capturas de navegación`, async ({ browser }, testInfo) => {
+              test.setTimeout(90000);
+              const session = await test.step('Iniciar sesión sin registrar evidencia', async () =>
+                autenticarEnMemoria(browser, rol));
+          
+              const videoHabilitado = process.env.FP_EVIDENCIAS_VIDEO === '1';
+              const opciones = {
+                baseURL,
+                storageState: session,
+                viewport: { width: 1366, height: 850 },
+                ...(videoHabilitado ? { recordVideo: { dir: testInfo.outputPath('videos') } } : {}),
+              };
+              const contexto = await browser.newContext(opciones);
+              let pagina;
+              try {
+                pagina = await contexto.newPage();
+                for (const [etiqueta, ruta] of rol.rutas) {
+                  await test.step(`Consultar ${etiqueta} (${ruta})`, async () => {
+                    await visitar(pagina, ruta);
+                    await expect(pagina.locator('main').first()).toBeVisible();
+                    await capturar(pagina, testInfo, `Pantalla - ${etiqueta}`);
+                  });
+                }
+              } finally {
+                const video = videoHabilitado && pagina ? pagina.video() : null;
+                await contexto.close();
+                if (video) {
+                  // La grabación empieza después del login; conserva sólo lo visto en los paneles.
+                  await testInfo.attach(`Video - ${rol.nombre}`, {
+                    path: await video.path(), contentType: 'video/webm',
+                  });
+                }
+              }
+            });
+          }
+          FPEOF_TEST
+
+          cat > qa/scripts/generar-resumen-evidencias.mjs <<'FPEOF_SUMMARY'
+          import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+          import { resolve } from 'node:path';
+          
+          const raiz = resolve(import.meta.dirname, '..');
+          const origen = resolve(raiz, 'test-results/evidencias/resultados.json');
+          const destino = resolve(raiz, 'playwright-report/evidencias/RESUMEN.md');
+          
+          let informe;
+          try {
+            informe = JSON.parse(readFileSync(origen, 'utf8'));
+          } catch {
+            console.error('No se encontró resultados.json. Ejecuta primero la batería de evidencias.');
+            process.exit(1);
+          }
+          
+          const casos = [];
+          function recorrer(suites) {
+            for (const suite of suites || []) {
+              for (const spec of suite.specs || []) {
+                for (const caso of spec.tests || []) {
+                  const ultimo = caso.results?.at(-1);
+                  const adjuntos = ultimo?.attachments || [];
+                  casos.push({
+                    nombre: spec.title,
+                    estado: ultimo?.status || 'desconocido',
+                    duracion: ultimo?.duration || 0,
+                    capturas: adjuntos.filter(a => a.contentType === 'image/png').length,
+                    videos: adjuntos.filter(a => a.contentType === 'video/webm').length,
+                  });
+                }
+              }
+              recorrer(suite.suites);
+            }
+          }
+          recorrer(informe.suites);
+          const totales = Object.groupBy(casos, c => c.estado);
+          const escapar = valor => String(valor).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+          const lineas = [
+            '# FootwearPoint — Resumen de evidencias visuales',
+            '',
+            `Fecha de elaboración: ${new Date().toISOString()}`,
+            '',
+            '> Resultado generado automáticamente, basado únicamente en esta ejecución. No demuestra cobertura completa del MVP.',
+            '',
+            `**Pruebas:** ${casos.length} · **Aprobadas:** ${(totales.passed || []).length} · **Fallidas:** ${(totales.failed || []).length} · **Otras:** ${casos.length - (totales.passed || []).length - (totales.failed || []).length}`,
+            '',
+            '| Caso | Resultado | Duración | Capturas | Videos |',
+            '|---|---|---:|---:|---:|',
+            ...casos.map(c => `| ${escapar(c.nombre)} | ${escapar(c.estado)} | ${(c.duracion / 1000).toFixed(1)} s | ${c.capturas} | ${c.videos} |`),
+            '',
+            '## Consultar las imágenes',
+            '',
+            'Abre el reporte HTML con: `npx playwright show-report playwright-report/evidencias`.',
+            'Entra en una prueba y revisa sus pasos y adjuntos PNG. Si habilitaste videos, estarán adjuntos únicamente después del inicio de sesión.',
+            '',
+            '## Privacidad y límites',
+            '',
+            'Las capturas de paneles pueden contener información de clientes o del negocio. No publiques ni agregues estos reportes a Git.',
+            'No se graban credenciales ni videos de la pantalla de inicio de sesión.',
+            'Esta batería es de solo lectura: no evalúa persistencia ni pagos.',
+            '',
+          ];
+          mkdirSync(resolve(raiz, 'playwright-report/evidencias'), { recursive: true });
+          writeFileSync(destino, lineas.join('\n'));
+          console.log(`Resumen creado: ${destino}`);
+          FPEOF_SUMMARY
+
+      - name: Ejecutar pruebas y capturar imagenes
+        working-directory: qa
+        run: npx playwright test --config=playwright.evidencias.config.mjs
+
+      - name: Crear resumen aunque fallen pruebas
+        if: always()
+        working-directory: qa
+        run: node scripts/generar-resumen-evidencias.mjs || true
+
+      - name: Conservar reporte HTML, JSON y PNG
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FootwearPoint-Evidencias-${{ github.run_number }}
+          path: |
+            qa/playwright-report/evidencias/
+            qa/test-results/evidencias/
+          if-no-files-found: warn
+          retention-days: 7
