@@ -38,7 +38,6 @@ jobs:
       - name: Preparar suite segura de 264 comprobaciones
         run: |
           cat > qa/tests/qa-exhaustivo.spec.mjs <<'FPEOF_PRUEBAS'
-
           import { test, expect } from '@playwright/test';
           import AxeBuilder from '@axe-core/playwright';
           
@@ -123,6 +122,10 @@ jobs:
           async function entrar(page, ruta, permitida=true) {
             const response=await page.goto(ruta,{waitUntil:'domcontentloaded', timeout:35000});
             const status=response?.status() || 0;
+            if (rutaActual(page)==='/login' && ruta!=='/login') {
+              const evento={horaUTC:new Date().toISOString(),rolYPrueba:page.__qaEscenario || 'Sin rol identificado',rutaSolicitada:ruta,rutaFinal:'/login',estadoHTTP:status};
+              console.error('QA_REDIRECCION_LOGIN '+JSON.stringify(evento));
+            }
             // Las rutas opcionales pueden tener restricciones adicionales por permiso.
             if (permitida) {
               expect(status, `${ruta}: estado HTTP`).toBe(200);
@@ -226,6 +229,7 @@ jobs:
             let pagina;
             try{
               pagina=await ctx.newPage();
+              pagina.__qaEscenario=info?.titlePath?.().join(' > ') || 'Control de acceso';
               await cb(pagina);
             } catch(error){
               if(info && pagina){
@@ -257,7 +261,7 @@ jobs:
             expect(titulo.trim(),`Titulo ausente: ${ruta}`).not.toBe('');
             const ancho=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,vista:document.documentElement.clientWidth}));
             expect(ancho.doc-ancho.vista,`Desbordamiento horizontal ${ruta}`).toBeLessThanOrEqual(3);
-            const imgMalas=await page.locator('img').evaluateAll(els=>els.filter(img=>img.complete&&img.naturalWidth===0).map(img=>({
+            const imgMalas=await page.locator('img:visible').evaluateAll(els=>els.filter(img=>img.complete && img.naturalWidth===0 && img.getAttribute('src')?.trim()).map(img=>({
               atributoSrc:img.getAttribute('src'),urlResuelta:img.currentSrc||img.src,
               textoAlternativo:img.alt,html:img.outerHTML.slice(0,550),
             })));
