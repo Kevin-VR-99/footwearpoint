@@ -41,6 +41,9 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
      */
     #[Url(as: 'estado', except: '')]
     public string $filtroEstado = '';
+
+    /** Buscador de la tabla: nombre comercial, razón social, RFC, slug o correo. */
+    public string $buscar = '';
     public string $mensaje = '';
 
     // Asignar suscripción
@@ -272,6 +275,15 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         // si es un estado de verdad; cualquier otra cosa se ignora.
         if (in_array($this->filtroEstado, self::ESTADOS_FILTRABLES, true)) {
             $query->where('estado', $this->filtroEstado);
+        }
+
+        if (trim($this->buscar) !== '') {
+            $t = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], trim($this->buscar)).'%';
+            $query->where(fn ($q) => $q->where('nombre_comercial', 'like', $t)
+                ->orWhere('razon_social', 'like', $t)
+                ->orWhere('rfc', 'like', $t)
+                ->orWhere('slug', 'like', $t)
+                ->orWhere('email_publico', 'like', $t));
         }
 
         return $query->get();
@@ -1258,6 +1270,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         @endforeach
     </div>
 
+    <x-ui.buscador wire:model.live.debounce.300ms="buscar" placeholder="Nombre, razón social, RFC o correo…" etiqueta="Buscar distribuidoras" class="mb-4 w-full sm:w-96" data-buscador-distribuidoras />
+
     <div class="relative fp-tarjeta fp-tabla overflow-hidden">
         <x-ui.cargando />
         <table class="w-full text-sm">
@@ -1326,7 +1340,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         </div></td>
                     </tr>
                 @empty
-                    <x-panel.vacio colspan="5" mensaje="No hay distribuidoras con este filtro." />
+                    <x-panel.vacio colspan="5" :mensaje="trim($buscar) !== '' ? 'Sin coincidencias.' : 'No hay distribuidoras con este filtro.'" />
                 @endforelse
             </tbody>
         </table>

@@ -24,7 +24,13 @@ class ExportarPedidos
             ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor'])
             ->orderByDesc('id')
             ->when(($f['estado'] ?? '') !== '', fn ($q) => $q->where('estado', $f['estado']))
-            ->when(($f['tipo'] ?? '') !== '', fn ($q) => $q->where('tipo', $f['tipo']));
+            ->when(($f['tipo'] ?? '') !== '', fn ($q) => $q->where('tipo', $f['tipo']))
+            ->when(trim($f['buscar'] ?? '') !== '', function ($q) use ($f) {
+                $t = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], trim($f['buscar'])).'%';
+                $q->where(fn ($w) => $w->where('folio', 'like', $t)
+                    ->orWhereHas('clienteDirecto', fn ($c) => $c->where('nombre', 'like', $t))
+                    ->orWhereHas('revendedorAfiliacion.revendedor', fn ($r) => $r->where('nombre', 'like', $t)));
+            });
     }
 
     public function total(array $f): int

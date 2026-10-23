@@ -29,6 +29,16 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
     public string $pestana = 'lineas';
 
+    // Buscadores: con 128 marcas en 6 líneas las tablas ya no caben a la vista.
+    // Filtran en el servidor; las métricas siguen contando todo.
+    public string $buscarLinea = '';
+    public string $buscarMarca = '';
+    public string $buscarTemporada = '';
+    public string $buscarProducto = '';
+
+    /** Filtra las opciones de marca en los formularios de producto. */
+    public string $buscarMarcaOpcion = '';
+
     public string $linea_nombre = '';
     public string $linea_descripcion = '';
 
@@ -480,6 +490,83 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         return Campana::query()->with('linea')->withCount('productosCampana')->orderBy('nombre')->get();
     }
 
+    /** Escapa los comodines de LIKE para buscar el texto tal cual. */
+    private static function patron(string $texto): string
+    {
+        return '%'.str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], trim($texto)).'%';
+    }
+
+    public function getLineasFiltradasProperty()
+    {
+        if (trim($this->buscarLinea) === '') {
+            return $this->lineas;
+        }
+
+        return Linea::query()->withCount('campanas')
+            ->where('nombre', 'like', self::patron($this->buscarLinea))
+            ->orderBy('nombre')->get();
+    }
+
+    /** Por nombre de la marca o de la línea en la que se vende. */
+    public function getMarcasFiltradasProperty()
+    {
+        if (trim($this->buscarMarca) === '') {
+            return $this->marcas;
+        }
+        $t = self::patron($this->buscarMarca);
+
+        return Marca::query()->withCount('productos')
+            ->where(fn ($q) => $q->where('nombre', 'like', $t)
+                ->orWhereHas('lineas', fn ($l) => $l->where('nombre', 'like', $t)))
+            ->orderBy('nombre')->get();
+    }
+
+    /** Opciones del selector de marca; la elegida se queda aunque no coincida. */
+    public function getMarcasOpcionesProperty()
+    {
+        if (trim($this->buscarMarcaOpcion) === '') {
+            return $this->marcas;
+        }
+        $t = self::patron($this->buscarMarcaOpcion);
+        $elegidas = array_filter([(int) $this->producto_marca_id, (int) $this->editar_marca_id]);
+
+        return $this->marcas->filter(fn ($m) => in_array($m->id, $elegidas, true)
+            || str_contains(mb_strtolower($m->nombre), mb_strtolower(trim($this->buscarMarcaOpcion))))->values();
+    }
+
+    public function getTemporadasFiltradasProperty()
+    {
+        if (trim($this->buscarTemporada) === '') {
+            return $this->temporadas;
+        }
+        $t = self::patron($this->buscarTemporada);
+
+        return Campana::query()->with('linea')->withCount('productosCampana')
+            ->where(fn ($q) => $q->where('nombre', 'like', $t)
+                ->orWhereHas('linea', fn ($l) => $l->where('nombre', 'like', $t)))
+            ->orderBy('nombre')->get();
+    }
+
+    /** Busca en todo el catálogo (no solo en las últimas 50) por nombre, modelo, marca, código o línea. */
+    public function getProductosFiltradosProperty()
+    {
+        if (trim($this->buscarProducto) === '') {
+            return $this->productos;
+        }
+        $t = self::patron($this->buscarProducto);
+
+        return ProductoCampana::query()
+            ->with(['producto.marca', 'campana.linea'])
+            ->where(fn ($q) => $q->where('codigo_catalogo', 'like', $t)
+                ->orWhereHas('producto', fn ($p) => $p->where('nombre', 'like', $t)->orWhere('modelo', 'like', $t)
+                    ->orWhereHas('marca', fn ($m) => $m->where('nombre', 'like', $t)))
+                ->orWhereHas('campana', fn ($c) => $c->where('nombre', 'like', $t)
+                    ->orWhereHas('linea', fn ($l) => $l->where('nombre', 'like', $t))))
+            ->latest('id')
+            ->limit(50)
+            ->get();
+    }
+
     public function getProductosProperty()
     {
         return ProductoCampana::query()
@@ -684,9 +771,10 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             @if ($editando_tipo === 'producto')
                 <input type="text" wire:model="editar_modelo" placeholder="Modelo" class="rounded-lg text-sm">
                 @error('editar_modelo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-                <select wire:model="editar_marca_id" class="rounded-lg text-sm">
+                <x-ui.buscador wire:model.live.debounce.300ms="buscarMarcaOpcion" placeholder="Filtrar marcas…" etiqueta="Filtrar la lista de marcas" data-buscador-opciones="editar_marca_id" />
+                <select wire:model="editar_marca_id" aria-label="Marca" class="rounded-lg text-sm">
                     <option value="">Marca</option>
-                    @foreach ($this->marcas as $marca)
+                    @foreach ($this->marcasOpciones as $marca)
                         <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
                     @endforeach
                 </select>
@@ -780,10 +868,11 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             <input type="text" wire:model="linea_descripcion" aria-label="Descripción de la línea" placeholder="Descripción" class="rounded-lg text-sm">
             <button class="fp-btn fp-btn-primario w-fit">Crear línea</button>
         </form>
+        <x-ui.buscador wire:model.live.debounce.300ms="buscarLinea" placeholder="Buscar línea…" etiqueta="Buscar líneas" class="w-full sm:w-80" data-buscador-catalogo="buscarLinea" />
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead><tr><th class="px-4 py-3 font-semibold">Nombre</th><th class="px-4 py-3 font-semibold">Temporadas</th><th class="px-4 py-3 font-semibold">Estado</th><th class="px-4 py-3 font-semibold">Acciones</th></tr></thead>
             <tbody>
-                @forelse ($this->lineas as $linea)
+                @forelse ($this->lineasFiltradas as $linea)
                     <tr class="border-t border-slate-100">
                         <td class="px-4 py-3">{{ $linea->nombre }}</td>
                         <td class="px-4 py-3">{{ $linea->campanas_count }}</td>
@@ -795,7 +884,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         </td>
                     </tr>
                 @empty
-                    <x-panel.vacio colspan="4" mensaje="Aún no hay líneas." />
+                    <x-panel.vacio colspan="4" :mensaje="trim($buscarLinea) !== '' ? 'Sin coincidencias.' : 'Aún no hay líneas.'" />
                 @endforelse
             </tbody>
         </table></div></div>
@@ -806,10 +895,11 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             <input type="text" wire:model="marca_descripcion" placeholder="Descripción" class="rounded-lg text-sm">
             <button class="fp-btn fp-btn-primario w-fit">Crear marca</button>
         </form>
+        <x-ui.buscador wire:model.live.debounce.300ms="buscarMarca" placeholder="Buscar marca o línea…" etiqueta="Buscar marcas por nombre o línea" class="w-full sm:w-80" data-buscador-catalogo="buscarMarca" />
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead><tr><th class="px-4 py-3 font-semibold">Nombre</th><th class="px-4 py-3 font-semibold">Productos</th><th class="px-4 py-3 font-semibold">Estado</th><th class="px-4 py-3 font-semibold">Acciones</th></tr></thead>
             <tbody>
-                @forelse ($this->marcas as $marca)
+                @forelse ($this->marcasFiltradas as $marca)
                     <tr class="border-t border-slate-100">
                         <td class="px-4 py-3">{{ $marca->nombre }}</td>
                         <td class="px-4 py-3">{{ $marca->productos_count }}</td>
@@ -821,7 +911,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         </td>
                     </tr>
                 @empty
-                    <x-panel.vacio colspan="4" mensaje="Aún no hay marcas." />
+                    <x-panel.vacio colspan="4" :mensaje="trim($buscarMarca) !== '' ? 'Sin coincidencias.' : 'Aún no hay marcas.'" />
                 @endforelse
             </tbody>
         </table></div></div>
@@ -844,10 +934,11 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             @error('estado') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <button class="fp-btn fp-btn-primario w-fit">Crear temporada</button>
         </form>
+        <x-ui.buscador wire:model.live.debounce.300ms="buscarTemporada" placeholder="Buscar temporada o línea…" etiqueta="Buscar temporadas" class="w-full sm:w-80" data-buscador-catalogo="buscarTemporada" />
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead><tr><th class="px-4 py-3 font-semibold">Temporada</th><th class="px-4 py-3 font-semibold">Línea</th><th class="px-4 py-3 font-semibold">Productos</th><th class="px-4 py-3 font-semibold">Estado</th><th class="px-4 py-3 font-semibold">Acciones</th></tr></thead>
             <tbody>
-                @forelse ($this->temporadas as $temporada)
+                @forelse ($this->temporadasFiltradas as $temporada)
                     <tr class="border-t border-slate-100">
                         <td class="px-4 py-3">{{ $temporada->nombre }}</td>
                         <td class="px-4 py-3">{{ $temporada->linea?->nombre }}</td>
@@ -859,16 +950,17 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         </td>
                     </tr>
                 @empty
-                    <x-panel.vacio colspan="5" mensaje="Aún no hay temporadas." />
+                    <x-panel.vacio colspan="5" :mensaje="trim($buscarTemporada) !== '' ? 'Sin coincidencias.' : 'Aún no hay temporadas.'" />
                 @endforelse
             </tbody>
         </table></div></div>
 
     @else
         <form wire:submit="guardarProducto" class="fp-formulario fp-aparecer grid max-w-xl grid-cols-1 gap-3 p-5">
-            <select wire:model="producto_marca_id" class="rounded-lg text-sm">
+            <x-ui.buscador wire:model.live.debounce.300ms="buscarMarcaOpcion" placeholder="Filtrar marcas…" etiqueta="Filtrar la lista de marcas" data-buscador-opciones="producto_marca_id" />
+            <select wire:model="producto_marca_id" aria-label="Marca" class="rounded-lg text-sm">
                 <option value="">Marca</option>
-                @foreach ($this->marcas as $marca)
+                @foreach ($this->marcasOpciones as $marca)
                     <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
                 @endforeach
             </select>
@@ -897,6 +989,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             @error('producto_precio') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
             <button class="fp-btn fp-btn-primario w-fit">Publicar producto</button>
         </form>
+        <x-ui.buscador wire:model.live.debounce.300ms="buscarProducto" placeholder="Producto, modelo, marca, línea o código…" etiqueta="Buscar productos publicados" class="w-full sm:w-80" data-buscador-catalogo="buscarProducto" />
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead>
                 <tr>
@@ -910,7 +1003,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 </tr>
             </thead>
             <tbody>
-                @forelse ($this->productos as $fila)
+                @forelse ($this->productosFiltrados as $fila)
                     <tr class="border-t border-slate-100">
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2">
@@ -936,7 +1029,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         </td>
                     </tr>
                 @empty
-                    <x-panel.vacio colspan="7" mensaje="Aún no hay productos publicados." />
+                    <x-panel.vacio colspan="7" :mensaje="trim($buscarProducto) !== '' ? 'Sin coincidencias.' : 'Aún no hay productos publicados.'" />
                 @endforelse
             </tbody>
         </table></div></div>

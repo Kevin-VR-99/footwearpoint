@@ -10,10 +10,17 @@ use Livewire\Component;
  * línea (D7). Las administra el admin general.
  */
 new class extends Component {
+    public string $buscar = '';
+
     public function getCampanasProperty()
     {
         return Campana::query()
             ->with('linea')
+            ->when(trim($this->buscar) !== '', function ($q) {
+                $t = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], trim($this->buscar)).'%';
+                $q->where(fn ($w) => $w->where('nombre', 'like', $t)
+                    ->orWhereHas('linea', fn ($l) => $l->where('nombre', 'like', $t)));
+            })
             ->orderBy('estado')
             ->orderByDesc('fecha_inicio')
             ->get();
@@ -22,6 +29,8 @@ new class extends Component {
 
 <div class="space-y-4">
     <x-catalogo.aviso-solo-lectura />
+
+    <x-ui.buscador wire:model.live.debounce.300ms="buscar" placeholder="Buscar temporada o línea…" etiqueta="Buscar temporadas" class="w-full sm:w-80" data-buscador-temporadas />
 
     <div class="overflow-hidden fp-tarjeta fp-aparecer">
         <table class="fp-tabla min-w-full divide-y divide-slate-200 text-sm">
