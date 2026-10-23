@@ -54,7 +54,11 @@ class FilaProducto extends StatelessWidget {
                 child: SizedBox(
                   width: 84,
                   height: 84,
-                  child: ImagenProducto(url: producto.imagenPrincipal?.miniatura),
+                  child: Hero(
+                    // La foto "vuela" a la pantalla de detalle.
+                    tag: 'producto-foto-${producto.id}',
+                    child: ImagenProducto(url: producto.imagenPrincipal?.miniatura),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),

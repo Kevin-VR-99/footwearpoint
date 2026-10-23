@@ -163,7 +163,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
             SizedBox(
               height: 280,
               child: imagenes.isEmpty
-                  ? const ImagenProducto(url: null)
+                  ? Hero(tag: 'producto-foto-${producto.id}', child: const ImagenProducto(url: null))
                   : Stack(
                       children: [
                         PageView.builder(
@@ -171,7 +171,12 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           onPageChanged: (i) => setState(() => _fotoActual = i),
                           itemBuilder: (_, i) => GestureDetector(
                             onTap: () => FotoCalzado.abrir(context, imagenes[i].mediana, producto.nombre),
-                            child: ImagenProducto(url: imagenes[i].mediana, anchoCache: 1200),
+                            child: i == 0
+                                ? Hero(
+                                    tag: 'producto-foto-${producto.id}',
+                                    child: ImagenProducto(url: imagenes[i].mediana, anchoCache: 1200),
+                                  )
+                                : ImagenProducto(url: imagenes[i].mediana, anchoCache: 1200),
                           ),
                         ),
                         if (imagenes.length > 1)
@@ -418,7 +423,10 @@ class _Talla extends StatelessWidget {
       child: InkWell(
         onTap: noDisponible ? null : onTap,
         borderRadius: BorderRadius.circular(10),
-        child: Container(
+        // Cambio de talla suave, como un control de iOS.
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
           constraints: const BoxConstraints(minWidth: 52),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(

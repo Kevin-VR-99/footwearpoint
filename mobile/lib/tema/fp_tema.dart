@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'fp_colores.dart';
+import 'fp_fluidez.dart';
 
 /// El tema de toda la app, con el estilo del panel web (TG-165).
 ///
@@ -53,6 +54,8 @@ abstract final class FpTema {
 
     return base.copyWith(
       scaffoldBackgroundColor: FpColores.pagina,
+      // Fluidez tipo iOS 27: transiciones de iOS con deslizar para regresar.
+      pageTransitionsTheme: fpTransiciones,
       textTheme: base.textTheme.apply(
         bodyColor: FpColores.texto,
         // Títulos en el azul marino de la web (text-fp-sidebar).

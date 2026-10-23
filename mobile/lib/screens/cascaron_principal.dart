@@ -6,6 +6,8 @@ import '../services/aperturas_push.dart';
 import '../services/avisos_en_vivo.dart';
 import 'notificaciones_screen.dart';
 
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
@@ -188,6 +190,9 @@ class _CascaronPrincipalState extends State<CascaronPrincipal> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Liquid Glass (iOS 27): la barra de abajo flota y el contenido pasa
+      // por detrás, visto a través de un vidrio esmerilado.
+      extendBody: true,
       // IndexedStack y no un simple if: así la pestaña que se deja atrás
       // conserva su estado (lo que se habia buscado, donde iba la lista).
       body: Column(
@@ -209,10 +214,13 @@ class _CascaronPrincipalState extends State<CascaronPrincipal> with RouteAware {
           ),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: _BarraDeVidrio(
+        child: NavigationBar(
         selectedIndex: _actual,
         onDestinationSelected: _ir,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        animationDuration: const Duration(milliseconds: 350),
         indicatorColor: FpColores.insigniaInfoFondo,
         surfaceTintColor: Colors.transparent,
         height: 68,
@@ -229,6 +237,47 @@ class _CascaronPrincipalState extends State<CascaronPrincipal> with RouteAware {
               tooltip: seccion.nombre,
             ),
         ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Barra flotante redondeada con desenfoque, al estilo Liquid Glass de iOS 27
+/// (versión menos transparente, para que se lea bien). El blur se aplica solo
+/// a la barra, nunca a las listas, para no costar rendimiento.
+class _BarraDeVidrio extends StatelessWidget {
+  const _BarraDeVidrio({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 18, offset: Offset(0, 6))],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.82),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: FpColores.borde.withValues(alpha: 0.7)),
+                ),
+                child: MediaQuery.removePadding(context: context, removeBottom: true, child: child),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
