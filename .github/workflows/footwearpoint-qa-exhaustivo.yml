@@ -1,0 +1,420 @@
+name: FootwearPoint - QA exhaustivo visual
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: footwearpoint-qa-exhaustivo
+  cancel-in-progress: false
+
+jobs:
+  qa-exhaustivo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      PLAYWRIGHT_BASE_URL: 'https://footwearpoint.app'
+      FP_ADMIN_GENERAL_EMAIL: ${{ secrets.FP_ADMIN_GENERAL_EMAIL }}
+      FP_ADMIN_GENERAL_PASSWORD: ${{ secrets.FP_ADMIN_GENERAL_PASSWORD }}
+      FP_ADMIN_DISTRIBUIDORA_EMAIL: ${{ secrets.FP_ADMIN_DISTRIBUIDORA_EMAIL }}
+      FP_ADMIN_DISTRIBUIDORA_PASSWORD: ${{ secrets.FP_ADMIN_DISTRIBUIDORA_PASSWORD }}
+      FP_EMPLEADO_EMAIL: ${{ secrets.FP_EMPLEADO_EMAIL }}
+      FP_EMPLEADO_PASSWORD: ${{ secrets.FP_EMPLEADO_PASSWORD }}
+    steps:
+      - name: Instalar Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar Playwright axe-core y navegador Chromium
+        run: |
+          mkdir -p qa/tests qa/scripts qa/reportes/data
+          cd qa
+          npm init -y >/dev/null
+          npm install --save-dev --no-audit --no-fund @playwright/test@1.56.1 @axe-core/playwright
+          npx playwright install --with-deps chromium
+      - name: Preparar suite segura de 254 comprobaciones
+        run: |
+          cat > qa/tests/qa-exhaustivo.spec.mjs <<'FPEOF_PRUEBAS'
+          import { test, expect } from '@playwright/test';
+          import AxeBuilder from '@axe-core/playwright';
+          
+          // Solo navegación GET a rutas expresamente revisadas en routes/web.php.
+          // No envía formularios de negocio, no activa pagos, no crea ni elimina registros.
+          const BASE = 'https://footwearpoint.app';
+          const URL_BASE = process.env.PLAYWRIGHT_BASE_URL || BASE;
+          if (new URL(URL_BASE).origin !== BASE) throw new Error('Origen no autorizado.');
+          const viewports = [
+            { name: 'Escritorio 1366', width: 1366, height: 850 },
+            { name: 'Tableta 768', width: 768, height: 1024 },
+            { name: 'Movil 390', width: 390, height: 844 },
+          ];
+          const publicas = [
+            { ruta: '/', nombre: 'Inicio' },
+            { ruta: '/marketplace', nombre: 'Marketplace' },
+            { ruta: '/solicitar-alta', nombre: 'Solicitud de alta' },
+            { ruta: '/aviso-privacidad', nombre: 'Aviso de privacidad' },
+            { ruta: '/terminos', nombre: 'Terminos' },
+            { ruta: '/login', nombre: 'Iniciar sesion' },
+            { ruta: '/forgot-password', nombre: 'Recuperar acceso' },
+          ];
+          const grupos = [
+            {
+              nombre: 'Administrador general',
+              correo: 'FP_ADMIN_GENERAL_EMAIL', clave: 'FP_ADMIN_GENERAL_PASSWORD', inicio: '/admin',
+              rutas: [
+                ['/admin', 'Panel de distribuidoras'], ['/admin/planes', 'Planes'],
+                ['/admin/catalogo', 'Catalogo maestro'], ['/admin/auditoria', 'Auditoria general'],
+                ['/admin/ingresos', 'Ingresos Mercado Pago'], ['/admin/catalogos', 'Importacion catalogos'],
+              ].map(([ruta,nombre])=>({ruta,nombre,obligatoria:true})),
+            },
+            {
+              nombre: 'Administrador de distribuidora',
+              correo: 'FP_ADMIN_DISTRIBUIDORA_EMAIL', clave: 'FP_ADMIN_DISTRIBUIDORA_PASSWORD', inicio: '/dashboard',
+              rutas: [
+                ['/dashboard','Dashboard'], ['/stock','Stock'], ['/punto-venta','Venta local'],
+                ['/ciclo','Ciclo'], ['/pedidos','Pedidos'], ['/pedidos/crear','Formulario crear pedido'],
+                ['/vales','Vales'], ['/cambios','Cambios de producto'], ['/notificaciones','Notificaciones'],
+                ['/reportes','Reportes'], ['/auditoria','Auditoria distribuidora'],
+                ['/distribuidora/configuracion','Configuracion'], ['/distribuidora/perfil','Perfil'],
+                ['/distribuidora/empleados','Empleados'], ['/distribuidora/clientes-mayoristas','Mayoristas'],
+                ['/distribuidora/clientes-directos','Clientes directos'], ['/catalogo','Catalogo'],
+                ['/catalogo/mis-lineas','Mis lineas'], ['/catalogo/precios','Precios mayoreo'],
+                ['/caja','Caja'], ['/clientes/historial','Historial clientes'],
+                ['/clientes/importar','Importacion clientes'], ['/comisiones','Comisiones'],
+                ['/empleados/registrar','Alta empleado (no enviar)'], ['/legales','Documentos legales'],
+              ].map(([ruta,nombre]) => ({ruta,nombre,obligatoria: !['/caja','/clientes/historial','/clientes/importar','/comisiones','/legales'].includes(ruta)})),
+            },
+            {
+              nombre: 'Empleado',
+              correo: 'FP_EMPLEADO_EMAIL', clave: 'FP_EMPLEADO_PASSWORD', inicio: '/dashboard',
+              rutas: [
+                ['/dashboard','Dashboard'], ['/stock','Stock'], ['/punto-venta','Venta local'],
+                ['/ciclo','Ciclo'], ['/pedidos','Pedidos'], ['/pedidos/crear','Crear pedido (no enviar)'],
+                ['/vales','Vales'], ['/cambios','Cambios'], ['/notificaciones','Notificaciones'],
+                ['/reportes','Reportes financieros'], ['/caja','Caja'], ['/clientes/historial','Historial clientes'],
+                ['/comisiones','Comisiones'], ['/legales','Documentos legales'],
+              ].map(([ruta,nombre])=>({ruta,nombre,obligatoria: ['/dashboard','/stock','/pedidos','/notificaciones'].includes(ruta)})),
+            },
+          ];
+          
+          function rutaActual(page) { return new URL(page.url()).pathname.replace(/\/+$/,'') || '/'; }
+          function conMismoOrigen(url) { try { return new URL(url).origin===BASE; } catch { return false; } }
+          function monitorear(page) {
+            const js = [];
+            const recursos = [];
+            page.on('pageerror', error => js.push(String(error.message).slice(0,260)));
+            page.on('response', response => {
+              const req = response.request();
+              if (conMismoOrigen(response.url()) && ['script','stylesheet','image','font'].includes(req.resourceType()) && response.status() >= 400) {
+                recursos.push(`${req.resourceType()} HTTP ${response.status()} ${new URL(response.url()).pathname}`);
+              }
+            });
+            page.on('requestfailed', req => {
+              if (conMismoOrigen(req.url()) && ['script','stylesheet','image','font'].includes(req.resourceType())) {
+                recursos.push(`${req.resourceType()} RED ${new URL(req.url()).pathname}`);
+              }
+            });
+            return { js, recursos };
+          }
+          async function entrar(page, ruta, permitida=true) {
+            const response=await page.goto(ruta,{waitUntil:'domcontentloaded', timeout:35000});
+            const status=response?.status() || 0;
+            // Las rutas opcionales pueden tener restricciones adicionales por permiso.
+            if (permitida) {
+              expect(status, `${ruta}: estado HTTP`).toBe(200);
+              expect(rutaActual(page),`${ruta}: redireccion inesperada`).toBe(ruta);
+            } else {
+              expect(status,`${ruta}: error del servidor`).toBeLessThan(500);
+              expect(rutaActual(page), `${ruta}: se perdio la sesion`).not.toBe('/login');
+            }
+            await expect(page.locator('body')).toBeVisible();
+            return {status, acceso:status===200 && rutaActual(page)===ruta};
+          }
+          async function prepararCaptura(page) {
+            // Reduce motion hace que JS revele [data-revelar] sin esperar el observer.
+            await page.emulateMedia({reducedMotion:'reduce'});
+            const vh=page.viewportSize()?.height || 850;
+            const total=await page.evaluate(()=>Math.max(document.body.scrollHeight,document.documentElement.scrollHeight));
+            for (let y=0; y<total && y/vh<75; y+=Math.max(350,Math.round(vh*.78))) {
+              await page.evaluate(y=>window.scrollTo(0,y), y);
+              await page.waitForTimeout(55);
+            }
+            await page.evaluate(()=>window.scrollTo(0,0));
+            // La página principal tiene una protección de 1500 ms para animaciones.
+            await page.waitForTimeout(1650);
+            await page.evaluate(async()=>{
+              try { await document.fonts.ready; } catch {}
+              await Promise.all(Array.from(document.images).map(async img=>{
+                if(!img.complete) await Promise.race([
+                  new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true});}),
+                  new Promise(resolve=>setTimeout(resolve,1500))]);
+                if(img.complete && img.naturalWidth>0 && typeof img.decode==='function') await img.decode().catch(()=>{});
+              }));
+            });
+            const ocultos=await page.evaluate(()=>[...document.querySelectorAll('[data-revelar]')]
+              .filter(el=>el.getClientRects().length>0 && Number(getComputedStyle(el).opacity)<.95).length);
+            expect(ocultos,'No debe haber secciones ocultas al capturar').toBe(0);
+          }
+          async function adjuntar(page,info,etiqueta) {
+            await prepararCaptura(page);
+            const img=await page.screenshot({fullPage:true,animations:'disabled',caret:'hide',timeout:35000});
+            await info.attach(etiqueta,{body:img,contentType:'image/png'});
+          }
+          async function auditar(page, info) {
+            const resultado=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();
+            const problemas=resultado.violations.map(v=>({id:v.id,impact:v.impact,nodos:v.nodes.length,ayuda:v.help}));
+            await info.attach('auditoria-axe.json',{body:Buffer.from(JSON.stringify(problemas,null,2)),contentType:'application/json'});
+            expect(problemas,'Incumplimientos WCAG detectados por axe-core').toEqual([]);
+          }
+          async function crearSesion(browser,grupo) {
+            const email=process.env[grupo.correo]?.trim(); const password=process.env[grupo.clave];
+            if(!email || !password) throw new Error(`Secretos no configurados para ${grupo.nombre}: ${grupo.correo} / ${grupo.clave}`);
+            const ctx=await browser.newContext({baseURL:BASE, reducedMotion:'reduce'});
+            try {
+              const p=await ctx.newPage();
+              const r=await p.goto('/login',{waitUntil:'domcontentloaded',timeout:30000});
+              if(r?.status()!==200) throw new Error('El login no esta disponible');
+              await p.waitForFunction(()=>typeof window.Livewire?.all==='function' && window.Livewire.all().length>0,null,{timeout:15000});
+              await p.locator('#login-email').fill(email);
+              await p.locator('#login-password').fill(password);
+              await p.getByRole('button',{name:'Entrar',exact:true}).click();
+              try { await p.waitForURL(new RegExp('^'+BASE+grupo.inicio.replace(/\//g,'\\/')+'(?:[/?#]|$)'),{timeout:22000}); }
+              catch { throw new Error(`No se pudo acceder con el rol ${grupo.nombre}; verificar cuenta/secretos`); }
+              return await ctx.storageState(); // RAM: NO se escribe archivo de sesión.
+            } finally {await ctx.close();}
+          }
+          async function conContexto(browser,info,estado,viewport,cb) {
+            const ctx=await browser.newContext({baseURL:BASE,storageState:estado,
+              viewport:{width:viewport.width,height:viewport.height},reducedMotion:'reduce'});
+            try {const page=await ctx.newPage(); await cb(page);} finally {await ctx.close();}
+          }
+          async function comprobarPagina(page,info,ruta,obligatoria,etiqueta) {
+            const monitor=monitorear(page);
+            const {acceso,status}=await entrar(page,ruta,obligatoria);
+            if (!acceso && !obligatoria) {
+              await info.attach('restriccion-esperada.txt',{body:Buffer.from(`Permiso opcional: ${ruta}; HTTP ${status}; URL ${rutaActual(page)}`),contentType:'text/plain'});
+              return;
+            }
+            // Adjuntar primero: también queda captura cuando falla una comprobación posterior.
+            await adjuntar(page,info,`Evidencia completa - ${etiqueta}`);
+            const titulo=await page.title();
+            expect(titulo.trim(),`Titulo ausente: ${ruta}`).not.toBe('');
+            const ancho=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,vista:document.documentElement.clientWidth}));
+            expect(ancho.doc-ancho.vista,`Desbordamiento horizontal ${ruta}`).toBeLessThanOrEqual(3);
+            const imgMalas=await page.locator('img').evaluateAll(els=>els.filter(img=>img.complete&&img.naturalWidth===0).map(img=>img.currentSrc||img.src));
+            expect(imgMalas,`Imagenes rotas en ${ruta}`).toEqual([]);
+            await page.waitForTimeout(120);
+            expect(monitor.js,`Errores JavaScript: ${ruta}`).toEqual([]);
+            expect(monitor.recursos,`Recursos del mismo origen que fallaron: ${ruta}`).toEqual([]);
+          }
+          
+          // Matriz visual: tres resoluciones reales por pantalla. Cada caso guarda su captura.
+          test.describe('Publico: escritorio tableta movil',()=>{
+            for (const pagina of publicas) for (const vp of viewports) {
+              test(`${pagina.nombre} / ${vp.name} / carga, imagenes, JS, responsive y captura`,async({browser},info)=>{
+                const ctx=await browser.newContext({baseURL:BASE,viewport:{width:vp.width,height:vp.height},reducedMotion:'reduce'});
+                try {await comprobarPagina(await ctx.newPage(),info,pagina.ruta,true,`${pagina.nombre} ${vp.name}`);}finally{await ctx.close();}
+              });
+            }
+          });
+          
+          for (const grupo of grupos) {
+            test.describe(`Panel: ${grupo.nombre}`,()=>{
+              let sesion;
+              test.beforeAll(async({browser})=>{sesion=await crearSesion(browser,grupo);});
+              for(const pagina of grupo.rutas) for(const vp of viewports){
+                test(`${pagina.nombre} / ${vp.name} / captura, recursos, JS y responsive`,async({browser},info)=>{
+                  await conContexto(browser,info,sesion,vp,async(page)=>{
+                    await comprobarPagina(page,info,pagina.ruta,pagina.obligatoria,`${grupo.nombre} - ${pagina.nombre} - ${vp.name}`);
+                  });
+                });
+              }
+              for(const pagina of grupo.rutas){
+                test(`WCAG 2.1 A/AA / ${pagina.nombre}`,async({browser},info)=>{
+                  await conContexto(browser,info,sesion,viewports[0],async(page)=>{
+                    const {acceso}=await entrar(page,pagina.ruta,pagina.obligatoria);
+                    if(!acceso) return;
+                    try {await auditar(page,info);} catch(e) {
+                      // Evidencia visual también cuando axe detecta un problema.
+                      await adjuntar(page,info,'Captura WCAG - '+pagina.nombre);
+                      throw e;
+                    }
+                  });
+                });
+              }
+            });
+          }
+          
+          test.describe('Auditoria WCAG publica',()=>{
+            for(const pagina of publicas){
+              test(`WCAG 2.1 A/AA / ${pagina.nombre}`,async({page},info)=>{
+                await entrar(page,pagina.ruta,true);
+                try{await auditar(page,info);}catch(e){await adjuntar(page,info,'Captura WCAG - '+pagina.nombre);throw e;}
+              });
+            }
+          });
+          
+          test.describe('Navegacion y seguridad no invasiva',()=>{
+            for(const pagina of publicas){
+              test(`Vinculos y anclas / ${pagina.nombre}`,async({page})=>{
+                await entrar(page,pagina.ruta,true);
+                const fallas=await page.locator('a[href^="#"]').evaluateAll(els=>els
+                  .filter(a=>a.getAttribute('href')!=='#')
+                  .filter(a=>!document.getElementById(a.getAttribute('href').slice(1)))
+                  .map(a=>a.getAttribute('href')));
+                expect(fallas,'Anclas internas sin destino').toEqual([]);
+              });
+              test(`Teclado y foco / ${pagina.nombre}`,async({page})=>{
+                await entrar(page,pagina.ruta,true);
+                await page.keyboard.press('Tab');
+                const tag=await page.evaluate(()=>document.activeElement?.tagName?.toLowerCase());
+                expect(['a','button','input','select','textarea','summary'],'Tab debe enfocar un control').toContain(tag);
+              });
+            }
+            for(const ruta of ['/dashboard','/stock','/pedidos','/reportes','/admin','/admin/planes','/caja','/clientes/importar']){
+              test(`Invitado sin acceso a ${ruta}`,async({page})=>{
+                const resp=await page.goto(ruta,{waitUntil:'domcontentloaded'});
+                const url=rutaActual(page);
+                expect(resp.status(),'Error de servidor en ruta protegida').toBeLessThan(500);
+                expect(url===ruta && resp.status()===200,'Acceso indebidamente autorizado sin sesion').toBe(false);
+              });
+            }
+            test('Login muestra campos protegidos sin enviar datos',async({page})=>{
+              await entrar(page,'/login',true);
+              await expect(page.locator('#login-email')).toHaveAttribute('type','email');
+              await expect(page.locator('#login-password')).toHaveAttribute('type','password');
+            });
+            for(const cabecera of ['strict-transport-security','x-content-type-options','content-security-policy','referrer-policy']){
+              test(`Cabecera de seguridad: ${cabecera}`,async({request},info)=>{
+                const response=await request.get(BASE+'/login');
+                expect(response.status()).toBe(200);
+                const valor=response.headers()[cabecera];
+                await info.attach('header.txt',{body:Buffer.from(`${cabecera}: ${valor||'(ausente)'}`),contentType:'text/plain'});
+                expect(valor,`Cabecera de seguridad faltante: ${cabecera}`).toBeTruthy();
+              });
+            }
+          });
+          
+          // Verificar aislamiento sin enumerar IDs ni buscar datos ajenos.
+          for (const grupo of grupos.filter(g=>g.nombre!=='Administrador general')) {
+            test.describe(`Control de acceso transversal: ${grupo.nombre}`,()=>{
+              let sesion;
+              test.beforeAll(async({browser})=>{sesion=await crearSesion(browser,grupo);});
+              for(const ruta of ['/admin','/admin/planes','/admin/catalogo','/admin/auditoria','/admin/ingresos','/admin/catalogos']){
+                test(`No acceder al admin general: ${ruta}`,async({browser})=>{
+                  await conContexto(browser,null,sesion,viewports[0],async page=>{
+                    const resp=await page.goto(ruta,{waitUntil:'domcontentloaded'});
+                    expect(resp.status(),`5xx consultando ${ruta}`).toBeLessThan(500);
+                    expect(rutaActual(page)===ruta && resp.status()===200,`Acceso no autorizado a ${ruta}`).toBe(false);
+                  });
+                });
+              }
+            });
+          }
+          
+          test.describe('Control de acceso empleado a rutas exclusivas del distribuidor',()=>{
+            let sesion;
+            const grupo=grupos.find(g=>g.nombre==='Empleado');
+            test.beforeAll(async({browser})=>{sesion=await crearSesion(browser,grupo);});
+            for(const ruta of ['/distribuidora/configuracion','/distribuidora/empleados','/distribuidora/clientes-directos','/catalogo','/catalogo/precios','/auditoria','/empleados/registrar']){
+              test(`Empleado sin privilegio administrativo: ${ruta}`,async({browser})=>{
+                await conContexto(browser,null,sesion,viewports[0],async page=>{
+                  const resp=await page.goto(ruta,{waitUntil:'domcontentloaded'});
+                  expect(resp.status()).toBeLessThan(500);
+                  expect(rutaActual(page)===ruta && resp.status()===200,`Se concedio acceso administrativo a ${ruta}`).toBe(false);
+                });
+              });
+            }
+          });
+          FPEOF_PRUEBAS
+          cat > qa/playwright.config.mjs <<'FPEOF_CONFIG'
+          import { defineConfig } from '@playwright/test';
+          export default defineConfig({
+            testDir: './tests',
+            testMatch: '**/qa-exhaustivo.spec.mjs',
+            timeout: 120000,
+            expect: { timeout: 12000 },
+            globalTimeout: 85 * 60 * 1000,
+            retries: 0,
+            workers: 1,
+            forbidOnly: true,
+            outputDir: 'reportes/adjuntos',
+            reporter: [
+              ['list', { printSteps: true }],
+              ['html', { outputFolder: 'reportes/html', open: 'never' }],
+              ['json', { outputFile: 'reportes/data/resultados.json' }],
+              ['junit', { outputFile: 'reportes/data/junit.xml' }],
+            ],
+            use: {
+              baseURL: 'https://footwearpoint.app', browserName: 'chromium',
+              reducedMotion: 'reduce',
+              trace: 'off', video: 'off', screenshot: 'off',
+              navigationTimeout: 35000,
+              actionTimeout: 12000,
+            },
+          });
+          FPEOF_CONFIG
+          cat > qa/scripts/resumir.mjs <<'FPEOF_RESUMEN'
+          import {readFileSync,writeFileSync,mkdirSync,appendFileSync} from 'node:fs';
+          const ruta='reportes/data/resultados.json';
+          let datos;
+          try {datos=JSON.parse(readFileSync(ruta,'utf8'));} catch {process.exit(0);}
+          const rows=[];
+          const visit = suites => {
+            for(const suite of suites || []){
+              for(const sp of suite.specs || []) for(const t of sp.tests || []){
+                const r=t.results?.at(-1)||{};
+                rows.push({nombre:sp.title,estado:r.status||'desconocido',tiempo:r.duration||0,
+                  capturas:(r.attachments||[]).filter(a=>a.contentType==='image/png').length,
+                  auditorias:(r.attachments||[]).filter(a=>a.name==='auditoria-axe.json').length,
+                  error:r.errors?.map(e=>(e.message||'').replace(/\r?\n/g,' ').slice(0,300)).join(' / ')||''});
+              }
+              visit(suite.suites);
+            }
+          };
+          visit(datos.suites);
+          const n=(s)=>rows.filter(r=>r.estado===s).length;
+          const lines=[
+            '# FootwearPoint — QA extensivo con evidencia visual','',
+            `Fecha: ${new Date().toISOString()}`,'',
+            `**Total:** ${rows.length} | **Aprobadas:** ${n('passed')} | **Fallidas:** ${n('failed')+n('timedOut')} | **Otras:** ${rows.length-n('passed')-n('failed')-n('timedOut')}`,'',
+            '> Las pruebas solo cubren las pantallas y condiciones definidas. Un caso aprobado no demuestra cobertura absoluta del sistema.','',
+            '| Prueba | Estado | Segundos | Capturas | Axe |','|---|---|---:|---:|---:|',
+            ...rows.map(r=>`| ${r.nombre.replace(/\|/g,'\\|')} | ${r.estado} | ${(r.tiempo/1000).toFixed(1)} | ${r.capturas} | ${r.auditorias} |`),'',
+            '## Hallazgos de ejecucion','',
+            ...rows.filter(r=>r.error).map(r=>`- **${r.nombre}:** ${r.error.replace(/\|/g,'\\|')}`),'',
+            '## Evidencias','',
+            'Abrir reportes/html/index.html mediante el visor HTML de Playwright; cada prueba guarda las capturas como adjuntos.','',
+            '## Restricciones','',
+            '- Solo lectura: NO se realizaron altas, ediciones, eliminaciones ni pagos.','- La prueba de restauracion de Railway y la fase de persistencia continuan pendientes.','- No se usaron capturas ni trazas durante la introduccion de credenciales.','',
+          ];
+          mkdirSync('reportes', {recursive:true});
+          writeFileSync('reportes/RESUMEN.md',lines.join('\n'));
+          if(process.env.GITHUB_STEP_SUMMARY){appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.slice(0,7).join('\n')+'\n');}
+          console.log(`RESUMEN: ${rows.length} pruebas, ${n('passed')} pasaron, ${n('failed')+n('timedOut')} fallaron.`);
+          FPEOF_RESUMEN
+      - name: Contar casos antes de ejecutar
+        working-directory: qa
+        run: npx playwright test --config=playwright.config.mjs --list
+      - name: Ejecutar auditoria, navegacion y capturas completas
+        working-directory: qa
+        run: npx playwright test --config=playwright.config.mjs
+      - name: Generar resumen y estadisticas
+        if: always()
+        working-directory: qa
+        run: node scripts/resumir.mjs
+      - name: Guardar capturas y reportes aun si hay fallos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FootwearPoint-QA-Exhaustivo-${{ github.run_number }}
+          path: |
+            qa/reportes/html/
+            qa/reportes/data/
+            qa/reportes/RESUMEN.md
+            qa/reportes/adjuntos/
+          if-no-files-found: warn
+          retention-days: 7
