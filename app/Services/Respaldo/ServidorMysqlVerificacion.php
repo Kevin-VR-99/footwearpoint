@@ -43,6 +43,7 @@ class ServidorMysqlVerificacion
                 'port='.$valor($config['port'] ?? '3306'),
                 'user='.$valor($config['username'] ?? ''),
                 'password='.$valor($config['password'] ?? ''),
+                ...RespaldarBaseDeDatosAction::opcionesSsl(),
                 '',
             ]));
             @chmod($opciones, 0600);

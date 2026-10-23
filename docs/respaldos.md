@@ -50,6 +50,7 @@ En Railway: proyecto **meticulous-cooperation** → servicio **MySQL** → pesta
 | `RESPALDO_AWS_DEFAULT_REGION` | `auto` |
 | `RESPALDO_AWS_USE_PATH_STYLE_ENDPOINT` | `true` |
 | `RESPALDO_RETENCION_DIAS` | `30` |
+| `RESPALDO_MYSQL_VERIFICAR_CERTIFICADO` | `false` (Railway usa un certificado autofirmado; la conexión sigue cifrada). `true` valida el certificado. Aplica a mysqldump y al simulacro con mysql |
 | `RESPALDO_MYSQLDUMP_OPCIONES` | vacío; con el cliente de Oracle (MySQL 8) y GTID activo: `--set-gtid-purged=OFF` |
 
 Además, el servicio necesita las mismas variables de la aplicación para arrancar Laravel y conectarse a la base: `APP_KEY`, `APP_ENV`, `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`. En Railway conviene usar **referencias** a las del servicio `footwearpoint` o `MySQL` (por ejemplo `${{MySQL.MYSQLHOST}}`), no copiar valores.

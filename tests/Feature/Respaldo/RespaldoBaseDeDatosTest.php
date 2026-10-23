@@ -103,6 +103,23 @@ class RespaldoBaseDeDatosTest extends TestCase
         $this->assertSame($antes, glob(sys_get_temp_dir().'/fwp-respaldo-*') ?: []);
     }
 
+    public function test_por_omision_no_valida_el_certificado_autofirmado_de_railway(): void
+    {
+        $this->artisan('respaldo:base-de-datos')->assertSuccessful();
+
+        $this->assertStringContainsString('loose-ssl-verify-server-cert=0', $this->opciones);
+        $this->assertStringNotContainsString('ssl-verify-server-cert=1', $this->opciones);
+    }
+
+    public function test_con_la_variable_activa_si_valida_el_certificado(): void
+    {
+        config(['respaldos.verificar_certificado_ssl' => true]);
+
+        $this->artisan('respaldo:base-de-datos')->assertSuccessful();
+
+        $this->assertStringContainsString('loose-ssl-verify-server-cert=1', $this->opciones);
+    }
+
     public function test_un_volcado_incompleto_no_se_guarda_y_el_comando_falla(): void
     {
         $this->volcado = "CREATE TABLE `pagos` (id int);\nINSERT INTO `pag";

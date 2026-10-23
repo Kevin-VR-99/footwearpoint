@@ -116,6 +116,19 @@ class RespaldarBaseDeDatosAction
         ];
     }
 
+    /**
+     * Líneas [client] para TLS. El prefijo loose- hace que un cliente que no
+     * conozca la opción (p. ej. el de Oracle) la ignore en vez de fallar.
+     *
+     * @return list<string>
+     */
+    public static function opcionesSsl(): array
+    {
+        return config('respaldos.verificar_certificado_ssl')
+            ? ['loose-ssl-verify-server-cert=1']
+            : ['loose-ssl-verify-server-cert=0'];
+    }
+
     private function escribirOpciones(string $ruta, array $conexion): void
     {
         $valor = fn (string $v) => '"'.addcslashes($v, "\\\"").'"';
@@ -126,6 +139,7 @@ class RespaldarBaseDeDatosAction
             'port='.$valor($conexion['port']),
             'user='.$valor($conexion['username']),
             'password='.$valor($conexion['password']),
+            ...self::opcionesSsl(),
             '',
         ]));
         @chmod($ruta, 0600);

@@ -21,6 +21,13 @@ return [
     // Opciones extra, separadas por espacios (p. ej. --set-gtid-purged=OFF).
     'opciones_extra' => env('RESPALDO_MYSQLDUMP_OPCIONES', ''),
 
+    // TG-235: Railway sirve MySQL con un certificado autofirmado y el cliente
+    // MariaDB de la imagen (default-mysql-client) verifica el certificado por
+    // omisión, así que mysqldump/mysql fallaban con 'self-signed certificate'.
+    // Con false la conexión sigue cifrada (TLS) pero no se valida la cadena del
+    // certificado. Pon true si el servidor tiene un certificado de confianza.
+    'verificar_certificado_ssl' => filter_var(env('RESPALDO_MYSQL_VERIFICAR_CERTIFICADO', false), FILTER_VALIDATE_BOOL),
+
     // Segundos máximos para el volcado.
     'timeout' => (int) env('RESPALDO_TIMEOUT', 1800),
 
