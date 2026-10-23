@@ -108,7 +108,10 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
 
     return RefreshIndicator(
       onRefresh: () => _cargar(forzar: true),
-      child: _lineas!.isEmpty
+      // Solo si el servidor no manda NADA se enseña el aviso de catálogo vacío.
+      // Si lo que queda vacío es un filtro, los filtros siguen a la vista y el
+      // aviso sale chiquito debajo de ellos (ver [_resultados]).
+      child: _productos.isEmpty
           ? ListView(
               // ListView para que se pueda deslizar y recargar aunque esté vacío.
               children: const [
@@ -130,14 +133,14 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     disponibilidad: _disponibilidad,
   );
 
-  List<ProductoCatalogo> get _visibles {
-    final filtrados = aplicarFiltroCatalogo(_productos, _filtro);
-    _lineas = LineaCatalogo.agrupar(filtrados);
-    return filtrados;
-  }
-
   Widget _lista(BuildContext context) {
-    final visibles = _visibles;
+    // Antes aquí se pisaba [_lineas] con el resultado filtrado. Si un filtro
+    // dejaba la lista vacía, en la siguiente pasada el build creía que el
+    // catálogo entero estaba vacío: desaparecían los filtros y salía "Por
+    // ahora no hay productos publicados" hasta reiniciar la app. Ahora las
+    // líneas filtradas se calculan aparte y la lista completa no se toca.
+    final visibles = aplicarFiltroCatalogo(_productos, _filtro);
+    final lineasVisibles = LineaCatalogo.agrupar(visibles);
     final buscando = _busqueda.trim().isNotEmpty;
     final encontrados = buscando ? filtrarProductos(visibles, _busqueda) : const <ProductoCatalogo>[];
 
@@ -153,7 +156,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
           ),
         ),
         _filtros(),
-        Expanded(child: _resultados(buscando, encontrados, visibles)),
+        Expanded(child: _resultados(buscando, encontrados, visibles, lineasVisibles)),
       ],
     );
   }
@@ -223,7 +226,12 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
     );
   }
 
-  Widget _resultados(bool buscando, List<ProductoCatalogo> encontrados, List<ProductoCatalogo> visibles) {
+  Widget _resultados(
+    bool buscando,
+    List<ProductoCatalogo> encontrados,
+    List<ProductoCatalogo> visibles,
+    List<LineaCatalogo> lineas,
+  ) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
       children: [
@@ -244,22 +252,49 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
             ],
           ],
         ] else if (visibles.isEmpty) ...[
-          const FpEstadoVacio(
-            icono: Icons.filter_alt_off_outlined,
-            titulo: 'Ningún producto coincide con esos filtros.',
-          ),
+          // Aviso pequeño bajo los filtros, no una pantalla completa: así se
+          // puede cambiar de filtro o de talla sin perder nada.
+          _SinCoincidencias(talla: _talla),
         ] else ...[
           FpEncabezado(
             etiqueta: 'Catálogo',
             titulo: 'Elige una línea',
-            subtitulo: _lineas!.length == 1
+            subtitulo: lineas.length == 1
                 ? '1 línea con productos publicados'
-                : '${_lineas!.length} líneas con productos publicados',
+                : '${lineas.length} líneas con productos publicados',
           ),
           const SizedBox(height: 12),
-          for (final linea in _lineas!) _TarjetaLinea(linea: linea),
+          for (final linea in lineas) _TarjetaLinea(linea: linea),
         ],
       ],
+    );
+  }
+}
+
+/// Aviso chico cuando un filtro (o una talla) no deja productos.
+class _SinCoincidencias extends StatelessWidget {
+  const _SinCoincidencias({this.talla});
+
+  final String? talla;
+
+  @override
+  Widget build(BuildContext context) {
+    final texto = talla != null
+        ? 'Talla $talla: No disponible con estos filtros.'
+        : 'Ningún producto coincide con esos filtros.';
+
+    return Padding(
+      key: const Key('catalogo_sin_coincidencias'),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, size: 18, color: FpColores.textoTenue),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(texto, style: const TextStyle(color: FpColores.textoTenue)),
+          ),
+        ],
+      ),
     );
   }
 }

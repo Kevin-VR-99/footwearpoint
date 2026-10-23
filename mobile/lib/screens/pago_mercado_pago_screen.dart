@@ -175,7 +175,7 @@ class _PagoMercadoPagoScreenState extends State<PagoMercadoPagoScreen> with Widg
         if (!salio) Navigator.of(context).pop(_huboCambios);
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Pago con tarjeta'), bottom: const FpBordeMarca()),
+        appBar: AppBar(title: const Text('Pago con Mercado Pago'), bottom: const FpBordeMarca()),
         body: SafeArea(
           child: ListView(
             padding: const EdgeInsets.all(16),
@@ -218,11 +218,11 @@ class _PagoMercadoPagoScreenState extends State<PagoMercadoPagoScreen> with Widg
                 )
               else ...[
                 FilledButton.icon(
-                  key: const Key('abrir_pago_tarjeta'),
+                  key: const Key('abrir_pago_mercado_pago'),
                   onPressed: _trabajando ? null : _pagar,
                   style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                  icon: const Icon(Icons.credit_card),
-                  label: Text(_porVerificar ? 'Abrir el pago con tarjeta otra vez' : 'Pagar con tarjeta'),
+                  icon: const Icon(Icons.payments_outlined),
+                  label: Text(_porVerificar ? 'Abrir el pago con Mercado Pago otra vez' : 'Pagar con Mercado Pago'),
                 ),
                 if (_porVerificar) ...[
                   const SizedBox(height: 12),
@@ -242,7 +242,7 @@ class _PagoMercadoPagoScreenState extends State<PagoMercadoPagoScreen> with Widg
                   _porVerificar
                       ? 'Cuando termines de pagar en Mercado Pago, regresa a la app: revisaremos tu pago solos. '
                           'Si no se actualiza, toca "Verificar pago".'
-                      : 'Se abre Mercado Pago para cobrar la tarjeta. También puedes pagar en mostrador.',
+                      : 'Se abre Mercado Pago para completar el pago. También puedes pagar en mostrador.',
                   style: tema.textTheme.bodyMedium,
                 ),
               ],
