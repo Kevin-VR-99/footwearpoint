@@ -151,6 +151,11 @@ class Pago extends Model
         return $this->belongsTo(Suscripcion::class, 'suscripcion_id');
     }
 
+    public function distribuidora()
+    {
+        return $this->belongsTo(Distribuidora::class, 'distribuidora_id');
+    }
+
     public function ventaDirecta()
     {
         return $this->belongsTo(VentaDirecta::class, 'venta_directa_id');

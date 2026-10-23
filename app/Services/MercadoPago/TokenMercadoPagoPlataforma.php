@@ -94,6 +94,40 @@ class TokenMercadoPagoPlataforma
         return $cuenta;
     }
 
+    /**
+     * Lo que el admin general puede ver de la cuenta que cobra las mensualidades.
+     * El token no sale de aquí.
+     *
+     * @return array{configurada: bool, consultada: bool, id?: string, nickname?: ?string, email?: ?string, nombre?: ?string}
+     */
+    public function identidad(): array
+    {
+        $token = $this->token();
+
+        if ($token === null) {
+            return ['configurada' => false, 'consultada' => false];
+        }
+
+        $llave = 'mercado_pago.identidad_plataforma.'.hash('sha256', $token);
+        $guardada = Cache::get($llave);
+
+        if (is_array($guardada) && ($guardada['consultada'] ?? false) === true) {
+            return $guardada;
+        }
+
+        try {
+            $identidad = $this->cliente->identidadDelToken($token);
+        } catch (MercadoPagoException) {
+            return ['configurada' => true, 'consultada' => false];
+        }
+
+        $identidad['configurada'] = true;
+        $identidad['consultada'] = true;
+        Cache::put($llave, $identidad, now()->addHour());
+
+        return $identidad;
+    }
+
     private function token(): ?string
     {
         $token = config('services.mercadopago.access_token');

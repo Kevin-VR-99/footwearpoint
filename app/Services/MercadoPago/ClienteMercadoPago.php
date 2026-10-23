@@ -292,6 +292,39 @@ class ClienteMercadoPago
     }
 
     /**
+     * Datos públicos de la cuenta dueña del token. No incluye el token.
+     *
+     * @return array{id: string, nickname: ?string, email: ?string, nombre: ?string}
+     *
+     * @throws MercadoPagoException
+     */
+    public function identidadDelToken(string $token): array
+    {
+        $datos = $this->llamar('consultar la cuenta', fn () => $this->conToken($token)
+            ->get($this->config('url_api').'/users/me'));
+
+        $id = $datos['id'] ?? null;
+
+        if (! is_scalar($id) || preg_match('/^[0-9]{1,20}$/', (string) $id) !== 1) {
+            report(new RuntimeException('Mercado Pago respondió sin id al consultar la cuenta.'));
+
+            throw MercadoPagoException::con(MercadoPagoException::NO_SE_PUDO_COBRAR);
+        }
+
+        $nombre = trim(implode(' ', array_filter([
+            is_string($datos['first_name'] ?? null) ? $datos['first_name'] : '',
+            is_string($datos['last_name'] ?? null) ? $datos['last_name'] : '',
+        ], fn (string $parte) => $parte !== '')));
+
+        return [
+            'id' => (string) $id,
+            'nickname' => is_string($datos['nickname'] ?? null) && $datos['nickname'] !== '' ? $datos['nickname'] : null,
+            'email' => is_string($datos['email'] ?? null) && $datos['email'] !== '' ? $datos['email'] : null,
+            'nombre' => $nombre !== '' ? $nombre : null,
+        ];
+    }
+
+    /**
      * Reembolso total (sin monto) o parcial de un pago, con la cuenta de la
      * distribuidora: POST /v1/payments/{id}/refunds.
      *
