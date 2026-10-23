@@ -99,6 +99,14 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
   String? _validarNueva(String? valor) {
     if (valor == null || valor.isEmpty) return 'Escribe tu nueva contraseña.';
     if (valor.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
+    if (!RegExp(r'\p{L}', unicode: true).hasMatch(valor)) {
+      return 'La contraseña debe incluir al menos una letra.';
+    }
+    if (!RegExp(r'\d').hasMatch(valor)) {
+      return 'La contraseña debe incluir al menos un número.';
+    }
+    // El servidor además rechaza las comunes y secuencias (12345678,
+    // qwerty123...); ese mensaje llega en _erroresServidor.
     return null;
   }
 
@@ -197,7 +205,7 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
                         _CampoPassword(
                           controller: _nueva,
                           etiqueta: 'Nueva contraseña',
-                          ayuda: 'Mínimo 8 caracteres.',
+                          ayuda: 'Mínimo 8 caracteres, con letras y números. Evita 12345678 o tu nombre.',
                           habilitado: !_guardando,
                           autofill: AutofillHints.newPassword,
                           validator: _validarNueva,

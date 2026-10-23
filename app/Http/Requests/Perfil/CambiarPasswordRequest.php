@@ -22,7 +22,7 @@ class CambiarPasswordRequest extends FormRequest
     {
         return [
             'password_actual' => ['required', 'string', 'max:255'],
-            'password'        => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+            'password'        => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'confirmed'],
         ];
     }
 

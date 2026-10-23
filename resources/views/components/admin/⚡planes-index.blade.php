@@ -193,7 +193,8 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
                 </div>
                 <div class="fp-campo md:col-span-2">
                     <label for="planes-index-descripcion" class="block text-sm font-medium mb-1 text-slate-700">Descripción</label>
-                    <textarea id="planes-index-descripcion" wire:model="descripcion" rows="2" class="w-full rounded-lg"></textarea>
+                    <textarea id="planes-index-descripcion" wire:model="descripcion" rows="2" maxlength="2000" class="w-full rounded-lg"></textarea>
+                    @error('descripcion') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div class="md:col-span-2 flex items-center gap-2">
                     <input type="checkbox" wire:model="activo" class="rounded text-fp-primary">

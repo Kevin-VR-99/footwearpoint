@@ -24,7 +24,7 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
         return [
             'token'    => ['required', 'string', 'max:255'],
             'email'    => ['required', 'email'],
-            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+            'password' => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'confirmed'],
         ];
     }
 
@@ -109,7 +109,7 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
                 type="password"
                 wire:model="password"
                 class="w-full rounded-lg"
-                placeholder="Mínimo 8 caracteres"
+                placeholder="Mínimo 8 caracteres, letras y números"
             >
             @error('password')
                 <p class="text-sm text-fp-danger mt-1">{{ $message }}</p>

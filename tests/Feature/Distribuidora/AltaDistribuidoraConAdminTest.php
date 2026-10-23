@@ -189,7 +189,8 @@ class AltaDistribuidoraConAdminTest extends TestCase
     public function test_la_contrasena_del_administrador_pide_minimo_8_caracteres(): void
     {
         $this->crear(['admin_password' => 'corta'])
-            ->assertHasErrors(['admin_password' => 'min']);
+            ->assertHasErrors('admin_password')
+            ->assertSee('La contrase'."\u{00F1}".'a debe tener al menos 8 caracteres.');
 
         $this->assertFalse(Distribuidora::where('slug', 'zapateria-norte')->exists());
     }

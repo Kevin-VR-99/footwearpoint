@@ -187,7 +187,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             // TG-194: el administrador de la tienda es obligatorio.
             'admin_nombre' => ['required', 'string', 'max:150'],
             'admin_email' => ['required', 'email', new CorreoConDominioReal(), 'max:190', 'unique:usuarios,email'],
-            'admin_password' => ['required', 'string', 'min:8', 'max:255'],
+            'admin_password' => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255'],
         ], [
             'admin_password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'nuevo_descripcion_publica.max' => 'La descripción no puede tener más de 2000 caracteres.',
@@ -878,7 +878,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         @enderror
                     </div>
                     <div class="fp-campo">
-                        <label for="distribuidoras-index-admin-password" class="block text-sm font-medium mb-1 text-slate-700">Contraseña * (mínimo 8)</label>
+                        <label for="distribuidoras-index-admin-password" class="block text-sm font-medium mb-1 text-slate-700">Contraseña * (mínimo 8, con letras y números)</label>
                         <input id="distribuidoras-index-admin-password" type="password" wire:model="admin_password"
                             class="w-full rounded-lg text-sm">
                         @error('admin_password')
@@ -1174,7 +1174,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                                 @enderror
                             </div>
                         </div>
-                        <p class="text-xs text-slate-500 mt-2">Deja la contraseña vacía para no cambiarla. Si la cambias, mínimo 8 caracteres.</p>
+                        <p class="text-xs text-slate-500 mt-2">Deja la contraseña vacía para no cambiarla. Si la cambias, mínimo 8 caracteres, con letras y números.</p>
                     @else
                         <x-panel.alerta tipo="aviso" class="mt-3">
                             {{ \App\Services\Distribuidora\ActualizarAdminDistribuidoraAction::MENSAJE_SIN_ADMIN }}

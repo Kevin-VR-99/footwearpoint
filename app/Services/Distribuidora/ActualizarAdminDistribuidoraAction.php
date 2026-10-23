@@ -71,7 +71,7 @@ class ActualizarAdminDistribuidoraAction
         Validator::make($datos, [
             'nombre'   => ['required', 'string', 'max:150'],
             'email'    => ['required', 'email', new CorreoConDominioReal(), 'max:190', Rule::unique('usuarios', 'email')->ignore($usuario->id)],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'password' => ['nullable', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'confirmed'],
         ], [
             'nombre.required'    => 'El nombre del administrador es obligatorio.',
             'nombre.max'         => 'El nombre del administrador no puede pasar de 150 caracteres.',

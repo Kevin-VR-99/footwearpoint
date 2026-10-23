@@ -293,7 +293,7 @@ class SinErroresTecnicosTest extends TestCase
         $respuesta = $this->postJson('/api/auth/register-empleado', [
             'nombre' => 'Empleado Nuevo',
             'email' => 'empleado.nuevo@calzadosramirez.test',
-            'password' => 'password123',
+            'password' => 'Tenis.Rojo42',
         ]);
 
         $respuesta->assertStatus(500)

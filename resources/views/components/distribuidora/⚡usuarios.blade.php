@@ -222,7 +222,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             'empleado_nombre' => ['required', 'string', 'max:150'],
             'empleado_email' => ['required', 'email', new CorreoConDominioReal(), 'max:190', 'unique:usuarios,email'],
             'empleado_telefono' => ['nullable', 'string', 'max:30'],
-            'empleado_password' => ['required', 'string', 'min:8', 'max:255', 'same:empleado_password_confirmation'],
+            'empleado_password' => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'same:empleado_password_confirmation'],
         ], [
             'empleado_password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'empleado_nombre.required' => 'El nombre es obligatorio.',
@@ -396,7 +396,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             'revendedor_email' => ['nullable', 'email', new CorreoConDominioReal(), 'max:190'],
             'revendedor_codigo_interno' => ['nullable', 'string', 'max:60'],
             'revendedor_acceso_email' => ['nullable', 'required_with:revendedor_acceso_password', 'email', new CorreoConDominioReal(), 'max:190'],
-            'revendedor_acceso_password' => ['nullable', 'required_with:revendedor_acceso_email', 'string', 'min:8', 'max:255', 'same:revendedor_acceso_password_confirmation'],
+            'revendedor_acceso_password' => ['nullable', 'required_with:revendedor_acceso_email', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'same:revendedor_acceso_password_confirmation'],
         ], [
             'revendedor_acceso_password.max' => 'La contraseña no puede tener más de 255 caracteres.',
             'revendedor_acceso_email.required_with' => 'Para dar acceso a la app escribe también el correo.',
