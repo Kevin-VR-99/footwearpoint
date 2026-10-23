@@ -201,6 +201,10 @@ html.fp-js [data-revelar]:not(.revelado) {
     from { opacity: 0; transform: translateY(-0.25rem) scale(0.98); }
     to { opacity: 1; transform: none; }
 }
+@keyframes fp-logo-entrada {
+    from { opacity: 0; transform: scale(.92); }
+    to { opacity: 1; transform: none; }
+}
 
 @layer components {
     /* Aparición con desvanecido. */
@@ -216,6 +220,17 @@ html.fp-js [data-revelar]:not(.revelado) {
     .fp-escalonado > :nth-child(5) { animation-delay: 120ms; }
     .fp-escalonado > :nth-child(6) { animation-delay: 150ms; }
     .fp-escalonado > :nth-child(n+7) { animation-delay: 150ms; }
+
+    /* Ficha de una distribuidora: la foto entra y los datos van detrás. */
+    .fp-logo-entrada { animation: fp-logo-entrada .4s cubic-bezier(.22, .8, .36, 1) backwards; }
+    .fp-datos-cascada > * { animation: fp-aparecer .28s cubic-bezier(.22, .8, .36, 1) backwards; }
+    .fp-datos-cascada > :nth-child(2) { animation-delay: 40ms; }
+    .fp-datos-cascada > :nth-child(3) { animation-delay: 80ms; }
+    .fp-datos-cascada > :nth-child(4) { animation-delay: 120ms; }
+    .fp-datos-cascada > :nth-child(5) { animation-delay: 160ms; }
+    .fp-datos-cascada > :nth-child(6) { animation-delay: 200ms; }
+    .fp-datos-cascada > :nth-child(7) { animation-delay: 240ms; }
+    .fp-datos-cascada > :nth-child(n+8) { animation-delay: 280ms; }
 
     /* Contenido principal de cada layout: entra suave al navegar. */
     .fp-contenido > * { animation: fp-aparecer .22s cubic-bezier(.22, .8, .36, 1) backwards; }
@@ -422,7 +437,8 @@ html.fp-js [data-revelar]:not(.revelado) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .fp-metrica-barra, .fp-formulario::before, .fp-modal, .fp-insignia-viva .fp-insignia-punto, .fp-vacio-icono { animation: none !important; }
+    .fp-metrica-barra, .fp-formulario::before, .fp-modal, .fp-insignia-viva .fp-insignia-punto, .fp-vacio-icono,
+    .fp-logo-entrada, .fp-datos-cascada > * { animation: none !important; }
     .fp-metrica-icono, .fp-accion, .fp-insignia, .fp-pestana, .fp-formulario, .fp-campo > label { transition: none !important; }
     .fp-metrica:hover .fp-metrica-icono, .fp-accion:active, .fp-insignia:hover, .fp-pestana:active { transform: none !important; }
 }
