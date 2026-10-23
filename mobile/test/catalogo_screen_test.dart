@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart' show Size;
+import 'package:flutter/material.dart' show ChoiceChip, Size;
 import 'dart:convert';
 import 'dart:io';
 
@@ -235,6 +235,67 @@ void main() {
 
     // Lo que fallaba: salía «Pedir ahora» en vez del carrito.
     expect(find.text('Agregar a pedido'), findsOneWidget);
+  });
+
+  testWidgets('cambiar entre Todo, Disponible y Bajo pedido no pierde los filtros', (tester) async {
+    // Solo hay un producto disponible: "Bajo pedido" se queda sin resultados.
+    await abrirCatalogo(
+      tester,
+      () async => _json({
+        'data': [
+          _producto(
+            id: 1,
+            nombre: 'Botín casual',
+            linea: {'id': 2, 'nombre': 'Impuls'},
+            variantes: [_variante(1, '24', 'Negro', 'disponible')],
+          ),
+        ],
+      }, 200),
+    );
+
+    Finder chip(String texto) => find.widgetWithText(ChoiceChip, texto);
+
+    await tester.tap(chip('Bajo pedido'));
+    await tester.pumpAndSettle();
+    // Aviso chico bajo los filtros, no la pantalla de catálogo vacío.
+    expect(find.text('Ningún producto coincide con esos filtros.'), findsOneWidget);
+    expect(find.text('Por ahora no hay productos publicados en el catálogo.'), findsNothing);
+    expect(chip('Todo'), findsOneWidget);
+    expect(chip('Disponible'), findsOneWidget);
+    expect(chip('Bajo pedido'), findsOneWidget);
+
+    // Lo que fallaba: al volver a "Todo" ya no regresaban los productos.
+    await tester.tap(chip('Disponible'));
+    await tester.pumpAndSettle();
+    expect(find.text('Impuls'), findsOneWidget);
+
+    await tester.tap(chip('Bajo pedido'));
+    await tester.pumpAndSettle();
+    await tester.tap(chip('Todo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Impuls'), findsOneWidget);
+    expect(find.text('Elige una línea'), findsOneWidget);
+  });
+
+  testWidgets('una talla no disponible solo muestra un aviso chico', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+
+    await abrirCatalogo(tester, () async => _json({'data': _catalogo()}, 200));
+    await tester.tap(find.text('Impuls'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Botín casual'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Talla 23: No disponible'));
+    await tester.pump();
+    expect(find.text('Talla 23: No disponible'), findsOneWidget);
+    // La pantalla sigue igual: tallas a la vista y se puede elegir otra.
+    expect(find.text('Tallas y colores'), findsOneWidget);
+    await tester.tap(find.byTooltip('Talla 24: Disponible'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Talla 25: Bajo pedido'), findsOneWidget);
   });
 
   testWidgets('catálogo vacío: lo dice en vez de dejar la pantalla en blanco', (tester) async {

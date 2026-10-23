@@ -29,7 +29,19 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   VarianteCatalogo? _varianteSeleccionada;
 
   void _seleccionarVariante(VarianteCatalogo variante) {
-    if (variante.disponibilidad == Disponibilidad.noDisponible) return;
+    // Una talla no disponible no cambia la pantalla: solo un aviso chico.
+    if (variante.disponibilidad == Disponibilidad.noDisponible) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Talla ${variante.talla}: No disponible'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      return;
+    }
 
     setState(() {
       _varianteSeleccionada = variante;
@@ -416,7 +428,7 @@ class _Talla extends StatelessWidget {
     return Tooltip(
       message: 'Talla ${variante.talla}: ${variante.disponibilidad.etiqueta}',
       child: InkWell(
-        onTap: noDisponible ? null : onTap,
+        onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Container(
           constraints: const BoxConstraints(minWidth: 52),

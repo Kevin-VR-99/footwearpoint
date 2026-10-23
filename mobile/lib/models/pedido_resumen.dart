@@ -144,9 +144,9 @@ class PedidoResumen {
 /// TG-268: los tres pagos con Mercado Pago que acepta el servidor. [ruta] es
 /// el tramo de la URL: /pedidos/{id}/{ruta}/mercado-pago.
 enum TipoPagoMercadoPago {
-  anticipo('anticipo', 'Anticipo', 'Pagar anticipo con tarjeta'),
-  saldo('saldo', 'Saldo del pedido', 'Pagar saldo con tarjeta'),
-  total('total', 'Total del pedido', 'Pagar con tarjeta');
+  anticipo('anticipo', 'Anticipo', 'Pagar anticipo con Mercado Pago'),
+  saldo('saldo', 'Saldo del pedido', 'Pagar saldo con Mercado Pago'),
+  total('total', 'Total del pedido', 'Pagar con Mercado Pago');
 
   const TipoPagoMercadoPago(this.ruta, this.concepto, this.textoBoton);
 

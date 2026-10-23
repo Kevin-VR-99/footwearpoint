@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/pedido_resumen.dart';
 import '../screens/pago_mercado_pago_screen.dart';
 
-/// "Pagar … con tarjeta" y/o "Verificar pago" según lo que diga el servidor
-/// del pedido. La tarjeta se cobra en Mercado Pago. No muestra nada si no
+/// "Pagar … con Mercado Pago" y/o "Verificar pago" según lo que diga el servidor
+/// del pedido. El cobro se hace en Mercado Pago. No muestra nada si no
 /// hay nada que pagar ni verificar. [alTerminar] se llama si en la pantalla
 /// de pago cambió algo.
 class BotonesPagoMercadoPago extends StatelessWidget {
@@ -44,7 +44,7 @@ class BotonesPagoMercadoPago extends StatelessWidget {
           FilledButton.icon(
             onPressed: () => _abrir(context, disponible),
             style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-            icon: const Icon(Icons.credit_card),
+            icon: const Icon(Icons.payments_outlined),
             label: Text(disponible.textoBoton),
           ),
       ],

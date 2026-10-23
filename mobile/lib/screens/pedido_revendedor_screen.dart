@@ -335,7 +335,7 @@ class _Enviado extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          'Paga con tarjeta o en mostrador. Te avisaremos cuando tu pedido llegue.',
+          'Paga con Mercado Pago o en mostrador. Te avisaremos cuando tu pedido llegue.',
           textAlign: TextAlign.center,
           style: tema.textTheme.bodyMedium,
         ),
