@@ -29,6 +29,7 @@ class Usuario extends Authenticatable implements CanResetPassword, MustVerifyEma
         'email',
         'password',
         'telefono',
+        'foto_url',
         'estado',
         // TG-193: contraseña temporal que hay que cambiar al entrar.
         'debe_cambiar_password',
@@ -115,6 +116,18 @@ class Usuario extends Authenticatable implements CanResetPassword, MustVerifyEma
     public function telefonoVisible(): ?string
     {
         return $this->contacto()?->telefono ?? $this->telefono;
+    }
+
+    /** Foto de perfil: la del contacto (cliente mayorista) o la de la cuenta (personal). */
+    public function fotoVisible(): ?string
+    {
+        $contacto = $this->contacto();
+
+        if ($contacto instanceof Revendedor) {
+            return $contacto->foto_url;
+        }
+
+        return $this->foto_url;
     }
 
     public function aceptacionesLegales()

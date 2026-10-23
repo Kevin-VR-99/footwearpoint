@@ -2,7 +2,9 @@
 
 namespace App\Services\Perfil;
 
+use App\Models\Revendedor;
 use App\Models\Usuario;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Editar el propio nombre y teléfono (E1-05 / TG-110, reescrito en TG-216).
@@ -22,14 +24,28 @@ use App\Models\Usuario;
  */
 class ActualizarPerfilAction
 {
-    public function ejecutar(Usuario $usuario, string $nombre, ?string $telefono): Usuario
+    /**
+     * $cambiarTelefono en false deja el teléfono como está (la app ya no lo
+     * manda). Un cliente mayorista no cambia su teléfono aquí: desde ahora
+     * se confirma por correo (CambioContactoAction).
+     */
+    public function ejecutar(Usuario $usuario, string $nombre, ?string $telefono, bool $cambiarTelefono = true): Usuario
     {
-        $datos = [
-            'nombre' => $nombre,
-            'telefono' => $telefono,
-        ];
+        $datos = ['nombre' => $nombre];
 
         $contacto = $usuario->contacto();
+
+        if ($cambiarTelefono) {
+            $actual = $contacto ? $contacto->telefono : $usuario->telefono;
+
+            if ($contacto instanceof Revendedor && (string) $telefono !== (string) $actual) {
+                throw ValidationException::withMessages([
+                    'telefono' => [CambioContactoAction::MENSAJE_USA_CONFIRMACION],
+                ]);
+            }
+
+            $datos['telefono'] = $telefono;
+        }
 
         if ($contacto) {
             $contacto->update($datos);

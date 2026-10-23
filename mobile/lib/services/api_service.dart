@@ -125,6 +125,24 @@ class ApiService {
     );
   }
 
+  /// Sube un archivo como multipart/form-data (p. ej. la foto de perfil).
+  Future<Map<String, dynamic>> subirArchivo(
+    String ruta, {
+    required String campo,
+    required List<int> bytes,
+    required String nombreArchivo,
+  }) async {
+    return _enviar(() async {
+      final peticion = http.MultipartRequest('POST', _url(ruta))
+        ..headers.addAll(await _encabezados())
+        ..files.add(http.MultipartFile.fromBytes(campo, bytes, filename: nombreArchivo));
+      // El boundary lo pone MultipartRequest; el JSON por defecto estorba.
+      peticion.headers.remove('Content-Type');
+
+      return http.Response.fromStream(await _cliente.send(peticion));
+    });
+  }
+
   Future<Map<String, dynamic>> delete(String ruta) async {
     return _enviar(() async => _cliente.delete(_url(ruta), headers: await _encabezados()));
   }

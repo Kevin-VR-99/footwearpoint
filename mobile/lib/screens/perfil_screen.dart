@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../models/usuario.dart';
@@ -21,8 +22,27 @@ import '../widgets/fp_componentes.dart';
 /// Al guardar, el servidor también actualiza el registro de revendedor o
 /// cliente directo que ve el empleado en el panel web: eso no es trabajo de
 /// la app.
+///
+/// El revendedor además cambia aquí su foto, su correo y su teléfono. El
+/// correo y el teléfono no cambian al momento: el servidor manda un enlace
+/// al correo nuevo y avisa al anterior; hasta que lo abre, el cambio se ve
+/// como pendiente.
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
+
+  /// Las pruebas lo cambian para no abrir la galería de verdad.
+  static Future<FotoElegida?> Function() elegirFoto = _elegirDeGaleria;
+
+  static Future<FotoElegida?> _elegirDeGaleria() async {
+    final archivo = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (archivo == null) return null;
+    return FotoElegida(bytes: await archivo.readAsBytes(), nombre: archivo.name);
+  }
 
   @override
   State<PerfilScreen> createState() => _PerfilScreenState();
@@ -33,6 +53,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   /// TG-189 (A11): mientras se pide otro enlace de confirmacion.
   bool _reenviando = false;
+  bool _subiendoFoto = false;
   final _nombre = TextEditingController();
   final _telefono = TextEditingController();
 
@@ -145,7 +166,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
     try {
       final respuesta = await auth.api.patch(
         'perfil',
-        cuerpo: {'nombre': _nombre.text.trim(), 'telefono': _telefono.text.trim()},
+        // El teléfono del revendedor solo cambia con confirmación por correo.
+        cuerpo: _esRevendedor
+            ? {'nombre': _nombre.text.trim()}
+            : {'nombre': _nombre.text.trim(), 'telefono': _telefono.text.trim()},
       );
       final usuario = Usuario.desdeJson(respuesta['data'] as Map<String, dynamic>);
 
@@ -167,6 +191,71 @@ class _PerfilScreenState extends State<PerfilScreen> {
     } finally {
       if (mounted) setState(() => _guardando = false);
     }
+  }
+
+  bool get _esRevendedor => context.read<AuthProvider>().rol == 'revendedor';
+
+  Future<void> _cambiarFoto() async {
+    final auth = context.read<AuthProvider>();
+    final mensajero = ScaffoldMessenger.of(context);
+
+    final FotoElegida? foto;
+    try {
+      foto = await PerfilScreen.elegirFoto();
+    } catch (_) {
+      mensajero.showSnackBar(const SnackBar(content: Text('No se pudo abrir la galería.')));
+      return;
+    }
+    if (foto == null || !mounted) return;
+
+    setState(() => _subiendoFoto = true);
+    try {
+      final respuesta = await auth.api.subirArchivo(
+        'perfil/foto',
+        campo: 'foto',
+        bytes: foto.bytes,
+        nombreArchivo: foto.nombre,
+      );
+      final usuario = Usuario.desdeJson(respuesta['data'] as Map<String, dynamic>);
+      auth.actualizarUsuario(usuario);
+      if (!mounted) return;
+      setState(() => _usuario = usuario);
+      mensajero.showSnackBar(SnackBar(content: Text(respuesta['message'] as String? ?? 'Foto actualizada.')));
+    } on ApiException catch (e) {
+      mensajero.showSnackBar(SnackBar(content: Text(e.errores['foto']?.first ?? e.mensaje)));
+    } finally {
+      if (mounted) setState(() => _subiendoFoto = false);
+    }
+  }
+
+  /// Pide el dato nuevo y lo manda. El servidor no lo cambia todavía: manda
+  /// el enlace de confirmación y regresa el usuario con el cambio pendiente.
+  Future<void> _pedirCambio({required String campo}) async {
+    final auth = context.read<AuthProvider>();
+    final mensajero = ScaffoldMessenger.of(context);
+    final esCorreo = campo == 'email';
+
+    final usuario = await showDialog<Usuario>(
+      context: context,
+      builder: (_) => _DialogoCambioContacto(
+        api: auth.api,
+        esCorreo: esCorreo,
+        actual: esCorreo ? _usuario!.email : (_usuario!.telefono ?? ''),
+      ),
+    );
+    if (usuario == null || !mounted) return;
+
+    auth.actualizarUsuario(usuario);
+    setState(() => _mostrar(usuario));
+    mensajero.showSnackBar(
+      SnackBar(
+        content: Text(
+          esCorreo
+              ? 'Te mandamos un enlace a ${usuario.correoPendiente ?? 'tu correo nuevo'}. Ábrelo para confirmar el cambio.'
+              : 'Te mandamos un enlace a tu correo. Ábrelo para confirmar el teléfono nuevo.',
+        ),
+      ),
+    );
   }
 
   Future<void> _abrirCambiarPassword() async {
@@ -228,6 +317,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   Widget _contenido(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final esRevendedor = auth.rol == 'revendedor';
 
     if (_cargando) {
       return const Center(child: CircularProgressIndicator());
@@ -326,29 +416,65 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     children: [
                       Row(
                         children: [
-                          FpAvatar(nombre: _usuario!.nombre, tamano: 32),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Mis datos',
-                            style: TextStyle(
-                              color: FpColores.sidebar,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                          FpAvatar(nombre: _usuario!.nombre, fotoUrl: _usuario!.fotoUrl, tamano: 56),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Mis datos',
+                                  style: TextStyle(
+                                    color: FpColores.sidebar,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  onPressed: _subiendoFoto || _guardando ? null : _cambiarFoto,
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(48, 40),
+                                  ),
+                                  icon: _subiendoFoto
+                                      ? const SizedBox(
+                                          height: 16,
+                                          width: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : const Icon(Icons.photo_camera_outlined, size: 18),
+                                  label: Text(_subiendoFoto ? 'Subiendo…' : 'Cambiar foto'),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
+                      if (esRevendedor && _usuario!.cambiosPendientes.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _AvisoPendiente(usuario: _usuario!),
+                      ],
                       const SizedBox(height: 16),
                       TextFormField(
                         initialValue: _usuario!.email,
                         readOnly: true,
                         enabled: false,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Correo',
-                          helperText: 'El correo no se puede cambiar.',
-                          prefixIcon: Icon(Icons.mail_outline),
+                          helperText: esRevendedor
+                              ? 'Para cambiarlo te mandamos un enlace de confirmación.'
+                              : 'El correo no se puede cambiar.',
+                          prefixIcon: const Icon(Icons.mail_outline),
                         ),
                       ),
+                      if (esRevendedor)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _guardando ? null : () => _pedirCambio(campo: 'email'),
+                            child: const Text('Cambiar correo'),
+                          ),
+                        ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _nombre,
@@ -364,6 +490,25 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         forceErrorText: _erroresServidor['nombre']?.first,
                       ),
                       const SizedBox(height: 16),
+                      if (esRevendedor) ...[
+                        TextFormField(
+                          key: ValueKey('telefono-${_usuario!.telefono}'),
+                          initialValue: _usuario!.telefono ?? '',
+                          enabled: false,
+                          decoration: const InputDecoration(
+                            labelText: 'Teléfono',
+                            helperText: 'Para cambiarlo te mandamos un enlace de confirmación.',
+                            prefixIcon: Icon(Icons.phone_outlined),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _guardando ? null : () => _pedirCambio(campo: 'telefono'),
+                            child: const Text('Cambiar teléfono'),
+                          ),
+                        ),
+                      ] else
                       TextFormField(
                         controller: _telefono,
                         enabled: !_guardando,
@@ -444,6 +589,159 @@ class _PerfilScreenState extends State<PerfilScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// La foto que eligió la persona, ya en memoria.
+class FotoElegida {
+  const FotoElegida({required this.bytes, required this.nombre});
+
+  final List<int> bytes;
+  final String nombre;
+}
+
+/// Lo que falta confirmar por correo.
+class _AvisoPendiente extends StatelessWidget {
+  const _AvisoPendiente({required this.usuario});
+
+  final Usuario usuario;
+
+  @override
+  Widget build(BuildContext context) {
+    final lineas = [
+      if (usuario.correoPendiente != null) 'Correo nuevo: ${usuario.correoPendiente}',
+      if (usuario.telefonoPendiente != null) 'Teléfono nuevo: ${usuario.telefonoPendiente}',
+    ];
+
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFFCD34D)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Pendiente de confirmar',
+              style: TextStyle(color: Color(0xFFB45309), fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            for (final linea in lineas) Text(linea, style: const TextStyle(fontSize: 13.5)),
+            const SizedBox(height: 4),
+            const Text(
+              'Abre el enlace que mandamos a tu correo. Hasta entonces sigues usando tus datos actuales.',
+              style: TextStyle(fontSize: 12.5, height: 1.35),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Pide el correo o el teléfono nuevo y lo manda al servidor. Regresa el
+/// usuario actualizado, o null si se canceló.
+class _DialogoCambioContacto extends StatefulWidget {
+  const _DialogoCambioContacto({required this.api, required this.esCorreo, required this.actual});
+
+  final ApiService api;
+  final bool esCorreo;
+  final String actual;
+
+  @override
+  State<_DialogoCambioContacto> createState() => _DialogoCambioContactoState();
+}
+
+class _DialogoCambioContactoState extends State<_DialogoCambioContacto> {
+  final _valor = TextEditingController();
+  bool _enviando = false;
+  String? _error;
+
+  String get _campo => widget.esCorreo ? 'email' : 'telefono';
+
+  @override
+  void dispose() {
+    _valor.dispose();
+    super.dispose();
+  }
+
+  Future<void> _enviar() async {
+    final valor = _valor.text.trim();
+    if (valor.isEmpty) {
+      setState(() => _error = widget.esCorreo ? 'Escribe el correo nuevo.' : 'Escribe el teléfono nuevo.');
+      return;
+    }
+
+    setState(() {
+      _enviando = true;
+      _error = null;
+    });
+
+    try {
+      final respuesta = await widget.api.post(
+        widget.esCorreo ? 'perfil/correo' : 'perfil/telefono',
+        cuerpo: {_campo: valor},
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(Usuario.desdeJson(respuesta['data'] as Map<String, dynamic>));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _enviando = false;
+        _error = e.errores[_campo]?.first ?? e.mensaje;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.esCorreo ? 'Cambiar correo' : 'Cambiar teléfono'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.esCorreo
+                ? 'Te mandaremos un enlace al correo nuevo. El cambio se hace cuando lo abras; '
+                    'a tu correo actual le llega un aviso.'
+                : 'Te mandaremos un enlace a tu correo para confirmar el teléfono nuevo.',
+            style: const TextStyle(fontSize: 13.5, height: 1.35),
+          ),
+          if (widget.actual.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text('Actual: ${widget.actual}', style: const TextStyle(fontSize: 13)),
+          ],
+          const SizedBox(height: 12),
+          TextField(
+            controller: _valor,
+            autofocus: true,
+            enabled: !_enviando,
+            keyboardType: widget.esCorreo ? TextInputType.emailAddress : TextInputType.phone,
+            autofillHints: [widget.esCorreo ? AutofillHints.email : AutofillHints.telephoneNumber],
+            decoration: InputDecoration(
+              labelText: widget.esCorreo ? 'Correo nuevo' : 'Teléfono nuevo',
+              errorText: _error,
+            ),
+            onSubmitted: (_) => _enviar(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _enviando ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _enviando ? null : _enviar,
+          child: Text(_enviando ? 'Enviando…' : 'Mandar enlace'),
+        ),
+      ],
     );
   }
 }

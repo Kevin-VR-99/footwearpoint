@@ -54,7 +54,7 @@ class FpLogo extends StatelessWidget {
           'assets/brand/logo-mark-white-192.png',
           fit: BoxFit.cover,
           // Si la imagen no cargara, no se rompe la pantalla.
-          errorBuilder: (_, _, _) => const Icon(Icons.storefront, color: FpColores.sidebar),
+          errorBuilder: (context, error, stack) => const Icon(Icons.storefront, color: FpColores.sidebar),
         ),
       ),
     );
@@ -63,10 +63,13 @@ class FpLogo extends StatelessWidget {
 
 /// Círculo con las iniciales del usuario, como el avatar del panel web.
 class FpAvatar extends StatelessWidget {
-  const FpAvatar({super.key, required this.nombre, this.tamano = 36});
+  const FpAvatar({super.key, required this.nombre, this.tamano = 36, this.fotoUrl});
 
   final String? nombre;
   final double tamano;
+
+  /// Si hay foto se enseña; si no carga, se queda con las iniciales.
+  final String? fotoUrl;
 
   static String iniciales(String? nombre) {
     final partes = (nombre ?? '').trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).take(2);
@@ -76,6 +79,24 @@ class FpAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final url = fotoUrl;
+    if (url != null && url.isNotEmpty) {
+      return Semantics(
+        image: true,
+        label: 'Foto de ${nombre ?? 'perfil'}',
+        child: ClipOval(
+          child: Image.network(
+            url,
+            width: tamano,
+            height: tamano,
+            fit: BoxFit.cover,
+            cacheWidth: (tamano * 3).round(),
+            errorBuilder: (context, error, stack) => FpAvatar(nombre: nombre, tamano: tamano),
+          ),
+        ),
+      );
+    }
+
     return Container(
       width: tamano,
       height: tamano,

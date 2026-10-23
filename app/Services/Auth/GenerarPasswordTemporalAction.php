@@ -84,15 +84,40 @@ class GenerarPasswordTemporalAction
         return $password;
     }
 
-    private function generar(): string
+    /**
+     * Contraseña temporal que cumple la misma política que cualquier alta
+     * (Password::defaults, PR #252): se repite hasta que pasa, cosa que casi
+     * siempre ocurre al primer intento. La usa también el alta de clientes
+     * mayoristas desde el panel, donde ya no se escribe contraseña a mano.
+     */
+    public function generar(): string
     {
         $maximo = strlen(self::LETRAS) - 1;
-        $password = '';
 
-        for ($i = 0; $i < self::LARGO; $i++) {
-            $password .= self::LETRAS[random_int(0, $maximo)];
+        for ($intento = 0; $intento < 20; $intento++) {
+            $password = '';
+
+            for ($i = 0; $i < self::LARGO; $i++) {
+                $password .= self::LETRAS[random_int(0, $maximo)];
+            }
+
+            if ($this->cumplePolitica($password)) {
+                return $password;
+            }
         }
 
         return $password;
+    }
+
+    private function cumplePolitica(string $password): bool
+    {
+        if (! preg_match('/[A-Za-z]/', $password) || ! preg_match('/\d/', $password)) {
+            return false;
+        }
+
+        return ! \Illuminate\Support\Facades\Validator::make(
+            ['password' => $password],
+            ['password' => [\Illuminate\Validation\Rules\Password::defaults()]],
+        )->fails();
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services\Distribuidora;
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\Revendedor;
 use App\Models\RevendedorDistribuidora;
+use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 
 class GestionarRevendedorAction
@@ -31,7 +32,9 @@ class GestionarRevendedorAction
             // (creating() en el trait, ver Fase 0).
             $afiliacion = RevendedorDistribuidora::create([
                 'revendedor_id'   => $revendedor->id,
-                'codigo_interno'  => $datos['codigo_interno'] ?? null,
+                // El código lo pone el sistema (REV-001, REV-002…); lo que
+                // venga del formulario o de la API se ignora.
+                'codigo_interno'  => app(CodigoInternoRevendedor::class)->siguiente((int) Tenant::id()),
                 'notas'           => $datos['notas'] ?? null,
                 'estado'          => 'activo',
                 'fecha_alta'      => now()->toDateString(),
@@ -53,7 +56,7 @@ class GestionarRevendedorAction
     {
         return DB::transaction(function () use ($afiliacion, $datos) {
             $datosContacto = array_intersect_key($datos, array_flip(['nombre', 'telefono', 'email']));
-            $datosAfiliacion = array_intersect_key($datos, array_flip(['codigo_interno', 'notas', 'estado']));
+            $datosAfiliacion = array_intersect_key($datos, array_flip(['notas', 'estado']));
 
             if (array_key_exists('email', $datosContacto) && $afiliacion->revendedor->usuario_id) {
                 throw new OperacionInvalidaException(

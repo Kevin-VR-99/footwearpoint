@@ -46,15 +46,16 @@ class CuentaAccesoPanelTest extends TestCase
             ->call('abrirFormularioAfiliarRevendedor')
             ->set('revendedor_nombre', 'María López')
             ->set('revendedor_acceso_email', 'maria@revendedor.test')
-            ->set('revendedor_acceso_password', 'clave-segura-1')
-            ->set('revendedor_acceso_password_confirmation', 'clave-segura-1')
             ->call('guardarRevendedor')
             ->assertHasNoErrors()
-            ->assertSet('mostrandoFormularioRevendedor', false)
-            // La contraseña no se queda guardada en la pantalla.
-            ->assertSet('revendedor_acceso_password', '');
+            ->assertSet('mostrandoFormularioRevendedor', false);
 
-        $this->puedeIniciarSesionEnLaApp('maria@revendedor.test', 'clave-segura-1', 'revendedor');
+        // PR #252: solo hay contraseña temporal; se muestra una vez y se pide cambiarla.
+        preg_match('/Contraseña temporal para maria@revendedor\.test: (\S+)\. /u', (string) session('aviso_password_temporal'), $m);
+        $this->assertNotEmpty($m[1] ?? null, 'Debe mostrar la contraseña temporal.');
+        $this->assertTrue((bool) \App\Models\Usuario::where('email', 'maria@revendedor.test')->value('debe_cambiar_password'));
+
+        $this->puedeIniciarSesionEnLaApp('maria@revendedor.test', $m[1], 'revendedor');
     }
 
     public function test_el_admin_le_da_cuenta_a_un_cliente_que_ya_existia(): void
@@ -106,8 +107,6 @@ class CuentaAccesoPanelTest extends TestCase
             ->call('abrirFormularioAfiliarRevendedor')
             ->set('revendedor_nombre', 'Otra Persona')
             ->set('revendedor_acceso_email', 'empleado@calzadosramirez.test')
-            ->set('revendedor_acceso_password', 'clave-segura-3')
-            ->set('revendedor_acceso_password_confirmation', 'clave-segura-3')
             ->call('guardarRevendedor')
             ->assertHasErrors(['revendedor_acceso_email'])
             // El formulario sigue abierto para que corrija el correo.
@@ -116,13 +115,22 @@ class CuentaAccesoPanelTest extends TestCase
         $this->assertSame($antes, Revendedor::count());
     }
 
-    public function test_el_correo_sin_contrasena_no_se_acepta(): void
+    public function test_el_correo_de_contacto_se_copia_al_de_acceso_y_se_puede_cambiar(): void
     {
         Livewire::test('distribuidora.usuarios')
             ->call('abrirFormularioAfiliarRevendedor')
-            ->set('revendedor_nombre', 'María López')
-            ->set('revendedor_acceso_email', 'maria@revendedor.test')
-            ->call('guardarRevendedor')
-            ->assertHasErrors(['revendedor_acceso_password']);
+            ->set('revendedor_email', 'maria@revendedor.test')
+            ->assertSet('revendedor_acceso_email', 'maria@revendedor.test')
+            ->set('revendedor_acceso_email', 'maria.app@revendedor.test')
+            ->set('revendedor_email', 'maria2@revendedor.test')
+            ->assertSet('revendedor_acceso_email', 'maria.app@revendedor.test');
+    }
+
+    public function test_el_formulario_ya_no_pide_contrasena(): void
+    {
+        Livewire::test('distribuidora.usuarios', ['seccion' => 'mayoristas'])
+            ->call('abrirFormularioAfiliarRevendedor')
+            ->assertDontSeeHtml('revendedor_acceso_password')
+            ->assertSee('contraseña temporal');
     }
 }

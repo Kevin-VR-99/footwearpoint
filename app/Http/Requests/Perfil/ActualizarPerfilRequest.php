@@ -36,7 +36,7 @@ class ActualizarPerfilRequest extends FormRequest
     {
         return [
             'nombre'   => ['required', 'string', 'max:150'],
-            'telefono' => ['nullable', 'string', 'max:30'],
+            'telefono' => ['sometimes', 'nullable', 'string', 'max:30'],
         ];
     }
 

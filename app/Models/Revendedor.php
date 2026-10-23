@@ -15,6 +15,7 @@ class Revendedor extends Model
         'usuario_id',
         'nombre',
         'telefono',
+        'foto_url',
         'email',
         'estado',
     ];

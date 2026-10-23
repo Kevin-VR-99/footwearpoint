@@ -70,6 +70,11 @@ new #[Layout('layouts.guest')] #[Title('Confirmar correo — FootwearPoint')] cl
 
     <p class="mt-3 text-sm text-slate-600">{{ $mensaje }}</p>
 
+    @if ($resultado !== 'invalido')
+        {{-- Abre la app si está instalada; si no, lleva a descargarla. --}}
+        <x-app-movil.botones destino="perfil" />
+    @endif
+
     <p class="mt-6 text-sm text-slate-500">Puedes cerrar esta página y volver a la app.</p>
 
     <a href="{{ route('login') }}" class="mt-4 inline-block fp-enlace text-sm">

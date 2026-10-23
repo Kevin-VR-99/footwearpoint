@@ -67,4 +67,16 @@ return [
         'credenciales_base64' => env('FIREBASE_CREDENTIALS_BASE64'),
     ],
 
+    /*
+     * App móvil: a dónde mandar a quien no la tiene instalada (página de
+     * confirmación de correo y de cambios de perfil). Pon aquí la URL de
+     * Uptodown cuando exista; vacía usa el APK publicado en R2
+     * (app-movil/footwearpoint.apk, ver config/footwearpoint.php 'apk').
+     */
+    'app_movil' => [
+        'descarga_url' => env('APP_MOVIL_DESCARGA_URL'),
+        'paquete'      => 'com.footwearpoint.app',
+        'host'         => 'footwearpoint.app',
+    ],
+
 ];

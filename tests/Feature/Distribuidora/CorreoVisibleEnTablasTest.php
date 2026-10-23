@@ -86,8 +86,6 @@ class CorreoVisibleEnTablasTest extends TestCase
             ->call('abrirFormularioAfiliarRevendedor')
             ->set('revendedor_nombre', 'Nuevo Mayorista')
             ->set('revendedor_acceso_email', $correo)
-            ->set('revendedor_acceso_password', 'clave-segura-1')
-            ->set('revendedor_acceso_password_confirmation', 'clave-segura-1')
             ->call('guardarRevendedor')
             ->assertHasNoErrors()
             ->assertSee($correo)

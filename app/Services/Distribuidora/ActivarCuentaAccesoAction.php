@@ -26,7 +26,12 @@ use Spatie\Permission\PermissionRegistrar;
  */
 class ActivarCuentaAccesoAction
 {
-    public function paraRevendedor(RevendedorDistribuidora $afiliacion, string $email, string $password): Usuario
+    /**
+     * Con $temporal la contraseña la generó el sistema: se le pedirá
+     * cambiarla al entrar (debe_cambiar_password), igual que con
+     * GenerarPasswordTemporalAction.
+     */
+    public function paraRevendedor(RevendedorDistribuidora $afiliacion, string $email, string $password, bool $temporal = false): Usuario
     {
         // usuario_id vive en la tabla global "revendedores" (la persona), no
         // en la afiliación; la distribuidora sí sale de la afiliación.
@@ -36,6 +41,7 @@ class ActivarCuentaAccesoAction
             'revendedor',
             $email,
             $password,
+            $temporal,
         );
     }
 
@@ -50,7 +56,7 @@ class ActivarCuentaAccesoAction
         );
     }
 
-    private function activar(Model $titular, int $distribuidoraId, string $rol, string $email, string $password): Usuario
+    private function activar(Model $titular, int $distribuidoraId, string $rol, string $email, string $password, bool $temporal = false): Usuario
     {
         $email = trim($email);
 
@@ -73,7 +79,7 @@ class ActivarCuentaAccesoAction
             ]);
         }
 
-        return DB::transaction(function () use ($titular, $distribuidoraId, $rol, $email, $password) {
+        return DB::transaction(function () use ($titular, $distribuidoraId, $rol, $email, $password, $temporal) {
             // La cuenta guarda SOLO el acceso (TG-216): el nombre y el
             // telefono siguen viviendo en su registro de contacto, que es el
             // que edita el panel y el que la app muestra en el perfil.
@@ -82,6 +88,10 @@ class ActivarCuentaAccesoAction
                 'password' => Hash::make($password),
                 'estado'   => 'activo',
             ]);
+
+            if ($temporal) {
+                $usuario->forceFill(['debe_cambiar_password' => true])->save();
+            }
 
             $titular->usuario_id = $usuario->id;
 

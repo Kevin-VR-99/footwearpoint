@@ -116,6 +116,13 @@ Route::livewire('/verificar-correo/{id}/{hash}', 'auth.correo-verificado')
     ->whereNumber('id')
     ->name('verification.verify');
 
+// Cambio de correo o teléfono pedido desde la app: se aplica al abrir el
+// enlace firmado (CambioContactoAction). Igual que arriba, sin sesión.
+Route::livewire('/perfil/confirmar-cambio/{cambio}', 'auth.confirmar-cambio-contacto')
+    ->middleware('signed')
+    ->whereNumber('cambio')
+    ->name('perfil.confirmar-cambio');
+
 /*
 |--------------------------------------------------------------------------
 | Paquete B — config y catálogo (registran distribuidora.configuracion

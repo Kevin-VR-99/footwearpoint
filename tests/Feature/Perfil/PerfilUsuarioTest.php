@@ -91,6 +91,8 @@ class PerfilUsuarioTest extends TestCase
                     'email'    => self::MARIA,
                     'telefono' => $maria->telefonoVisible(),
                     'estado'   => 'activo',
+                    'foto_url' => null,
+                    'cambios_pendientes' => [],
                 ],
             ]);
     }
@@ -99,18 +101,16 @@ class PerfilUsuarioTest extends TestCase
     // Editar nombre y teléfono
     // ------------------------------------------------------------------
 
-    public function test_un_revendedor_edita_su_nombre_y_telefono_en_su_registro_de_contacto(): void
+    public function test_un_revendedor_edita_su_nombre_en_su_registro_de_contacto(): void
     {
         $token = $this->iniciarSesion(self::MARIA);
         $maria = $this->usuario(self::MARIA);
 
         $this->withToken($token)->patchJson('/api/perfil', [
-            'nombre'   => 'María López Ruiz',
-            'telefono' => '9630001111',
+            'nombre' => 'María López Ruiz',
         ])
             ->assertOk()
-            ->assertJsonPath('data.nombre', 'María López Ruiz')
-            ->assertJsonPath('data.telefono', '9630001111');
+            ->assertJsonPath('data.nombre', 'María López Ruiz');
 
         // La cuenta no guarda nombre ni teléfono: solo el acceso (TG-216).
         $this->assertDatabaseHas('usuarios', [
@@ -123,8 +123,22 @@ class PerfilUsuarioTest extends TestCase
         $this->assertDatabaseHas('revendedores', [
             'usuario_id' => $maria->id,
             'nombre'     => 'María López Ruiz',
-            'telefono'   => '9630001111',
         ]);
+    }
+
+    /** El teléfono del revendedor solo cambia confirmando por correo (POST /api/perfil/telefono). */
+    public function test_el_revendedor_no_cambia_su_telefono_sin_confirmar(): void
+    {
+        $token = $this->iniciarSesion(self::MARIA);
+        $maria = $this->usuario(self::MARIA);
+        $antes = Revendedor::where('usuario_id', $maria->id)->value('telefono');
+
+        $this->withToken($token)->patchJson('/api/perfil', [
+            'nombre'   => 'María López',
+            'telefono' => '9630001111',
+        ])->assertStatus(422)->assertJsonValidationErrors(['telefono']);
+
+        $this->assertSame($antes, Revendedor::where('usuario_id', $maria->id)->value('telefono'));
     }
 
     public function test_un_cliente_directo_edita_su_perfil_en_su_registro_de_contacto(): void
@@ -174,15 +188,15 @@ class PerfilUsuarioTest extends TestCase
 
     public function test_un_telefono_vacio_se_guarda_como_sin_telefono(): void
     {
-        $token = $this->iniciarSesion(self::MARIA);
-        $maria = $this->usuario(self::MARIA);
+        $token = $this->iniciarSesion(self::JOSE);
+        $jose = $this->usuario(self::JOSE);
 
         $this->withToken($token)->patchJson('/api/perfil', [
-            'nombre'   => 'María López',
+            'nombre'   => 'José Hernández',
             'telefono' => '   ',
         ])->assertOk()->assertJsonPath('data.telefono', null);
 
-        $this->assertDatabaseHas('revendedores', ['usuario_id' => $maria->id, 'telefono' => null]);
+        $this->assertDatabaseHas('clientes_directos', ['usuario_id' => $jose->id, 'telefono' => null]);
     }
 
     public function test_el_nombre_es_obligatorio_y_no_se_cambia_nada_si_falta(): void
@@ -219,7 +233,6 @@ class PerfilUsuarioTest extends TestCase
 
         $this->withToken($token)->patchJson('/api/perfil', [
             'nombre'   => 'María Cambiada',
-            'telefono' => '9639999999',
         ])->assertOk();
 
         $this->assertSame('Roberto García', $roberto->fresh()->nombre);
