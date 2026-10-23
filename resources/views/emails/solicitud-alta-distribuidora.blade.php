@@ -1,4 +1,4 @@
-{{-- Aviso al admin general de una solicitud de alta nueva (TG-220 / E2-08). Sin detalles técnicos. --}}
+{{-- Aviso al buzón de FootwearPoint de una solicitud de alta nueva (TG-220 / E2-08). Sin detalles técnicos. --}}
 <!DOCTYPE html>
 <html lang="es">
 <head>

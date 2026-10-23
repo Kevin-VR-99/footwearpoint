@@ -9,8 +9,8 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * TG-220 (E2-08) — Aviso al admin general de que llegó una solicitud de alta
- * desde el formulario público.
+ * TG-220 (E2-08) — Aviso de que llegó una solicitud de alta desde el
+ * formulario público. Va al buzón de FootwearPoint.
  *
  * Sale del remitente configurado (MAIL_FROM_ADDRESS / MAIL_FROM_NAME).
  */

@@ -11,13 +11,14 @@ use Spatie\Permission\PermissionRegistrar;
 use Throwable;
 
 /**
- * TG-220 (E2-08) — Avisa a los admin general de que llegó una solicitud de
- * alta por el formulario público.
+ * TG-220 (E2-08) — Avisa de que llegó una solicitud de alta por el formulario
+ * público. El aviso va al buzón de FootwearPoint
+ * (config footwearpoint.solicitudes_alta.correo), no a la cuenta con la que
+ * se entra al panel.
  *
  * Mismo criterio que NotificarCambioEstadoDistribuidoraAction: se manda en el
- * momento, un correo por persona para que nadie vea el correo de los demás, y
- * un correo que falla NUNCA deshace la solicitud. Se reporta al log y se
- * devuelve false.
+ * momento y un correo que falla NUNCA deshace la solicitud. Se reporta al log
+ * y se devuelve false.
  *
  * Además le manda al administrador de la distribuidora el acuse de que su
  * solicitud llegó (SolicitudAltaRecibidaMail), con el mismo criterio: si falla,
@@ -30,22 +31,21 @@ class NotificarSolicitudAltaAction
     {
         $this->avisarAlSolicitante($distribuidora, $administrador);
 
-        $destinatarios = $this->adminsGenerales();
+        $destinatarios = $this->correosDeAviso();
 
-        if ($destinatarios->isEmpty()) {
+        if ($destinatarios === []) {
             return false;
         }
 
         $enviado = true;
 
-        foreach ($destinatarios as $admin) {
+        foreach ($destinatarios as $correo) {
             try {
-                Mail::to($admin->email)->send(new SolicitudAltaDistribuidoraMail(
+                Mail::to($correo)->send(new SolicitudAltaDistribuidoraMail(
                     nombreDistribuidora: $distribuidora->nombre_comercial,
                     nombreAdministrador: (string) $administrador->nombre,
                     emailAdministrador: (string) $administrador->email,
                     planSolicitado: $distribuidora->planSolicitado?->nombre,
-                    nombreDestinatario: $admin->nombre,
                 ));
             } catch (Throwable $e) {
                 report($e);
@@ -54,6 +54,30 @@ class NotificarSolicitudAltaAction
         }
 
         return $enviado;
+    }
+
+    /**
+     * El buzón configurado. Si no hay uno válido, cae en los admin general
+     * activos para no perder el aviso.
+     *
+     * @return list<string>
+     */
+    private function correosDeAviso(): array
+    {
+        $configurado = config('footwearpoint.solicitudes_alta.correo');
+        $correo = is_string($configurado) ? trim($configurado) : '';
+
+        if (filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            return [$correo];
+        }
+
+        return $this->adminsGenerales()
+            ->pluck('email')
+            ->map(fn ($email) => is_string($email) ? trim($email) : '')
+            ->filter(fn (string $email) => filter_var($email, FILTER_VALIDATE_EMAIL) !== false)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /** El acuse para quien pidió el alta. Nunca lanza: un fallo va al log. */
