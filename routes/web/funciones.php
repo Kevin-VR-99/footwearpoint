@@ -41,7 +41,7 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal', 'role:admin_distribui
     })->middleware(\App\Http\Middleware\ExigirPermisoModulo::class.':'.\App\Services\Auth\PermisoModuloService::INVENTARIO_CONTEO)
         ->name('conteos.index');
 
-    // Comisiones y metas (permiso fino comisiones.ver; editar es solo de la administración).
+    // Comisiones (permiso fino comisiones.ver; editar es solo de la administración).
     Route::livewire('/comisiones', 'comisiones.index')
         ->middleware(\App\Http\Middleware\ExigirPermisoModulo::class.':'.\App\Services\Auth\PermisoModuloService::COMISIONES_VER)
         ->name('comisiones.index');
