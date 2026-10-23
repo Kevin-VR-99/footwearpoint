@@ -648,3 +648,74 @@ form[data-loading] button[type=submit]:not(:has([wire\:loading]))::before {
     .fp-avatar, .fp-fila-persona { transition: none !important; }
     tr:hover .fp-avatar { transform: none !important; }
 }
+
+/* =====================================================================
+   Listas de personas (Empleados, Clientes mayoristas, Clientes directos).
+   Tabla a todo el ancho con acciones separadas; cuando el contenedor es
+   angosto, cada renglón se vuelve una tarjeta apilada. Solo paleta fp-*.
+   ===================================================================== */
+[x-cloak] { display: none !important; }
+.fp-personas-contenedor { container-type: inline-size; }
+.fp-tabla-personas { width: 100%; font-size: .875rem; border-collapse: separate; border-spacing: 0; }
+.fp-tabla-personas thead th { padding: .625rem .75rem; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--color-slate-600); background-color: var(--color-fp-page); white-space: nowrap; }
+.fp-tabla-personas thead th:first-child { border-top-left-radius: .5rem; border-bottom-left-radius: .5rem; }
+.fp-tabla-personas thead th:last-child { border-top-right-radius: .5rem; border-bottom-right-radius: .5rem; }
+.fp-tabla-personas tbody td { padding: .75rem; vertical-align: middle; border-bottom: 1px solid var(--color-slate-100); }
+.fp-tabla-personas tbody tr:last-child td { border-bottom: 0; }
+.fp-celda-correo { overflow-wrap: anywhere; min-width: 10rem; }
+.fp-celda-acciones { text-align: right; width: 1%; white-space: nowrap; }
+.fp-acciones-persona { display: inline-flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: .375rem; }
+
+.fp-accion-persona {
+    display: inline-flex; align-items: center; gap: .375rem; padding: .375rem .625rem; border-radius: .5rem;
+    border: 1px solid var(--color-slate-200); background-color: #fff; color: var(--color-fp-accent);
+    font-size: .75rem; font-weight: 500; line-height: 1rem; white-space: nowrap; cursor: pointer;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.fp-accion-persona:hover:not(:disabled) { border-color: color-mix(in oklab, var(--color-fp-primary) 45%, white); background-color: var(--color-fp-page); color: var(--color-fp-primary); transform: translateY(-1px); }
+.fp-accion-persona:active:not(:disabled) { transform: scale(.97); }
+.fp-accion-persona:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-fp-primary) 35%, transparent); }
+.fp-accion-persona:disabled { opacity: .55; cursor: not-allowed; }
+.fp-accion-persona-peligro { color: var(--color-fp-danger); border-color: color-mix(in oklab, var(--color-fp-danger) 30%, white); }
+.fp-accion-persona-peligro:hover:not(:disabled) { color: var(--color-fp-danger); background-color: var(--color-fp-danger-soft); border-color: color-mix(in oklab, var(--color-fp-danger) 55%, white); }
+.fp-accion-persona-exito { color: var(--color-fp-badge-success-fg); border-color: color-mix(in oklab, var(--color-fp-badge-success-fg) 30%, white); }
+.fp-accion-persona-exito:hover:not(:disabled) { color: var(--color-fp-badge-success-fg); background-color: var(--color-fp-badge-success-bg); border-color: color-mix(in oklab, var(--color-fp-badge-success-fg) 50%, white); }
+
+.fp-menu-acciones {
+    position: absolute; right: 0; top: calc(100% + .375rem); z-index: 30; min-width: 13rem; padding: .375rem;
+    border: 1px solid var(--color-slate-200); border-radius: .75rem; background-color: #fff; text-align: left;
+    box-shadow: 0 12px 28px -12px rgb(17 30 56 / .35);
+}
+.fp-menu-entra, .fp-menu-sale { transition: opacity .14s ease, transform .14s ease; }
+.fp-menu-oculto { opacity: 0; transform: translateY(-4px) scale(.98); }
+.fp-accion-menu {
+    display: flex; width: 100%; align-items: center; gap: .5rem; padding: .5rem .625rem; border-radius: .5rem;
+    font-size: .8125rem; color: var(--color-fp-accent); text-align: left; white-space: nowrap; cursor: pointer;
+    transition: background-color .12s ease, color .12s ease;
+}
+.fp-accion-menu:hover:not(:disabled), .fp-accion-menu:focus-visible { outline: none; background-color: var(--color-fp-page); color: var(--color-fp-primary); }
+.fp-accion-menu:disabled { opacity: .55; cursor: not-allowed; }
+.fp-accion-menu-peligro, .fp-accion-menu-peligro:hover:not(:disabled), .fp-accion-menu-peligro:focus-visible { color: var(--color-fp-danger); }
+.fp-accion-menu-peligro:hover:not(:disabled), .fp-accion-menu-peligro:focus-visible { background-color: var(--color-fp-danger-soft); }
+.fp-accion-menu-exito { color: var(--color-fp-badge-success-fg); }
+.fp-menu-separador { margin: .25rem 0; border-top: 1px solid var(--color-slate-100); }
+
+/* Contenedor angosto (< 48rem, p. ej. 768px con menú lateral): tarjetas apiladas. */
+@container (max-width: 48rem) {
+    .fp-tabla-personas thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .fp-tabla-personas, .fp-tabla-personas tbody { display: block; }
+    .fp-tabla-personas tbody { display: grid; gap: .75rem; }
+    .fp-tabla-personas tbody tr { display: grid; grid-template-columns: auto 1fr; column-gap: .75rem; row-gap: .25rem; padding: .875rem; border: 1px solid var(--color-slate-200); border-radius: .75rem; background-color: #fff; }
+    .fp-tabla-personas tbody td { display: block; padding: 0; border: 0; grid-column: 2; }
+    .fp-tabla-personas tbody td.fp-celda-avatar { grid-column: 1; grid-row: 1 / span 2; }
+    .fp-tabla-personas tbody td.fp-celda-nombre { font-weight: 600; }
+    .fp-tabla-personas tbody td[data-etiqueta]::before { content: attr(data-etiqueta) ": "; color: var(--color-fp-text-muted); font-size: .75rem; }
+    .fp-tabla-personas tbody td.fp-celda-acciones { grid-column: 1 / -1; width: auto; margin-top: .5rem; padding-top: .625rem; border-top: 1px solid var(--color-slate-100); text-align: left; white-space: normal; }
+    .fp-acciones-persona { flex-wrap: wrap; justify-content: flex-start; }
+    .fp-menu-acciones { left: 0; right: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fp-accion-persona, .fp-accion-menu, .fp-menu-entra, .fp-menu-sale { transition: none !important; }
+    .fp-accion-persona:hover:not(:disabled), .fp-accion-persona:active:not(:disabled), .fp-menu-oculto { transform: none !important; }
+}

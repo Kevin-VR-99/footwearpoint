@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
- * «Eliminar definitivamente» un empleado o un cliente mayorista.
+ * «Eliminar definitivamente» un empleado, un cliente mayorista o un cliente directo.
  *
  * Mismo criterio que el borrado de distribuidoras (PR #256): nunca se borra
  * historial ajeno. Si la persona ya tiene pedidos, vales, cambios, ventas o
@@ -152,6 +152,61 @@ class EliminarPersonaAction
         $this->auditoria->ejecutar(
             'revendedor.eliminado_definitivamente', 'revendedor_distribuidora', (int) $afiliacion->id,
             $previos, ['contacto_borrado' => $contactoBorrado, 'cuenta_borrada' => $cuentaBorrada],
+        );
+    }
+
+    public function clienteDirecto(int $clienteId): void
+    {
+        $cliente = ClienteDirecto::with('usuario')->findOrFail($clienteId);
+        $nombre = $cliente->nombre ?: 'Este cliente directo';
+
+        $dependencias = array_filter([
+            'pedido' => DB::table('pedidos')->where('cliente_directo_id', $cliente->id)->count(),
+            'vale'   => DB::table('vales')->where('cliente_directo_id', $cliente->id)->count(),
+            'cambio' => DB::table('solicitudes_cambio')->where('cliente_directo_id', $cliente->id)->count(),
+            'venta'  => DB::table('ventas_directas')->where('cliente_directo_id', $cliente->id)->count(),
+        ]);
+
+        if ($dependencias !== []) {
+            $nombres = [
+                'pedido' => ['pedido', 'pedidos'],
+                'vale'   => ['vale', 'vales'],
+                'cambio' => ['solicitud de cambio', 'solicitudes de cambio'],
+                'venta'  => ['venta', 'ventas'],
+            ];
+            $partes = [];
+            foreach ($dependencias as $tipo => $total) {
+                $partes[] = $total.' '.$nombres[$tipo][$total === 1 ? 0 : 1];
+            }
+
+            throw new OperacionInvalidaException(
+                "{$nombre} tiene ".$this->unir($partes).' y no se puede eliminar sin perder historial. Dale de baja: ya no podrá entrar y su historial se conserva.',
+                422,
+            );
+        }
+
+        $previos = [
+            'nombre'   => $cliente->nombre,
+            'telefono' => $cliente->telefono,
+            'email'    => $cliente->emailVisible(),
+            'estado'   => $cliente->estado,
+        ];
+        $foto = $cliente->foto_url;
+        $usuario = $cliente->usuario_id
+            ? Usuario::withoutGlobalScopes()->find($cliente->usuario_id)
+            : null;
+
+        $cuentaBorrada = $this->conBloqueo($nombre, function () use ($cliente, $usuario) {
+            $cliente->delete();
+
+            return $usuario ? $this->soltarCuenta($usuario, (int) $cliente->distribuidora_id) : false;
+        });
+
+        $this->fotos->borrar($foto);
+
+        $this->auditoria->ejecutar(
+            'cliente_directo.eliminado_definitivamente', 'cliente_directo', (int) $cliente->id,
+            $previos, ['cuenta_borrada' => $cuentaBorrada],
         );
     }
 
