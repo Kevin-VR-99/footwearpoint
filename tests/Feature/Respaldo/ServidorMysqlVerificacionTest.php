@@ -44,6 +44,7 @@ class ServidorMysqlVerificacionTest extends TestCase
         $this->assertStringContainsString('contrasena-que-no-debe-salir', $opciones);
         $this->assertContains('--database=footwearpoint_restaurada', $comando);
         $this->assertContains('--execute=source /tmp/x.sql', $comando);
+        $this->assertStringContainsString('loose-ssl-verify-server-cert=0', $opciones);
     }
 
     public function test_los_identificadores_se_escapan(): void
