@@ -53,15 +53,9 @@ class DatosSolicitudDistribuidoraAction
                 // tiene que verlo antes de aprobar. No lo bloquea.
                 'correo_confirmado' => $staff->usuario?->hasVerifiedEmail() ?? false,
             ])->values()->all(),
-            // TG-197 (G16): categorías del directorio, activas e inactivas.
-            'categorias_directorio' => $distribuidora->categoriasDirectorio()
-                ->orderBy('nombre')
-                ->get()
-                ->map(fn ($categoria) => [
-                    'id'     => $categoria->id,
-                    'nombre' => $categoria->nombre,
-                    'activa' => (bool) $categoria->activa,
-                ])->values()->all(),
+            // Las distribuidoras ya no llevan etiquetas del directorio.
+            // La clave queda vacía para no romper a quien todavía la lee.
+            'categorias_directorio' => [],
         ];
     }
 }

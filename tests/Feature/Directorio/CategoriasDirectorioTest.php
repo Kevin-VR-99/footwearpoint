@@ -2,11 +2,16 @@
 
 namespace Tests\Feature\Directorio;
 
+use App\Models\CategoriaDirectorio;
+use App\Models\Distribuidora;
 use App\Models\Usuario;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Database\Seeders\AdminGeneralSeeder;
+use Database\Seeders\CategoriaDirectorioSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
+use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -46,5 +51,41 @@ class CategoriasDirectorioTest extends TestCase
 
         $this->getJson('/api/admin/categorias-directorio')->assertNotFound();
         $this->postJson('/api/admin/categorias-directorio', ['nombre' => 'Botas'])->assertNotFound();
+    }
+
+    public function test_la_lista_de_distribuidoras_no_muestra_etiquetas(): void
+    {
+        $admin = Usuario::where('email', AdminGeneralSeeder::EMAIL)->firstOrFail();
+        app(PermissionRegistrar::class)->setPermissionsTeamId(0);
+        $this->actingAs($admin);
+
+        $distribuidora = Distribuidora::where('slug', 'calzados-ramirez')->firstOrFail();
+        $distribuidora->categoriasDirectorio()->sync(
+            CategoriaDirectorio::whereIn('nombre', CategoriaDirectorioSeeder::CATEGORIAS)->pluck('id')->all()
+        );
+
+        Livewire::test('admin.distribuidoras-index')
+            ->assertSee('Calzados Ramírez')
+            ->assertDontSee('Caballero')
+            ->assertDontSee('Casual')
+            ->assertDontSee('Dama')
+            ->assertDontSee('Deportivo')
+            ->assertDontSee('Escolar')
+            ->assertDontSee('Infantil')
+            ->call('verDatos', $distribuidora->id)
+            ->assertSee('Calzados Ramírez')
+            ->assertDontSee('Caballero')
+            ->assertDontSee('Casual')
+            ->assertDontSee('Dama')
+            ->assertDontSee('Deportivo')
+            ->assertDontSee('Escolar')
+            ->assertDontSee('Infantil');
+
+        Sanctum::actingAs($admin);
+        app(PermissionRegistrar::class)->setPermissionsTeamId(0);
+
+        $this->getJson("/api/admin/distribuidoras/{$distribuidora->id}")
+            ->assertOk()
+            ->assertJsonPath('data.categorias_directorio', []);
     }
 }
