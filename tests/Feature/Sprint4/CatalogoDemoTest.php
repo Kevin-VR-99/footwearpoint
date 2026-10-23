@@ -42,14 +42,19 @@ class CatalogoDemoTest extends TestCase
         PropietarioActual::olvidarCache();
     }
 
-    public function test_el_catalogo_maestro_tiene_cinco_lineas_con_una_sola_temporada_activa(): void
+    public function test_el_catalogo_maestro_tiene_sus_lineas_y_las_del_demo_con_una_sola_temporada_activa(): void
     {
-        $lineas = Linea::all();
+        // TG-279: Cklass, Impuls, Dankriz, Concord y Andrea traen catálogo de
+        // demostración. LineasMarcasSeeder (#240) suma Price Shoes y Mega Shoes,
+        // que por ahora solo traen sus marcas.
+        $this->assertEqualsCanonicalizing(
+            ['Andrea', 'Cklass', 'Concord', 'Dankriz', 'Impuls', 'Mega Shoes', 'Price Shoes'],
+            Linea::pluck('nombre')->all()
+        );
 
-        // TG-279: Cklass, Impuls, Dankriz, Concord y Andrea.
-        $this->assertCount(5, $lineas);
+        $lineasDemo = Linea::whereIn('nombre', ['Cklass', 'Impuls', 'Dankriz', 'Concord', 'Andrea'])->get();
 
-        foreach ($lineas as $linea) {
+        foreach ($lineasDemo as $linea) {
             $activas = Campana::where('linea_id', $linea->id)->where('estado', 'activa')->count();
 
             $this->assertSame(1, $activas, "La línea {$linea->nombre} no tiene exactamente una temporada activa");

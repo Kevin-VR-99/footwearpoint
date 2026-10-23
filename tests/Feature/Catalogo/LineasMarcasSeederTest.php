@@ -32,6 +32,11 @@ class LineasMarcasSeederTest extends TestCase
         $flexi = Marca::where('nombre', 'Flexi')->first();
         $this->assertGreaterThan(1, $flexi->lineas()->count());
 
+        // Marcas populares en México que se sumaron a las casas multimarca.
+        $this->assertSame(1, Marca::where('nombre', 'New Balance')->count());
+        $this->assertSame(2, Marca::where('nombre', 'New Balance')->first()->lineas()->count());
+        $this->assertTrue(Linea::where('nombre', 'Price Shoes')->first()->marcas()->where('nombre', 'Dr. Martens')->exists());
+
         $esperadas = count(require database_path('seeders/datos/lineas_marcas.php'));
         $this->assertSame($esperadas, Linea::whereIn('nombre', [
             'Cklass', 'Impuls', 'Dankriz', 'Andrea', 'Price Shoes', 'Mega Shoes',
