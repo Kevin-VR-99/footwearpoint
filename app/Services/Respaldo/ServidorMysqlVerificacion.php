@@ -48,13 +48,18 @@ class ServidorMysqlVerificacion
             ]));
             @chmod($opciones, 0600);
 
-            $resultado = Process::timeout((int) config('respaldos.timeout'))->run([
+            // Por stdin y no con --execute=source: con source el cliente de MariaDB
+            // sigue tras un error y sale con 0, y el simulacro daba APTO con tablas vacías.
+            $entrada = fopen($sql, 'rb');
+            $resultado = Process::timeout((int) config('respaldos.timeout'))->input($entrada)->run([
                 (string) config('respaldos.verificacion.mysql'),
                 '--defaults-extra-file='.$opciones,
                 '--default-character-set=utf8mb4',
                 '--database='.$base,
-                '--execute=source '.$sql,
             ]);
+            if (is_resource($entrada)) {
+                fclose($entrada);
+            }
 
             if ($resultado->failed()) {
                 Log::error('mysql no pudo cargar el respaldo.', [
