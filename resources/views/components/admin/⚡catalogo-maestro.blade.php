@@ -1016,7 +1016,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2">
                                 <x-ui.imagen-ampliable :url="$this->fotos[$fila->id] ?? null" :alt="$fila->producto?->nombre ?? 'Producto'" />
-                                <span>{{ $fila->producto?->nombre }} <span class="text-slate-400">{{ $fila->producto?->modelo }}</span></span>
+                                <span>{{ $fila->producto?->nombre }} <span class="text-slate-500">{{ $fila->producto?->modelo }}</span></span>
                             </div>
                         </td>
                         <td class="px-4 py-3">{{ $fila->producto?->marca?->nombre }}</td>

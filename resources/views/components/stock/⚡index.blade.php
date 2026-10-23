@@ -806,7 +806,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                                 @foreach ($this->tallasModelo as $talla)
                                     <label class="rounded-lg border border-slate-200 p-2 text-center transition focus-within:border-fp-primary" wire:key="talla-{{ $talla['id'] }}">
                                         <span class="block text-sm font-semibold text-fp-sidebar">{{ $talla['talla'] }}</span>
-                                        <span class="block text-[11px] text-slate-400">Hay {{ $talla['existencia'] }}</span>
+                                        <span class="block text-[11px] text-slate-500">Hay {{ $talla['existencia'] }}</span>
                                         <input type="number" min="0" step="1" inputmode="numeric" data-cantidad-talla
                                             wire:model="modelo_cantidades.{{ $talla['id'] }}" aria-label="Cantidad talla {{ $talla['talla'] }}"
                                             class="mt-1 w-full rounded-md py-1 text-center text-sm focus:ring-fp-primary" placeholder="0">
@@ -862,13 +862,13 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                             </p>
                             <div class="max-h-64 overflow-auto rounded-lg border border-slate-200">
                                 <table class="min-w-full text-xs">
-                                    <thead class="sticky top-0 bg-fp-page text-left uppercase tracking-wide text-fp-text-muted">
+                                    <thead class="sticky top-0 bg-fp-page text-left uppercase tracking-wide text-slate-600">
                                         <tr><th class="px-3 py-2">Fila</th><th class="px-3 py-2">SKU</th><th class="px-3 py-2 text-right">Cantidad</th><th class="px-3 py-2">Motivo</th><th class="px-3 py-2">Estado</th></tr>
                                     </thead>
                                     <tbody class="divide-y divide-slate-100">
                                         @foreach ($vistaPrevia['filas'] as $fila)
                                             <tr class="{{ $fila['error'] ? 'bg-fp-danger/5' : '' }}">
-                                                <td class="px-3 py-1.5 text-slate-400">{{ $fila['fila'] }}</td>
+                                                <td class="px-3 py-1.5 text-slate-500">{{ $fila['fila'] }}</td>
                                                 <td class="px-3 py-1.5 font-mono">
                                                     <div class="flex items-center gap-2">
                                                         <x-ui.imagen-ampliable :url="$this->fotosImportacion[mb_strtolower((string) $fila['sku'])] ?? null" :alt="$fila['sku'] !== '' ? $fila['sku'] : 'Producto'" />
@@ -965,7 +965,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 
         <div class="overflow-x-auto">
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="text-left font-medium px-4 py-3">Producto</th>
                         <th class="text-left font-medium px-4 py-3">Tallas</th>
@@ -1038,7 +1038,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                                     </td>
                                     <td class="px-4 py-2 text-slate-600">
                                         Talla {{ $existencia->variante?->talla?->valor ?? '—' }}
-                                        <span class="ml-2 text-xs text-slate-400 whitespace-nowrap">
+                                        <span class="ml-2 text-xs text-slate-500 whitespace-nowrap">
                                             Mín.
                                             @if ($editandoMinimoId === (int) $existencia->id)
                                                 <form wire:submit="guardarMinimo" class="fp-emerger inline-flex items-center gap-1.5" data-editar-minimo>
@@ -1073,7 +1073,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                                     <td class="px-4 py-2 text-right whitespace-nowrap">
                                         <button type="button" wire:click="verMovimientos({{ $existencia->id }})" data-ver-movimientos
                                             class="fp-accion fp-accion-neutra" aria-label="Movimientos de {{ $existencia->variante?->sku }}">Movimientos</button>
-                                        <span class="block text-[11px] text-slate-400">{{ optional($existencia->updated_at)->format('d/m/Y H:i') }}</span>
+                                        <span class="block text-[11px] text-slate-500">{{ optional($existencia->updated_at)->format('d/m/Y H:i') }}</span>
                                     </td>
                                 </tr>
                             @endforeach
@@ -1103,7 +1103,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 <x-ui.cargando objetivo="paginaMovimientos" />
                 <div class="overflow-x-auto rounded-lg border border-slate-200">
                     <table class="min-w-full text-xs">
-                        <thead class="bg-fp-page text-left uppercase tracking-wide text-fp-text-muted">
+                        <thead class="bg-fp-page text-left uppercase tracking-wide text-slate-600">
                             <tr>
                                 <th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Tipo</th><th class="px-3 py-2 text-right">Cant.</th>
                                 <th class="px-3 py-2 text-right">Antes → después</th><th class="px-3 py-2">Usuario</th><th class="px-3 py-2">Motivo / referencia</th>
@@ -1140,7 +1140,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                         </tbody>
                     </table>
                 </div>
-                <p class="mt-2 text-[11px] text-slate-400">Aquí se registran entradas, ajustes, ventas de mostrador y devoluciones. Los pedidos y los vales no mueven este stock.</p>
+                <p class="mt-2 text-[11px] text-slate-500">Aquí se registran entradas, ajustes, ventas de mostrador y devoluciones. Los pedidos y los vales no mueven este stock.</p>
                 @if ($this->movimientos->lastPage() > 1)
                     <div class="mt-3 flex items-center justify-between text-xs text-slate-500">
                         <span>Página {{ $this->movimientos->currentPage() }} de {{ $this->movimientos->lastPage() }}</span>

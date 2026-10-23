@@ -558,7 +558,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         <div class="mb-6 fp-tarjeta overflow-hidden fp-aparecer">
             <div class="px-4 py-3 border-b border-slate-100 font-medium text-slate-800">Pagos</div>
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="px-4 py-2 font-medium">Folio</th>
                         <th class="px-4 py-2 font-medium">Tipo</th>
@@ -618,7 +618,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     <div class="fp-tarjeta overflow-hidden fp-aparecer">
         <div class="px-4 py-3 border-b border-slate-100 font-medium text-slate-800">Líneas</div>
         <table class="fp-tabla min-w-full text-sm">
-            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
                     <th class="px-4 py-2 font-medium">Producto</th>
                     <th class="px-4 py-2 font-medium">Talla</th>
@@ -717,7 +717,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                                         class="text-xs font-medium text-fp-danger transition-colors hover:text-fp-danger/80 hover:underline">No surtido</button>
                                 @endif
                             @else
-                                <span class="text-xs text-slate-400">—</span>
+                                <span class="text-xs text-slate-500">—</span>
                             @endif
                         </td>
                         @if ($this->pedido->estado === 'entregado')
@@ -740,7 +740,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                                         <span class="block text-xs text-slate-500">Hasta {{ \Illuminate\Support\Carbon::parse($cambio['fecha_limite'])->format('d/m/Y') }}</span>
                                     @endif
                                 @else
-                                    <span class="text-xs text-slate-400">Fuera de plazo</span>
+                                    <span class="text-xs text-slate-500">Fuera de plazo</span>
                                 @endif
                             </td>
                         @endif

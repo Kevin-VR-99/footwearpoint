@@ -71,7 +71,7 @@
     <x-ui.cargando objetivo="buscar,filtro_accion,filtro_area,filtro_desde,filtro_hasta,filtro_entidad,filtro_usuario,gotoPage,nextPage,previousPage" />
     <div class="overflow-x-auto">
         <table class="fp-tabla min-w-full text-sm">
-            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
                     <th class="px-4 py-3 font-medium">Fecha</th>
                     <th class="px-4 py-3 font-medium">Usuario</th>
@@ -94,12 +94,12 @@
                         <td class="px-4 py-3">
                             <div class="text-[11px] uppercase tracking-wide text-fp-text-muted">{{ EtiquetasAuditoria::area($row->accion) }}</div>
                             <x-panel.insignia variante="info">{{ EtiquetasAuditoria::etiqueta($row->accion) }}</x-panel.insignia>
-                            <div class="mt-0.5 font-mono text-[11px] text-slate-400">{{ $row->accion }}</div>
+                            <div class="mt-0.5 font-mono text-[11px] text-slate-500">{{ $row->accion }}</div>
                         </td>
                         <td class="px-4 py-3 text-slate-700">
                             {{ $row->entidad_tipo }}
                             @if ($row->entidad_id)
-                                <span class="text-slate-400">#{{ $row->entidad_id }}</span>
+                                <span class="text-slate-500">#{{ $row->entidad_id }}</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-xs tabular-nums text-slate-500">{{ $row->ip_origen ?? '—' }}</td>

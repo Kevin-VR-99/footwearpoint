@@ -14,4 +14,4 @@
     <li>Cumplir obligaciones legales y de facturación cuando aplique.</li>
 </ul>
 <p>No se venden datos a terceros. Puedes solicitar acceso, rectificación o cancelación escribiendo a la distribuidora o a soporte de FootwearPoint.</p>
-<p class="text-xs text-slate-400">Versión 1.0 — FootwearPoint MVP</p>
+<p class="text-xs text-slate-500">Versión 1.0 — FootwearPoint MVP</p>

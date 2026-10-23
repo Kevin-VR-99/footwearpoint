@@ -468,7 +468,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         <div class="fp-tarjeta overflow-hidden fp-aparecer">
             <div class="px-4 py-3 border-b font-medium">Líneas del pedido</div>
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="px-4 py-2">Producto</th>
                         <th class="px-4 py-2">Talla</th>

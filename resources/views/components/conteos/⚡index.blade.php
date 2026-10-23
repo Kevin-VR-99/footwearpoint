@@ -206,7 +206,7 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
 
         <div class="fp-tarjeta overflow-x-auto fp-aparecer">
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr><th class="px-4 py-2">Conteo</th><th class="px-4 py-2">Alcance</th><th class="px-4 py-2">Renglones</th><th class="px-4 py-2">Estado</th><th></th></tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -281,7 +281,7 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
 
         <div class="fp-tarjeta overflow-x-auto fp-aparecer">
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr><th class="px-4 py-2">Modelo</th><th class="px-4 py-2">Talla · color</th><th class="px-4 py-2">SKU</th><th class="px-4 py-2 text-right">Esperado</th><th class="px-4 py-2 text-right">Contado</th><th class="px-4 py-2 text-right">Diferencia</th></tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -307,7 +307,7 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
                                     {{ $ren->contado ?? '—' }}
                                 @endif
                             </td>
-                            <td class="px-4 py-2 text-right font-medium {{ $dif === null ? 'text-slate-400' : ($dif > 0 ? 'text-emerald-700' : ($dif < 0 ? 'text-fp-danger' : 'text-slate-500')) }}">
+                            <td class="px-4 py-2 text-right font-medium {{ $dif === null ? 'text-slate-500' : ($dif > 0 ? 'text-emerald-700' : ($dif < 0 ? 'text-fp-danger' : 'text-slate-500')) }}">
                                 {{ $dif === null ? 'sin contar' : ($dif > 0 ? '+'.$dif : $dif) }}
                             </td>
                         </tr>

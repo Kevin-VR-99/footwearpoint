@@ -125,7 +125,7 @@ new class extends Component {
     @endif
 
     @if ($error !== '')
-        <div class="fp-emerger rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-danger">
+        <div class="fp-emerger rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-badge-danger-fg">
             {{ $error }}
         </div>
     @endif
@@ -153,7 +153,7 @@ new class extends Component {
         </div>
 
         @if ($vencido)
-            <div class="fp-emerger rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-danger">
+            <div class="fp-emerger rounded-lg border border-fp-danger/20 bg-fp-danger-soft px-4 py-3 text-sm text-fp-badge-danger-fg">
                 La conexión con Mercado Pago venció. Vuelve a conectar tu cuenta para seguir cobrando.
             </div>
         @elseif ($porVencer)

@@ -109,7 +109,7 @@ new #[Layout('layouts.panel')] #[Title('Importar clientes — FootwearPoint')] c
         @endphp
         <div class="flex flex-wrap items-center gap-3 fp-aparecer" data-vista-previa>
             <span class="rounded-full bg-fp-badge-success-bg px-3 py-1 text-xs font-medium text-fp-badge-success-fg">{{ $this->validas }} válidos</span>
-            <span class="rounded-full {{ $conError ? 'bg-fp-danger-soft text-fp-danger' : 'bg-slate-100 text-slate-500' }} px-3 py-1 text-xs font-medium">{{ $conError }} con error</span>
+            <span class="rounded-full {{ $conError ? 'bg-fp-danger-soft text-fp-badge-danger-fg' : 'bg-slate-100 text-slate-500' }} px-3 py-1 text-xs font-medium">{{ $conError }} con error</span>
             <div class="ml-auto flex gap-2">
                 @if ($conError)
                     <button type="button" wire:click="descargarErrores" class="fp-btn fp-btn-fantasma rounded-xl">Bajar reporte de errores</button>
@@ -124,7 +124,7 @@ new #[Layout('layouts.panel')] #[Title('Importar clientes — FootwearPoint')] c
 
         <div class="fp-tarjeta overflow-x-auto fp-aparecer">
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr><th class="px-4 py-2">Fila</th><th class="px-4 py-2">Nombre</th><th class="px-4 py-2">Teléfono</th><th class="px-4 py-2">Correo</th><th class="px-4 py-2">Resultado</th></tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">

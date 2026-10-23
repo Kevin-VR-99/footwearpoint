@@ -122,7 +122,7 @@ new #[Layout('layouts.panel')] #[Title('Comisiones — FootwearPoint')] class ex
     <div class="fp-tarjeta overflow-x-auto fp-aparecer">
         <x-ui.cargando objetivo="periodo" />
         <table class="fp-tabla min-w-full text-sm">
-            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
                     <th class="px-4 py-2">#</th><th class="px-4 py-2">Cliente mayorista</th><th class="px-4 py-2 text-right">Pedidos pagados</th>
                     <th class="px-4 py-2 text-right">Venta pagada</th><th class="px-4 py-2 text-right">%</th><th class="px-4 py-2 text-right">Comisión</th>
@@ -135,7 +135,7 @@ new #[Layout('layouts.panel')] #[Title('Comisiones — FootwearPoint')] class ex
                         <td class="px-4 py-2">
                             <span class="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold {{ $f['lugar'] <= 3 && $f['venta_pagada'] > 0 ? 'bg-fp-primary text-white' : 'bg-slate-100 text-slate-500' }}">{{ $f['lugar'] }}</span>
                         </td>
-                        <td class="px-4 py-2 font-medium text-slate-800">{{ $f['nombre'] }} @if ($f['estado'] !== 'activo')<span class="text-xs text-slate-400">({{ $f['estado'] }})</span>@endif</td>
+                        <td class="px-4 py-2 font-medium text-slate-800">{{ $f['nombre'] }} @if ($f['estado'] !== 'activo')<span class="text-xs text-slate-500">({{ $f['estado'] }})</span>@endif</td>
                         <td class="px-4 py-2 text-right">{{ $f['pedidos_pagados'] }}</td>
                         <td class="px-4 py-2 text-right">{{ $mxn($f['venta_pagada']) }}</td>
                         <td class="px-4 py-2 text-right">

@@ -71,7 +71,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
                 @if ($this->resumen['notif_sin_leer'] > 0)
                     <a href="{{ route('notificaciones.index') }}"
                        wire:navigate
-                       class="inline-flex items-center gap-2 rounded-full border border-fp-danger/20 bg-fp-danger-soft px-3 py-1.5 text-xs font-medium text-fp-danger transition hover:border-fp-danger/40">
+                       class="inline-flex items-center gap-2 rounded-full border border-fp-danger/20 bg-fp-danger-soft px-3 py-1.5 text-xs font-medium text-fp-badge-danger-fg transition hover:border-fp-danger/40">
                         <span class="h-1.5 w-1.5 rounded-full bg-fp-danger"></span>
                         {{ $this->resumen['notif_sin_leer'] }} sin leer
                     </a>
@@ -158,9 +158,9 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
             <div class="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10"></div>
             <div class="relative flex items-start justify-between gap-3">
                 <div>
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">Acción</p>
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-white">Acción</p>
                     <p class="mt-1 text-lg font-semibold">Nuevo pedido</p>
-                    <p class="mt-1 text-sm text-white/80">Captura con catálogo por línea</p>
+                    <p class="mt-1 text-sm text-white">Captura con catálogo por línea</p>
                 </div>
                 <span class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 transition group-hover:bg-white/25">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -205,7 +205,7 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
 
         <div class="overflow-x-auto">
             <table class="fp-tabla min-w-full text-sm">
-                <thead class="bg-fp-page/80 text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+                <thead class="bg-fp-page/80 text-left text-[11px] uppercase tracking-wide text-slate-600">
                     <tr>
                         <th class="px-5 py-3 font-semibold">Folio</th>
                         <th class="px-5 py-3 font-semibold">Propietario</th>

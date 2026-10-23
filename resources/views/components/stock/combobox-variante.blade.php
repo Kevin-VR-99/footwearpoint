@@ -35,7 +35,7 @@
         <button type="button" x-show="imagenElegida" x-cloak @click="fotoAbierta = true" data-ver-imagen-stock
             class="group inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-fp-primary/50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40 motion-reduce:transform-none"
             aria-label="Ver la foto del calzado">
-            <img :src="imagenElegida" alt="" class="h-full w-full object-contain transition duration-300 group-hover:scale-110 motion-reduce:transform-none" width="40" height="40">
+            <template x-if="imagenElegida"><img :src="imagenElegida" alt="" class="h-full w-full object-contain transition duration-300 group-hover:scale-110 motion-reduce:transform-none" width="40" height="40"></template>
         </button>
     <div class="relative min-w-0 flex-1">
         <input id="{{ $id }}" type="text" x-model="q" autocomplete="off" role="combobox"
@@ -58,7 +58,7 @@
         <template x-for="(r, i) in res" :key="r.id">
             <li role="option" :aria-selected="i === activo" @mousedown.prevent="elegir(r)" @mouseenter="activo = i"
                 :class="i === activo ? 'bg-fp-primary/10 text-fp-sidebar' : 'text-slate-700'" class="flex cursor-pointer items-center gap-2 px-3 py-1.5">
-                <img x-show="r.imagen" :src="r.imagen" alt="" class="h-8 w-8 shrink-0 rounded border border-slate-200 bg-white object-contain" width="32" height="32">
+                <template x-if="r.imagen"><img :src="r.imagen" alt="" class="h-8 w-8 shrink-0 rounded border border-slate-200 bg-white object-contain" width="32" height="32"></template>
                 <span class="min-w-0">
                     <span class="font-mono text-xs" x-text="r.sku"></span>
                     <span class="block text-xs text-slate-500" x-text="r.detalle"></span>
@@ -79,7 +79,7 @@
                     aria-label="Cerrar foto">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
-                <img :src="imagenElegida" alt="" class="aspect-square w-full rounded-xl bg-fp-page object-contain">
+                <template x-if="imagenElegida"><img :src="imagenElegida" alt="" class="aspect-square w-full rounded-xl bg-fp-page object-contain"></template>
                 <p class="mt-2 truncate px-1 text-center text-sm font-medium text-fp-sidebar" x-text="elegida"></p>
             </div>
         </div>

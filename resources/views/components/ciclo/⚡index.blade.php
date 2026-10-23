@@ -318,7 +318,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
 
                 <div class="overflow-x-auto max-h-96 overflow-y-auto">
                     <table class="fp-tabla min-w-full text-sm">
-                        <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted sticky top-0">
+                        <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600 sticky top-0">
                             <tr>
                                 <th class="text-left font-medium px-4 py-3">Folio</th>
                                 <th class="text-left font-medium px-4 py-3">Tipo</th>
@@ -357,7 +357,7 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
 
                 <div class="overflow-x-auto max-h-96 overflow-y-auto">
                     <table class="fp-tabla min-w-full text-sm">
-                        <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted sticky top-0">
+                        <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600 sticky top-0">
                             <tr>
                                 <th class="text-left font-medium px-4 py-3">Producto</th>
                                 <th class="text-left font-medium px-4 py-3">Talla</th>

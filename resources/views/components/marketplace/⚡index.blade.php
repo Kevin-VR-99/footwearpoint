@@ -109,7 +109,7 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                             @php($direccionMapa = \App\Support\MapaUbicacion::direccion($d))
                             @if ($direccionMapa)
                                 <li class="flex gap-2">
-                                    <span class="text-slate-400 shrink-0">📍</span>
+                                    <span class="text-slate-500 shrink-0">📍</span>
                                     <span>
                                         {{ $direccionMapa }}
                                         <a href="{{ \App\Support\MapaUbicacion::urlVerEnMapa($d) }}" target="_blank" rel="noopener" class="ml-1 whitespace-nowrap fp-enlace">Ver en mapa</a>
@@ -119,7 +119,7 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
 
                             @if ($d->telefono_publico)
                                 <li class="flex gap-2">
-                                    <span class="text-slate-400 shrink-0">📞</span>
+                                    <span class="text-slate-500 shrink-0">📞</span>
                                     <a href="tel:{{ $d->telefono_publico }}" class="fp-enlace">
                                         {{ $d->telefono_publico }}
                                     </a>
@@ -127,7 +127,7 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                             @endif
                             @if ($d->email_publico)
                                 <li class="flex gap-2">
-                                    <span class="text-slate-400 shrink-0">✉️</span>
+                                    <span class="text-slate-500 shrink-0">✉️</span>
                                     <a href="mailto:{{ $d->email_publico }}" class="fp-enlace">
                                         {{ $d->email_publico }}
                                     </a>
@@ -135,7 +135,7 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                             @endif
                             @if ($d->horario_publico)
                                 <li class="flex gap-2">
-                                    <span class="text-slate-400 shrink-0">🕐</span>
+                                    <span class="text-slate-500 shrink-0">🕐</span>
                                     <span>{{ $d->horario_publico }}</span>
                                 </li>
                             @endif

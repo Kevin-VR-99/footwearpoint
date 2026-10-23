@@ -1275,7 +1275,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     <div class="relative fp-tarjeta fp-tabla overflow-hidden">
         <x-ui.cargando />
         <table class="w-full text-sm">
-            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted">
+            <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
                     <th class="text-left px-4 py-3 font-medium">ID</th>
                     <th class="text-left px-4 py-3 font-medium">Nombre</th>
@@ -1290,7 +1290,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         <td class="px-4 py-3">{{ $d->id }}</td>
                         <td class="px-4 py-3">
                             <div class="font-medium">{{ $d->nombre_comercial }}</div>
-                            <div class="text-xs text-slate-400">{{ $d->slug }}</div>
+                            <div class="text-xs text-slate-500">{{ $d->slug }}</div>
                         </td>
                         <td class="px-4 py-3">
                             <x-panel.insignia :variante="['activa' => 'success', 'pendiente' => 'warning', 'suspendida' => 'danger'][$d->estado] ?? 'neutral'"

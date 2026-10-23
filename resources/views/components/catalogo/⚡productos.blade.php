@@ -69,7 +69,7 @@ new class extends Component {
         <x-ui.cargando objetivo="busqueda,gotoPage,nextPage,previousPage" />
         <table class="fp-tabla min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-fp-page">
-                <tr class="text-left text-xs font-semibold uppercase tracking-wide text-fp-text-muted">
+                <tr class="text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                     <th class="px-6 py-3">Producto</th>
                     <th class="px-6 py-3">Marca</th>
                     <th class="px-6 py-3">Línea / temporada</th>

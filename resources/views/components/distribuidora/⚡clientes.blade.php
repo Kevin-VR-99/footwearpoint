@@ -384,7 +384,7 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                                 @if ($cliente->usuario_id)
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-fp-badge-success-bg text-fp-badge-success-fg">Con cuenta</span>
                                 @else
-                                    <span class="text-xs text-slate-400">Sin cuenta</span>
+                                    <span class="text-xs text-slate-500">Sin cuenta</span>
                                 @endif
                             </td>
                             <td class="py-2 text-right">

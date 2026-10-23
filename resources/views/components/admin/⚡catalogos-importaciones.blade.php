@@ -446,7 +446,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
 
             <div class="fp-campo">
                 <label for="catalogos-importaciones-campana-id" class="block text-sm font-medium text-slate-700 mb-1">
-                    Temporada <span class="text-slate-400 font-normal">(opcional)</span>
+                    Temporada <span class="text-slate-500 font-normal">(opcional)</span>
                 </label>
                 <select id="catalogos-importaciones-campana-id" wire:model="campana_id" class="w-full rounded-lg text-sm" @disabled(! $linea_id)>
                     <option value="">Se decide al aprobar</option>

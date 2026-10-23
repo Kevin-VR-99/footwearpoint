@@ -121,7 +121,7 @@ new #[Layout('layouts.panel')] #[Title('Mis líneas — FootwearPoint')] class e
     @if ($this->cupo !== [])
         <div class="rounded-xl border bg-white px-4 py-3 text-sm text-slate-600">
             Líneas de tu plan: <span class="font-semibold text-slate-900">{{ $this->cupo['activas'] }}/{{ $this->cupo['limite'] }}</span>
-            <span class="text-slate-400">({{ $this->cupo['incluidas'] }} incluidas)</span>
+            <span class="text-slate-500">({{ $this->cupo['incluidas'] }} incluidas)</span>
         </div>
     @endif
 

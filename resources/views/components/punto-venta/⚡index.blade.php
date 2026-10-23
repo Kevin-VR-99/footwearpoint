@@ -587,7 +587,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
 
             <div class="overflow-x-auto max-h-[28rem] overflow-y-auto">
                 <table class="fp-tabla min-w-full text-sm">
-                    <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-fp-text-muted sticky top-0">
+                    <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600 sticky top-0">
                         <tr>
                             <th class="text-left font-medium px-4 py-3">SKU</th>
                             <th class="text-left font-medium px-4 py-3">Producto</th>
