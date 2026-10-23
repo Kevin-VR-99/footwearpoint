@@ -6,6 +6,7 @@ use App\Services\Auditoria\AuditarCambios;
 use App\Exceptions\OperacionInvalidaException;
 use Illuminate\Support\Facades\DB;
 use App\Models\Linea;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Alta y edición de líneas del catálogo compartido (TG-213).
@@ -22,12 +23,17 @@ class GestionarLineaAction
     public function __construct(
         private AuditarCambios $auditar,
         private DependenciasCatalogo $dependencias,
+        private LogotipoDeCatalogo $logotipos,
     )
     {
     }
 
-    public function crear(array $datos, array $marcaIds = []): Linea
+    public function crear(array $datos, array $marcaIds = [], ?UploadedFile $logo = null): Linea
     {
+        if ($logo) {
+            $datos['logotipo_url'] = $this->logotipos->subir($logo, 'lineas');
+        }
+
         $linea = Linea::create([
             'nombre'       => $datos['nombre'],
             'descripcion'  => $datos['descripcion'] ?? null,
@@ -43,8 +49,20 @@ class GestionarLineaAction
         return $linea->load('marcas', 'campanas');
     }
 
-    public function actualizar(Linea $linea, array $datos, ?array $marcaIds = null): Linea
+    /**
+     * Con $logo se reemplaza el logotipo; con $quitarLogo se quita. El archivo
+     * anterior se borra del almacenamiento y el cambio queda auditado.
+     */
+    public function actualizar(Linea $linea, array $datos, ?array $marcaIds = null, ?UploadedFile $logo = null, bool $quitarLogo = false): Linea
     {
+        $anterior = $linea->logotipo_url;
+
+        if ($logo) {
+            $datos['logotipo_url'] = $this->logotipos->subir($logo, 'lineas');
+        } elseif ($quitarLogo) {
+            $datos['logotipo_url'] = null;
+        }
+
         $linea->fill([
             'nombre'       => $datos['nombre'] ?? $linea->nombre,
             'descripcion'  => array_key_exists('descripcion', $datos) ? $datos['descripcion'] : $linea->descripcion,
@@ -52,6 +70,10 @@ class GestionarLineaAction
             'activa'       => array_key_exists('activa', $datos) ? $datos['activa'] : $linea->activa,
         ]);
         $this->auditar->guardar($linea, 'catalogo.linea.actualizada', 'linea');
+
+        if ($anterior !== $linea->logotipo_url) {
+            $this->logotipos->borrar($anterior, 'lineas');
+        }
 
         if (is_array($marcaIds)) {
             $this->sincronizarMarcas($linea, $marcaIds);

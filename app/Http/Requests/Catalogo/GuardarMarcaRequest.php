@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Catalogo;
 
+use App\Services\Catalogo\LogotipoDeCatalogo;
 use Illuminate\Foundation\Http\FormRequest;
 
 class GuardarMarcaRequest extends FormRequest
@@ -19,16 +20,16 @@ class GuardarMarcaRequest extends FormRequest
             'nombre'      => [$requerido, 'string', 'max:120'],
             'descripcion' => ['nullable', 'string', 'max:2000'],
             'activa'      => ['sometimes', 'boolean'],
-            // Igual que en el logo de perfil (Bloque 1): ningún documento
-            // especifica un tamaño máximo para el logo de marca. 2MB, mismo
-            // criterio conservador que usé allá.
-            'logotipo'    => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            // 2MB, mismo criterio que el logo de perfil. JPG, PNG, WebP o SVG
+            // (el SVG con código se rechaza: ver SvgSeguro).
+            'logotipo'    => LogotipoDeCatalogo::reglas(),
+            'quitar_logotipo' => ['sometimes', 'boolean'],
         ];
     }
 
     public function messages(): array
     {
-        return [
+        return LogotipoDeCatalogo::mensajes('logotipo') + [
             'descripcion.max' => 'La descripción no puede tener más de 2000 caracteres.',
         ];
     }
