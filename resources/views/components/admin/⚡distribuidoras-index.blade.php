@@ -79,6 +79,11 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public string $distribuidoraRechazoNombre = '';
     public string $motivo_rechazo = '';
 
+    // Confirmar la suspensión antes de cortar el acceso.
+    #[Locked]
+    public ?int $distribuidoraSuspensionId = null;
+    public string $distribuidoraSuspensionNombre = '';
+
     // Editar distribuidora y su administrador (TG-194)
     #[Locked]
     public ?int $distribuidoraEdicionId = null;
@@ -522,6 +527,31 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         $this->mensaje = $this->conAviso($cambio, "Distribuidora «{$cambio->distribuidora->nombre_comercial}» rechazada.");
     }
 
+    /** Abre el modal para confirmar la suspensión. Todavía no cambia el estado. */
+    public function pedirSuspension(int $id): void
+    {
+        $distribuidora = Distribuidora::findOrFail($id);
+
+        if ($distribuidora->estado !== 'activa') {
+            $this->mensaje = SuspenderDistribuidoraAction::MENSAJE_NO_ACTIVA;
+
+            return;
+        }
+
+        $this->mensaje = '';
+        $this->mostrarSuscripcion = false;
+        $this->mostrandoFormularioCrear = false;
+        $this->cancelarRechazo();
+        $this->distribuidoraSuspensionId = $distribuidora->id;
+        $this->distribuidoraSuspensionNombre = $distribuidora->nombre_comercial;
+    }
+
+    public function cancelarSuspension(): void
+    {
+        $this->distribuidoraSuspensionId = null;
+        $this->distribuidoraSuspensionNombre = '';
+    }
+
     /**
      * TG-196 (G5) — Suspende una distribuidora activa: conserva sus datos,
      * pero ni su personal ni sus revendedores y clientes pueden operar hasta
@@ -529,6 +559,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
      */
     public function suspender(int $id)
     {
+        $this->cancelarSuspension();
+
         try {
             $cambio = app(SuspenderDistribuidoraAction::class)->ejecutar(Distribuidora::findOrFail($id));
         } catch (OperacionInvalidaException $e) {
@@ -1121,6 +1153,20 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         </x-panel.modal>
     @endif
 
+    @if ($distribuidoraSuspensionId)
+        <x-panel.modal titulo="Suspender distribuidora"
+            :subtitulo="'«'.$distribuidoraSuspensionNombre.'»'"
+            ancho="max-w-md" cerrar="cancelarSuspension">
+            <p class="text-sm text-slate-600">
+                Su personal, sus clientes mayoristas y sus clientes no podrán usar FootwearPoint hasta que la reactives. La información se conserva.
+            </p>
+            <x-slot:pie>
+                <button type="button" wire:click="cancelarSuspension" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button type="button" wire:click="suspender({{ $distribuidoraSuspensionId }})" class="fp-btn fp-btn-peligro">Suspender</button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
+
     <div class="fp-pestanas mb-4" role="tablist" aria-label="Filtrar por estado">
         <button type="button" role="tab" wire:click="$set('filtroEstado', '')" aria-selected="{{ $filtroEstado === '' ? 'true' : 'false' }}"
             class="fp-pestana">
@@ -1186,9 +1232,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                                     class="fp-accion fp-accion-peligro">Rechazar</button>
                             @endif
                             @if ($d->estado === 'activa')
-                                <button wire:click="suspender({{ $d->id }})"
-                                    wire:confirm="Su personal, clientes mayoristas y clientes no podrán usar FootwearPoint hasta reactivarla. Su información se conserva. ¿Continuar?"
-                                    class="fp-accion fp-accion-peligro">Suspender</button>
+                                <button type="button" wire:click="pedirSuspension({{ $d->id }})"
+                                    class="fp-btn fp-btn-peligro fp-btn-sm">Suspender</button>
                             @endif
                             @if ($d->estado === 'suspendida')
                                 <button wire:click="reactivar({{ $d->id }})"
