@@ -12,7 +12,6 @@ use Livewire\Component;
 new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] class extends Component {
     public string $email = '';
     public string $password = '';
-    public bool $remember = false;
 
     protected function rules(): array
     {
@@ -125,7 +124,11 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
             return;
         }
 
-        Auth::login($usuario, $this->remember);
+        // Sesion persistente: el panel web siempre recuerda al usuario (cookie
+        // "remember"). Asi, aunque la sesion del servidor se pierda (deploy,
+        // limpieza de la tabla sessions, otro navegador), vuelve a entrar
+        // solo. La sesion termina unicamente con "Cerrar sesion".
+        Auth::login($usuario, true);
         session()->regenerate();
 
         // Solo el personal activo da contexto de distribuidora: un empleado
@@ -186,12 +189,7 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         </div>
 
         <div class="flex items-center justify-between">
-            <label class="flex items-center gap-2 text-sm text-slate-600">
-                <input type="checkbox" wire:model="remember"
-                    class="rounded">
-                Recordarme
-            </label>
-
+            <span></span>
             <a href="{{ route('password.request') }}" class="fp-enlace text-sm">
                 ¿Olvidaste tu contraseña?
             </a>
