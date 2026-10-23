@@ -79,6 +79,7 @@ final class EtiquetasAuditoria
         'importacion_catalogo.eliminada'  => 'Catálogo para importar eliminado',
         'importacion_catalogo.procesada'  => 'Catálogo leído por la IA',
         'importacion_catalogo.relleno_en_lote' => 'Campo completado en lote',
+        'importacion_catalogo.colores_asignados' => 'Colores del catálogo asignados',
         'importacion_catalogo.aprobada'   => 'Importación de catálogo aprobada',
     ];
 

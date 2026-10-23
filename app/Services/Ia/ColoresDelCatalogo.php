@@ -5,6 +5,7 @@ namespace App\Services\Ia;
 use App\Models\Color;
 use App\Models\ImportacionCatalogo;
 use App\Models\Variante;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
 
 /**
  * TG-240 (A10) — Emparejar los colores del catálogo con la paleta.
@@ -110,8 +111,11 @@ class ColoresDelCatalogo
     public function asignar(ImportacionCatalogo $importacion, array $mapa): int
     {
         $resueltos = 0;
+        $filas = $importacion->productosStaging()->where('estado', '!=', 'descartado')->get();
+        $previo = $this->mapaActual($filas);
+        $cambiosPorNombre = [];
 
-        foreach ($importacion->productosStaging()->where('estado', '!=', 'descartado')->get() as $fila) {
+        foreach ($filas as $fila) {
             $datos = $fila->datos_extraidos ?? [];
             $comercial = trim((string) ($datos['color'] ?? ''));
 
@@ -125,13 +129,67 @@ class ColoresDelCatalogo
                 continue;
             }
 
+            $anterior = $datos['color_base_id'] ?? null;
             $datos['color_base_id'] = (int) $colorId;
             $fila->update(['datos_extraidos' => $datos]);
+
+            if ($anterior === null || (int) $anterior !== (int) $colorId) {
+                $cambiosPorNombre[$comercial] = ($cambiosPorNombre[$comercial] ?? 0) + 1;
+            }
 
             $resueltos++;
         }
 
+        // Se audita siempre que se guarda, aunque no cambie ninguna fila
+        // (filas_cambiadas = 0): queda constancia de quién confirmó la paleta.
+        ksort($cambiosPorNombre);
+        app(RegistrarAuditoriaAction::class)->ejecutar(
+            'importacion_catalogo.colores_asignados',
+            'importacion_catalogo',
+            $importacion->id,
+            ['colores' => $previo],
+            [
+                'colores'                    => $this->mapaActual($filas),
+                'filas_cambiadas'            => array_sum($cambiosPorNombre),
+                'filas_cambiadas_por_nombre' => $cambiosPorNombre,
+                'filas_resueltas'            => $resueltos,
+            ],
+        );
+
         return $resueltos;
+    }
+
+    /**
+     * nombre comercial => {color_base_id, color} con lo que hoy tienen las filas.
+     *
+     * @return array<string, array{color_base_id: ?int, color: ?string}>
+     */
+    private function mapaActual($filas): array
+    {
+        $mapa = [];
+
+        foreach ($filas as $fila) {
+            $datos = $fila->datos_extraidos ?? [];
+            $comercial = trim((string) ($datos['color'] ?? ''));
+
+            if ($comercial === '') {
+                continue;
+            }
+
+            $id = $datos['color_base_id'] ?? null;
+
+            if (! isset($mapa[$comercial]) || $id !== null) {
+                $mapa[$comercial] = $id === null ? null : (int) $id;
+            }
+        }
+
+        ksort($mapa);
+        $nombres = Color::whereIn('id', array_filter($mapa))->pluck('nombre', 'id');
+
+        return array_map(fn ($id) => [
+            'color_base_id' => $id,
+            'color'         => $id === null ? null : ($nombres[$id] ?? null),
+        ], $mapa);
     }
 
     /** Cuántos productos siguen sin color resuelto. */
