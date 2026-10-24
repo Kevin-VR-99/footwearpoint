@@ -403,15 +403,15 @@ class AuthController extends Controller
 
         // Acepta de forma flexible cualquier estructura que mande la app
         $documentos = $request->input('documentos', [
-            ['tipo_documento' => 'aviso_privacidad', 'version' => '1.0'],
-            ['tipo_documento' => 'terminos_condiciones', 'version' => '1.0'],
+            ['tipo_documento' => 'aviso_privacidad', 'version' => config('legal.version')],
+            ['tipo_documento' => 'terminos_condiciones', 'version' => config('legal.version')],
         ]);
 
         $aceptadas = [];
 
         foreach ($documentos as $doc) {
             $tipo = is_array($doc) ? ($doc['tipo_documento'] ?? 'aviso_privacidad') : 'aviso_privacidad';
-            $version = is_array($doc) ? ($doc['version'] ?? '1.0') : '1.0';
+            $version = is_array($doc) ? ($doc['version'] ?? config('legal.version')) : config('legal.version');
 
             $aceptacion = AceptacionLegal::updateOrCreate(
                 [
