@@ -19,11 +19,13 @@ use Illuminate\Support\Facades\Log;
  *   - 200 en todo lo demás, incluso si el aviso no era nuestro, para que
  *     Mercado Pago no lo repita.
  *
- * Auditoría 21-oct-2026: si MP_WEBHOOK_SECRET está configurada, la firma es
- * obligatoria (sin firma, inválida o con ts de más de 5 minutos → 401). Si no
- * está configurada, se conserva el comportamiento anterior: se acepta y el pago
- * se verifica en la API de Mercado Pago, con un aviso en el log. En ambos casos
- * se descartan avisos repetidos por data.id.
+ * Seguridad oct-2026 (fail-closed): la firma siempre es obligatoria cuando hay
+ * MP_WEBHOOK_SECRET (sin firma, inválida o con ts de más de 5 minutos → 401).
+ * Si la variable NO está configurada, fuera de local/testing el aviso se
+ * rechaza con 503 (Mercado Pago lo reintenta) y se deja un error en el log.
+ * En local/testing se puede seguir procesando sin firma consultando la API
+ * (MP_WEBHOOK_PERMITIR_SIN_CLAVE, true por defecto) para no romper pruebas.
+ * Se descartan avisos repetidos por data.id.
  */
 class WebhookMercadoPagoController extends Controller
 {
@@ -41,10 +43,16 @@ class WebhookMercadoPagoController extends Controller
 
         $hayClave = (string) config('services.mercadopago.webhook_secret', '') !== '';
 
+        if (! $hayClave && ! self::permiteSinClave()) {
+            // Fail-closed: sin clave no hay forma de saber que el aviso viene
+            // de Mercado Pago. 503 para que lo reintente cuando se configure.
+            Log::error('Mercado Pago: falta MP_WEBHOOK_SECRET; el aviso se rechaza (fail-closed). Configura la variable en el servicio.', ['data_id' => $dataId, 'entorno' => app()->environment()]);
+
+            return response()->json(['message' => 'El webhook no está configurado.'], 503);
+        }
+
         if (! $hayClave) {
-            // Sin MP_WEBHOOK_SECRET no se puede verificar la firma: se procesa
-            // como antes, consultando el pago en la API de Mercado Pago (que es
-            // la fuente de verdad). Nunca se rechaza, para no romper cobros.
+            // Solo local/testing: se procesa consultando la API de Mercado Pago.
             Log::warning('Mercado Pago: falta MP_WEBHOOK_SECRET; el aviso se procesa sin verificar la firma, consultando la API. Configura la variable.', ['data_id' => $dataId]);
         } elseif ($revision !== FirmaWebhookMercadoPago::VALIDA) {
             $motivo = match ($revision) {
@@ -62,5 +70,12 @@ class WebhookMercadoPagoController extends Controller
         }
 
         return response()->json(['ok' => true]);
+    }
+
+    /** Solo en local/testing se permite procesar avisos sin MP_WEBHOOK_SECRET. */
+    private static function permiteSinClave(): bool
+    {
+        return app()->environment(['local', 'testing'])
+            && (bool) config('services.mercadopago.webhook_permitir_sin_clave', true);
     }
 }

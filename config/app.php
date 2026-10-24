@@ -104,11 +104,12 @@ return [
     'timezone' => 'America/Mexico_City',
 
     /*
-    | Auditoría 21-oct-2026: modo de la Content-Security-Policy.
-    | report-only (por defecto): solo reporta a /api/csp-report.
-    | enforce: la hace obligatoria. off: no manda la cabecera.
+    | Seguridad oct-2026: modo de la Content-Security-Policy (CSP_MODO).
+    | bloquear (por defecto, alias enforce): política obligatoria; las
+    | violaciones se siguen reportando a /api/csp-report.
+    | reportar (alias report-only): solo reporta. off: no manda la cabecera.
     */
-    'csp_modo' => env('CSP_MODO', 'report-only'),
+    'csp_modo' => env('CSP_MODO', 'bloquear'),
 
     /*
     |--------------------------------------------------------------------------

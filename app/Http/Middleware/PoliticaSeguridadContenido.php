@@ -8,10 +8,9 @@ use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Auditoría 21-oct-2026 (punto 4) — Content-Security-Policy en modo
- * Report-Only: el navegador NO bloquea nada, solo avisa a /api/csp-report
- * lo que se bloquearía. Cuando el log quede limpio unos días, se cambia
- * CSP_MODO=enforce para que la política sea obligatoria.
+ * Auditoría 21-oct-2026 (punto 4) / Seguridad oct-2026 — Content-Security-Policy
+ * OBLIGATORIA por defecto (CSP_MODO=bloquear). Con CSP_MODO=reportar vuelve a
+ * Report-Only. En ambos modos las violaciones se reportan a /api/csp-report.
  *
  * - Genera un nonce por petición con Vite::useCspNonce(); @vite,
  *   @livewireScripts/@livewireStyles lo ponen solos y los <script> propios
@@ -30,7 +29,7 @@ class PoliticaSeguridadContenido
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $modo = (string) config('app.csp_modo', 'report-only');
+        $modo = self::modo();
 
         if ($modo === 'off') {
             return self::conUpgradeInsecure($next($request), $modo);
@@ -52,6 +51,16 @@ class PoliticaSeguridadContenido
         }
 
         return self::conUpgradeInsecure($respuesta, $modo);
+    }
+
+    /** Normaliza CSP_MODO: bloquear|enforce → enforce; reportar|report-only → report-only. */
+    public static function modo(): string
+    {
+        return match (strtolower(trim((string) config('app.csp_modo', 'bloquear')))) {
+            'off', 'apagado' => 'off',
+            'reportar', 'report-only', 'report' => 'report-only',
+            default => 'enforce',
+        };
     }
 
     /**

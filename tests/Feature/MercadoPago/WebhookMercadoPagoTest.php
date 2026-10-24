@@ -427,18 +427,54 @@ class WebhookMercadoPagoTest extends TestCase
         $this->assertSame('pendiente', $pago->fresh()->estado);
     }
 
-    public function test_en_produccion_sin_clave_configurada_se_acepta_verificando_la_api_y_lo_avisa_en_el_log(): void
+    public function test_en_produccion_sin_clave_configurada_se_rechaza_y_lo_avisa_en_el_log(): void
     {
         Log::spy();
         config(['services.mercadopago.webhook_secret' => null]);
         $pago = $this->pagoPendiente();
         $this->enMercadoPago($this->aprobado($pago));
+        $antes = count(Http::recorded());
         $this->app->detectEnvironment(fn () => 'production');
 
-        $this->ipn()->assertOk();
+        $this->ipn()->assertStatus(503)->assertExactJson(['message' => 'El webhook no está configurado.']);
+        $this->aviso()->assertStatus(503);
 
-        $this->assertSame('aplicado', $pago->fresh()->estado);
-        Log::shouldHaveReceived('warning')->once()->withArgs(fn ($mensaje) => str_contains($mensaje, 'falta MP_WEBHOOK_SECRET'));
+        $this->assertSame(0, WebhookMercadoPago::count());
+        $this->assertCount($antes, Http::recorded());
+        $this->assertSame('pendiente', $pago->fresh()->estado);
+        Log::shouldHaveReceived('error')->withArgs(fn ($mensaje, $contexto) => str_contains($mensaje, 'falta MP_WEBHOOK_SECRET')
+            && ! str_contains(json_encode($contexto), self::CLAVE));
+    }
+
+    public function test_en_staging_sin_clave_se_rechaza_aunque_se_pida_permitirlo(): void
+    {
+        config(['services.mercadopago.webhook_secret' => null, 'services.mercadopago.webhook_permitir_sin_clave' => true]);
+        $pago = $this->pagoPendiente();
+        $this->enMercadoPago($this->aprobado($pago));
+        $this->app->detectEnvironment(fn () => 'staging');
+
+        $this->ipn()->assertStatus(503);
+        $this->assertSame('pendiente', $pago->fresh()->estado);
+    }
+
+    public function test_en_testing_sin_clave_se_puede_cerrar_por_configuracion(): void
+    {
+        config(['services.mercadopago.webhook_secret' => null, 'services.mercadopago.webhook_permitir_sin_clave' => false]);
+        $pago = $this->pagoPendiente();
+        $this->enMercadoPago($this->aprobado($pago));
+
+        $this->ipn()->assertStatus(503);
+        $this->assertSame('pendiente', $pago->fresh()->estado);
+    }
+
+    public function test_en_produccion_con_clave_una_firma_invalida_se_rechaza(): void
+    {
+        $pago = $this->pagoPendiente();
+        $this->enMercadoPago($this->aprobado($pago));
+        $this->app->detectEnvironment(fn () => 'production');
+
+        $this->aviso(firma: 'ts='.now()->getTimestampMs().',v1='.str_repeat('b', 64))->assertStatus(401);
+        $this->assertSame('pendiente', $pago->fresh()->estado);
     }
 
     public function test_en_produccion_un_aviso_bien_firmado_se_aplica(): void
