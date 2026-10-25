@@ -101,6 +101,8 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         // (TG-213). El precio es el de menudeo del catálogo (D8).
         $publicaciones = app(CatalogoVisible::class)->consulta()
             ->whereIn('producto_id', $variantes->pluck('producto_id')->unique()->all())
+            // TG-114: la línea sale de la campaña donde está publicado (TG-209).
+            ->with('campana.linea:id,nombre')
             ->get()
             ->groupBy('producto_id');
 
@@ -133,6 +135,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                     'sku' => (string) $variante->sku,
                     'imagen' => $fotos[$publicacion->id] ?? '',
                     'codigo_catalogo' => (string) $publicacion->codigo_catalogo,
+                    'linea' => (string) ($publicacion->campana?->linea?->nombre ?? ''),
                     'nombre' => (string) ($variante->producto?->nombre ?? ''),
                     'talla' => $textoTalla,
                     'color' => $textoColor,
@@ -148,6 +151,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                 return str_contains(mb_strtolower($fila['sku']), $termino)
                     || str_contains(mb_strtolower($fila['codigo_catalogo']), $termino)
                     || str_contains(mb_strtolower($fila['nombre']), $termino)
+                    || str_contains(mb_strtolower($fila['linea']), $termino)
                     || str_contains(mb_strtolower($fila['talla']), $termino)
                     || str_contains(mb_strtolower($fila['color']), $termino);
             })
@@ -580,7 +584,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                  x-on:keydown.enter.prevent="escanear()"
                  x-on:pos-listo-para-escanear.window="prepararSiguiente()">
                 <x-ui.buscador data-pos-escaner x-bind:value="q"
-                       placeholder="Escanea el SKU o busca modelo, talla o color. Enter agrega si es uno solo."
+                       placeholder="Escanea el SKU o busca modelo, línea, talla o color. Enter agrega si es uno solo."
                        etiqueta="Buscar productos" />
                 <p class="mt-2 text-xs text-slate-500">Enter agrega una pieza cuando el código corresponde a un solo producto.</p>
             </div>
@@ -591,6 +595,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                         <tr>
                             <th class="text-left font-medium px-4 py-3">SKU</th>
                             <th class="text-left font-medium px-4 py-3">Producto</th>
+                            <th class="text-left font-medium px-4 py-3">Línea</th>
                             <th class="text-left font-medium px-4 py-3">Talla</th>
                             <th class="text-left font-medium px-4 py-3">Color</th>
                             <th class="text-right font-medium px-4 py-3">Precio</th>
@@ -611,6 +616,9 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                                     <div class="text-slate-900">{{ $fila['nombre'] !== '' ? $fila['nombre'] : '—' }}</div>
                                     <div class="text-xs text-slate-500">{{ $fila['codigo_catalogo'] }}</div>
                                 </td>
+                                <td class="px-4 py-3 text-slate-700">
+                                    {{ $fila['linea'] !== '' ? $fila['linea'] : '—' }}
+                                </td>
                                 <td class="px-4 py-3 font-medium text-slate-900">
                                     {{ $fila['talla'] !== '' ? $fila['talla'] : '—' }}
                                 </td>
@@ -628,7 +636,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-8 text-center text-slate-500">
+                                <td colspan="8" class="px-4 py-8 text-center text-slate-500">
                                     No hay productos con existencia que coincidan.
                                 </td>
                             </tr>
