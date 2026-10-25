@@ -18,7 +18,7 @@ new #[Layout('layouts.public')] #[Title('Términos y condiciones — FootwearPoi
 
 <article class="fp-tarjeta p-6 sm:p-8 max-w-3xl mx-auto">
     <h1 class="text-2xl font-bold text-slate-900">Términos y condiciones</h1>
-    <p class="text-sm text-slate-500 mt-1">Versión 1.0</p>
+    <p class="text-sm text-slate-500 mt-1">Versión {{ config('legal.version') }} · Última actualización: {{ config('legal.fecha_actualizacion') }}</p>
 
     <div class="mt-6 text-sm text-slate-600 space-y-2">
         <x-legales.terminos />

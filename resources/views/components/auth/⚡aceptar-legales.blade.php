@@ -37,7 +37,7 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
                 [
                     'usuario_id'     => $usuario->id,
                     'tipo_documento' => 'aviso_privacidad',
-                    'version'        => '1.0',
+                    'version'        => config('legal.version'),
                 ],
                 [
                     'fecha_aceptacion' => now(),
@@ -52,7 +52,7 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
                 [
                     'usuario_id'     => $usuario->id,
                     'tipo_documento' => 'terminos_condiciones',
-                    'version'        => '1.0',
+                    'version'        => config('legal.version'),
                 ],
                 [
                     'fecha_aceptacion' => now(),
@@ -87,7 +87,7 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
                 <input type="checkbox" wire:model="aviso"
                        class="mt-1 rounded text-blue-600 focus:ring-blue-600">
                 <span class="text-sm text-slate-700">
-                    Acepto el <strong>Aviso de privacidad</strong> (versión 1.0)
+                    Acepto el <strong>Aviso de privacidad</strong> (versión {{ config('legal.version') }})
                 </span>
             </label>
 
@@ -111,7 +111,7 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
                 <input type="checkbox" wire:model="terminos"
                        class="mt-1 rounded text-blue-600 focus:ring-blue-600">
                 <span class="text-sm text-slate-700">
-                    Acepto los <strong>Términos y condiciones</strong> (versión 1.0)
+                    Acepto los <strong>Términos y condiciones</strong> (versión {{ config('legal.version') }})
                 </span>
             </label>
 
