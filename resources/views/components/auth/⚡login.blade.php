@@ -128,7 +128,9 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         // "remember"). Asi, aunque la sesion del servidor se pierda (deploy,
         // limpieza de la tabla sessions, otro navegador), vuelve a entrar
         // solo. La sesion termina unicamente con "Cerrar sesion".
-        Auth::login($usuario, true);
+        // Seguridad oct-2026: el admin general NO lleva cookie remember (ver
+        // App\Support\SesionDelPanel); su sesion se cierra con el navegador.
+        Auth::login($usuario, \App\Support\SesionDelPanel::esPersistente($usuario));
         session()->regenerate();
 
         // Solo el personal activo da contexto de distribuidora: un empleado

@@ -39,6 +39,10 @@ return [
     // Sesion persistente: cerrar el navegador nunca cierra la sesion.
     'expire_on_close' => false,
 
+    // Seguridad oct-2026: el admin general no tiene sesion persistente (sin
+    // cookie remember y cookie de sesion de navegador). true = como antes.
+    'admin_general_persistente' => (bool) env('SESSION_ADMIN_GENERAL_PERSISTENTE', false),
+
     /*
     |--------------------------------------------------------------------------
     | Session Encryption
@@ -50,7 +54,9 @@ return [
     |
     */
 
-    'encrypt' => env('SESSION_ENCRYPT', false),
+    // Seguridad oct-2026: cifrada por defecto; SESSION_ENCRYPT la controla si
+    // existe. Al desplegar el cambio, las sesiones abiertas se cierran una vez.
+    'encrypt' => (bool) env('SESSION_ENCRYPT', true),
 
     /*
     |--------------------------------------------------------------------------

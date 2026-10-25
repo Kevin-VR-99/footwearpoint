@@ -41,7 +41,6 @@ class SesionPersistenteTest extends TestCase
     public static function usuariosDelPanel(): array
     {
         return [
-            'admin general'           => [AdminGeneralSeeder::EMAIL],
             'admin de distribuidora'  => [DemoDistribuidoraSeeder::ADMIN],
             'empleado (staff)'        => [DemoDistribuidoraSeeder::EMPLEADO],
             'admin de otra distrib.'  => [DemoDistribuidoraSeeder::SEGUNDA_ADMIN],
@@ -106,6 +105,64 @@ class SesionPersistenteTest extends TestCase
         $this->assertSame($usuario->id, Auth::id());
         $this->assertTrue(Cookie::hasQueued(Auth::guard('web')->getRecallerName()), 'Falta la cookie remember.');
         $this->assertNotEmpty($usuario->fresh()->remember_token);
+    }
+
+    public function test_el_admin_general_no_tiene_sesion_persistente(): void
+    {
+        $usuario = $this->conPassword(AdminGeneralSeeder::EMAIL);
+
+        Livewire::test('auth.login')
+            ->set('email', AdminGeneralSeeder::EMAIL)
+            ->set('password', 'Sesion-Larga-2026!')
+            ->call('login')
+            ->assertHasNoErrors()
+            ->assertRedirect();
+
+        $this->assertSame($usuario->id, Auth::id());
+        $this->assertFalse(Cookie::hasQueued(Auth::guard('web')->getRecallerName()), 'El admin general no debe llevar cookie remember.');
+    }
+
+    public function test_la_cookie_de_sesion_del_admin_general_es_de_navegador(): void
+    {
+        $admin = Usuario::where('email', AdminGeneralSeeder::EMAIL)->firstOrFail();
+        $cookie = collect($this->actingAs($admin)->get('/')->headers->getCookies())
+            ->first(fn ($c) => $c->getName() === config('session.cookie'));
+        $this->assertNotNull($cookie);
+        $this->assertSame(0, $cookie->getExpiresTime());
+
+        $this->app['auth']->forgetGuards();
+        config(['session.expire_on_close' => false]);
+        $distribuidora = Usuario::where('email', DemoDistribuidoraSeeder::ADMIN)->firstOrFail();
+        $cookie = collect($this->actingAs($distribuidora)->get('/')->headers->getCookies())
+            ->first(fn ($c) => $c->getName() === config('session.cookie'));
+        $this->assertGreaterThan(0, $cookie->getExpiresTime());
+    }
+
+    public function test_session_admin_general_persistente_regresa_al_comportamiento_anterior(): void
+    {
+        config(['session.admin_general_persistente' => true]);
+        $usuario = $this->conPassword(AdminGeneralSeeder::EMAIL);
+
+        $this->assertTrue(\App\Support\SesionDelPanel::esPersistente($usuario));
+    }
+
+    public function test_la_sesion_se_cifra_por_defecto(): void
+    {
+        $antes = getenv('SESSION_ENCRYPT');
+        $antesEnv = $_ENV['SESSION_ENCRYPT'] ?? null;
+        $antesServer = $_SERVER['SESSION_ENCRYPT'] ?? null;
+        unset($_ENV['SESSION_ENCRYPT'], $_SERVER['SESSION_ENCRYPT']);
+        putenv('SESSION_ENCRYPT');
+
+        try {
+            $this->assertTrue((require config_path('session.php'))['encrypt']);
+            putenv('SESSION_ENCRYPT=false');
+            $this->assertFalse((require config_path('session.php'))['encrypt']);
+        } finally {
+            putenv($antes === false ? 'SESSION_ENCRYPT' : 'SESSION_ENCRYPT='.$antes);
+            if ($antesEnv !== null) { $_ENV['SESSION_ENCRYPT'] = $antesEnv; }
+            if ($antesServer !== null) { $_SERVER['SESSION_ENCRYPT'] = $antesServer; }
+        }
     }
 
     public function test_el_login_ya_no_tiene_casilla_recordarme(): void

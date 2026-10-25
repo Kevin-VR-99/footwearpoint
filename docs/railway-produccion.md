@@ -83,13 +83,16 @@ Solo nombres de variables, nunca valores.
 - `2026_10_21_110000_agrega_variantes_a_producto_imagenes`: agrega `url_miniatura` y `url_mediana` (nullable)
   a `producto_imagenes`. No toca datos; las fotos viejas siguen usando `url`.
 
-## B. Mercado Pago: firma obligatoria cuando hay `MP_WEBHOOK_SECRET`
-- **Recomendado: configura `MP_WEBHOOK_SECRET` en `footwearpoint` (web).** Con ella, la firma del aviso es
-  obligatoria (sin firma, inválida o con `ts` de más de 5 minutos → 401). Sin ella, los avisos se siguen
-  aceptando como antes (el pago se verifica en la API de Mercado Pago) y el log avisa
-  `falta MP_WEBHOOK_SECRET`; los cobros no se rompen, pero conviene configurarla.
-- En ambos casos se descartan avisos repetidos por `data.id`.
-- Si configuras la variable, el panel de MP debe tener la misma clave secreta del webhook.
+## B. Mercado Pago: firma obligatoria y webhook fail-closed (oct-2026)
+- **`MP_WEBHOOK_SECRET` es obligatoria en `footwearpoint` (web) en producción y staging.** Sin ella el
+  webhook responde **503** a todo aviso (Mercado Pago lo reintenta) y el log marca
+  `falta MP_WEBHOOK_SECRET; el aviso se rechaza (fail-closed)`: los pagos por webhook NO se aplican
+  hasta configurarla (la página de regreso de Mercado Pago sigue aplicando el pago).
+- Con la variable, la firma es obligatoria: sin firma, inválida o con `ts` de más de 5 minutos → 401
+  (HMAC-SHA256 de `id:…;request-id:…;ts:…;`, comparación con `hash_equals`).
+- Solo en `local`/`testing`, `MP_WEBHOOK_PERMITIR_SIN_CLAVE` (true por omisión) deja procesar avisos sin
+  clave consultando la API; en producción/staging se ignora.
+- Se descartan avisos repetidos por `data.id`. El panel de MP debe tener la misma clave secreta.
 - Verificación: en el panel de MP → Webhooks → "Simular notificación" debe responder 200.
 
 ## C. Caché de `/build/*` en Caddy (FrankenPHP de Railpack)
@@ -98,11 +101,15 @@ Railpack no usa `public/.htaccess`. En el servicio web agrega la variable:
 Verificación: `curl -I https://footwearpoint.app/build/assets/app-XXXX.css` trae ese `Cache-Control`.
 (Probado con Caddy 2.11: la directiva entra en la ruta del sitio y solo afecta `/build/*`.)
 
-## D. CSP (Content-Security-Policy-Report-Only)
-- Por omisión la web manda `Content-Security-Policy-Report-Only` con nonce; **no bloquea nada**.
-  Lo que se bloquearía queda en el log como `CSP: el navegador reportó…` (POST `/api/csp-report`).
-- Variable opcional `CSP_MODO`: `report-only` (omisión), `enforce` (obligatoria) u `off`.
-  Pasar a `enforce` solo cuando el log lleve unos días limpio.
+## D. CSP obligatoria (oct-2026)
+- Por omisión la web manda `Content-Security-Policy` (**bloquea**) con nonce por petición para Vite,
+  Livewire y los `<script>` propios. Las violaciones siguen en el log como `CSP: el navegador reportó…`
+  (POST `/api/csp-report`).
+- Variable opcional `CSP_MODO`: `bloquear` (omisión; alias `enforce`), `reportar` (alias `report-only`)
+  u `off`. Si algo se rompe en producción, `CSP_MODO=reportar` regresa a solo reporte sin desplegar código.
+- Riesgo residual documentado: `script-src` conserva `'unsafe-eval'` (Alpine evalúa expresiones con
+  `new Function`) y `style-src` conserva `'unsafe-inline'` (atributos `style=""` y estilos de x-show /
+  x-transition); `img-src` y `frame-src` admiten `https:` (fotos en R2/CDN y visores de PDF).
 
 ## E. Nuevo cron: limpiar tokens vencidos de la app
 - Duplica `footwearpoint-vencer-recoleccion` como **`footwearpoint-limpiar-tokens`**.
@@ -111,18 +118,20 @@ Verificación: `curl -I https://footwearpoint.app/build/assets/app-XXXX.css` tra
 - Variables: las mismas `APP_*` y `DB_*` del cron que duplicas.
 - No está en `routes/console.php`: en Railway cada comando es su propio servicio cron.
 
-## F. `SESSION_ENCRYPT` (solo documentado, no se cambió)
-- `config/session.php` deja `SESSION_ENCRYPT=false`. Con `SESSION_DRIVER=database` el contenido de la sesión
-  vive en MySQL; hoy solo guarda ids, el token CSRF y datos de Mercado Pago (PKCE) de corta vida.
-- Si se activa (`SESSION_ENCRYPT=true` en todos los servicios a la vez), todas las sesiones abiertas se
-  invalidan una vez (la gente vuelve a iniciar sesión). Usa `APP_KEY`, que **no** debe cambiar.
+## F. `SESSION_ENCRYPT` cifrada por omisión y sesión del admin general (oct-2026)
+- `config/session.php` usa `SESSION_ENCRYPT=true` si la variable no existe (si existe, se respeta: si en
+  Railway está en `false`, bórrala o ponla en `true`). Al desplegar, **las sesiones abiertas se cierran una
+  vez** (la gente vuelve a iniciar sesión). Usa `APP_KEY`, que **no** debe cambiar.
+- Sesión persistente: el panel de distribuidora sigue igual (cookie remember + `SESSION_LIFETIME` larga, que
+  no se bajó). El **admin general** ya no: entra sin cookie remember y su cookie de sesión se borra al cerrar
+  el navegador. `SESSION_ADMIN_GENERAL_PERSISTENTE=true` regresa al comportamiento anterior.
 
 ## G. Nivel de logs en producción (solo documentado, no se cambió)
 - Web y worker: `LOG_LEVEL=warning` y `LOG_CHANNEL=stderr`. Railway guarda la salida estándar
   y así no se llena el disco efímero con `storage/logs/laravel.log` ni se registran consultas de depuración.
 - `debug` solo en local. Si hace falta investigar algo en producción, subirlo un rato y regresarlo.
 - `CSP_MODO`: `upgrade-insecure-requests` ahora lo pone el middleware `PoliticaSeguridadContenido`
-  (dentro de la política con `enforce`; en `report-only`/`off` va en su propia cabecera
+  (dentro de la política con `bloquear`; en `reportar`/`off` va en su propia cabecera
   `Content-Security-Policy`, porque el navegador ignora esa directiva en Report-Only).
 
 ## H. Monitoreo de errores (Sentry) y de caída (`/up`)

@@ -145,10 +145,13 @@ class HallazgosQaAccesibilidadTest extends TestCase
         $this->actingAs($this->usuario(DemoDistribuidoraSeeder::ADMIN))->get('/distribuidora/clientes-directos')->assertOk();
     }
 
-    /** QA-SES-01: entrar desde otro dispositivo no invalida la cookie remember del primero. */
+    /**
+     * QA-SES-01: entrar desde otro dispositivo no invalida la cookie remember del primero.
+     * (Seguridad oct-2026: el admin general ya no usa cookie remember; ver SesionPersistenteTest.)
+     */
     public function test_entrar_en_otro_dispositivo_no_cambia_el_remember_token(): void
     {
-        foreach ([AdminGeneralSeeder::EMAIL, DemoDistribuidoraSeeder::ADMIN] as $email) {
+        foreach ([DemoDistribuidoraSeeder::ADMIN, DemoDistribuidoraSeeder::SEGUNDA_ADMIN] as $email) {
             $usuario = $this->usuario($email);
             $usuario->forceFill(['password' => Hash::make('Sesion-Larga-2026!'), 'estado' => 'activo', 'remember_token' => null])->save();
 

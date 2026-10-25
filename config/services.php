@@ -53,6 +53,10 @@ return [
         'pkce'             => (bool) env('MP_PKCE', true),
         // TG-228 (G9): clave secreta de Webhooks > Configurar notificaciones.
         'webhook_secret'   => env('MP_WEBHOOK_SECRET'),
+        // Seguridad oct-2026: sin MP_WEBHOOK_SECRET el webhook se rechaza
+        // (fail-closed). Solo en local/testing se puede permitir procesarlo
+        // sin firma (consultando la API); en producción/staging se ignora.
+        'webhook_permitir_sin_clave' => (bool) env('MP_WEBHOOK_PERMITIR_SIN_CLAVE', true),
         // TG-230 (G11): access token de la cuenta de FootwearPoint (la dueña de
         // la aplicación). Con él se cobra la mensualidad de las distribuidoras.
         'access_token'     => env('MP_ACCESS_TOKEN'),
