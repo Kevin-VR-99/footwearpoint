@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sin conexión — FootwearPoint</title>
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+
+    {{-- Sin @vite a propósito: esta página tiene que verse bien cuando no hay
+         red, y el CSS compilado puede no estar en el caché. Lo poco que
+         necesita va aquí. --}}
+    <style>
+        :root { --azul: #2563EB; --texto: #0F172A; --suave: #64748B; }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            background: #F8FAFC;
+            color: var(--texto);
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        }
+
+        .caja { max-width: 28rem; text-align: center; }
+
+        img { width: 96px; height: 96px; }
+
+        h1 { margin: 20px 0 8px; font-size: 1.5rem; }
+
+        p { margin: 0 0 20px; color: var(--suave); line-height: 1.55; }
+
+        button {
+            border: 0;
+            border-radius: 10px;
+            background: var(--azul);
+            color: #fff;
+            padding: 12px 22px;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:hover { filter: brightness(1.08); }
+
+        small { display: block; margin-top: 18px; color: var(--suave); }
+
+        @media (prefers-color-scheme: dark) {
+            body { background: #0B1220; color: #E2E8F0; }
+            p, small { color: #94A3B8; }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="caja">
+        <img src="{{ asset('brand/logo-mark-192.png') }}" alt="FootwearPoint" width="96" height="96">
+
+        <h1>Sin conexión</h1>
+
+        <p>
+            FootwearPoint necesita internet para enseñarte datos al día: los precios,
+            el stock y los pedidos cambian a cada rato y no queremos mostrarte algo viejo.
+        </p>
+
+        <button type="button" onclick="location.reload()">Reintentar</button>
+
+        <small>Si acabas de recuperar la señal, toca Reintentar.</small>
+    </main>
+</body>
+
+</html>
