@@ -56,3 +56,22 @@ document.addEventListener('livewire:init', () => {
     });
 });
 window.addEventListener('pageshow', ocultarCapasDeCarga);
+
+/*
+ * TG-282 — Registro del service worker.
+ *
+ * Va aquí porque este archivo ya lo cargan los cinco layouts, así que no
+ * hace falta tocarlos otra vez.
+ *
+ * Solo en https (o en localhost, que el navegador trata igual): sin eso el
+ * navegador lo rechaza y deja un error en consola que no significa nada.
+ */
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((error) => {
+            // Que falle no rompe nada: la app sigue funcionando igual, solo
+            // sin caché ni página de sin conexión.
+            console.warn('No se pudo registrar el service worker:', error);
+        });
+    });
+}

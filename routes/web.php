@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
+// TG-282: la que enseña el service worker cuando no hay internet. Sin login
+// y sin datos de nadie: si pidiera sesión, no podría dibujarse offline.
+Route::view('/sin-conexion', 'sin-conexion')->name('sin-conexion');
+
 // TG-232 (G12/G13): con FOOTWEARPOINT_DOMINIO, la tienda de cada
 // distribuidora vive en {subdominio}.{dominio}. Van ANTES que todo: '/' sin
 // dominio también coincidiría con el subdominio. ResolverTiendaPorSubdominio
