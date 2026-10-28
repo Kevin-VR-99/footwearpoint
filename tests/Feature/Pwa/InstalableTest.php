@@ -70,6 +70,30 @@ class InstalableTest extends TestCase
         $this->assertStringContainsString('<style>', $html);
     }
 
+    /**
+     * El botón de Reintentar tiene que responder de verdad.
+     *
+     * Con onclick="" no lo hacía: el CSP bloquea los manejadores puestos en
+     * atributo y los nonces no los cubren, solo cubren los <script>. Quedaba
+     * muerto justo en la única pantalla que se ve sin internet.
+     */
+    public function test_el_boton_de_reintentar_no_lo_bloquea_el_csp(): void
+    {
+        $respuesta = $this->get('/sin-conexion')->assertOk();
+        $html = $respuesta->getContent();
+
+        $this->assertStringNotContainsString('onclick=', $html);
+
+        $encontrado = preg_match('/<script\b[^>]*\bnonce="([^"]+)"/', $html, $coincidencias);
+
+        $this->assertSame(1, $encontrado, 'El script del botón no lleva nonce: el CSP lo bloquea.');
+
+        $this->assertStringContainsString(
+            "'nonce-{$coincidencias[1]}'",
+            (string) $respuesta->headers->get('Content-Security-Policy'),
+        );
+    }
+
     public function test_las_pantallas_enlazan_el_manifiesto(): void
     {
         $this->get('/login')

@@ -82,10 +82,19 @@
             el stock y los pedidos cambian a cada rato y no queremos mostrarte algo viejo.
         </p>
 
-        <button type="button" onclick="location.reload()">Reintentar</button>
+        <button type="button" id="reintentar">Reintentar</button>
 
         <small>Si acabas de recuperar la señal, toca Reintentar.</small>
     </main>
+
+    {{-- El CSP bloquea onclick="": los nonces no cubren los manejadores
+         puestos en atributo, solo los <script>. Con el onclick, este botón
+         estuvo muerto en la única pantalla que se ve sin internet. --}}
+    <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
+        document.getElementById('reintentar').addEventListener('click', function () {
+            location.reload();
+        });
+    </script>
 </body>
 
 </html>
