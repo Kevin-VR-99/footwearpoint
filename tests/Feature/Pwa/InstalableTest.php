@@ -94,6 +94,25 @@ class InstalableTest extends TestCase
         );
     }
 
+    /**
+     * Desde la pantalla de sin conexión se tiene que poder llegar al inicio.
+     *
+     * Es la única pantalla que sí funciona sin internet, así que es la única
+     * salida que tiene quien cayó aquí. Y va como <a href="/"> a propósito:
+     * un botón necesitaría JavaScript para navegar, y en esta pantalla el CSP
+     * ya dejó muerto un botón una vez.
+     */
+    public function test_la_pagina_de_sin_conexion_lleva_al_inicio(): void
+    {
+        $html = $this->get('/sin-conexion')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<a\b[^>]*\bhref="\/"[^>]*>\s*Ir al inicio\s*<\/a>/',
+            $html,
+            'No hay un enlace al inicio: quien cae aquí sin internet se queda sin salida.',
+        );
+    }
+
     public function test_las_pantallas_enlazan_el_manifiesto(): void
     {
         $this->get('/login')
