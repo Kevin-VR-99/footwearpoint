@@ -49,7 +49,9 @@
 
         p { margin: 0 0 20px; color: var(--suave); line-height: 1.55; }
 
-        button {
+        .acciones { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+
+        button, .boton-suave {
             border: 0;
             border-radius: 10px;
             background: var(--azul);
@@ -60,13 +62,23 @@
             cursor: pointer;
         }
 
-        button:hover { filter: brightness(1.08); }
+        button:hover, .boton-suave:hover { filter: brightness(1.08); }
+
+        /* Acción secundaria: Reintentar sigue siendo el principal. */
+        .boton-suave {
+            display: inline-block;
+            background: transparent;
+            border: 1px solid var(--azul);
+            color: var(--azul);
+            text-decoration: none;
+        }
 
         small { display: block; margin-top: 18px; color: var(--suave); }
 
         @media (prefers-color-scheme: dark) {
             body { background: #0B1220; color: #E2E8F0; }
             p, small { color: #94A3B8; }
+            .boton-suave { border-color: #60A5FA; color: #60A5FA; }
         }
     </style>
 </head>
@@ -82,7 +94,13 @@
             el stock y los pedidos cambian a cada rato y no queremos mostrarte algo viejo.
         </p>
 
-        <button type="button" id="reintentar">Reintentar</button>
+        {{-- Un <a>, no un botón con JS: el inicio sí tiene copia guardada, así
+             que esto funciona sin internet, y un enlace no lo puede bloquear
+             el CSP como le pasó al onclick de Reintentar. --}}
+        <div class="acciones">
+            <button type="button" id="reintentar">Reintentar</button>
+            <a class="boton-suave" href="/">Ir al inicio</a>
+        </div>
 
         <small>Si acabas de recuperar la señal, toca Reintentar.</small>
     </main>
