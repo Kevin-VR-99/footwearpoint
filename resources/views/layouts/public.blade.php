@@ -22,12 +22,13 @@
     {{-- TG-282: el inicio se puede ver sin internet, desde una copia
          guardada. Decirlo evita que alguien tome por vigente un precio o un
          plan que quizá ya cambió. El script va suelto y no depende del JS
-         compilado, que offline podría no estar. --}}
+         compilado, que offline podría no estar. Lleva nonce porque el CSP
+         (script-src 'self' 'nonce-...') bloquea cualquier script sin él. --}}
     <div id="fp-aviso-sin-red" hidden
         class="bg-fp-badge-warning-bg px-4 py-2 text-center text-sm text-fp-badge-warning-fg">
         Sin conexión: estás viendo una copia guardada, puede no estar al día.
     </div>
-    <script>
+    <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
         (function () {
             var aviso = document.getElementById('fp-aviso-sin-red');
             function revisar() { aviso.hidden = navigator.onLine; }
