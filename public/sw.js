@@ -14,6 +14,18 @@
  * FootwearPoint es multi-inquilino y una página guardada podría enseñarle a
  * una distribuidora datos de otra. Por eso el inicio se guarda en su versión
  * ANÓNIMA (ver abajo) y ninguna otra pantalla se guarda.
+ *
+ * Dos reglas que no se ven leyendo el código por encima:
+ *
+ * - Nunca se espera a la red más de ESPERA_MAXIMA. Esa espera es pantalla
+ *   en blanco, y teniendo una copia lista no tiene sentido aguantarla.
+ * - La copia del inicio se entrega con la franja de aviso ya descubierta
+ *   (copiaDelInicio). Quien la ve tiene que saber que puede estar vieja:
+ *   el inicio enseña precios de planes.
+ *
+ * Orden de este archivo: constantes, ayudantes sueltos, las funciones que
+ * guardan, install y activate, y al final fetch, que es quien decide qué se
+ * responde a cada petición.
  */
 
 const VERSION = 'fp-v3';

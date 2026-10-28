@@ -1,3 +1,17 @@
+{{--
+    TG-282 — La pantalla que se ve cuando no hay internet.
+
+    Quién la enseña: el service worker (public/sw.js), en dos casos.
+
+    1. Cualquier pantalla que no sea el inicio. El panel son 61 vistas de
+       Livewire que se dibujan en el servidor: sin red no hay nada que
+       enseñar, y una copia vieja podría traer datos de otra distribuidora.
+    2. El inicio, si todavía no se alcanzó a guardar su copia anónima.
+
+    Por qué es una ruta de Laravel y no un .html suelto en public/: así el
+    service worker la guarda igual que todo lo demás y se mantiene junto al
+    resto de las vistas. No pide sesión a propósito — ver routes/web.php.
+--}}
 <!DOCTYPE html>
 <html lang="es">
 
@@ -68,10 +82,19 @@
             el stock y los pedidos cambian a cada rato y no queremos mostrarte algo viejo.
         </p>
 
-        <button type="button" onclick="location.reload()">Reintentar</button>
+        <button type="button" id="reintentar">Reintentar</button>
 
         <small>Si acabas de recuperar la señal, toca Reintentar.</small>
     </main>
+
+    {{-- El CSP bloquea onclick="": los nonces no cubren los manejadores
+         puestos en atributo, solo los <script>. Con el onclick, este botón
+         estuvo muerto en la única pantalla que se ve sin internet. --}}
+    <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
+        document.getElementById('reintentar').addEventListener('click', function () {
+            location.reload();
+        });
+    </script>
 </body>
 
 </html>
