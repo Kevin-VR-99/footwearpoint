@@ -153,6 +153,27 @@ class InstalableTest extends TestCase
         );
     }
 
+    /**
+     * El aviso no puede depender de que el navegador admita que no hay red.
+     *
+     * navigator.onLine dice "sí hay" cuando el aparato sigue pegado a un wifi
+     * que no llega a ningún lado, y ahí es justo cuando se entrega la copia.
+     * Por eso el service worker le quita el "hidden" al HTML guardado. Si ese
+     * trozo cambia en el layout y no en el sw, la franja deja de salir sin
+     * que nada falle ni avise.
+     */
+    public function test_el_service_worker_sabe_descubrir_la_franja_del_aviso(): void
+    {
+        $sw = file_get_contents(public_path('sw.js'));
+
+        $encontrado = preg_match("/const MARCA_DEL_AVISO = '([^']+)'/", $sw, $coincidencias);
+
+        $this->assertSame(1, $encontrado, 'El service worker ya no trae MARCA_DEL_AVISO.');
+
+        // Y ese trozo tiene que existir tal cual en lo que se guarda.
+        $this->assertStringContainsString($coincidencias[1], $this->get('/')->getContent());
+    }
+
     public function test_el_service_worker_se_registra_desde_el_js_de_la_app(): void
     {
         $js = file_get_contents(resource_path('js/app.js'));
