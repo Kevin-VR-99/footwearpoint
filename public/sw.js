@@ -16,7 +16,7 @@
  * ANÓNIMA (ver abajo) y ninguna otra pantalla se guarda.
  */
 
-const VERSION = 'fp-v2';
+const VERSION = 'fp-v3';
 const ESTATICOS = `${VERSION}-estaticos`;
 const PAGINA_SIN_CONEXION = '/sin-conexion';
 const INICIO = '/';
@@ -42,6 +42,21 @@ async function guardarInicioAnonimo(cache) {
 
     if (respuesta.ok) {
         await cache.put(INICIO, respuesta);
+    }
+}
+
+/**
+ * Reintento del guardado del inicio.
+ *
+ * Esa copia es lo único que no se puede recuperar sin internet: si falla el
+ * día de la instalación (red lenta, un corte suelto), nadie se entera y el
+ * inicio se queda sin paracaídas hasta la siguiente visita con internet.
+ * Esto la vuelve a pedir al activarse, pero solo si falta, para no gastar una
+ * petición de más en cada despliegue.
+ */
+async function asegurarInicio(cache) {
+    if (!(await cache.match(INICIO))) {
+        await guardarInicioAnonimo(cache);
     }
 }
 
@@ -73,7 +88,11 @@ async function guardarCompilados(cache) {
         }
     }
 
-    await Promise.allSettled(rutas.map((ruta) => cache.add(ruta)));
+    await Promise.allSettled(rutas.map(async (ruta) => {
+        if (!(await cache.match(ruta))) {
+            await cache.add(ruta);
+        }
+    }));
 }
 
 self.addEventListener('install', (evento) => {
@@ -97,6 +116,9 @@ self.addEventListener('activate', (evento) => {
             .then((nombres) => Promise.all(
                 nombres.filter((n) => !n.startsWith(VERSION)).map((n) => caches.delete(n)),
             ))
+            // Segunda oportunidad para lo que no se haya guardado al instalar.
+            .then(() => caches.open(ESTATICOS))
+            .then((cache) => Promise.allSettled([asegurarInicio(cache), guardarCompilados(cache)]))
             .then(() => self.clients.claim()),
     );
 });
@@ -159,8 +181,14 @@ self.addEventListener('fetch', (evento) => {
                 .then((respuesta) => {
                     // Se refresca la copia, pero solo la anónima: la respuesta
                     // que acaba de llegar puede traer el panel de quien entró.
+                    //
+                    // Con waitUntil el navegador no apaga el worker hasta que
+                    // la escritura termine. Sin él puede matarlo en cuanto
+                    // responde, y la copia se queda a medio guardar.
                     if (respuesta.ok) {
-                        caches.open(ESTATICOS).then((cache) => guardarInicioAnonimo(cache));
+                        evento.waitUntil(
+                            caches.open(ESTATICOS).then((cache) => guardarInicioAnonimo(cache)),
+                        );
                     }
 
                     return respuesta;
