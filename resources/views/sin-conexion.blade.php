@@ -1,3 +1,17 @@
+{{--
+    TG-282 — La pantalla que se ve cuando no hay internet.
+
+    Quién la enseña: el service worker (public/sw.js), en dos casos.
+
+    1. Cualquier pantalla que no sea el inicio. El panel son 61 vistas de
+       Livewire que se dibujan en el servidor: sin red no hay nada que
+       enseñar, y una copia vieja podría traer datos de otra distribuidora.
+    2. El inicio, si todavía no se alcanzó a guardar su copia anónima.
+
+    Por qué es una ruta de Laravel y no un .html suelto en public/: así el
+    service worker la guarda igual que todo lo demás y se mantiene junto al
+    resto de las vistas. No pide sesión a propósito — ver routes/web.php.
+--}}
 <!DOCTYPE html>
 <html lang="es">
 

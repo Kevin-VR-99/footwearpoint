@@ -1,16 +1,21 @@
 {
+  "_comentario": "TG-282 — Lo que lee el navegador para ofrecer «Instalar FootwearPoint». Lo enlaza cada layout con <link rel=manifest>. El JSON no admite //, por eso las notas van en claves _comentario, que el navegador ignora.",
+
   "name": "FootwearPoint",
   "short_name": "FootwearPoint",
   "description": "Panel de FootwearPoint: catálogo, pedidos, stock y punto de venta.",
   "id": "/",
+  "_comentario_start_url": "Por dónde abre al tocar el icono. Es el inicio porque es la única pantalla que también funciona sin internet.",
   "start_url": "/",
   "scope": "/",
+  "_comentario_display": "standalone = ventana propia, sin barra de direcciones. Sin esto el navegador ni siquiera ofrece instalarla.",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#FFFFFF",
   "theme_color": "#2563EB",
   "lang": "es-MX",
   "dir": "ltr",
+  "_comentario_icons": "Chrome exige uno de 192x192 para darla por instalable. Los otros dos son para iOS y para la pestaña. Si alguno no existe, la instalación falla sin decir por qué: hay una prueba que lo vigila.",
   "icons": [
     {
       "src": "/brand/logo-mark-192.png",
