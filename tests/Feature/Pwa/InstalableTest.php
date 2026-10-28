@@ -128,6 +128,31 @@ class InstalableTest extends TestCase
             ->assertSee('navigator.onLine', false);
     }
 
+    /**
+     * El CSP de producción exige nonce en TODO <script>.
+     *
+     * Sin él el navegador lo bloquea y la franja no aparece nunca. Pasó: el
+     * aviso viajó a producción sin nonce y lo delató un csp-report.
+     */
+    public function test_el_aviso_sin_conexion_lleva_el_nonce_del_csp(): void
+    {
+        $respuesta = $this->get('/')->assertOk();
+
+        $encontrado = preg_match(
+            '/<script\b[^>]*\bnonce="([^"]+)"[^>]*>(?:(?!<\/script>).)*navigator\.onLine/s',
+            $respuesta->getContent(),
+            $coincidencias,
+        );
+
+        $this->assertSame(1, $encontrado, 'El script del aviso no lleva nonce: el CSP lo bloquea.');
+
+        // Y tiene que ser el nonce de ESTA petición: uno viejo no sirve.
+        $this->assertStringContainsString(
+            "'nonce-{$coincidencias[1]}'",
+            (string) $respuesta->headers->get('Content-Security-Policy'),
+        );
+    }
+
     public function test_el_service_worker_se_registra_desde_el_js_de_la_app(): void
     {
         $js = file_get_contents(resource_path('js/app.js'));
