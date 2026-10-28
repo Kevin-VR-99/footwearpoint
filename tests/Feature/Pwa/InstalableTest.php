@@ -78,17 +78,54 @@ class InstalableTest extends TestCase
             ->assertSee('theme-color', false);
     }
 
-    public function test_el_service_worker_se_sirve_y_no_guarda_paginas_con_datos(): void
+    public function test_el_service_worker_respeta_las_reglas_que_lo_hacen_seguro(): void
     {
         $sw = file_get_contents(public_path('sw.js'));
 
-        // La regla que importa: FootwearPoint es multi-inquilino y una página
-        // guardada podría enseñarle a una distribuidora datos de otra.
-        $this->assertStringContainsString("peticion.mode === 'navigate'", $sw);
-        $this->assertStringContainsString('/sin-conexion', $sw);
-
         // Un POST repetido desde el caché podría cobrar dos veces.
         $this->assertStringContainsString("peticion.method !== 'GET'", $sw);
+
+        // Nada de otros dominios: el bucket de las fotos, el API de la IA.
+        $this->assertStringContainsString('url.origin !== self.location.origin', $sw);
+
+        // Y queda la página de sin conexión para lo que no se puede guardar.
+        $this->assertStringContainsString('/sin-conexion', $sw);
+    }
+
+    /**
+     * La regla que de verdad protege: el inicio se guarda SIN cookies.
+     *
+     * Con sesión, el inicio enseña un enlace al panel de quien entró, y para
+     * armarlo resuelve a qué distribuidora pertenece (PanelDelUsuario::para).
+     * Guardar esa versión significaría poder enseñársela a otra persona.
+     */
+    public function test_el_inicio_se_guarda_en_su_version_anonima(): void
+    {
+        $sw = file_get_contents(public_path('sw.js'));
+
+        $this->assertStringContainsString("credentials: 'omit'", $sw);
+
+        // Y se guarda llamando siempre a la misma función, no copiando la
+        // respuesta que acaba de llegar, que sí puede traer sesión.
+        $this->assertStringContainsString('guardarInicioAnonimo', $sw);
+    }
+
+    public function test_el_inicio_sin_sesion_no_enseña_el_panel_de_nadie(): void
+    {
+        // Lo que el service worker va a guardar es justo esto.
+        $this->get('/')
+            ->assertOk()
+            ->assertDontSee('Ir a mi panel');
+    }
+
+    public function test_el_inicio_avisa_cuando_se_ve_sin_conexion(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('estás viendo una copia guardada', false)
+            // El aviso no puede depender del JS compilado: offline puede no
+            // estar en el caché.
+            ->assertSee('navigator.onLine', false);
     }
 
     public function test_el_service_worker_se_registra_desde_el_js_de_la_app(): void

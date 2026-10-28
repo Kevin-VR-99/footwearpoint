@@ -19,6 +19,23 @@
 
 {{-- TG-234: paleta fp-* del admin general y barra con la estructura del panel de distribuidora. --}}
 <body class="flex min-h-screen flex-col bg-fp-page text-slate-800 antialiased">
+    {{-- TG-282: el inicio se puede ver sin internet, desde una copia
+         guardada. Decirlo evita que alguien tome por vigente un precio o un
+         plan que quizá ya cambió. El script va suelto y no depende del JS
+         compilado, que offline podría no estar. --}}
+    <div id="fp-aviso-sin-red" hidden
+        class="bg-fp-badge-warning-bg px-4 py-2 text-center text-sm text-fp-badge-warning-fg">
+        Sin conexión: estás viendo una copia guardada, puede no estar al día.
+    </div>
+    <script>
+        (function () {
+            var aviso = document.getElementById('fp-aviso-sin-red');
+            function revisar() { aviso.hidden = navigator.onLine; }
+            revisar();
+            window.addEventListener('online', revisar);
+            window.addEventListener('offline', revisar);
+        })();
+    </script>
     <header
         class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
         <div class="h-0.5 w-full bg-gradient-to-r from-fp-primary via-fp-sidebar to-fp-danger"></div>
