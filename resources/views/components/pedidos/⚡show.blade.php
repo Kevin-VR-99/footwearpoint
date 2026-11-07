@@ -11,6 +11,7 @@ use App\Services\Pedido\ResolverNoSurtidoAction;
 use App\Services\Pago\VerificarPagoMercadoPagoAction;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
 use App\Support\MensajeError;
+use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -24,6 +25,9 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     public int $pedidoId;
     public string $mensaje = '';
     public string $errorMsg = '';
+
+    #[Locked]
+    public bool $confirmandoEntrega = false;
 
     public string $pagoTipo = 'saldo_pedido';
     public string $pagoMetodo = 'efectivo';
@@ -111,8 +115,39 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         $this->pasoDeEntrega(fn () => $accion->marcarListo($this->pedido), 'Pedido listo para entrega. Se le avisó al cliente.');
     }
 
+    public function abrirConfirmacionEntrega(): void
+    {
+        abort_unless(Auth::check() && PropietarioActual::esDeLaCasa(), 403);
+
+        $this->errorMsg = '';
+        $this->mensaje = '';
+        $this->confirmandoEntrega = false;
+        unset($this->pedido, $this->resumen);
+
+        if (! in_array($this->pedido->estado, ['recibido_distribuidora', 'listo_entrega'], true)) {
+            $this->errorMsg = 'Solo se puede entregar un pedido que ya llegó a la distribuidora.';
+
+            return;
+        }
+
+        if ($this->resumen['saldo'] > 0) {
+            $this->errorMsg = 'Cobra el saldo pendiente antes de entregar.';
+
+            return;
+        }
+
+        $this->confirmandoEntrega = true;
+    }
+
+    public function cancelarConfirmacionEntrega(): void
+    {
+        $this->confirmandoEntrega = false;
+        $this->dispatch('confirmacion-entrega-cerrada');
+    }
+
     public function marcarEntregado(EntregaPedidoAction $accion)
     {
+        $this->cancelarConfirmacionEntrega();
         $this->pasoDeEntrega(fn () => $accion->marcarEntregado($this->pedido), 'Pedido entregado.');
     }
 
@@ -392,7 +427,8 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
 };
 ?>
 
-<div>
+<div x-data x-on:confirmacion-entrega-cerrada.window="$nextTick(() => (document.getElementById('abrir-confirmacion-entrega') ?? document.getElementById('pedido-detalle-contenido'))?.focus())">
+    <div id="pedido-detalle-contenido" tabindex="-1" x-bind:inert="$wire.confirmandoEntrega">
     <x-panel.encabezado :titulo="$this->pedido->folio" :volver="route('pedidos.index')" volver-texto="← Pedidos" class="mb-6">
             <div class="mt-2 flex flex-wrap items-center gap-2">
                 <x-ui.insignia-estado :estado="$this->pedido->estado" />
@@ -425,8 +461,8 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                         Marcar listo para entrega
                     </button>
                 @endif
-                <button type="button" wire:click="marcarEntregado"
-                    wire:confirm="¿Confirmar que el cliente se llevó su pedido?"
+                <button id="abrir-confirmacion-entrega" type="button" wire:click="abrirConfirmacionEntrega"
+                    aria-haspopup="dialog" wire:loading.attr="disabled" wire:target="abrirConfirmacionEntrega"
                     @disabled($this->resumen['saldo'] > 0)
                     @if ($this->resumen['saldo'] > 0) title="Cobra el saldo antes de entregar" @endif
                     class="fp-btn fp-btn-oscuro disabled:cursor-not-allowed disabled:opacity-50">
@@ -753,4 +789,24 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             </tbody>
         </table>
     </div>
+    </div>
+
+    @if ($confirmandoEntrega)
+        <x-panel.modal titulo="Confirmar entrega" cerrar="cancelarConfirmacionEntrega">
+            <div x-on:keydown.tab.prevent="const botones = Array.from($el.querySelectorAll('button:not([disabled])')); const actual = botones.indexOf(document.activeElement); botones[(actual + ($event.shiftKey ? -1 : 1) + botones.length) % botones.length]?.focus()">
+                <p class="text-sm text-slate-600">
+                    ¿Confirmas que el cliente recibió el pedido <strong>{{ $this->pedido->folio }}</strong>?
+                    Se marcará como entregado.
+                </p>
+                <div class="mt-5 flex justify-end gap-2">
+                    <button type="button" wire:click="cancelarConfirmacionEntrega"
+                        wire:loading.attr="disabled" wire:target="marcarEntregado"
+                        class="fp-btn fp-btn-fantasma">Cancelar</button>
+                    <button type="button" wire:click="marcarEntregado"
+                        wire:loading.attr="disabled" wire:target="marcarEntregado"
+                        class="fp-btn fp-btn-primario">Confirmar entrega</button>
+                </div>
+            </div>
+        </x-panel.modal>
+    @endif
 </div>
