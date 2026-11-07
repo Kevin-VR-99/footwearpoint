@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Pedido;
 use App\Models\SolicitudCambio;
 use App\Models\VentaDirecta;
 use App\Services\Cambio\PlazoCambio;
@@ -26,6 +27,11 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
     use WithPagination;
 
     public string $estado = '';
+
+    public string $folioPedido = '';
+    #[Locked]
+    public ?int $pedidoEncontradoId = null;
+    public string $errorBusquedaPedido = '';
 
     public string $folioVenta = '';
     #[Locked]
@@ -71,6 +77,34 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         return app(ImagenDeProducto::class)->porProductoCampana(
             $this->venta?->detalle->pluck('producto_campana_id') ?? [],
         );
+    }
+
+    public function buscarPedido(): void
+    {
+        $this->pedidoEncontradoId = null;
+        $this->errorBusquedaPedido = '';
+        unset($this->pedidoEncontrado);
+
+        $folio = trim($this->folioPedido);
+        if ($folio === '') {
+            $this->errorBusquedaPedido = 'Escribe el folio del pedido que quieres buscar.';
+
+            return;
+        }
+
+        $pedido = Pedido::query()->where('folio', $folio)->first();
+        if (! $pedido) {
+            $this->errorBusquedaPedido = 'No se encontró un pedido con ese folio.';
+
+            return;
+        }
+
+        $this->pedidoEncontradoId = (int) $pedido->id;
+    }
+
+    public function getPedidoEncontradoProperty(): ?Pedido
+    {
+        return $this->pedidoEncontradoId ? Pedido::query()->find($this->pedidoEncontradoId) : null;
     }
 
     public function buscarVenta(): void
@@ -189,6 +223,27 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
     @if ($errorMsg)
         <x-panel.alerta tipo="error">{{ $errorMsg }}</x-panel.alerta>
     @endif
+
+    <div class="fp-tarjeta p-4 fp-formulario fp-aparecer">
+        <p class="text-sm font-medium text-slate-800">Buscar pedido por folio</p>
+        <form wire:submit="buscarPedido" class="mt-3 flex gap-2">
+            <x-ui.buscador wire:model="folioPedido" placeholder="Folio completo del pedido (PED-…)"
+                etiqueta="Buscar pedido por folio" class="w-full sm:w-80" />
+            <button type="submit" class="fp-btn fp-btn-primario rounded-xl"
+                wire:loading.attr="disabled" wire:target="buscarPedido">Buscar pedido</button>
+        </form>
+        @if ($errorBusquedaPedido)
+            <x-panel.alerta tipo="error" class="mt-3">{{ $errorBusquedaPedido }}</x-panel.alerta>
+        @endif
+        @if ($this->pedidoEncontrado)
+            <div class="mt-3 text-sm" role="status">
+                <p class="font-medium text-slate-800">Pedido {{ $this->pedidoEncontrado->folio }}</p>
+                <x-ui.insignia-estado :estado="$this->pedidoEncontrado->estado" />
+                <a href="{{ route('pedidos.show', $this->pedidoEncontrado->id) }}"
+                    class="fp-enlace ml-2">Ver detalle del pedido</a>
+            </div>
+        @endif
+    </div>
 
     <div class="fp-tarjeta p-4 fp-formulario fp-aparecer">
         <p class="text-sm font-medium text-slate-800">Cambio de una venta de mostrador</p>
