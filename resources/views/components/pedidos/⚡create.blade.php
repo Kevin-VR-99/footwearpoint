@@ -30,6 +30,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
     public ?int $pedidoId = null;
 
     public string $linea_id = '';
+    public string $busqueda = '';
     public string $producto_campana_id = '';
     public string $variante_id = '';
     public string $cantidad = '1';
@@ -74,6 +75,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
     public function updatedLineaId(): void
     {
+        $this->busqueda = '';
         $this->producto_campana_id = '';
         $this->variante_id = '';
     }
@@ -135,6 +137,39 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             ])
             ->orderBy('id')
             ->get();
+    }
+
+    /** Filtra solo la lista visible; la selección conserva catálogo, variantes y fotos. */
+    public function getCatalogoFiltradoProperty()
+    {
+        $termino = mb_strtolower(trim($this->busqueda));
+
+        if ($termino === '') {
+            return $this->catalogo;
+        }
+
+        return $this->catalogo->filter(function ($pc) use ($termino) {
+            $texto = mb_strtolower(implode(' ', [
+                $pc->producto?->nombre,
+                $pc->producto?->modelo,
+                $pc->codigo_catalogo,
+            ]));
+
+            return str_contains($texto, $termino);
+        })->values();
+    }
+
+    /** Mantiene la opción seleccionada aunque no coincida con la búsqueda. */
+    public function getOpcionesCatalogoProperty()
+    {
+        $opciones = $this->catalogoFiltrado->values();
+        $elegido = $this->catalogo->firstWhere('id', (int) $this->producto_campana_id);
+
+        if ($elegido && ! $opciones->contains('id', $elegido->id)) {
+            return $opciones->prepend($elegido);
+        }
+
+        return $opciones;
     }
 
     /** @return array<int, string> producto_campana_id => url */
@@ -378,7 +413,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         </div>
 
         <div class="fp-tarjeta p-5 shadow-sm space-y-4 mb-6 max-w-2xl fp-aparecer">
-            <h3 class="font-semibold text-slate-800">2. Agregar del catálogo</h3>
+            <h3 class="font-semibold text-slate-800">2. Agregar pedido</h3>
             <p class="text-xs text-slate-500 -mt-2">
                 Solo productos de la <strong>temporada activa</strong>
                 (≈ 6 meses: Primavera-Verano / Otoño-Invierno).
@@ -409,6 +444,18 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 @endif
             </div>
 
+            <x-ui.buscador wire:model.live.debounce.400ms="busqueda"
+                placeholder="Buscar por nombre, modelo o código" etiqueta="Buscar productos del pedido"
+                :disabled="$linea_id === ''" />
+            @if ($linea_id !== '' && trim($busqueda) !== '' && $this->catalogoFiltrado->isEmpty())
+                <p role="status" class="text-xs text-slate-500">
+                    No hay productos que coincidan con la búsqueda.
+                    @if ($producto_campana_id !== '')
+                        Se conserva el producto seleccionado.
+                    @endif
+                </p>
+            @endif
+
             <div class="fp-campo">
                 <label for="create-producto-campana-id" class="block text-sm text-slate-600 mb-1">Producto</label>
                 <div class="flex items-center gap-2">
@@ -420,7 +467,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                     class="w-full rounded-lg text-sm"
                     @disabled($linea_id === '')>
                     <option value="">— Selecciona —</option>
-                    @foreach ($this->catalogo as $pc)
+                    @foreach ($this->opcionesCatalogo as $pc)
                         <option value="{{ $pc->id }}">
                             {{ $pc->producto?->nombre }}
                             @if ($pc->producto?->modelo)
