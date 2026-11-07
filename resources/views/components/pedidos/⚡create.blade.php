@@ -24,6 +24,7 @@ use Livewire\Component;
 new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class extends Component {
     public string $tipo = 'cliente_directo';
     public string $propietario_id = '';
+    public string $busquedaPropietario = '';
     public string $sucursal_id = '';
     public string $observaciones = '';
 
@@ -71,6 +72,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
     public function updatedTipo(): void
     {
         $this->propietario_id = '';
+        $this->busquedaPropietario = '';
     }
 
     public function updatedLineaId(): void
@@ -93,6 +95,42 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
     public function getRevendedoresProperty()
     {
         return RevendedorDistribuidora::query()->with('revendedor')->orderBy('id')->get();
+    }
+
+    /** Conserva la lista autorizada completa, independiente de la búsqueda. */
+    public function getPropietariosProperty()
+    {
+        return $this->tipo === 'cliente_directo' ? $this->clientes : $this->revendedores;
+    }
+
+    public function getPropietariosFiltradosProperty()
+    {
+        $termino = mb_strtolower(trim($this->busquedaPropietario));
+
+        if ($termino === '') {
+            return $this->propietarios;
+        }
+
+        return $this->propietarios->filter(function ($propietario) use ($termino) {
+            $nombre = $this->tipo === 'cliente_directo'
+                ? $propietario->nombre
+                : $propietario->revendedor?->nombre;
+
+            return str_contains(mb_strtolower($nombre ?? ''), $termino);
+        })->values();
+    }
+
+    /** La selección sigue disponible aunque no coincida con el texto nuevo. */
+    public function getOpcionesPropietarioProperty()
+    {
+        $opciones = $this->propietariosFiltrados->values();
+        $elegido = $this->propietarios->firstWhere('id', (int) $this->propietario_id);
+
+        if ($elegido && ! $opciones->contains('id', $elegido->id)) {
+            return $opciones->prepend($elegido);
+        }
+
+        return $opciones;
     }
 
     public function getSucursalesProperty()
@@ -362,24 +400,30 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                 </select>
             </div>
 
-            <div class="fp-campo">
-                <label class="block text-sm text-slate-600 mb-1">Propietario</label>
-                @if ($tipo === 'cliente_directo')
-                    <select wire:model="propietario_id" aria-label="Cliente del pedido" class="w-full rounded-lg text-sm">
-                        <option value="">— Selecciona —</option>
-                        @foreach ($this->clientes as $c)
-                            <option value="{{ $c->id }}">{{ $c->nombre }}</option>
-                        @endforeach
-                    </select>
-                @else
-                    <select wire:model="propietario_id" aria-label="Cliente del pedido" class="w-full rounded-lg text-sm">
-                        <option value="">— Selecciona —</option>
-                        @foreach ($this->revendedores as $r)
-                            <option value="{{ $r->id }}">
-                                {{ $r->revendedor?->nombre ?? 'Afiliación #'.$r->id }}
-                            </option>
-                        @endforeach
-                    </select>
+            <div class="fp-campo" wire:key="selector-propietario-{{ $tipo }}">
+                <label for="create-propietario-id" class="block text-sm text-slate-600 mb-1">Propietario</label>
+                <x-ui.buscador wire:model.live.debounce.400ms="busquedaPropietario"
+                    placeholder="Buscar por nombre" etiqueta="Buscar propietario del pedido" />
+                {{-- Sin diferir la selección: al cambiar de tipo no se debe reenviar un ID del tipo anterior. --}}
+                {{-- Si cambia la lista, reiniciar solo el select: su valor puede seguir igual y Alpine no vuelve a aplicarlo tras el morph de opciones. --}}
+                <select id="create-propietario-id" wire:model.live="propietario_id"
+                    wire:key="propietario-opciones-{{ $tipo }}-{{ md5($this->opcionesPropietario->pluck('id')->implode(',')) }}"
+                    class="w-full rounded-lg text-sm mt-2">
+                    <option value="" wire:key="propietario-vacio-{{ $tipo }}" @selected($propietario_id === '')>— Selecciona —</option>
+                    @foreach ($this->opcionesPropietario as $propietario)
+                        <option value="{{ $propietario->id }}" wire:key="propietario-opcion-{{ $tipo }}-{{ $propietario->id }}"
+                            @selected((string) $propietario->id === $propietario_id)>
+                            {{ $tipo === 'cliente_directo' ? $propietario->nombre : ($propietario->revendedor?->nombre ?? 'Afiliación #'.$propietario->id) }}
+                        </option>
+                    @endforeach
+                </select>
+                @if (trim($busquedaPropietario) !== '' && $this->propietariosFiltrados->isEmpty())
+                    <p role="status" class="text-xs text-slate-500 mt-1">
+                        No hay propietarios que coincidan con la búsqueda.
+                        @if ($propietario_id !== '')
+                            Se conserva el propietario seleccionado.
+                        @endif
+                    </p>
                 @endif
             </div>
 
