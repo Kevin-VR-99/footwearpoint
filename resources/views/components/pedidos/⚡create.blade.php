@@ -507,12 +507,15 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                         @php($elegido = $this->catalogo->firstWhere('id', (int) $producto_campana_id))
                         <x-ui.imagen-ampliable :url="$this->fotos[(int) $producto_campana_id] ?? null" :alt="$elegido?->producto?->nombre ?? 'Producto'" />
                     @endif
+                {{-- Reiniciar solo el select si cambia la lista: el ID seleccionado puede seguir igual tras filtrar. --}}
                 <select id="create-producto-campana-id" wire:model.live="producto_campana_id"
+                    wire:key="pedido-productos-{{ $linea_id }}-{{ md5($this->opcionesCatalogo->pluck('id')->implode(',')) }}"
                     class="w-full rounded-lg text-sm"
                     @disabled($linea_id === '')>
-                    <option value="">— Selecciona —</option>
+                    <option value="" wire:key="pedido-producto-vacio-{{ $linea_id }}" @selected($producto_campana_id === '')>— Selecciona —</option>
                     @foreach ($this->opcionesCatalogo as $pc)
-                        <option value="{{ $pc->id }}">
+                        <option value="{{ $pc->id }}" wire:key="pedido-producto-opcion-{{ $pc->id }}"
+                            @selected((string) $pc->id === $producto_campana_id)>
                             {{ $pc->producto?->nombre }}
                             @if ($pc->producto?->modelo)
                                 · {{ $pc->producto->modelo }}
