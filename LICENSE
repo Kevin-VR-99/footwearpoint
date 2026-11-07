@@ -1,0 +1,77 @@
+Licencia de uso de FootwearPoint
+Software propietario. Todos los derechos reservados.
+
+Copyright (c) 2026
+  Ángel Gabriel Alcázar Pavón
+  Francisco Rigoberto Morales Maldonado
+  Kevin Arturo Velázquez Ríos
+  Aurelio Fabián Paniagua Méndez
+  Ailton Guadalupe Lievano Santiesteban
+
+
+1. Titularidad
+
+El código fuente de FootwearPoint, junto con su diseño, su marca, su
+documentación y los demás materiales originales contenidos en este repositorio,
+es propiedad de las personas listadas arriba. Todos los derechos reservados.
+Este repositorio no es software de código abierto.
+
+
+2. Licencia de uso
+
+A quien recibe acceso a la plataforma se le otorga una licencia de uso limitada,
+no exclusiva, intransferible y revocable, vigente únicamente mientras su cuenta
+esté activa y restringida a utilizar FootwearPoint como servicio. Esta licencia
+no transfiere ninguna titularidad sobre el software.
+
+
+3. Restricciones
+
+Salvo autorización previa y por escrito de los titulares, no se permite:
+
+  a) copiar, reproducir o publicar el código fuente, en todo o en parte;
+  b) modificar, adaptar, traducir o crear obras derivadas;
+  c) realizar ingeniería inversa, descompilar ni desensamblar el software;
+  d) distribuir, sublicenciar, vender, arrendar ni ceder el software a terceros;
+  e) retirar u ocultar los avisos de autoría y de licencia.
+
+
+4. Librerías de terceros
+
+FootwearPoint se construye sobre librerías y componentes de código abierto que
+no son propiedad de los titulares de esta licencia; entre otros, Laravel,
+Livewire, Tailwind CSS, Vite y Flutter.
+
+Cada una de esas dependencias conserva su propia licencia y sus propios
+términos, que son los que rigen sobre su código y prevalecen sobre este archivo
+en todo lo que les corresponde. Nada de lo establecido aquí pretende restringir
+los derechos que esas licencias conceden. Sus textos se distribuyen junto con
+cada dependencia, en los directorios que las instalan (por ejemplo vendor/ y
+node_modules/, que no forman parte de este repositorio).
+
+Esta licencia aplica, por tanto, únicamente al trabajo original del equipo de
+FootwearPoint.
+
+
+5. Contenido de las personas usuarias
+
+Las distribuidoras y las demás personas usuarias conservan los derechos sobre
+las fotografías, los logotipos, los catálogos y los datos que suben a la
+plataforma, y autorizan a FootwearPoint a mostrarlos dentro de ella para poder
+prestar el servicio.
+
+
+6. Ausencia de garantía
+
+El software se entrega "tal como está", sin garantía de ningún tipo, expresa o
+implícita. En la medida en que lo permita la ley aplicable, los titulares no
+serán responsables por daños derivados del uso o de la imposibilidad de uso del
+software.
+
+
+7. Relación con los términos y condiciones
+
+Esta licencia es coherente con la sección 5, "Contenido y propiedad
+intelectual", de los Términos y condiciones de uso de FootwearPoint. Para el uso
+de la plataforma como servicio, los términos y condiciones aceptados por cada
+persona usuaria siguen siendo el documento aplicable.
