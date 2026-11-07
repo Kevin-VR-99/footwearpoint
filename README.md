@@ -96,8 +96,10 @@ Antes de escribir pruebas lee `docs/pruebas.md`: hay una diferencia entre la Mar
 ```bash
 cd mobile
 flutter pub get
-flutter run
+flutter run --dart-define=API_URL=http://10.0.2.2:8000/api
 ```
+
+Sin `--dart-define=API_URL=...` la app apunta a producción, a propósito. El detalle, las pruebas y la generación del APK están en [`mobile/README.md`](mobile/README.md).
 
 ## Documentación
 
