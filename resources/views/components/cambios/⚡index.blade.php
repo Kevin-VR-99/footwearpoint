@@ -28,6 +28,9 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
 
     public string $estado = '';
 
+    /** TG-355 (G32): espacio activo, Pedidos o Mostrador. Cada uno conserva su búsqueda. */
+    public string $espacio = 'pedidos';
+
     public string $folioPedido = '';
     #[Locked]
     public ?int $pedidoEncontradoId = null;
@@ -52,11 +55,31 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         $this->resetPage();
     }
 
+    public function cambiarEspacio(string $espacio): void
+    {
+        abort_unless(in_array($espacio, ['pedidos', 'mostrador'], true), 422);
+        $this->espacio = $espacio;
+        $this->resolviendoId = null;
+        $this->estadoDestino = '';
+        $this->resetPage();
+    }
+
+    public function updatedEspacio(): void
+    {
+        if (! in_array($this->espacio, ['pedidos', 'mostrador'], true)) {
+            $this->espacio = 'pedidos';
+        }
+        $this->resetPage();
+    }
+
     public function getSolicitudesProperty()
     {
         return SolicitudCambio::query()
             ->with(['pedidoDetalle.pedido', 'ventaDetalle.ventaDirecta', 'clienteDirecto', 'revendedorAfiliacion.revendedor'])
             ->when($this->estado !== '', fn ($q) => $q->where('estado', $this->estado))
+            ->when($this->espacio === 'mostrador',
+                fn ($q) => $q->whereNotNull('venta_detalle_id'),
+                fn ($q) => $q->whereNotNull('pedido_detalle_id'))
             ->orderByDesc('id')
             ->paginate(25);
     }
@@ -105,6 +128,16 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
     public function getPedidoEncontradoProperty(): ?Pedido
     {
         return $this->pedidoEncontradoId ? Pedido::query()->find($this->pedidoEncontradoId) : null;
+    }
+
+    /** TG-355: partidas históricas, solo informativas y solo de un pedido entregado. */
+    public function getPartidasPedidoProperty()
+    {
+        $pedido = $this->pedidoEncontrado;
+
+        return $pedido && $pedido->estado === 'entregado'
+            ? $pedido->detalle()->orderBy('id')->get(['id', 'producto_nombre', 'modelo', 'talla', 'color', 'cantidad'])
+            : collect();
     }
 
     public function buscarVenta(): void
@@ -224,7 +257,15 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         <x-panel.alerta tipo="error">{{ $errorMsg }}</x-panel.alerta>
     @endif
 
-    <div class="fp-tarjeta p-4 fp-formulario fp-aparecer">
+    <div class="flex gap-2" role="tablist" aria-label="Origen del cambio">
+        @foreach (['pedidos' => 'Pedidos', 'mostrador' => 'Mostrador'] as $clave => $etiqueta)
+            <button type="button" role="tab" wire:click="cambiarEspacio('{{ $clave }}')"
+                aria-selected="{{ $espacio === $clave ? 'true' : 'false' }}" data-espacio="{{ $clave }}"
+                class="fp-btn rounded-xl {{ $espacio === $clave ? 'fp-btn-primario' : 'fp-btn-fantasma' }}">{{ $etiqueta }}</button>
+        @endforeach
+    </div>
+
+    <div class="fp-tarjeta p-4 fp-formulario fp-aparecer" data-espacio-panel="pedidos" @if ($espacio !== 'pedidos') hidden @endif>
         <p class="text-sm font-medium text-slate-800">Buscar pedido por folio</p>
         <form wire:submit="buscarPedido" class="mt-3 flex gap-2">
             <x-ui.buscador wire:model="folioPedido" placeholder="Folio completo del pedido (PED-…)"
@@ -242,10 +283,33 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                 <a href="{{ route('pedidos.show', $this->pedidoEncontrado->id) }}"
                     class="fp-enlace ml-2">Ver detalle del pedido</a>
             </div>
+            @if ($this->pedidoEncontrado->estado === 'entregado')
+                <table class="fp-tabla mt-3 min-w-full text-sm" data-partidas-pedido="{{ $this->pedidoEncontrado->id }}">
+                    <thead class="text-left text-[11px] uppercase tracking-wide text-slate-600">
+                        <tr><th class="py-1">Producto</th><th class="py-1">Modelo</th><th class="py-1">Talla</th><th class="py-1">Color</th><th class="py-1 text-right">Cantidad</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse ($this->partidasPedido as $p)
+                            <tr wire:key="partida-{{ $p->id }}" data-partida="{{ $p->id }}">
+                                <td class="py-2">{{ $p->producto_nombre }}</td>
+                                <td class="py-2">{{ $p->modelo ?? '—' }}</td>
+                                <td class="py-2">{{ $p->talla }}</td>
+                                <td class="py-2">{{ $p->color }}</td>
+                                <td class="py-2 text-right">{{ $p->cantidad }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5" class="py-2 text-slate-500">El pedido no tiene partidas.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+                <p class="mt-2 text-xs text-slate-500">Partidas del pedido entregado, solo como referencia.</p>
+            @else
+                <p class="mt-2 text-xs text-slate-500">Las partidas se muestran cuando el pedido está entregado.</p>
+            @endif
         @endif
     </div>
 
-    <div class="fp-tarjeta p-4 fp-formulario fp-aparecer">
+    <div class="fp-tarjeta p-4 fp-formulario fp-aparecer" data-espacio-panel="mostrador" @if ($espacio !== 'mostrador') hidden @endif>
         <p class="text-sm font-medium text-slate-800">Cambio de una venta de mostrador</p>
         <p class="text-xs text-slate-500">Los cambios de pedidos se piden desde el detalle del pedido o desde la app del cliente.</p>
         <form wire:submit="buscarVenta" class="mt-3 flex gap-2">
@@ -296,6 +360,8 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         @endif
     </div>
 
+    <p class="text-sm font-medium text-slate-800">Solicitudes de {{ $espacio === 'mostrador' ? 'mostrador' : 'pedidos' }}</p>
+
     <div class="flex items-center gap-3">
         <label for="index-estado" class="text-sm text-slate-600">Estado</label>
         <select id="index-estado" wire:model.live="estado" class="rounded-lg text-sm">
@@ -307,7 +373,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
     </div>
 
     <div class="relative overflow-x-auto fp-tarjeta fp-aparecer">
-        <x-ui.cargando objetivo="estado,gotoPage,nextPage,previousPage" />
+        <x-ui.cargando objetivo="estado,espacio,cambiarEspacio,gotoPage,nextPage,previousPage" />
         <table class="fp-tabla min-w-full text-sm">
             <thead class="bg-fp-page text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
