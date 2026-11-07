@@ -1,59 +1,119 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# FootwearPoint
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+FootwearPoint es una plataforma para distribuidoras de calzado por catálogo. Reúne en un solo lugar el catálogo, los pedidos a fábrica, los anticipos y saldos, los vales, las solicitudes de cambio y la recolección en sucursal (Click & Collect): un panel web para la distribuidora y su personal, y una app móvil para revendedores y clientes directos.
 
-## About Laravel
+FootwearPoint no vende calzado. Es la plataforma tecnológica; la compraventa es entre la distribuidora y su revendedor o cliente.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+> **Software propietario. Todos los derechos reservados.** Este repositorio no es de código abierto. Revisa [LICENSE](LICENSE) antes de usar, copiar o compartir el código.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Equipo
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Ángel Gabriel Alcázar Pavón
+- Francisco Rigoberto Morales Maldonado
+- Kevin Arturo Velázquez Ríos
+- Aurelio Fabián Paniagua Méndez
+- Ailton Guadalupe Lievano Santiesteban
 
-## Learning Laravel
+## Stack
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+**Backend y panel web**
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- PHP 8.2 y Laravel 12
+- Livewire 4 para las pantallas del panel
+- Tailwind CSS 4, compilado con Vite 7
+- Laravel Sanctum para la API que consume la app móvil
+- spatie/laravel-permission para roles y permisos
+- MySQL 8 en producción; MariaDB 10.4 (XAMPP) en los equipos del equipo
 
-## Laravel Sponsors
+**App móvil** (`mobile/`)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- Flutter, con Dart SDK `^3.13.3`
 
-### Premium Partners
+**Servicios externos**
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+- Firebase Cloud Messaging para notificaciones push
+- Mercado Pago para las suscripciones de las distribuidoras
+- API de Anthropic para la importación asistida de catálogos de fábrica
+- Almacenamiento compatible con S3 para catálogos, respaldos y exportaciones
+- Sentry para el seguimiento de errores
 
-## Contributing
+**Generación de archivos**
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- dompdf para los PDF y PhpSpreadsheet para los Excel
 
-## Code of Conduct
+## Cómo correrlo en local
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Necesitas PHP 8.2 con las extensiones `fileinfo`, `gd`, `intl`, `xmlwriter` y `zip`; Composer 2; Node 20 o superior (el equipo usa 22); y MySQL o MariaDB. En Windows lo normal es XAMPP: ahí hay que descomentar `extension=gd` y `extension=intl` en el `php.ini` y reiniciar Apache, porque vienen apagadas.
 
-## Security Vulnerabilities
+1. Clona el repositorio, entra en la carpeta e instala las dependencias de PHP:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+   ```bash
+   composer install
+   ```
 
-## License
+2. Crea tu `.env` a partir del ejemplo y genera la llave de la aplicación:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+
+3. Abre el `.env` y completa los valores de tu entorno: la conexión a la base (`DB_*`), el correo (`MAIL_*`) y las credenciales de los servicios que vayas a probar. Los nombres de todas las variables están en `.env.example`. **Nunca subas claves reales al repositorio**: el `.env` está en el `.gitignore` y así debe quedarse.
+
+4. Crea vacía la base de datos que pusiste en `DB_DATABASE` y aplica las migraciones. Si quieres datos de prueba, define antes `SEED_PASSWORD` en tu `.env` y agrega `--seed`:
+
+   ```bash
+   php artisan migrate --seed
+   ```
+
+5. Compila los assets:
+
+   ```bash
+   npm install
+   npm run build
+   ```
+
+6. Levanta el entorno de desarrollo, que arranca el servidor, las colas, los logs y Vite a la vez:
+
+   ```bash
+   composer dev
+   ```
+
+Cuando ya tengas el `.env` configurado y la base creada, `composer setup` hace de un tirón los pasos 1, 2, 4 y 5.
+
+### Pruebas
+
+La suite usa la base `footwearpoint_testing`, fijada en `phpunit.xml`. Créala vacía antes de la primera corrida; las migraciones las aplican las pruebas.
+
+```bash
+php artisan test
+```
+
+Antes de escribir pruebas lee `docs/pruebas.md`: hay una diferencia entre la MariaDB local y el MySQL de producción en el orden de las claves de las columnas JSON que hace que una prueba pase aquí y falle allá.
+
+### App móvil
+
+```bash
+cd mobile
+flutter pub get
+flutter run
+```
+
+## Documentación
+
+Vive en `docs/`:
+
+| Archivo | Contenido |
+| --- | --- |
+| `contrato-api.md` | Contrato de la API que consume la app móvil |
+| `pruebas.md` | Reglas de pruebas y el detalle de MariaDB frente a MySQL |
+| `railway-produccion.md` | Despliegue en Railway |
+| `respaldos.md` | Respaldos de la base de datos |
+| `correo.md` | Configuración del correo |
+| `push-firebase.md` | Notificaciones push con Firebase |
+| `apk.md` | Generación del APK de la app móvil |
+| `vencer-recoleccion.md` | Avisos por plazo de recolección vencido |
+| `aviso-vale-por-vencer.md` | Avisos de vales próximos a vencer |
+| `encuesta-satisfaccion.md` y `encuesta/` | Encuesta de satisfacción y su análisis |
+
+Los textos legales (términos y condiciones, aviso de privacidad) están en `resources/views/components/legales/`.
