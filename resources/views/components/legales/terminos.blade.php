@@ -4,8 +4,9 @@
     Lo usan la pantalla de aceptar documentos (auth.aceptar-legales) y la
     página pública /terminos. Los datos sin definir (jurisdicción) salen de
     config/legal.php con un texto neutro de respaldo. La cláusula de licencia
-    ("todos los derechos reservados") es una propuesta pendiente de confirmar
-    por el equipo. Las aceptaciones de la versión 1.0 se conservan.
+    ("todos los derechos reservados") la confirmó el equipo el 25-oct-2026 y
+    quedó asentada en el archivo LICENSE. Las aceptaciones de la versión 1.0
+    se conservan.
 --}}
 @php
     $correo = config('legal.correo_contacto');

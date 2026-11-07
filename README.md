@@ -23,7 +23,7 @@ FootwearPoint no vende calzado. Es la plataforma tecnológica; la compraventa es
 - Tailwind CSS 4, compilado con Vite 7
 - Laravel Sanctum para la API que consume la app móvil
 - spatie/laravel-permission para roles y permisos
-- MySQL 8 en producción; MariaDB 10.4 (XAMPP) en los equipos del equipo
+- MySQL 8 en producción; MariaDB 10.4 (XAMPP) en las computadoras del equipo
 
 **App móvil** (`mobile/`)
 
@@ -43,7 +43,7 @@ FootwearPoint no vende calzado. Es la plataforma tecnológica; la compraventa es
 
 ## Cómo correrlo en local
 
-Necesitas PHP 8.2 con las extensiones `fileinfo`, `gd`, `intl`, `xmlwriter` y `zip`; Composer 2; Node 20 o superior (el equipo usa 22); y MySQL o MariaDB. En Windows lo normal es XAMPP: ahí hay que descomentar `extension=gd` y `extension=intl` en el `php.ini` y reiniciar Apache, porque vienen apagadas.
+Necesitas PHP 8.2 con las extensiones `fileinfo`, `gd`, `intl`, `xmlwriter` y `zip`; Composer 2; Node 20.19 o superior (el equipo usa 22); y MySQL o MariaDB. En Windows lo normal es XAMPP: ahí hay que descomentar `extension=gd` y `extension=intl` en el `php.ini` y reiniciar Apache, porque vienen apagadas.
 
 1. Clona el repositorio, entra en la carpeta e instala las dependencias de PHP:
 
