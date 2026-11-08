@@ -2,11 +2,11 @@
 
 namespace App\Services\Vale;
 
+use App\Exceptions\OperacionInvalidaException;
 use App\Models\DistribuidoraStaff;
 use App\Models\Pedido;
 use App\Models\Vale;
 use App\Models\ValeMovimiento;
-use App\Models\VentaDirecta;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
@@ -16,8 +16,8 @@ use Illuminate\Validation\ValidationException;
 class AplicarValeAction
 {
     /**
-     * Aplica saldo de un vale a un pedido o a una venta directa.
-     * Body: monto, y uno de pedido_id | venta_directa_id.
+     * Aplica saldo de un vale a un pedido.
+     * venta_directa_id no descuenta: Venta local no admite vales.
      */
     public function ejecutar(Vale $vale, array $datos): Vale
     {
@@ -74,16 +74,10 @@ class AplicarValeAction
             $this->assertMismoPropietario($vale, $pedido->cliente_directo_id, $pedido->revendedor_distribuidora_id);
             $this->assertPedidoAdmitePago($pedido);
         } else {
-            $venta = VentaDirecta::query()->find($ventaId);
-            if (! $venta) {
-                throw ValidationException::withMessages([
-                    'venta_directa_id' => ['La venta directa no existe en esta distribuidora.'],
-                ]);
-            }
-            // Venta directa suele ser a cliente; si el modelo no tiene cliente, solo validamos existencia.
-            if (isset($venta->cliente_directo_id) && $venta->cliente_directo_id) {
-                $this->assertMismoPropietario($vale, $venta->cliente_directo_id, null);
-            }
+            throw new OperacionInvalidaException(
+                'El vale '.$vale->folio.' no aplica en Venta local.',
+                422
+            );
         }
 
         // Puede quedar en null a propósito (TG-138): el cliente o revendedor

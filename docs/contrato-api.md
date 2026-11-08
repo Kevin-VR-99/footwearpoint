@@ -721,7 +721,7 @@ Estados: `activo`, `agotado`, `vencido`, `bloqueado`.
 
 ### POST `/api/vales/{id}/aplicar`
 
-**Entrada** — se manda `pedido_id` **o** `venta_directa_id`, nunca los dos:
+**Entrada** — se manda `pedido_id`. `venta_directa_id` responde 422 y no descuenta saldo:
 
 ```json
 { "monto": 100.0, "pedido_id": 15 }
@@ -1215,7 +1215,7 @@ Existen en `/api` y están probados, pero los consume el panel web, no la app de
 | `POST /api/ciclos/{id}/marcar-transito` y `POST /api/ciclos/{id}/marcar-recibido` | Moverlo por sus etapas |
 | `POST /api/ciclos/{id}/finalizar` | Darlo por terminado |
 | `GET /api/stock`, `POST /api/stock/entradas`, `POST /api/stock/ajustes` | Inventario por sucursal |
-| `POST /api/ventas-directas` | Venta de mostrador, con vale opcional (TG-250) |
+| `POST /api/ventas-directas` | Venta de mostrador. Si llega `vale_folio`, responde 422 y no descuenta saldo |
 | `POST /api/vales` | Emitir un vale. La app solo consulta y aplica |
 | `POST /api/pedidos/{id}/pagos` | Registrar un pago en mostrador |
 | `GET /api/reportes/resumen` | Los números del tablero |

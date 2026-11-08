@@ -233,6 +233,10 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
     Route::livewire('/vales', 'vales.index')
         ->name('vales.index');
 
+    // Pestaña Anticipos de Compras: sin configuración ni listado.
+    Route::livewire('/compras/anticipos', 'compras.anticipos')
+        ->name('compras.anticipos');
+
     // TG-254 — solicitudes de cambio de producto (solo personal).
     Route::livewire('/cambios', 'cambios.index')
         ->name('cambios.index')

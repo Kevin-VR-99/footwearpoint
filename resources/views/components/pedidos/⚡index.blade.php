@@ -85,6 +85,8 @@ new #[Layout('layouts.panel')] #[Title('Pedidos — FootwearPoint')] class exten
 ?>
 
 <div>
+    <x-panel.pestanas-compras activa="pedidos" />
+
     <x-panel.encabezado titulo="Pedidos" subtitulo="Listado de pedidos de la distribuidora" class="mb-6">
         <x-slot:acciones>
             <button type="button" wire:click="exportar" data-exportar="pedidos"

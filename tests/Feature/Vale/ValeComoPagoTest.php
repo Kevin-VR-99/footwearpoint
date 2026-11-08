@@ -281,4 +281,19 @@ class ValeComoPagoTest extends TestCase
 
         $this->assertEqualsWithDelta(100, $this->saldoDelVale($valeId), 0.001);
     }
+
+    public function test_el_vale_de_otra_distribuidora_no_se_aplica_a_un_pedido(): void
+    {
+        $valeId = $this->valeParaJose(100);
+        $saldo = $this->saldoDelVale($valeId);
+
+        $this->como('admin@boutiquedelcalzado.test');
+        $this->postJson("/api/vales/{$valeId}/aplicar", [
+            'monto' => 10,
+            'pedido_id' => 1,
+        ])->assertNotFound();
+
+        $this->assertEqualsWithDelta($saldo, $this->saldoDelVale($valeId), 0.001);
+        $this->assertSame(0, \App\Models\ValeMovimiento::withoutGlobalScopes()->where('vale_id', $valeId)->where('tipo', 'aplicacion')->count());
+    }
 }
