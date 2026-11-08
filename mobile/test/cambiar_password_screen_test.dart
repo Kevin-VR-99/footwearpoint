@@ -145,4 +145,13 @@ void main() {
     expect(find.byTooltip('Ocultar contraseña'), findsOneWidget);
     expect(find.byTooltip('Mostrar contraseña'), findsNWidgets(2));
   });
+
+  testWidgets('TG-410: desde el perfil sigue pidiendo la contraseña actual, sin lo de la temporal', (tester) async {
+    await abrirPantalla(tester, () => _json({'message': 'ok'}, 200));
+
+    expect(find.widgetWithText(TextFormField, 'Contraseña actual'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Contraseña temporal'), findsNothing);
+    expect(find.text('Volver al inicio de sesión'), findsNothing);
+    expect(find.textContaining('contraseña temporal'), findsNothing);
+  });
 }
