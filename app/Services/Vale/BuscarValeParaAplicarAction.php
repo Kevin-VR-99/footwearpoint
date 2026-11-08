@@ -44,6 +44,11 @@ class BuscarValeParaAplicarAction
             throw new OperacionInvalidaException('No existe un vale con el folio '.$folio.'.', 422);
         }
 
+        // TG-356: los vales con tipo (nota de devolución, sobrante, anticipo, bono) no se usan en Venta local.
+        if ($vale->tipo !== null) {
+            throw new OperacionInvalidaException('El vale '.$vale->folio.' solo se usa en un pedido; no aplica en Venta local.', 422);
+        }
+
         if (! $vale->cliente_directo_id) {
             throw new OperacionInvalidaException(
                 'El vale '.$vale->folio.' es de un cliente mayorista; en el punto de venta solo se aceptan vales de clientes directos.',

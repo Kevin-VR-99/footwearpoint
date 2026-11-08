@@ -23,7 +23,31 @@ class Vale extends Model
         'motivo',
         'pedido_origen_id',
         'creado_por_staff_id',
+        'tipo',
+        'vale_origen_id',
+        'clave_idempotencia',
+        'creado_por_usuario_id',
     ];
+
+    /** TG-356: tipos de vale. NULL = vale anterior (legacy), con sus reglas de siempre. */
+    public const TIPO_ANTICIPO = 'anticipo';
+    public const TIPO_DEVOLUCION = 'devolucion_producto';
+    public const TIPO_BONO = 'bono';
+    public const TIPO_SOBRANTE = 'sobrante';
+
+    /** TG-356 (ronda 34): notas y vales tipificados vencen 90 días después de su emisión. */
+    public const DIAS_VIGENCIA_TIPIFICADO = 90;
+
+    public static function etiquetaTipo(?string $tipo): string
+    {
+        return match ($tipo) {
+            self::TIPO_ANTICIPO => 'Anticipo',
+            self::TIPO_DEVOLUCION => 'Devolución de producto',
+            self::TIPO_BONO => 'Bono',
+            self::TIPO_SOBRANTE => 'Sobrante',
+            default => 'Vale',
+        };
+    }
 
     protected $casts = [
         'monto_original' => 'decimal:2',
@@ -45,6 +69,16 @@ class Vale extends Model
     public function pedidoOrigen()
     {
         return $this->belongsTo(Pedido::class, 'pedido_origen_id');
+    }
+
+    public function valeOrigen()
+    {
+        return $this->belongsTo(Vale::class, 'vale_origen_id');
+    }
+
+    public function partidasDevolucion()
+    {
+        return $this->hasMany(ValeDevolucionPartida::class, 'vale_id');
     }
 
     public function creadoPor()

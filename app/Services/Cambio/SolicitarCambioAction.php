@@ -3,6 +3,7 @@
 namespace App\Services\Cambio;
 
 use App\Exceptions\OperacionInvalidaException;
+use App\Models\ValeDevolucionPartida;
 use App\Models\PedidoDetalle;
 use App\Models\SolicitudCambio;
 use App\Models\VentaDirectaDetalle;
@@ -73,6 +74,12 @@ class SolicitarCambioAction
                         .($linea instanceof PedidoDetalle ? 'entrega' : 'compra').').',
                     422
                 );
+            }
+
+            // TG-356: si la partida ya tiene una nota de devolución, el flujo
+            // anterior no puede emitir otro vale por el mismo producto.
+            if ($linea instanceof PedidoDetalle && ValeDevolucionPartida::query()->where('pedido_detalle_id', $linea->id)->exists()) {
+                throw new OperacionInvalidaException('Ese producto ya tiene una nota de devolución.', 409);
             }
 
             if ($this->plazo->solicitudAbierta($linea) !== null) {

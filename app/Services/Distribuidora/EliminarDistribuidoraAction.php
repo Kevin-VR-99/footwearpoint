@@ -25,6 +25,7 @@ class EliminarDistribuidoraAction
         'solicitudes_cambio',
         'movimientos_stock',
         'pagos',
+        'vale_devolucion_partidas', // TG-356: hija RESTRICT de vales y pedido_detalle
         'vales',
         'pedidos',
         'ventas_directas',
@@ -55,7 +56,11 @@ class EliminarDistribuidoraAction
             $this->registrarBorrado($actual, $usuarios, $revendedores);
 
             foreach (self::ANTES_DE_LA_CASA as $tabla) {
-                DB::table($tabla)->where('distribuidora_id', $id)->delete();
+                $consulta = DB::table($tabla)->where('distribuidora_id', $id);
+                // TG-356: un sobrante apunta a su vale de origen (RESTRICT), y
+                // siempre se crea después; borrando de id mayor a menor, cada
+                // hijo se va antes que su origen.
+                ($tabla === 'vales' ? $consulta->orderByDesc('id') : $consulta)->delete();
             }
 
             $actual->delete();

@@ -158,7 +158,8 @@ class LimpiarProduccionPruebas extends Command
             'solicitudes_cambio' => DB::table('solicitudes_cambio'),
             'pedido_cliente_privado' => DB::table('pedido_cliente_privado'),
             'vale_movimientos' => DB::table('vale_movimientos'),
-            'vales' => DB::table('vales'),
+            'vale_devolucion_partidas' => DB::table('vale_devolucion_partidas'), // TG-356
+            'vales' => DB::table('vales')->orderByDesc('id'), // TG-356: sobrantes antes que su origen
             'reembolsos_mercado_pago' => DB::table('reembolsos_mercado_pago')
                 ->whereIn('pago_id', DB::table('pagos')->whereNull('suscripcion_id')->select('id')),
             'pagos (de pedido/venta)' => DB::table('pagos')->whereNull('suscripcion_id'),

@@ -118,7 +118,7 @@ class TG355CambiosPedidosMostradorTest extends TestCase
         $pantalla = Livewire::test('cambios.index')->assertSet('espacio', 'pedidos')
             ->set('folioPedido', $pedido->folio)->call('buscarPedido')
             ->assertSee('data-partidas-pedido="'.$pedido->id.'"', false)
-            ->assertSee('solo como referencia');
+            ->assertSee('Partidas del pedido entregado.');
         $this->assertSame($ids, $pantalla->instance()->partidasPedido->pluck('id')->all());
         $html = $pantalla->html();
         $tabla = substr($html, strpos($html, 'data-partidas-pedido'));

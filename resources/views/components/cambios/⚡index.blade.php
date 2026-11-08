@@ -6,6 +6,11 @@ use App\Models\VentaDirecta;
 use App\Services\Cambio\PlazoCambio;
 use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Cambio\SolicitarCambioAction;
+use App\Models\Vale;
+use App\Models\ValeDevolucionPartida;
+use App\Services\Vale\EmitirNotaDevolucionAction;
+use App\Support\Centavos;
+use Illuminate\Support\Str;
 use App\Support\MensajeError;
 use App\Support\Tenant;
 use Livewire\Attributes\Layout;
@@ -35,6 +40,16 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
     #[Locked]
     public ?int $pedidoEncontradoId = null;
     public string $errorBusquedaPedido = '';
+
+    /** TG-356 (G33): unidades a devolver por partida (pedido_detalle_id => cantidad). */
+    public array $devolver = [];
+    #[Locked]
+    public string $claveDevolucion = '';
+    #[Locked]
+    public bool $confirmandoDevolucion = false;
+    #[Locked]
+    public ?int $notaEmitidaId = null;
+    public string $errorDevolucion = '';
 
     public string $folioVenta = '';
     #[Locked]
@@ -123,6 +138,95 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         }
 
         $this->pedidoEncontradoId = (int) $pedido->id;
+        $this->reiniciarDevolucion();
+        $this->notaEmitidaId = null;
+    }
+
+    private function reiniciarDevolucion(): void
+    {
+        $this->devolver = [];
+        $this->confirmandoDevolucion = false;
+        $this->errorDevolucion = '';
+        $this->claveDevolucion = (string) Str::uuid();
+    }
+
+    /** @return array<int, array{disponible:int, elegible:bool, motivo:string}> */
+    public function getDevolucionPartidasProperty(): array
+    {
+        $partidas = $this->partidasPedido;
+        if ($partidas->isEmpty()) {
+            return [];
+        }
+        $ids = $partidas->pluck('id');
+        $devueltas = ValeDevolucionPartida::query()->whereIn('pedido_detalle_id', $ids)
+            ->groupBy('pedido_detalle_id')->selectRaw('pedido_detalle_id, SUM(cantidad) as total')->pluck('total', 'pedido_detalle_id');
+        $conSolicitud = SolicitudCambio::query()->whereIn('pedido_detalle_id', $ids)->where('estado', '!=', 'rechazada')->pluck('pedido_detalle_id')->all();
+        $estados = \App\Models\PedidoDetalle::query()->whereIn('id', $ids)->pluck('estado_surtido', 'id');
+
+        return $partidas->mapWithKeys(function ($p) use ($devueltas, $conSolicitud, $estados) {
+            $disponible = max(0, (int) $p->cantidad - (int) ($devueltas[$p->id] ?? 0));
+            $motivo = match (true) {
+                in_array($estados[$p->id] ?? null, ['no_surtido', 'parcial'], true) => 'No se surtió completa',
+                in_array($p->id, $conSolicitud, false) => 'Tiene solicitud del flujo anterior',
+                $disponible === 0 => 'Ya devuelta',
+                default => '',
+            };
+
+            return [$p->id => ['disponible' => $disponible, 'elegible' => $motivo === '', 'motivo' => $motivo]];
+        })->all();
+    }
+
+    /** Importe estimado en centavos (precio pagado registrado × unidades). El servidor lo recalcula al emitir. */
+    public function getTotalDevolucionCentavosProperty(): int
+    {
+        $total = 0;
+        foreach ($this->partidasPedido as $p) {
+            $n = (int) ($this->devolver[$p->id] ?? 0);
+            if ($n > 0) {
+                $total += Centavos::desdeDecimal($p->getRawOriginal('precio_unitario')) * $n;
+            }
+        }
+
+        return $total;
+    }
+
+    public function prepararDevolucion(): void
+    {
+        $this->errorDevolucion = '';
+        abort_unless($this->puedeResolver, 403);
+        $hay = collect($this->devolver)->filter(fn ($n) => is_numeric($n) && (int) $n > 0)->isNotEmpty();
+        if (! $hay) {
+            $this->errorDevolucion = 'Elige al menos un producto y la cantidad a devolver.';
+
+            return;
+        }
+        $this->confirmandoDevolucion = true;
+    }
+
+    public function cancelarDevolucion(): void
+    {
+        $this->confirmandoDevolucion = false;
+    }
+
+    public function confirmarDevolucion(EmitirNotaDevolucionAction $accion): void
+    {
+        $this->errorDevolucion = '';
+        abort_unless($this->puedeResolver && $this->pedidoEncontradoId, 403);
+
+        try {
+            $nota = $accion->ejecutar((int) $this->pedidoEncontradoId, array_map(fn ($n) => $n === '' || $n === null ? 0 : $n, $this->devolver), $this->claveDevolucion);
+            $this->notaEmitidaId = (int) $nota->id;
+            $this->reiniciarDevolucion();
+            unset($this->devolucionPartidas);
+        } catch (\Throwable $e) {
+            $this->confirmandoDevolucion = false;
+            $this->errorDevolucion = MensajeError::paraUsuario($e, 'No se pudo emitir la nota de devolución.');
+        }
+    }
+
+    public function getNotaEmitidaProperty(): ?Vale
+    {
+        return $this->notaEmitidaId ? Vale::query()->with('partidasDevolucion')->find($this->notaEmitidaId) : null;
     }
 
     public function getPedidoEncontradoProperty(): ?Pedido
@@ -136,7 +240,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         $pedido = $this->pedidoEncontrado;
 
         return $pedido && $pedido->estado === 'entregado'
-            ? $pedido->detalle()->orderBy('id')->get(['id', 'producto_nombre', 'modelo', 'talla', 'color', 'cantidad'])
+            ? $pedido->detalle()->orderBy('id')->get(['id', 'producto_nombre', 'modelo', 'talla', 'color', 'cantidad', 'precio_unitario'])
             : collect();
     }
 
@@ -276,6 +380,12 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         @if ($errorBusquedaPedido)
             <x-panel.alerta tipo="error" class="mt-3">{{ $errorBusquedaPedido }}</x-panel.alerta>
         @endif
+        @if ($this->notaEmitida)
+            <x-panel.alerta tipo="exito" class="mt-3">
+                <span data-nota-emitida="{{ $this->notaEmitida->id }}">Nota de devolución {{ $this->notaEmitida->folio }} por ${{ number_format((float) $this->notaEmitida->monto_original, 2) }}.
+                Vence el {{ $this->notaEmitida->fecha_vencimiento?->timezone('America/Mexico_City')->format('d/m/Y H:i') }} (hora de Ciudad de México).</span>
+            </x-panel.alerta>
+        @endif
         @if ($this->pedidoEncontrado)
             <div class="mt-3 text-sm" role="status">
                 <p class="font-medium text-slate-800">Pedido {{ $this->pedidoEncontrado->folio }}</p>
@@ -286,7 +396,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
             @if ($this->pedidoEncontrado->estado === 'entregado')
                 <table class="fp-tabla mt-3 min-w-full text-sm" data-partidas-pedido="{{ $this->pedidoEncontrado->id }}">
                     <thead class="text-left text-[11px] uppercase tracking-wide text-slate-600">
-                        <tr><th class="py-1">Producto</th><th class="py-1">Modelo</th><th class="py-1">Talla</th><th class="py-1">Color</th><th class="py-1 text-right">Cantidad</th></tr>
+                        <tr><th class="py-1">Producto</th><th class="py-1">Modelo</th><th class="py-1">Talla</th><th class="py-1">Color</th><th class="py-1 text-right">Cantidad</th>@if ($this->puedeResolver)<th class="py-1 text-right">Devolver</th>@endif</tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($this->partidasPedido as $p)
@@ -296,13 +406,47 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                                 <td class="py-2">{{ $p->talla }}</td>
                                 <td class="py-2">{{ $p->color }}</td>
                                 <td class="py-2 text-right">{{ $p->cantidad }}</td>
+                                @if ($this->puedeResolver)
+                                    @php($dv = $this->devolucionPartidas[$p->id] ?? null)
+                                    <td class="py-2 text-right">
+                                        @if ($dv && $dv['elegible'])
+                                            <label class="sr-only" for="devolver-{{ $p->id }}">Unidades a devolver de {{ $p->producto_nombre }}</label>
+                                            <input id="devolver-{{ $p->id }}" type="number" min="0" max="{{ $dv['disponible'] }}" step="1"
+                                                wire:model.live="devolver.{{ $p->id }}" @disabled($confirmandoDevolucion)
+                                                class="w-20 rounded-lg text-right text-sm" data-devolver="{{ $p->id }}">
+                                            <span class="block text-xs text-slate-500">de {{ $dv['disponible'] }}</span>
+                                        @else
+                                            <span class="text-xs text-slate-500">{{ $dv['motivo'] ?? '' }}</span>
+                                        @endif
+                                    </td>
+                                @endif
                             </tr>
                         @empty
                             <tr><td colspan="5" class="py-2 text-slate-500">El pedido no tiene partidas.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
-                <p class="mt-2 text-xs text-slate-500">Partidas del pedido entregado, solo como referencia.</p>
+                <p class="mt-2 text-xs text-slate-500">Partidas del pedido entregado.</p>
+                @if ($this->puedeResolver)
+                    <div class="mt-3 space-y-2" data-devolucion>
+                        @if ($errorDevolucion)
+                            <x-panel.alerta tipo="error">{{ $errorDevolucion }}</x-panel.alerta>
+                        @endif
+                        @if ($confirmandoDevolucion)
+                            <div class="rounded-lg border border-slate-200 p-3 text-sm" role="dialog" aria-label="Confirmar nota de devolución">
+                                <p>Se emitirá una nota de devolución por <strong class="tabular-nums">${{ number_format($this->totalDevolucionCentavos / 100, 2) }}</strong>
+                                    a nombre de {{ $this->pedidoEncontrado->clienteDirecto?->nombre ?? $this->pedidoEncontrado->revendedorAfiliacion?->revendedor?->nombre ?? 'el cliente del pedido' }}.
+                                    Vence 90 días después de emitirse. Se usa completa en un solo pedido de {{ \App\Models\Distribuidora::query()->whereKey(\App\Support\Tenant::id())->value('nombre_comercial') ?? 'esta distribuidora' }}; si sobra saldo, la diferencia va a un vale nuevo.</p>
+                                <div class="mt-2 flex gap-2">
+                                    <button type="button" wire:click="confirmarDevolucion" wire:loading.attr="disabled" wire:target="confirmarDevolucion" class="fp-btn fp-btn-primario fp-btn-sm">Confirmar devolución</button>
+                                    <button type="button" wire:click="cancelarDevolucion" class="fp-btn fp-btn-fantasma fp-btn-sm">Cancelar</button>
+                                </div>
+                            </div>
+                        @else
+                            <button type="button" wire:click="prepararDevolucion" class="fp-btn fp-btn-primario fp-btn-sm">Devolver productos seleccionados</button>
+                        @endif
+                    </div>
+                @endif
             @else
                 <p class="mt-2 text-xs text-slate-500">Las partidas se muestran cuando el pedido está entregado.</p>
             @endif
