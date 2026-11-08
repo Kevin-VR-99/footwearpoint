@@ -672,6 +672,8 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 ?>
 
 <div>
+    <x-panel.pestanas-tienda activa="stock" />
+
     <x-panel.encabezado titulo="Stock local"
         subtitulo="Existencias, entradas y ajustes de la sucursal, y el conteo físico." class="mb-6" />
 

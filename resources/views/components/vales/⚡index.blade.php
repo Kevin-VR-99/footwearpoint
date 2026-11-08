@@ -112,6 +112,8 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
 ?>
 
 <div>
+    <x-panel.pestanas-compras activa="vales" />
+
     <x-panel.encabezado titulo="Vales" subtitulo="Emisión manual y consulta por propietario." class="mb-6" />
 
     @if ($mensaje)

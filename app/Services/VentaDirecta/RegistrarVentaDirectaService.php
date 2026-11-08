@@ -12,7 +12,6 @@ use App\Models\Talla;
 use App\Models\Variante;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Catalogo\PrecioEfectivo;
-use App\Services\Vale\AplicarValeAction;
 use App\Services\Vale\BuscarValeParaAplicarAction;
 use App\Models\VentaDirecta;
 use App\Models\VentaDirectaDetalle;
@@ -28,14 +27,13 @@ class RegistrarVentaDirectaService
         private PrecioEfectivo $precios,
         private RegistrarAuditoriaAction $auditoria,
         private BuscarValeParaAplicarAction $buscarVale,
-        private AplicarValeAction $aplicarVale,
     ) {
     }
 
     /**
      * @param array<int, array{variante_id:int, producto_campana_id:int, cantidad:int}> $lineas
      * @param string $metodoPago valor del enum pagos.metodo
-     * @param string|null $valeFolio TG-250: folio de un vale de cliente directo para descontar del total
+     * @param string|null $valeFolio Si viene folio, la venta no se registra y el saldo no se toca.
      */
     public function registrar(array $lineas, string $metodoPago, ?int $clienteDirectoId = null, ?string $valeFolio = null): ResultadoVentaDirecta
     {
@@ -48,21 +46,16 @@ class RegistrarVentaDirectaService
                 $this->verificarClienteDelTenant($clienteDirectoId, $distribuidoraId);
             }
 
-            // TG-250: el vale se busca (y bloquea) antes de escribir nada.
-            // Solo vales de clientes directos; si la venta va sin cliente,
-            // queda a nombre del dueño del vale (decisión del PO).
-            $vale = null;
+            // Ningún folio descuenta saldo aquí. La búsqueda rechaza notas,
+            // anticipo, devolución, sobrante y bono antes de escribir (TG-356).
+            // Un vale legacy válido llega igual y también se rechaza, sin venta.
             if ($valeFolio !== null && trim($valeFolio) !== '') {
                 $vale = $this->buscarVale->ejecutar($valeFolio, bloquear: true);
 
-                if ($clienteDirectoId === null) {
-                    $clienteDirectoId = (int) $vale->cliente_directo_id;
-                } elseif ((int) $vale->cliente_directo_id !== $clienteDirectoId) {
-                    throw new OperacionInvalidaException(
-                        'El vale '.$vale->folio.' es de otro cliente. Elige a su dueño o quita el vale.',
-                        422
-                    );
-                }
+                throw new OperacionInvalidaException(
+                    'El vale '.$vale->folio.' no aplica en Venta local.',
+                    422
+                );
             }
 
             // 1) Resolver precios y BLOQUEAR todo el stock antes de escribir nada.
@@ -134,22 +127,9 @@ class RegistrarVentaDirectaService
                 $detalles[] = $detalle;
             }
 
-            // 4) TG-250: el vale cubre hasta donde alcance su saldo; lo que
-            //    sobra se queda en el vale (AplicarValeAction).
+            // Cobro de contado del total. Venta local no descuenta vales.
             $montoVale = 0.0;
-            if ($vale !== null) {
-                $montoVale = round(min((float) $vale->saldo_actual, $total), 2);
-                $saldoAntes = (float) $vale->saldo_actual;
-                $vale = $this->aplicarVale->ejecutar($vale, [
-                    'monto' => $montoVale,
-                    'venta_directa_id' => $venta->id,
-                ]);
-                $montoVale = round($saldoAntes - (float) $vale->saldo_actual, 2);
-            }
-
-            // 5) Cobro de contado de lo que falta, dentro de la misma transaccion.
-            //    Si el vale cubrió todo, no hay pago (pagos.monto debe ser > 0).
-            $porCobrar = round($total - $montoVale, 2);
+            $porCobrar = $total;
             $pago = $porCobrar > 0
                 ? $this->registrarPago($venta, $metodoPago, $staffId, $distribuidoraId, $porCobrar)
                 : null;
@@ -161,7 +141,7 @@ class RegistrarVentaDirectaService
                 'total'              => (float) $venta->total,
                 'metodo_pago'        => $pago !== null ? $metodoPago : null,
                 'cliente_directo_id' => $clienteDirectoId,
-                'vale_folio'         => $vale?->folio,
+                'vale_folio'         => null,
                 'monto_vale'         => $montoVale,
                 'monto_cobrado'      => $porCobrar,
                 'productos'          => array_map(fn (VentaDirectaDetalle $detalle) => [
@@ -176,7 +156,7 @@ class RegistrarVentaDirectaService
                 ], $detalles),
             ]);
 
-            return new ResultadoVentaDirecta($venta, $detalles, $pago, $vale, $montoVale);
+            return new ResultadoVentaDirecta($venta, $detalles, $pago, null, $montoVale);
         });
     }
 

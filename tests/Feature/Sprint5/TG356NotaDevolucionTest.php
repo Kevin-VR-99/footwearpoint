@@ -285,7 +285,12 @@ class TG356NotaDevolucionTest extends TestCase
             [['variante_id' => $renglon['variante_id'], 'producto_campana_id' => $renglon['producto_campana_id'], 'cantidad' => 1]],
             'efectivo', $this->jose(), $nota->folio), 'no aplica en Venta local');
         $this->assertSame($ventasAntes, VentaDirecta::count());
-        Livewire::test('punto-venta.index')->set('valeFolio', $nota->folio)->call('aplicarVale')->assertSee('no aplica en Venta local');
+        Livewire::test('punto-venta.index')
+            ->assertDontSee('Vale (opcional)')
+            ->assertDontSee('wire:click="aplicarVale"', false)
+            ->call('agregar', $renglon['clave'])
+            ->call('cobrar')
+            ->assertSet('errorMsg', '');
         $this->assertSame('100.00', $nota->fresh()->getRawOriginal('saldo_actual'));
 
         $otro = Pedido::create(['distribuidora_id' => Tenant::id(), 'sucursal_id' => Sucursal::value('id'), 'folio' => 'PED-TG356-OTRO',

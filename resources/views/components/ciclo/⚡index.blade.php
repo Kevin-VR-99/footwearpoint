@@ -202,6 +202,8 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
 ?>
 
 <div>
+    <x-panel.pestanas-compras activa="ciclo" />
+
     <x-panel.encabezado titulo="Ciclo de compra"
         subtitulo="Pedidos agrupados por ciclo, consolidado para fábrica y avance del pedido." class="mb-6">
         <x-slot:acciones>

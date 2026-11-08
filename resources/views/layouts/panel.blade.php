@@ -31,7 +31,7 @@
 <body class="min-h-screen bg-fp-page text-slate-800 antialiased" x-data="{
     sidebarOpen: false,
     openCatalogo: {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'true' : 'false' }},
-    openOperacion: {{ request()->routeIs('stock.*', 'punto-venta.*', 'ciclo.*', 'pedidos.*', 'vales.*', 'cambios.*', 'reportes.*', 'ventas.*', 'caja.*', 'conteos.*', 'clientes.historial*', 'comisiones.*') ? 'true' : 'false' }},
+    openOperacion: {{ request()->routeIs('stock.*', 'punto-venta.*', 'ciclo.*', 'pedidos.*', 'vales.*', 'compras.*', 'cambios.*', 'reportes.*', 'ventas.*', 'caja.*', 'conteos.*', 'clientes.historial*', 'comisiones.*') ? 'true' : 'false' }},
     openMas: {{ request()->routeIs('auditoria.*') ? 'true' : 'false' }},
     openSistema: {{ request()->routeIs('distribuidora.configuracion', 'distribuidora.perfil', 'distribuidora.empleados', 'distribuidora.mayoristas', 'distribuidora.clientes-directos') ? 'true' : 'false' }},
 }"
@@ -164,19 +164,13 @@
                             </svg>
                         </button>
                         <div x-show="openOperacion" x-cloak x-transition.opacity.duration.200ms
-                            class="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
-                            <a href="{{ route('stock.index') }}" wire:navigate
-                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('stock.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Stock</a>
-                            <a href="{{ route('punto-venta.index') }}" wire:navigate
-                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('punto-venta.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Venta
-                                local</a>
-                            <a href="{{ route('ciclo.index') }}" wire:navigate
-                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('ciclo.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Ciclo
-                                de compra</a>
-                            <a href="{{ route('pedidos.index') }}" wire:navigate
-                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('pedidos.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Pedidos</a>
-                            <a href="{{ route('vales.index') }}" wire:navigate
-                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('vales.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Vales</a>
+                            class="ml-3 mt-0.5 space-y-0.5 border-l border-white/10 pl-2" data-nav-operacion>
+                            {{-- Un solo ítem. Stock y Venta son pestañas de esas pantallas, con los mismos permisos. --}}
+                            <a href="{{ route('stock.index') }}" wire:navigate data-nav-tienda
+                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('stock.*', 'punto-venta.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Tienda</a>
+                            {{-- Ciclo, Pedidos y Vales siguen en sus direcciones. Anticipos no tiene contenido aquí. --}}
+                            <a href="{{ route('ciclo.index') }}" wire:navigate data-nav-compras
+                                class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('ciclo.*', 'pedidos.*', 'vales.*', 'compras.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Compras</a>
                             <a href="{{ route('cambios.index') }}" wire:navigate
                                 class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('cambios.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Cambios</a>
                             <x-panel.enlaces-funciones />
