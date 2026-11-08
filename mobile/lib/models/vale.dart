@@ -9,6 +9,12 @@ class Vale {
   /// TG-122: vence dentro del margen de aviso; lo decide el servidor.
   final bool porVencer;
 
+  /// TG-356: anticipo, devolucion_producto, bono o sobrante; null = vale anterior.
+  final String? tipo;
+
+  /// TG-356: los vales con tipo se usan completos; lo que sobre llega en un vale nuevo.
+  bool get seUsaCompleto => tipo != null;
+
   Vale({
     required this.id,
     required this.folio,
@@ -17,6 +23,7 @@ class Vale {
     this.fechaVencimiento,
     required this.estado,
     this.porVencer = false,
+    this.tipo,
   });
 
   factory Vale.fromJson(Map<String, dynamic> json) {
@@ -28,6 +35,7 @@ class Vale {
       fechaVencimiento: json['fecha_vencimiento'] != null ? DateTime.parse(json['fecha_vencimiento']) : null,
       estado: json['estado'] ?? 'activo',
       porVencer: json['por_vencer'] == true,
+      tipo: json['tipo'] is String ? json['tipo'] as String : null,
     );
   }
 }

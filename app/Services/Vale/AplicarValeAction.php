@@ -23,6 +23,13 @@ class AplicarValeAction
     {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
+        // TG-356: los vales con tipo siguen sus propias reglas (uso completo,
+        // sobrante en vale nuevo, anticipo solo para anticipos). Los vales
+        // legacy (tipo NULL) siguen exactamente igual que antes.
+        if ($vale->tipo !== null) {
+            return app(AplicarValeTipificadoAction::class)->ejecutar($vale, $datos);
+        }
+
         if ($vale->estado !== 'activo') {
             throw ValidationException::withMessages([
                 'vale' => ['Solo se pueden aplicar vales en estado activo.'],

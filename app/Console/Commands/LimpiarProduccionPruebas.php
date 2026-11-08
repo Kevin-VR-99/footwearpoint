@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Respaldo\RespaldarBaseDeDatosAction;
+use App\Services\Vale\BorrarValesPorOrigen;
 use Illuminate\Console\Command;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
@@ -111,7 +112,13 @@ class LimpiarProduccionPruebas extends Command
         }
 
         DB::transaction(function () use ($plan) {
-            foreach ($plan as $q) {
+            foreach ($plan as $nombre => $q) {
+                // TG-356: el sobrante puede tener un id menor que su origen.
+                if ($nombre === 'vales') {
+                    BorrarValesPorOrigen::borrar($q);
+
+                    continue;
+                }
                 $q->delete();
             }
         });
@@ -158,7 +165,8 @@ class LimpiarProduccionPruebas extends Command
             'solicitudes_cambio' => DB::table('solicitudes_cambio'),
             'pedido_cliente_privado' => DB::table('pedido_cliente_privado'),
             'vale_movimientos' => DB::table('vale_movimientos'),
-            'vales' => DB::table('vales'),
+            'vale_devolucion_partidas' => DB::table('vale_devolucion_partidas'), // TG-356
+            'vales' => DB::table('vales'), // TG-356: el borrado real lo ordena BorrarValesPorOrigen, no el id
             'reembolsos_mercado_pago' => DB::table('reembolsos_mercado_pago')
                 ->whereIn('pago_id', DB::table('pagos')->whereNull('suscripcion_id')->select('id')),
             'pagos (de pedido/venta)' => DB::table('pagos')->whereNull('suscripcion_id'),

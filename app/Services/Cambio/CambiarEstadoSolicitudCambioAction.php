@@ -5,6 +5,7 @@ namespace App\Services\Cambio;
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\SolicitudCambio;
 use App\Models\SolicitudCambioHistorial;
+use App\Models\ValeDevolucionPartida;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Auth\PermisoModuloService;
 use App\Services\Notificacion\NotificarEstadoCambioAction;
@@ -98,6 +99,10 @@ class CambiarEstadoSolicitudCambioAction
     private function emitirVale(SolicitudCambio $solicitud, ?float $monto)
     {
         $linea = $solicitud->pedidoDetalle ?? $solicitud->ventaDetalle;
+        // TG-356: no emitir un segundo crédito por una partida ya devuelta con nota.
+        if ($solicitud->pedido_detalle_id && ValeDevolucionPartida::query()->where('pedido_detalle_id', $solicitud->pedido_detalle_id)->lockForUpdate()->exists()) {
+            throw new OperacionInvalidaException('Esa partida ya tiene una nota de devolución; no se puede emitir otro vale.', 409);
+        }
         $tope = round((float) ($linea?->subtotal ?? 0), 2);
         $monto = $monto === null ? $tope : round($monto, 2);
 

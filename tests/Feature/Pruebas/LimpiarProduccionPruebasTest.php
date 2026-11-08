@@ -24,6 +24,10 @@ class LimpiarProduccionPruebasTest extends TestCase
 
     private array $pcIa;
 
+    private int $valeHijoMenor;
+
+    private int $valePadreMayor;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -112,6 +116,19 @@ class LimpiarProduccionPruebasTest extends TestCase
             'saldo_actual' => 40, 'fecha_vencimiento' => $ahora->copy()->addMonth(), 'pedido_origen_id' => $pedido,
             'creado_por_staff_id' => $staff, 'created_at' => $ahora, 'updated_at' => $ahora,
         ]);
+        // TG-356: el hijo se inserta ANTES que su origen, así su id es menor.
+        // Borrar por id descendente chocaría con vale_origen_id.
+        $this->valeHijoMenor = DB::table('vales')->insertGetId([
+            'distribuidora_id' => $d, 'cliente_directo_id' => $cliente, 'folio' => 'VAL-HIJO-MENOR', 'monto_original' => 10,
+            'saldo_actual' => 10, 'fecha_vencimiento' => $ahora->copy()->addMonth(), 'tipo' => 'sobrante',
+            'creado_por_staff_id' => $staff, 'created_at' => $ahora, 'updated_at' => $ahora,
+        ]);
+        $this->valePadreMayor = DB::table('vales')->insertGetId([
+            'distribuidora_id' => $d, 'cliente_directo_id' => $cliente, 'folio' => 'VAL-PADRE-MAYOR', 'monto_original' => 30,
+            'saldo_actual' => 0, 'fecha_vencimiento' => $ahora->copy()->addMonth(), 'tipo' => 'anticipo',
+            'creado_por_staff_id' => $staff, 'created_at' => $ahora, 'updated_at' => $ahora,
+        ]);
+        DB::table('vales')->where('id', $this->valeHijoMenor)->update(['vale_origen_id' => $this->valePadreMayor]);
         DB::table('vale_movimientos')->insert([
             'distribuidora_id' => $d, 'vale_id' => $vale, 'pedido_id' => $pedido, 'tipo' => 'aplicacion',
             'monto' => 60, 'saldo_anterior' => 100, 'saldo_posterior' => 40, 'registrado_por_staff_id' => $staff,
@@ -193,6 +210,7 @@ class LimpiarProduccionPruebasTest extends TestCase
 
     public function test_limpieza_completa_sin_errores_de_llaves(): void
     {
+        $this->assertLessThan($this->valePadreMayor, $this->valeHijoMenor, 'El sobrante de prueba tiene que nacer con id menor que su origen.');
         $this->respaldoReciente();
         $intocables = ['usuarios', 'distribuidoras', 'distribuidora_staff', 'suscripciones', 'planes_suscripcion', 'lineas', 'marcas',
             'campanas', 'ciclos_compra', 'clientes_directos', 'revendedores', 'productos_importados_staging', 'importaciones_catalogo', 'sucursales'];
