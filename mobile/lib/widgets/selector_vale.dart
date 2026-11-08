@@ -177,9 +177,22 @@ class _SelectorValeState extends State<SelectorVale> {
                   ],
                 ],
               ),
+            // TG-356: avisar ANTES de usarlo que el vale con tipo se consume completo.
+            if (_seleccionado?.seUsaCompleto ?? false) ...[
+              const SizedBox(height: 8),
+              Text(
+                avisoUsoCompleto(_seleccionado!),
+                style: TextStyle(color: tema.colorScheme.onSurfaceVariant, fontSize: 13),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 }
+
+/// TG-356: texto que se muestra al elegir un vale con tipo, antes de aplicarlo.
+String avisoUsoCompleto(Vale vale) => vale.tipo == 'anticipo'
+    ? 'Este vale solo cubre el anticipo pendiente y se usa completo. Si sobra saldo, recibes un vale nuevo por la diferencia.'
+    : 'Este vale se usa completo en este pedido. Si sobra saldo, recibes un vale nuevo por la diferencia.';

@@ -5,6 +5,7 @@ namespace App\Services\Distribuidora;
 use App\Models\Distribuidora;
 use App\Models\Usuario;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
+use App\Services\Vale\BorrarValesPorOrigen;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -25,6 +26,7 @@ class EliminarDistribuidoraAction
         'solicitudes_cambio',
         'movimientos_stock',
         'pagos',
+        'vale_devolucion_partidas', // TG-356: hija RESTRICT de vales y pedido_detalle
         'vales',
         'pedidos',
         'ventas_directas',
@@ -55,7 +57,15 @@ class EliminarDistribuidoraAction
             $this->registrarBorrado($actual, $usuarios, $revendedores);
 
             foreach (self::ANTES_DE_LA_CASA as $tabla) {
-                DB::table($tabla)->where('distribuidora_id', $id)->delete();
+                $consulta = DB::table($tabla)->where('distribuidora_id', $id);
+                // TG-356: vale_origen_id es RESTRICT. El hijo no tiene por qué
+                // tener un id mayor que su origen, así que no se ordena por id.
+                if ($tabla === 'vales') {
+                    BorrarValesPorOrigen::borrar($consulta);
+
+                    continue;
+                }
+                $consulta->delete();
             }
 
             $actual->delete();

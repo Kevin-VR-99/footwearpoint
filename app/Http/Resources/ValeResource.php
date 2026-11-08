@@ -20,6 +20,9 @@ class ValeResource extends JsonResource
             // TG-122: vence dentro del margen de aviso (VALES_DIAS_AVISO_VENCIMIENTO).
             'por_vencer'     => $this->estaPorVencer(),
             'motivo'         => $this->motivo,
+            // TG-356: null = vale anterior (legacy).
+            'tipo'           => $this->tipo,
+            'vale_origen_id' => $this->vale_origen_id,
             'propietario'    => [
                 'tipo'   => $this->cliente_directo_id ? 'cliente_directo' : 'revendedor',
                 'id'     => $this->cliente_directo_id ?? $this->revendedor_distribuidora_id,

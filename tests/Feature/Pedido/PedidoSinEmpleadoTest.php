@@ -110,10 +110,21 @@ class PedidoSinEmpleadoTest extends TestCase
      */
     public function test_emitir_un_vale_sigue_exigiendo_empleado(): void
     {
-        $this->assertFalse(
-            $this->columnaAceptaNulo('vales', 'creado_por_staff_id'),
-            'vales.creado_por_staff_id NO debe aceptar nulo: emitir vales es solo de la distribuidora.'
-        );
+        // TG-356: la columna admite NULL solo para un vale de SOBRANTE generado
+        // desde la app (diferencia de un vale existente, no saldo nuevo), con
+        // vale de origen y usuario autor. El CHECK chk_vale_autor lo impone en
+        // la base; cualquier otro vale sin empleado se rechaza.
+        $base = ['distribuidora_id' => \App\Support\Tenant::id() ?? \App\Models\Distribuidora::query()->value('id'),
+            'cliente_directo_id' => null, 'monto_original' => 1, 'saldo_actual' => 1, 'fecha_vencimiento' => now()->addDays(90),
+            'estado' => 'activo', 'creado_por_staff_id' => null];
+        foreach ([[], ['tipo' => 'devolucion_producto'], ['tipo' => 'sobrante'], ['tipo' => 'anticipo', 'creado_por_usuario_id' => \App\Models\Usuario::query()->value('id')]] as $i => $extra) {
+            try {
+                \Illuminate\Support\Facades\DB::table('vales')->insert($base + $extra + ['folio' => 'SIN-STAFF-'.$i]);
+                $this->fail('vales sin empleado solo pueden ser sobrantes con autor (caso '.$i.').');
+            } catch (\Illuminate\Database\QueryException $e) {
+                $this->assertStringContainsStringIgnoringCase('chk_vale_autor', $e->getMessage());
+            }
+        }
     }
 
     // ------------------------------------------------------------------
