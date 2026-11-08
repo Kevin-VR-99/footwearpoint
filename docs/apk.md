@@ -143,13 +143,98 @@ Por eso el primer APK firmado con la llave del proyecto **no** se va a instalar 
 
 Desde ese APK, **todos** los siguientes tienen que salir firmados con esta llave: uno firmado con la de depuración ya no se podría instalar como actualización.
 
-## Subir una versión nueva a Uptodown
+## Publicar en Uptodown
 
-1. Subir el `versionCode` (el número después del `+` en `mobile/pubspec.yaml`). Uptodown rechaza un APK con un número que ya subió.
+La consola de desarrolladores está en <https://www.uptodown.dev/>. `developer.uptodown.com` **no** es la consola: es la ficha de otra app que se llama «Developer».
+
+**Ficha pública:** se agrega aquí cuando Uptodown publique la app.
+
+### Datos de la ficha
+
+| Campo | Valor |
+| --- | --- |
+| Nombre | Footwear Point (en las tarjetas, Uptodown corta lo que pase de 30 caracteres) |
+| Paquete | `com.footwearpoint.app`; tiene que ser el mismo en todas las versiones |
+| Categoría | Estilo de vida → Compras |
+| Ícono | `public/brand/logo-mark-512.png` (cuadrado, 512×512, PNG) |
+| Imagen destacada | Opcional; de 1024×500 exactos |
+| Descripción corta | Máximo 70 caracteres |
+| Descripción larga | Mínimo 50 palabras; Uptodown recomienda 200 o más |
+| Sitio oficial | <https://footwearpoint.app> |
+| Licencia | Propietaria |
+| Distribución | Gratis, sin compras dentro de la app, sin suscripción y sin anuncios |
+
+- **Aviso de privacidad:** <https://footwearpoint.app/aviso-privacidad>. El formulario de Uptodown no tiene un campo propio para él, así que va al final de la descripción larga.
+- **Que los editores de Uptodown no suban versiones por su cuenta:** marcar esa opción en la sección de versiones (en inglés, *Disable uploads by Uptodown editors*). Uptodown actualiza solo las apps cuando encuentra una versión nueva en otras fuentes; con la opción marcada, solo el equipo sube versiones, y todas salen firmadas con la llave del proyecto.
+
+### Capturas
+
+- Verticales, **al menos 4**, de la app tal como está hoy. Uptodown no fija un tamaño en píxeles: se toman a la resolución nativa del teléfono o del emulador (el Pixel 6 del emulador da 1080×2400), en PNG.
+- **Sin datos de personas reales.** Se toman con la app apuntando al Laravel local con los datos de demostración (`DemoDistribuidoraSeeder` y `DemoContactosSeeder`), que son ficticios, con correos `.test`.
+- Llevan texto en español, así que se suben con el idioma en español. Las que se suben en inglés se muestran en todos los idiomas; las que se suben en español, solo en español.
+
+### Subir una versión
+
+1. Subir el `versionCode` (el número después del `+` en `mobile/pubspec.yaml`) por encima de **todos** los que ya se repartieron. Si no es mayor que el de la última versión en Uptodown, la ficha la trata como versión vieja y no la ofrece como descarga principal.
 2. Generar el APK con el comando de arriba y comprobar que la firma tenga la huella SHA-256 de la sección «Llave de firma».
-3. En <https://developer.uptodown.com>, entrar a la app y subir el archivo nuevo.
+3. En la consola: **Apps → Add new app** la primera vez; después, en la app, **Edit → Files → + Add new version**.
 4. Escribir las **novedades** de la versión en español, en frases cortas y sin palabras técnicas: lo que la persona va a notar, no cómo se hizo.
-5. Uptodown revisa el archivo antes de publicarlo; tarda desde unas horas hasta un día.
+5. Mandarla a revisión. Según la ayuda de Uptodown, una actualización suele quedar publicada en menos de 24 horas; una app nueva tarda más.
+6. Subir **el mismo archivo** al APK de descarga directa (sección siguiente).
+7. Ya publicada, revisar en la ficha pública la sección «Seguridad y privacidad» → **Firma del certificado**: tiene que decir `7645c804a1b3871bad0d76e36ac804b6`. Uptodown muestra ahí el **MD5** del certificado, no el SHA-256; es el mismo certificado de «Llave de firma», y `apksigner` lo da como `certificate MD5 digest`. El campo **SHA256** de «Información de descarga» es la huella del archivo APK, no la del certificado.
+
+### Cambio de firma
+
+La 1.3.3+8 es la primera versión firmada con la llave del proyecto. La ayuda de Uptodown para actualizar una app solo pide el mismo paquete y un `versionCode` mayor, y no dice nada de un cambio de firma. Si la app ya tenía versiones en Uptodown firmadas con la llave de depuración, hay que confirmar con el soporte para desarrolladores (botón *Contact Us* de la consola) que aceptan la firma nueva en la misma ficha **antes** de subirla. Si es la primera publicación en Uptodown, no hay una firma anterior con la cual chocar.
+
+### Versiones publicadas
+
+| Versión | Fecha | Firma | Huella del archivo (SHA-256) |
+| --- | --- | --- | --- |
+| 1.3.3+8 | Pendiente de publicar | Llave del proyecto | `407e451753dd38879c8ad868f39e3314044ee8d164a9085c2cd2834ba886d0fa` |
+
+## APK de descarga directa (R2)
+
+El botón «Descargar app» del panel del admin general (`/admin/app-movil`) entrega `app-movil/footwearpoint.apk`, que vive en el bucket público de las fotos en R2:
+
+```
+https://pub-118e6637c4c64382aabc40a636c87a9e.r2.dev/app-movil/footwearpoint.apk
+```
+
+Ese archivo tiene que ser **siempre el mismo APK que está en Uptodown**. Si conviven uno firmado con la llave de depuración y otro con la del proyecto, quien instale uno no podrá actualizar con el otro.
+
+### Reemplazarlo
+
+1. En Cloudflare → **R2** → el bucket de las fotos → carpeta `app-movil/`.
+2. Subir el APK nuevo **con el mismo nombre**, `footwearpoint.apk`, para que reemplace al anterior. No hace falta cambiar nada en el código ni en Railway: la ruta y el nombre siguen siendo los mismos.
+3. Comprobarlo desde fuera, sin descargar el archivo:
+
+   ```powershell
+   curl.exe -sI https://pub-118e6637c4c64382aabc40a636c87a9e.r2.dev/app-movil/footwearpoint.apk
+   ```
+
+   - `Last-Modified` tiene que ser la fecha de la subida.
+   - `Content-Type` tiene que ser `application/vnd.android.package-archive`.
+   - `ETag` tiene que ser el MD5 del APK nuevo; para la 1.3.3+8, `9ae9a25b04fba6bfa8fffef3e030be23`. Si el `ETag` trae un guion (por ejemplo `…-4`), R2 lo subió en partes y ese valor no es el MD5: en ese caso hay que descargarlo y comparar su SHA-256 con el de la tabla de versiones.
+   - **El tamaño no sirve para comprobar.** La 1.3.2+7 de depuración y la 1.3.3+8 pesan lo mismo: 56,174,812 bytes.
+
+Antes de la 1.3.3+8, ese archivo era la 1.3.2+7 firmada con la llave de depuración (subida el 23/10/2026).
+
+## Enlace de descarga en la web (`APP_MOVIL_DESCARGA_URL`)
+
+Tres páginas que se abren desde un correo muestran los botones «Abrir la app» y «Descargar la app»: **correo verificado**, **restablecer contraseña** y **confirmar el cambio de correo o teléfono**.
+
+- «Descargar la app» lleva al enlace de descarga.
+- «Abrir la app» abre la app en el perfil si está instalada; si no lo está, Chrome manda al mismo enlace de descarga.
+
+Ese enlace sale de `APP_MOVIL_DESCARGA_URL`. Cuando Uptodown publique la app, se pone ahí la URL de su ficha, en el servicio web de Railway (`footwearpoint` → **Variables**). Railway vuelve a desplegar al guardar la variable, y el despliegue regenera la caché de configuración. Los otros servicios no la necesitan.
+
+Si la variable está vacía, el enlace se arma con el disco del APK (`APK_DISK`, que por omisión es `productos`), y **ese disco no tiene URL pública**: el enlace sale a la dirección privada de R2 (`…r2.cloudflarestorage.com/…`), que no abre sin credenciales. Por eso conviene dejar la variable siempre puesta.
+
+No cambian con la variable:
+
+- El botón «Descargar app» del admin general, que descarga el archivo directo del bucket.
+- La página de los enlaces que se comparten por WhatsApp (`/abrir/...`): sin la app instalada, manda a la página de inicio.
 
 ## Nombre e icono
 
