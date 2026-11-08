@@ -48,7 +48,7 @@ class PestanasDelCatalogoMaestroTest extends TestCase
         'lineas'     => 'Crear línea',
         'marcas'     => 'Crear marca',
         'temporadas' => 'Hay dos temporadas por año',
-        'productos'  => 'Publicar producto',
+        'productos'  => 'Crear producto',
         'colores'    => 'Agregar color',
     ];
 
@@ -74,7 +74,7 @@ class PestanasDelCatalogoMaestroTest extends TestCase
             ->set('pestana', 'colores')
             ->assertSee('Agregar color')
             ->assertSee('Marino')
-            ->assertDontSee('Publicar producto')
+            ->assertDontSee('Crear producto')
             ->assertDontSeeHtml('wire:click="abrirFotos(');
     }
 
@@ -83,7 +83,7 @@ class PestanasDelCatalogoMaestroTest extends TestCase
     {
         $this->panel()
             ->set('pestana', 'productos')
-            ->assertSee('Publicar producto')
+            ->assertSee('Crear producto')
             ->assertDontSee('Agregar color');
     }
 }

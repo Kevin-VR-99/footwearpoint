@@ -8,7 +8,10 @@ use App\Models\Producto;
 use App\Models\ProductoCampana;
 use App\Models\ProductoImagen;
 use App\Models\Color;
+use App\Models\DisponibilidadVarianteCampana;
+use App\Models\Talla;
 use App\Models\Temporada;
+use App\Models\Variante;
 use App\Services\Catalogo\CampanaDeTemporada;
 use App\Services\Catalogo\GestionarColorAction;
 use App\Services\Catalogo\GestionarImagenProductoCampanaAction;
@@ -16,6 +19,7 @@ use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\GestionarLineaAction;
 use App\Services\Catalogo\GestionarMarcaAction;
 use App\Services\Catalogo\GestionarProductoAction;
+use App\Services\Catalogo\GestionarVarianteAction;
 use App\Services\Catalogo\LogotipoDeCatalogo;
 use App\Support\MensajeError;
 use App\Support\Tenant;
@@ -98,6 +102,20 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
      */
     #[Locked]
     public ?int $fotosDe = null;
+
+    // E5 A14 — el modal de tallas y colores de una publicacion.
+    public ?int $tallasDe = null;
+
+    public string $tallasDeNombre = '';
+
+    public string $tallaColorId = '';
+
+    /** @var array<int, string> ids de talla marcados en el formulario */
+    public array $tallasElegidas = [];
+
+    public string $tallaEstado = 'disponible';
+
+    public string $tallaColorComercial = '';
 
     public string $fotosDeNombre = '';
 
@@ -454,7 +472,14 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             'producto_categoria_id' => ['required', 'exists:categorias_producto,id'],
             'producto_modelo' => ['required', 'string', 'max:100'],
             'producto_nombre' => ['required', 'string', 'max:200'],
-            'producto_campana_id' => ['required', 'exists:campanas,id'],
+            'producto_campana_id' => ['required', 'exists:campanas,id', function ($atributo, $valor, $falla) {
+                $temporadaId = Campana::whereKey($valor)->value('temporada_id');
+
+                // Si la campaña no existe, de eso ya se queja la regla exists.
+                if ($temporadaId !== null && ! app(CampanaDeTemporada::class)->esElegible((int) $temporadaId)) {
+                    $falla('Esa temporada ya terminó y el producto no se vería en el catálogo. Elige la actual o la siguiente.');
+                }
+            }],
             'producto_codigo' => ['required', 'string', 'max:60', 'unique:producto_campana,codigo_catalogo'],
             'producto_precio' => ['required', 'numeric', 'min:0'],
         ], [
@@ -467,6 +492,8 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             'producto_codigo.unique' => 'Ese código de catálogo ya existe.',
             'producto_precio.required' => 'El precio de menudeo es obligatorio.',
         ]);
+
+        $campana = Campana::with('temporada')->find($datos['producto_campana_id']);
 
         $producto = Producto::create([
             'marca_id' => $datos['producto_marca_id'],
@@ -494,7 +521,14 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             'producto_precio',
         );
         $this->cerrarCrear();
-        $this->dispatch('guardado', mensaje: 'Producto publicado en la temporada.');
+
+        // Nada de "publicado", que es lo que confundía. El alta a mano no crea
+        // tallas ni colores, y la tienda pública solo enseña lo que se puede
+        // pedir (TiendaPublica::consulta). En el catálogo del panel y de la
+        // app sí aparece desde ya, por eso el aviso dice dónde falta.
+        $this->dispatch('guardado', mensaje: $campana?->temporada?->esFutura()
+            ? 'Producto creado en la próxima temporada: se publica cuando empiece, y en la tienda pública necesita tallas y colores.'
+            : 'Producto creado. En la tienda pública aparecerá cuando tenga tallas y colores.');
     }
 
     public function getLineasProperty()
@@ -512,9 +546,24 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         return CategoriaProducto::query()->where('activa', true)->orderBy('nombre')->get();
     }
 
+    /**
+     * Las campañas que puede elegir el alta manual: solo las de la temporada
+     * actual y la siguiente, la misma regla que ya aplican la importación y
+     * la revisión de catálogos (CampanaDeTemporada).
+     *
+     * Antes las ofrecía todas. Elegir una temporada terminada guardaba el
+     * producto y decía "publicado", pero CatalogoVisible solo enseña las de
+     * la temporada vigente: el producto quedaba invisible en el marketplace
+     * de la distribuidora sin que nada lo avisara.
+     */
     public function getTemporadasProperty()
     {
-        return Campana::query()->with('linea')->withCount('productosCampana')->orderBy('nombre')->get();
+        return Campana::query()
+            ->with('linea', 'temporada')
+            ->withCount('productosCampana')
+            ->whereIn('temporada_id', app(CampanaDeTemporada::class)->elegibles()->pluck('id'))
+            ->orderBy('nombre')
+            ->get();
     }
 
     /** Escapa los comodines de LIKE para buscar el texto tal cual. */
@@ -777,6 +826,178 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             ->orderBy('orden')
             ->get();
     }
+
+    // ------------------------------------------------------------------
+    // A14 — Tallas y colores de una publicación
+    //
+    // Sin esto, un producto dado de alta a mano no llegaba nunca a la tienda
+    // pública: TiendaPublica solo enseña lo que se puede pedir, y eso pide al
+    // menos una variante activa con disponibilidad en esa temporada. Las
+    // variantes solo se creaban desde el API de la app o desde la aprobación
+    // de catálogos con IA, así que desde el panel no había por dónde.
+    //
+    // Dos cosas que conviene tener claras leyendo esto:
+    //
+    // - La VARIANTE (producto + talla + color) es del catálogo compartido y no
+    //   depende de la temporada. La DISPONIBILIDAD sí es de la temporada. Por
+    //   eso una talla agregada aquí aparece también en las otras temporadas
+    //   del mismo producto: es la misma variante.
+    // - Quitar NO borra la variante. Los pedidos guardan variante_id, así que
+    //   borrarla rompería el historial. Se marca "no disponible" y desaparece
+    //   de la tienda; el pedido viejo sigue entero.
+    // ------------------------------------------------------------------
+
+    public function abrirTallas(int $productoCampanaId): void
+    {
+        $this->autorizar();
+
+        $publicacion = ProductoCampana::with('producto')->findOrFail($productoCampanaId);
+
+        $this->tallasDe = $publicacion->id;
+        $this->tallasDeNombre = trim(($publicacion->producto?->nombre ?? 'Producto').' '.($publicacion->producto?->modelo ?? ''));
+        $this->tallaColorId = '';
+        $this->tallasElegidas = [];
+        $this->tallaEstado = 'disponible';
+        $this->tallaColorComercial = '';
+        $this->errorMsg = '';
+        $this->creando = '';
+        $this->cerrarFotos();
+        $this->cancelarEdicion();
+    }
+
+    public function cerrarTallas(): void
+    {
+        $this->tallasDe = null;
+        $this->tallasDeNombre = '';
+        $this->tallaColorId = '';
+        $this->tallasElegidas = [];
+        $this->tallaColorComercial = '';
+        $this->resetValidation();
+    }
+
+    /** La publicación abierta. El id viaja desde el navegador: nunca se confía en él. */
+    private function publicacionDeLasTallas(): ProductoCampana
+    {
+        abort_if($this->tallasDe === null, 404);
+
+        return ProductoCampana::with('producto')->findOrFail($this->tallasDe);
+    }
+
+    public function getTallasDeLaPublicacionProperty()
+    {
+        if ($this->tallasDe === null) {
+            return collect();
+        }
+
+        return DisponibilidadVarianteCampana::query()
+            ->where('producto_campana_id', $this->tallasDe)
+            ->with(['variante.talla', 'variante.color'])
+            ->get()
+            ->sortBy([
+                fn ($d) => (string) $d->variante?->color?->nombre,
+                fn ($d) => (int) ($d->variante?->talla?->orden ?? 0),
+            ])
+            ->values();
+    }
+
+    public function getTallasElegiblesProperty()
+    {
+        return Talla::query()->where('activa', true)->orderBy('orden')->orderBy('valor')->get();
+    }
+
+    /**
+     * Crea de un golpe todas las tallas de un color: así se venden los
+     * zapatos, un modelo en un color del 22 al 27. Una por una serían seis
+     * vueltas al servidor para lo mismo.
+     */
+    public function agregarTallas(GestionarVarianteAction $variantes): void
+    {
+        $this->autorizar();
+
+        $publicacion = $this->publicacionDeLasTallas();
+
+        $datos = $this->validate([
+            'tallaColorId' => ['required', 'exists:colores,id'],
+            'tallasElegidas' => ['required', 'array', 'min:1'],
+            'tallasElegidas.*' => ['exists:tallas,id'],
+            'tallaEstado' => ['required', Rule::in(DisponibilidadVarianteCampana::ESTADOS_QUE_SE_PUEDEN_PEDIR)],
+            'tallaColorComercial' => ['nullable', 'string', 'max:60'],
+        ], [
+            'tallaColorId.required' => 'Elige el color.',
+            'tallasElegidas.required' => 'Marca al menos una talla.',
+            'tallasElegidas.min' => 'Marca al menos una talla.',
+        ]);
+
+        $productoId = (int) $publicacion->producto_id;
+        $colorId = (int) $datos['tallaColorId'];
+        $comercial = trim((string) ($datos['tallaColorComercial'] ?? '')) ?: null;
+
+        foreach ($datos['tallasElegidas'] as $tallaId) {
+            // La variante puede existir ya de otra temporada del mismo
+            // producto: se reutiliza, no se duplica (uq_variante_combinacion).
+            $variante = Variante::query()
+                ->where('producto_id', $productoId)
+                ->where('talla_id', (int) $tallaId)
+                ->where('color_id', $colorId)
+                ->first();
+
+            if ($variante === null) {
+                $variante = $variantes->crear([
+                    'producto_id' => $productoId,
+                    'talla_id' => (int) $tallaId,
+                    'color_id' => $colorId,
+                    'nombre_color_comercial' => $comercial,
+                ]);
+            }
+
+            DisponibilidadVarianteCampana::updateOrCreate(
+                ['producto_campana_id' => $publicacion->id, 'variante_id' => $variante->id],
+                ['estado' => $datos['tallaEstado'], 'fecha_verificacion' => now()],
+            );
+        }
+
+        $cuantas = count($datos['tallasElegidas']);
+        $this->tallasElegidas = [];
+
+        $this->dispatch('guardado', mensaje: $cuantas === 1
+            ? 'Talla agregada. Ya se puede pedir en la tienda.'
+            : $cuantas.' tallas agregadas. Ya se pueden pedir en la tienda.');
+    }
+
+    /** Deja de ofrecerse en ESTA temporada. La variante y los pedidos no se tocan. */
+    public function quitarTalla(int $disponibilidadId): void
+    {
+        $this->autorizar();
+
+        $this->disponibilidadDeLaPublicacion($disponibilidadId)->update([
+            'estado' => 'no_disponible',
+            'fecha_verificacion' => now(),
+        ]);
+
+        $this->dispatch('guardado', mensaje: 'Esa talla dejó de ofrecerse en esta temporada.');
+    }
+
+    public function volverAOfrecerTalla(int $disponibilidadId): void
+    {
+        $this->autorizar();
+
+        $this->disponibilidadDeLaPublicacion($disponibilidadId)->update([
+            'estado' => 'disponible',
+            'fecha_verificacion' => now(),
+        ]);
+
+        $this->dispatch('guardado', mensaje: 'Esa talla vuelve a ofrecerse.');
+    }
+
+    /** Que la disponibilidad sea de la publicación abierta, no de cualquier otra. */
+    private function disponibilidadDeLaPublicacion(int $disponibilidadId): DisponibilidadVarianteCampana
+    {
+        abort_if($this->tallasDe === null, 404);
+
+        return DisponibilidadVarianteCampana::query()
+            ->where('producto_campana_id', $this->tallasDe)
+            ->findOrFail($disponibilidadId);
+    }
 };
 ?>
 
@@ -994,7 +1215,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
          pestaña que no fuera de las tres de arriba —Colores— caia aqui y
          pintaba los productos encima. --}}
     @elseif ($pestana === 'productos')
-        <button type="button" wire:click="abrirCrear('producto')" class="fp-btn fp-btn-primario w-fit" aria-haspopup="dialog">Publicar producto</button>
+        <button type="button" wire:click="abrirCrear('producto')" class="fp-btn fp-btn-primario w-fit" aria-haspopup="dialog">Crear producto</button>
         <x-ui.buscador wire:model.live.debounce.300ms="buscarProducto" placeholder="Producto, modelo, marca, línea o código…" etiqueta="Buscar productos publicados" class="w-full sm:w-80" data-buscador-catalogo="buscarProducto" />
         <div class="fp-tarjeta fp-tabla fp-aparecer overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm">
             <thead>
@@ -1027,6 +1248,9 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                                  se vende en esa temporada (producto_imagenes cuelga de
                                  producto_campana_id). --}}
                             <button type="button" wire:click="abrirFotos({{ $fila->id }})" class="fp-accion">Fotos</button>
+                            {{-- Sin tallas el producto no sale en la tienda pública,
+                                 así que el acceso va aquí mismo, no escondido. --}}
+                            <button type="button" wire:click="abrirTallas({{ $fila->id }})" class="fp-accion">Tallas</button>
                             @if ($fila->producto)
                                 <button type="button" wire:click="editar('producto', {{ $fila->producto->id }})" class="fp-accion fp-accion-primaria">Editar</button>
                                 <button type="button" wire:click="alternarActivo('producto', {{ $fila->producto->id }})" class="fp-accion fp-accion-neutra">{{ $fila->producto->activo ? 'Desactivar' : 'Activar' }}</button>
@@ -1138,6 +1362,97 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             </x-slot:pie>
         </x-panel.modal>
     @endif
+    @if ($tallasDe !== null)
+        <x-panel.modal :titulo="'Tallas y colores de '.$tallasDeNombre"
+            subtitulo="Mientras no tenga ninguna talla que se pueda pedir, el producto no aparece en la tienda pública."
+            ancho="max-w-2xl" cerrar="cerrarTallas" data-tallas-publicacion>
+            <div class="space-y-4">
+
+            @if ($this->tallasDeLaPublicacion->isEmpty())
+                <p class="text-sm text-slate-500">Todavía no tiene ninguna talla.</p>
+            @else
+                <div class="overflow-x-auto"><table class="w-full text-sm">
+                    <thead><tr class="text-left text-xs uppercase text-slate-500">
+                        <th class="px-3 py-2">Color</th>
+                        <th class="px-3 py-2">Talla</th>
+                        <th class="px-3 py-2">Estado</th>
+                        <th class="px-3 py-2"></th>
+                    </tr></thead>
+                    <tbody>
+                        @foreach ($this->tallasDeLaPublicacion as $disponibilidad)
+                            <tr class="border-t border-slate-100">
+                                <td class="px-3 py-2">
+                                    {{ $disponibilidad->variante?->color?->nombre }}
+                                    @if ($disponibilidad->variante?->nombre_color_comercial)
+                                        <span class="text-slate-500">({{ $disponibilidad->variante->nombre_color_comercial }})</span>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2">{{ $disponibilidad->variante?->talla?->valor }}</td>
+                                <td class="px-3 py-2">
+                                    <x-panel.insignia :variante="$disponibilidad->sePuedePedir() ? 'success' : 'neutral'" punto>{{ $disponibilidad->etiqueta() }}</x-panel.insignia>
+                                </td>
+                                <td class="px-3 py-2 whitespace-nowrap">
+                                    @if ($disponibilidad->sePuedePedir())
+                                        <button type="button" wire:click="quitarTalla({{ $disponibilidad->id }})"
+                                            wire:confirm="Deja de ofrecerse en esta temporada. Los pedidos que ya la tengan no se tocan."
+                                            class="fp-accion fp-accion-peligro">Quitar</button>
+                                    @else
+                                        <button type="button" wire:click="volverAOfrecerTalla({{ $disponibilidad->id }})" class="fp-accion">Volver a ofrecer</button>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table></div>
+            @endif
+
+            <form wire:submit="agregarTallas" class="space-y-3 border-t border-slate-100 pt-4">
+                <p class="text-sm font-medium text-slate-700">Agregar tallas de un color</p>
+
+                <select wire:model="tallaColorId" aria-label="Color" class="w-full rounded-lg text-sm">
+                    <option value="">Color de la paleta</option>
+                    @foreach ($this->colores as $color)
+                        <option value="{{ $color->id }}">{{ $color->nombre }}</option>
+                    @endforeach
+                </select>
+                @error('tallaColorId') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+
+                <input type="text" wire:model="tallaColorComercial" maxlength="60"
+                    placeholder="Cómo lo llama el catálogo, por ejemplo MIEL (opcional)" class="w-full rounded-lg text-sm">
+                @error('tallaColorComercial') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+
+                <fieldset>
+                    <legend class="mb-2 text-sm text-slate-600">Tallas</legend>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach ($this->tallasElegibles as $talla)
+                            <label class="flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-sm">
+                                <input type="checkbox" wire:model="tallasElegidas" value="{{ $talla->id }}">
+                                {{ $talla->valor }}
+                            </label>
+                        @endforeach
+                    </div>
+                </fieldset>
+                @error('tallasElegidas') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+
+                {{-- "Bajo pedido" también se vende: el pedido se surte de fábrica
+                     por ciclo, solo tarda más (DisponibilidadVarianteCampana). --}}
+                <select wire:model="tallaEstado" aria-label="Estado" class="w-full rounded-lg text-sm">
+                    <option value="disponible">Disponible</option>
+                    <option value="bajo_pedido">Bajo pedido (tarda más)</option>
+                </select>
+                @error('tallaEstado') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+
+                <button class="fp-btn fp-btn-primario w-fit">Agregar tallas</button>
+            </form>
+
+            <p class="text-xs text-slate-500">
+                La talla y el color son del producto, no de la temporada: si este producto
+                también está en otra temporada, ahí aparece la misma talla. Lo que cambia
+                por temporada es si se puede pedir o no.
+            </p>
+            </div>
+        </x-panel.modal>
+    @endif
     @if ($creando === 'producto')
         <x-panel.modal titulo="Nuevo producto" cerrar="cerrarCrear" formulario="guardarProducto" data-alta-catalogo="producto">
             <div class="grid grid-cols-1 gap-3">
@@ -1162,8 +1477,10 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 @error('producto_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
                 <select wire:model="producto_campana_id" class="rounded-lg text-sm">
                     <option value="">Temporada</option>
+                    {{-- La vigencia va en la etiqueta: con la campaña actual y la
+                         próxima de la misma línea, los nombres se parecen demasiado. --}}
                     @foreach ($this->temporadas as $temporada)
-                        <option value="{{ $temporada->id }}">{{ $temporada->linea?->nombre }} — {{ $temporada->nombre }}</option>
+                        <option value="{{ $temporada->id }}">{{ $temporada->linea?->nombre }} — {{ $temporada->nombre }} ({{ $temporada->temporada?->etiquetaVigencia() }})</option>
                     @endforeach
                 </select>
                 @error('producto_campana_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
@@ -1174,7 +1491,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             </div>
             <x-slot:pie>
                 <button type="button" wire:click="cerrarCrear" class="fp-btn fp-btn-secundario">Cancelar</button>
-                <button class="fp-btn fp-btn-primario">Publicar producto</button>
+                <button class="fp-btn fp-btn-primario">Crear producto</button>
             </x-slot:pie>
         </x-panel.modal>
     @endif
