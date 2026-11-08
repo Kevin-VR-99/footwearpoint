@@ -1,11 +1,18 @@
 # Copia este archivo como android/key.properties y llena los valores.
+# Solo hace falta en la computadora que firma el APK para publicar.
 #
-# El de verdad NO se sube al repositorio (esta en android/.gitignore), igual
-# que el .jks. Si se pierden, Android ya no deja actualizar la app publicada:
-# habria que publicar otra y pedirle a cada persona que la instale de cero.
-# Guardalos aparte (gestor de contrasenas del equipo o unidad compartida).
+# El de verdad NO se sube al repositorio (esta en android/.gitignore).
+# Si la llave o su contrasena se pierden, Android ya no deja actualizar la
+# app publicada: habria que publicar otra y pedirle a cada persona que la
+# instale de cero. Custodia y respaldo: docs/apk.md, seccion "Llave de firma".
+#
+# storeFile: ruta ABSOLUTA al .jks, FUERA del repositorio (git clean -x
+#   borraria uno que estuviera dentro). Con diagonales "/": en este formato
+#   la "\" es caracter de escape y la ruta no se encontraria.
+# storePassword y keyPassword: la misma contrasena (la llave es PKCS12).
+# Sin espacios al final de las lineas: cuentan como parte del valor.
 
-storeFile=../footwearpoint.jks
+storeFile=C:/ruta/fuera/del/repo/footwearpoint.jks
 storePassword=la-que-elegiste
 keyAlias=footwearpoint
-keyPassword=la-que-elegiste
+keyPassword=la-misma-que-storePassword
