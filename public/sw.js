@@ -1,7 +1,7 @@
 /*
  * TG-282 — Service worker de FootwearPoint.
  *
- * Lo que hace y lo que NO hace, que aquí lo segundo importa más.
+ * Lo que hace y lo que NO hace.
  *
  * El panel son 61 pantallas de Livewire: se dibujan en el servidor y cada
  * clic es una petición. No hay forma de que funcionen sin internet sin
