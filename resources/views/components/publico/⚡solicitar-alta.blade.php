@@ -302,7 +302,7 @@ class extends Component
                 Cuéntanos de tu distribuidora. Revisamos tu solicitud y te avisamos por correo.
             </p>
             <p class="mt-2 text-sm text-slate-600">
-                Los campos con <span class="text-red-600">*</span> son obligatorios:
+                Los campos con <span class="fp-campo-requerido">*</span> son obligatorios:
                 nombre comercial, el plan que te gustaría, tu nombre, tu correo, la contraseña y aceptar los documentos.
             </p>
         </div>
@@ -336,56 +336,41 @@ class extends Component
             <section class="fp-tarjeta p-6 space-y-4">
                 <h2 class="font-semibold text-slate-900">Tu distribuidora</h2>
 
-                <div>
-                    <label for="nombre_comercial" class="block text-sm font-medium text-slate-700 mb-1">
-                        Nombre comercial <span class="text-red-600">*</span>
-                    </label>
-                    <input type="text" id="nombre_comercial" wire:model="nombre_comercial" required
-                        class="w-full rounded-lg text-sm">
-                    @error('nombre_comercial') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                {{-- A18, pantalla piloto. Estos campos pintaban el error con
+                     text-red-600, que ni siquiera es el rojo de la casa: era
+                     la cuarta forma distinta del mismo mensaje en el proyecto.
+                     Ahora el error, la etiqueta y el asterisco salen todos de
+                     x-ui.campo, asi que hay una sola. --}}
+                <x-ui.campo etiqueta="Nombre comercial" para="nombre_comercial" error="nombre_comercial" requerido>
+                    <x-ui.entrada id="nombre_comercial" wire:model="nombre_comercial" required />
+                </x-ui.campo>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.campo etiqueta="Razón social" para="razon_social" error="razon_social">
+                        <x-ui.entrada id="razon_social" wire:model="razon_social" />
+                    </x-ui.campo>
+
+                    <x-ui.campo etiqueta="RFC" para="rfc" error="rfc">
+                        <x-ui.entrada id="rfc" wire:model="rfc" class="uppercase" />
+                    </x-ui.campo>
+
+                    <x-ui.campo etiqueta="Teléfono" para="telefono_publico" error="telefono_publico">
+                        <x-ui.entrada tipo="tel" id="telefono_publico" wire:model="telefono_publico" />
+                    </x-ui.campo>
+
+                    <x-ui.campo etiqueta="Correo de contacto" para="email_publico" error="email_publico">
+                        <x-ui.entrada tipo="email" id="email_publico" wire:model="email_publico" />
+                    </x-ui.campo>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="razon_social" class="block text-sm font-medium text-slate-700 mb-1">Razón social</label>
-                        <input type="text" id="razon_social" wire:model="razon_social"
-                            class="w-full rounded-lg text-sm">
-                        @error('razon_social') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div>
-                        <label for="rfc" class="block text-sm font-medium text-slate-700 mb-1">RFC</label>
-                        <input type="text" id="rfc" wire:model="rfc"
-                            class="w-full rounded-lg text-sm uppercase">
-                        @error('rfc') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div>
-                        <label for="telefono_publico" class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                        <input type="text" id="telefono_publico" wire:model="telefono_publico"
-                            class="w-full rounded-lg text-sm">
-                        @error('telefono_publico') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div>
-                        <label for="email_publico" class="block text-sm font-medium text-slate-700 mb-1">Correo de contacto</label>
-                        <input type="email" id="email_publico" wire:model="email_publico"
-                            class="w-full rounded-lg text-sm">
-                        @error('email_publico') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-
-                <div>
-                    <label for="direccion_publica" class="block text-sm font-medium text-slate-700 mb-1">Dirección</label>
-                    <input type="text" id="direccion_publica" wire:model="direccion_publica"
-                        class="w-full rounded-lg text-sm">
-                    @error('direccion_publica') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.campo etiqueta="Dirección" para="direccion_publica" error="direccion_publica">
+                    <x-ui.entrada id="direccion_publica" wire:model="direccion_publica" />
+                </x-ui.campo>
             </section>
 
             {{-- Preferencia de plan: no se cobra ni se activa hasta que la solicitud se acepte. --}}
             <section class="fp-tarjeta p-6">
-                <h2 class="font-semibold text-slate-900">Plan que te gustaría si te aceptamos <span class="text-red-600">*</span></h2>
+                <h2 class="font-semibold text-slate-900">Plan que te gustaría si te aceptamos <span class="fp-campo-requerido" aria-label="obligatorio">*</span></h2>
                 <p class="mt-1 text-sm text-slate-500">Todavía no se cobra ni queda activo. Si aceptamos tu solicitud, este es el plan con el que te gustaría empezar. Después se puede cambiar. Precios en pesos mexicanos, por mes.</p>
 
                 @if ($this->planes->isEmpty())
@@ -416,7 +401,7 @@ class extends Component
                     </div>
                 @endif
 
-                @error('plan_id') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                @error('plan_id') <p class="fp-campo-error mt-2">{{ $message }}</p> @enderror
             </section>
 
             {{-- Tu cuenta --}}
@@ -424,41 +409,28 @@ class extends Component
                 <h2 class="font-semibold text-slate-900">Tu cuenta de administrador</h2>
                 <p class="text-sm text-slate-500">Con esto entrarás al panel cuando aprobemos tu solicitud.</p>
 
-                <div>
-                    <label for="admin_nombre" class="block text-sm font-medium text-slate-700 mb-1">
-                        Tu nombre <span class="text-red-600">*</span>
-                    </label>
-                    <input type="text" id="admin_nombre" wire:model="admin_nombre" required
-                        class="w-full rounded-lg text-sm">
-                    @error('admin_nombre') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.campo etiqueta="Tu nombre" para="admin_nombre" error="admin_nombre" requerido>
+                    <x-ui.entrada id="admin_nombre" wire:model="admin_nombre" required />
+                </x-ui.campo>
 
-                <div>
-                    <label for="admin_email" class="block text-sm font-medium text-slate-700 mb-1">
-                        Tu correo <span class="text-red-600">*</span>
-                    </label>
-                    <input type="email" id="admin_email" wire:model="admin_email" required
-                        class="w-full rounded-lg text-sm">
-                    @error('admin_email') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.campo etiqueta="Tu correo" para="admin_email" error="admin_email" requerido>
+                    <x-ui.entrada tipo="email" id="admin_email" wire:model="admin_email" required />
+                </x-ui.campo>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="admin_password" class="block text-sm font-medium text-slate-700 mb-1">
-                            Contraseña <span class="text-red-600">*</span>
-                        </label>
-                        <input type="password" id="admin_password" wire:model="admin_password" required minlength="8"
-                            class="w-full rounded-lg text-sm">
-                        @error('admin_password') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-ui.campo etiqueta="Contraseña" para="admin_password" error="admin_password" requerido
+                        ayuda="Al menos 8 caracteres.">
+                        <x-ui.entrada tipo="password" id="admin_password" wire:model="admin_password" required minlength="8" />
+                    </x-ui.campo>
 
-                    <div>
-                        <label for="admin_password_confirmation" class="block text-sm font-medium text-slate-700 mb-1">
-                            Repite la contraseña <span class="text-red-600">*</span>
-                        </label>
-                        <input type="password" id="admin_password_confirmation" wire:model="admin_password_confirmation" required minlength="8"
-                            class="w-full rounded-lg text-sm">
-                    </div>
+                    {{-- Este campo nunca enseñaba su error: el @error faltaba.
+                         Con x-ui.campo ya no depende de que alguien se acuerde
+                         de escribirlo. --}}
+                    <x-ui.campo etiqueta="Repite la contraseña" para="admin_password_confirmation"
+                        error="admin_password_confirmation" requerido>
+                        <x-ui.entrada tipo="password" id="admin_password_confirmation"
+                            wire:model="admin_password_confirmation" required minlength="8" />
+                    </x-ui.campo>
                 </div>
             </section>
 
@@ -472,10 +444,10 @@ class extends Component
                         <a href="{{ route('aviso-privacidad') }}" target="_blank" class="text-[#2563EB] hover:underline">aviso de privacidad</a>
                         y los
                         <a href="{{ route('terminos') }}" target="_blank" class="text-[#2563EB] hover:underline">términos y condiciones</a>
-                        (versión 1.0). <span class="text-red-600">*</span>
+                        (versión 1.0). <span class="fp-campo-requerido" aria-label="obligatorio">*</span>
                     </span>
                 </label>
-                @error('acepta_legales') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                @error('acepta_legales') <p class="fp-campo-error mt-1">{{ $message }}</p> @enderror
             </div>
 
             <button type="submit"
