@@ -58,6 +58,78 @@ document.addEventListener('livewire:init', () => {
 window.addEventListener('pageshow', ocultarCapasDeCarga);
 
 /*
+ * A19 — Buscador compacto que se expande.
+ *
+ * Se abre al enfocarlo y se queda abierto mientras haya texto escrito. Los
+ * botones de al lado no se mueven porque el buscador crece ENCIMA de un hueco
+ * que conserva su tamaño; para el acomodo de la barra nada cambia.
+ *
+ * Por que en JavaScript y no en CSS: se intento primero con :focus-within y
+ * :has(input:not(:placeholder-shown)). La regla queda bien formada, en el
+ * @media correcto, el navegador soporta los tres selectores y la envoltura si
+ * coincide con :focus-within, pero el ancho no cambia ni con !important. La
+ * misma regla inyectada a mano en un <style> si funciona, asi que algo del
+ * apilado de capas de Tailwind la tapa; no se encontro que. El estilo en
+ * linea gana sobre cualquier capa y aqui si abre.
+ *
+ * Los anchos NO se escriben aqui: salen de las variables que define app.css
+ * (--fp-buscador-reposo y --fp-buscador-abierto), para que se afinen en un
+ * solo lugar y por pantalla si hace falta.
+ */
+function buscadoresCompactos() {
+    document.querySelectorAll('[data-buscador-compacto]').forEach((hueco) => {
+        if (hueco.dataset.a19 === 'listo') return;
+        hueco.dataset.a19 = 'listo';
+
+        const buscador = hueco.querySelector('.fp-buscador');
+        const campo = hueco.querySelector('input');
+        if (!buscador || !campo) return;
+
+        const ancho = (nombre) => getComputedStyle(hueco).getPropertyValue(nombre).trim();
+
+        const pintar = () => {
+            // En telefono las variables no estan puestas (el compacto es solo
+            // de sm en adelante): ahi no se toca nada y queda al ancho completo.
+            const abierto = ancho('--fp-buscador-abierto');
+            if (!abierto) {
+                buscador.style.minWidth = '';
+                delete hueco.dataset.abierto;
+                return;
+            }
+
+            // Con texto escrito se queda abierto aunque se salga del campo: si
+            // se cerrara, se pierde de vista lo que se esta filtrando.
+            const debeAbrir = document.activeElement === campo || campo.value !== '';
+
+            buscador.style.minWidth = debeAbrir ? abierto : ancho('--fp-buscador-reposo');
+
+            if (debeAbrir) {
+                hueco.dataset.abierto = '';
+            } else {
+                delete hueco.dataset.abierto;
+            }
+        };
+
+        campo.addEventListener('focus', pintar);
+        campo.addEventListener('blur', pintar);
+        campo.addEventListener('input', pintar);
+        // Al cambiar de tamaño la ventana puede entrar o salir del modo compacto.
+        window.addEventListener('resize', pintar);
+
+        pintar();
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', buscadoresCompactos);
+} else {
+    buscadoresCompactos();
+}
+// Livewire redibuja listados enteros: los buscadores nuevos tambien se enganchan.
+document.addEventListener('livewire:navigated', buscadoresCompactos);
+document.addEventListener('livewire:update', buscadoresCompactos);
+
+/*
  * TG-282 — Registro del service worker.
  *
  * Va aquí porque este archivo ya lo cargan los cinco layouts, así que no
