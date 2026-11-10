@@ -403,7 +403,7 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
             <button type="button" wire:click="abrirFormularioCrearCliente" class="fp-btn fp-btn-primario">+ Nuevo cliente</button>
         </x-slot:acciones>
         <x-slot:filtros data-filtros-clientes>
-            <x-ui.buscador wire:model.live.debounce.300ms="buscar" placeholder="Buscar nombre, teléfono o correo" etiqueta="Buscar clientes" class="min-w-0 flex-1" />
+            <x-ui.buscador compacto wire:model.live.debounce.300ms="buscar" placeholder="Buscar nombre, teléfono o correo" etiqueta="Buscar clientes" />
             <select wire:model.live="filtroEstado" aria-label="Filtrar por estado" class="rounded-lg text-sm">
                 <option value="">Todos los estados</option>
                 <option value="activo">Activo</option>

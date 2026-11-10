@@ -806,7 +806,7 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             </button>
         </x-slot:acciones>
         <x-slot:filtros data-filtros-mayoristas>
-            <x-ui.buscador wire:model.live.debounce.300ms="buscar" placeholder="Buscar nombre, código, teléfono o correo" etiqueta="Buscar clientes mayoristas" class="min-w-0 flex-1" />
+            <x-ui.buscador compacto wire:model.live.debounce.300ms="buscar" placeholder="Buscar nombre, código, teléfono o correo" etiqueta="Buscar clientes mayoristas" />
             <select wire:model.live="filtroEstado" aria-label="Filtrar por estado" class="rounded-lg text-sm">
                 <option value="">Todos los estados</option>
                 <option value="activo">Activo</option>
