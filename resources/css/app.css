@@ -140,6 +140,23 @@ html.fp-js [data-revelar]:not(.revelado) {
         box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-fp-danger) 25%, transparent);
     }
 
+    /* A20 — El mismo borde rojo para los campos de x-ui.campo.
+       ---------------------------------------------------------------
+       A18 cambio la clase del mensaje de error a .fp-campo-error, y las
+       reglas de arriba solo conocian .text-fp-danger: los campos
+       convertidos se quedaron enseñando el texto del error pero SIN
+       marcar el campo. Se mira el contenedor y no el hermano de al lado
+       para que siga funcionando aunque el mensaje cambie de lugar
+       dentro del campo (por ejemplo si algun dia va arriba del control). */
+    .fp-campo:has(> .fp-campo-error) :is(input, select, textarea) {
+        border-color: var(--color-fp-danger);
+        background-color: var(--color-fp-danger-soft);
+    }
+    .fp-campo:has(> .fp-campo-error) :is(input, select, textarea):focus {
+        border-color: var(--color-fp-danger);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-fp-danger) 25%, transparent);
+    }
+
     /* Archivos: caja con borde punteado y botón con la paleta. */
     :where(input[type='file']) {
         display: block;
