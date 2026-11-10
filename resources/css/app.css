@@ -29,6 +29,33 @@
     --color-fp-badge-warning-fg: #9A3412;
     --color-fp-badge-danger-bg: #FEE2E2;
     --color-fp-badge-danger-fg: #991B1B;
+
+    /* ---------------------------------------------------------------
+       A18 — Radio, tipografía y espacio del sistema de diseño.
+
+       Antes cada vista decidía: se encontraron 6 formas distintas de
+       escribir un <select> y 8 de escribir un <input>, unas con
+       rounded-lg y otras con rounded-md. Estos tokens le dan UN nombre
+       a cada decisión, para que la respuesta no dependa de quién
+       escribió la pantalla.
+       --------------------------------------------------------------- */
+
+    /* Radio. Tres, no más: control, contenedor y píldora. */
+    --radius-fp-control: 0.5rem;
+    --radius-fp-contenedor: 0.75rem;
+    --radius-fp-pildora: 9999px;
+
+    /* Tipografía de formulario: la etiqueta y el texto chico de abajo
+       (ayuda y error), que hoy se escriben a mano 199 y 128 veces. */
+    --text-fp-etiqueta: 0.875rem;
+    --text-fp-etiqueta--line-height: 1.25rem;
+    --text-fp-ayuda: 0.75rem;
+    --text-fp-ayuda--line-height: 1rem;
+
+    /* Espacio. "campo" es la separación entre etiqueta, control y error;
+       "bloque" la que hay entre un campo y el siguiente. */
+    --spacing-fp-campo: 0.375rem;
+    --spacing-fp-bloque: 0.75rem;
 }
 /* TG-234: entrada al hacer scroll en la página de inicio. */
 /* Solo se oculta si el JS ya arrancó (html.fp-js); sin JS o si falla, queda visible. */
@@ -144,6 +171,57 @@ html.fp-js [data-revelar]:not(.revelado) {
         font-weight: 600;
         color: var(--color-fp-primary);
         cursor: pointer;
+    }
+
+    /* A18 — La clase del control estándar (x-ui.entrada, x-ui.selector).
+       La base de arriba ya le da borde, fondo y foco a cualquier control;
+       esto solo fija el radio y el tamaño del texto con los tokens, para
+       que no vuelvan a convivir rounded-md y rounded-lg. */
+    .fp-control {
+        border-radius: var(--radius-fp-control);
+        font-size: var(--text-fp-etiqueta);
+        line-height: var(--text-fp-etiqueta--line-height);
+    }
+
+    /* Un campo completo: etiqueta, control y el texto de abajo (x-ui.campo).
+       ----------------------------------------------------------------
+       OJO: .fp-campo ya existia antes de A18 como envoltura de campo, y
+       es la que hace que la etiqueta se tiña al enfocar (mas abajo). Se
+       usa en 22 archivos, y 125 de esas etiquetas traen su propio mb-1.
+       Si la maquetacion se le colgara a .fp-campo, ese gap se sumaria al
+       margen de las 125 y les cambiaria el diseño sin que nadie lo pida.
+       Por eso el apilado vive en su propia clase: x-ui.campo lleva las
+       dos, hereda el comportamiento de la casa y no toca lo de antes. */
+    .fp-campo-apilado {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-fp-campo);
+    }
+
+    .fp-campo-etiqueta {
+        font-size: var(--text-fp-etiqueta);
+        line-height: var(--text-fp-etiqueta--line-height);
+        font-weight: 500;
+        color: var(--color-slate-700);
+    }
+
+    /* El asterisco de obligatorio no se lee solo: el componente le pone
+       además un aria-label, para quien usa lector de pantalla. */
+    .fp-campo-requerido {
+        color: var(--color-fp-danger);
+    }
+
+    .fp-campo-ayuda {
+        font-size: var(--text-fp-ayuda);
+        line-height: var(--text-fp-ayuda--line-height);
+        color: var(--color-fp-text-muted);
+    }
+
+    /* El error: una sola forma, en vez de las 4 que había. */
+    .fp-campo-error {
+        font-size: var(--text-fp-ayuda);
+        line-height: var(--text-fp-ayuda--line-height);
+        color: var(--color-fp-danger);
     }
 
     /* Buscador (x-ui.buscador). */

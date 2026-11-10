@@ -751,38 +751,45 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             <div class="space-y-4">
                 <x-personas.foto modelo="empleado_foto" :archivo="$empleado_foto" :actual="$empleado_foto_actual" :nombre="$empleado_nombre"
                     quitar="quitarFotoNuevaEmpleado" id="usuarios-empleado-foto" datos="empleado" />
+                {{-- A18, pantalla piloto. Aqui el error se pintaba con
+                     text-fp-badge-danger-fg text-xs, que es otra de las cuatro
+                     formas que habia. Ahora sale de x-ui.campo. --}}
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <div class="fp-campo">
-                        <label for="usuarios-empleado-nombre" class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                        <input id="usuarios-empleado-nombre" type="text" wire:model="empleado_nombre" autofocus required class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                        @error('empleado_nombre') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
-                    </div>
-                    <div class="fp-campo">
-                        <label for="usuarios-empleado-telefono" class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
-                        <input id="usuarios-empleado-telefono" type="tel" wire:model="empleado_telefono" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                        @error('empleado_telefono') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
-                    </div>
-                    <div class="fp-campo sm:col-span-2">
-                        <label for="usuarios-empleado-email" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
-                        @if ($empleadoEditandoId)
-                            <input id="usuarios-empleado-email" type="email" value="{{ $empleado_email_actual }}" readonly aria-describedby="usuarios-empleado-email-ayuda"
-                                class="w-full rounded-lg bg-slate-100 text-sm text-slate-500 shadow-sm">
-                            <p id="usuarios-empleado-email-ayuda" class="mt-1 text-xs text-fp-text-muted">Es su correo para entrar al panel; no se cambia aquí.</p>
-                        @else
-                            <input id="usuarios-empleado-email" type="email" wire:model="empleado_email" required class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                            @error('empleado_email') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
-                        @endif
-                    </div>
+                    <x-ui.campo etiqueta="Nombre" para="usuarios-empleado-nombre" error="empleado_nombre" requerido>
+                        <x-ui.entrada id="usuarios-empleado-nombre" wire:model="empleado_nombre" autofocus required />
+                    </x-ui.campo>
+
+                    <x-ui.campo etiqueta="Teléfono" para="usuarios-empleado-telefono" error="empleado_telefono">
+                        <x-ui.entrada tipo="tel" id="usuarios-empleado-telefono" wire:model="empleado_telefono" />
+                    </x-ui.campo>
+
+                    @if ($empleadoEditandoId)
+                        {{-- Al editar, el correo es de solo lectura: es con el
+                             que entra al panel y se cambia por otro lado. --}}
+                        <x-ui.campo etiqueta="Correo" para="usuarios-empleado-email" class="sm:col-span-2"
+                            ayuda="Es su correo para entrar al panel; no se cambia aquí.">
+                            <x-ui.entrada tipo="email" id="usuarios-empleado-email" value="{{ $empleado_email_actual }}"
+                                readonly class="bg-slate-100 text-slate-500" />
+                        </x-ui.campo>
+                    @else
+                        <x-ui.campo etiqueta="Correo" para="usuarios-empleado-email" error="empleado_email"
+                            requerido class="sm:col-span-2">
+                            <x-ui.entrada tipo="email" id="usuarios-empleado-email" wire:model="empleado_email" required />
+                        </x-ui.campo>
+                    @endif
+
                     @unless ($empleadoEditandoId)
-                        <div class="fp-campo">
-                            <label for="usuarios-empleado-password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-                            <input id="usuarios-empleado-password" type="password" wire:model="empleado_password" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                            @error('empleado_password') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
-                        </div>
-                        <div class="fp-campo">
-                            <label for="usuarios-empleado-password-confirmation" class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-                            <input id="usuarios-empleado-password-confirmation" type="password" wire:model="empleado_password_confirmation" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                        </div>
+                        <x-ui.campo etiqueta="Contraseña" para="usuarios-empleado-password" error="empleado_password">
+                            <x-ui.entrada tipo="password" id="usuarios-empleado-password"
+                                wire:model="empleado_password" autocomplete="new-password" />
+                        </x-ui.campo>
+
+                        {{-- Este nunca enseñaba su error: le faltaba el @error. --}}
+                        <x-ui.campo etiqueta="Confirmar contraseña" para="usuarios-empleado-password-confirmation"
+                            error="empleado_password_confirmation">
+                            <x-ui.entrada tipo="password" id="usuarios-empleado-password-confirmation"
+                                wire:model="empleado_password_confirmation" autocomplete="new-password" />
+                        </x-ui.campo>
                     @endunless
                 </div>
             </div>
@@ -807,12 +814,11 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         </x-slot:acciones>
         <x-slot:filtros data-filtros-mayoristas>
             <x-ui.buscador compacto wire:model.live.debounce.300ms="buscar" placeholder="Buscar nombre, código, teléfono o correo" etiqueta="Buscar clientes mayoristas" />
-            <select wire:model.live="filtroEstado" aria-label="Filtrar por estado" class="rounded-lg text-sm">
-                <option value="">Todos los estados</option>
+            <x-ui.selector wire:model.live="filtroEstado" aria-label="Filtrar por estado" ancho="auto" vacio="Todos los estados">
                 <option value="activo">Activo</option>
                 <option value="suspendido">Suspendido</option>
                 <option value="inactivo">Inactivo</option>
-            </select>
+            </x-ui.selector>
             <button type="button" wire:click="exportar" data-exportar="clientes-mayoristas" class="fp-btn fp-btn-secundario"
                 wire:loading.attr="disabled" wire:target="exportar">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/></svg>
