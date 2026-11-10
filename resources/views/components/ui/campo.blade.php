@@ -42,15 +42,23 @@
 
     {{ $slot }}
 
-    @if ($error)
+    @if ($error && isset($errors))
         @error($error)
-            <p class="fp-campo-error">{{ $message }}</p>
+            {{-- role="alert" para que el lector de pantalla lo diga al
+                 aparecer; el campo ademas se marca en rojo desde app.css. --}}
+            <p class="fp-campo-error" role="alert">{{ $message }}</p>
         @enderror
     @endif
 
     {{-- La ayuda se calla cuando hay error: dos textos chicos debajo del
-         mismo control compiten entre sí y gana el ruido. --}}
-    @if ($ayuda && ! ($error && $errors->has($error)))
+         mismo control compiten entre sí y gana el ruido.
+
+         $errors se consulta con isset porque Laravel solo lo comparte en
+         una peticion web normal; sin esa guarda el componente revienta al
+         dibujarse fuera de una (por ejemplo desde una prueba). --}}
+    @php($hayError = $error && isset($errors) && $errors->has($error))
+
+    @if ($ayuda && ! $hayError)
         <p class="fp-campo-ayuda">{{ $ayuda }}</p>
     @endif
 </div>

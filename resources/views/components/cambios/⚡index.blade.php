@@ -433,18 +433,22 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                             <x-panel.alerta tipo="error">{{ $errorDevolucion }}</x-panel.alerta>
                         @endif
                         @if ($confirmandoDevolucion)
-                            <div class="rounded-lg border border-slate-200 p-3 text-sm" role="dialog" aria-label="Confirmar nota de devolución">
-                                <p>Se emitirá una nota de devolución por <strong class="tabular-nums">${{ number_format($this->totalDevolucionCentavos / 100, 2) }}</strong>
-                                    a nombre de {{ $this->pedidoEncontrado->clienteDirecto?->nombre ?? $this->pedidoEncontrado->revendedorAfiliacion?->revendedor?->nombre ?? 'el cliente del pedido' }}.
-                                    Vence 90 días después de emitirse. Se usa completa en un solo pedido de {{ \App\Models\Distribuidora::query()->whereKey(\App\Support\Tenant::id())->value('nombre_comercial') ?? 'esta distribuidora' }}; si sobra saldo, la diferencia va a un vale nuevo.</p>
-                                <div class="mt-2 flex gap-2">
-                                    <button type="button" wire:click="confirmarDevolucion" wire:loading.attr="disabled" wire:target="confirmarDevolucion" class="fp-btn fp-btn-primario fp-btn-sm">Confirmar devolución</button>
-                                    <button type="button" wire:click="cancelarDevolucion" class="fp-btn fp-btn-fantasma fp-btn-sm">Cancelar</button>
-                                </div>
-                            </div>
-                        @else
-                            <button type="button" wire:click="prepararDevolucion" class="fp-btn fp-btn-primario fp-btn-sm">Devolver productos seleccionados</button>
+                            {{-- A20: antes era un <div role="dialog"> suelto dentro de
+                                 la pagina, asi que no atrapaba el foco ni se cerraba con
+                                 Escape, y el Enter podia caer en "Confirmar". Emitir una
+                                 nota de devolucion no se deshace. --}}
+                            <x-ui.confirmar titulo="Confirmar nota de devolución"
+                                confirmar="confirmarDevolucion" cancelar="cancelarDevolucion"
+                                etiqueta="Confirmar devolución" etiquetaCargando="Emitiendo…"
+                                variante="primario" ancho="max-w-lg">
+                                Se emitirá una nota de devolución por <strong class="tabular-nums">${{ number_format($this->totalDevolucionCentavos / 100, 2) }}</strong>
+                                a nombre de {{ $this->pedidoEncontrado->clienteDirecto?->nombre ?? $this->pedidoEncontrado->revendedorAfiliacion?->revendedor?->nombre ?? 'el cliente del pedido' }}.
+                                Vence 90 días después de emitirse. Se usa completa en un solo pedido de {{ \App\Models\Distribuidora::query()->whereKey(\App\Support\Tenant::id())->value('nombre_comercial') ?? 'esta distribuidora' }}; si sobra saldo, la diferencia va a un vale nuevo.
+                            </x-ui.confirmar>
                         @endif
+                        @unless ($confirmandoDevolucion)
+                            <button type="button" wire:click="prepararDevolucion" class="fp-btn fp-btn-primario fp-btn-sm">Devolver productos seleccionados</button>
+                        @endunless
                     </div>
                 @endif
             @else

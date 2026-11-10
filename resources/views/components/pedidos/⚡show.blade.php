@@ -29,6 +29,24 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     #[Locked]
     public bool $confirmandoEntrega = false;
 
+    // A20: antes "Marcar listo" preguntaba con wire:confirm, el dialogo del
+    // navegador. Avisa al cliente para que venga, asi que merece el mismo
+    // modal que la entrega y no una ventanita sin estilo.
+    public bool $confirmandoListo = false;
+
+    /**
+     * A20 — El reembolso que se esta por confirmar, o null.
+     *
+     * Antes se preguntaba con wire:confirm, el dialogo del navegador. Esto
+     * mueve dinero y no se deshace: devolver efectivo queda registrado, y la
+     * devolucion por Mercado Pago sale de verdad. Merece el mismo modal que
+     * el resto, con el boton bloqueado mientras corre para que un segundo
+     * clic no la dispare dos veces.
+     *
+     * @var array{linea: int, metodo: string, monto: float}|null
+     */
+    public ?array $reembolsoPorConfirmar = null;
+
     public string $pagoTipo = 'saldo_pedido';
     public string $pagoMetodo = 'efectivo';
     public string $pagoMonto = '';
@@ -110,8 +128,22 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         }
     }
 
+    public function abrirConfirmacionListo(): void
+    {
+        $this->errorMsg = '';
+        $this->mensaje = '';
+        $this->confirmandoListo = true;
+    }
+
+    public function cancelarConfirmacionListo(): void
+    {
+        $this->confirmandoListo = false;
+    }
+
     public function marcarListo(EntregaPedidoAction $accion)
     {
+        $this->confirmandoListo = false;
+
         $this->pasoDeEntrega(fn () => $accion->marcarListo($this->pedido), 'Pedido listo para entrega. Se le avisó al cliente.');
     }
 
@@ -365,6 +397,38 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     }
 
     /** El efectivo que de verdad se entrego. Es la unica salida de dinero del sistema. */
+    public function pedirReembolso(int $lineaId, string $metodo = 'efectivo'): void
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+
+        $this->reembolsoPorConfirmar = [
+            'linea' => $lineaId,
+            'metodo' => $metodo === 'mercado_pago' ? 'mercado_pago' : 'efectivo',
+            'monto' => (float) ($this->reembolsos[$lineaId] ?? 0),
+        ];
+    }
+
+    public function cancelarReembolso(): void
+    {
+        $this->reembolsoPorConfirmar = null;
+    }
+
+    public function confirmarReembolso(ResolverNoSurtidoAction $accion): void
+    {
+        $pendiente = $this->reembolsoPorConfirmar;
+
+        // El boton se deshabilita mientras corre, pero el id viaja desde el
+        // navegador: si llega sin nada pendiente, no se hace nada.
+        if ($pendiente === null) {
+            return;
+        }
+
+        $this->reembolsoPorConfirmar = null;
+
+        $this->entregarReembolso($pendiente['linea'], $accion, $pendiente['metodo']);
+    }
+
     public function entregarReembolso(int $lineaId, ResolverNoSurtidoAction $accion, string $metodo = 'efectivo'): void
     {
         $this->mensaje = '';
@@ -455,9 +519,8 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
         @if (in_array($this->pedido->estado, ['recibido_distribuidora', 'listo_entrega'], true))
             <div class="flex flex-wrap gap-2">
                 @if ($this->pedido->estado === 'recibido_distribuidora')
-                    <button type="button" wire:click="marcarListo"
-                        wire:confirm="¿Marcar listo para entrega? Se le avisará al cliente para que pase a recoger."
-                        class="fp-btn fp-btn-secundario">
+                    <button type="button" wire:click="abrirConfirmacionListo"
+                        aria-haspopup="dialog" class="fp-btn fp-btn-secundario">
                         Marcar listo para entrega
                     </button>
                 @endif
@@ -720,14 +783,14 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                                         <p class="mt-2 text-xs text-slate-600">
                                             Hay que devolverle <strong>${{ number_format($porDevolver, 2) }}</strong> en efectivo.
                                         </p>
-                                        <button type="button" wire:click="entregarReembolso({{ $l->id }})"
-                                            wire:confirm="¿Ya le entregaste el efectivo al cliente? Esto lo deja registrado."
+                                        <button type="button" wire:click="pedirReembolso({{ $l->id }})"
+                                            aria-haspopup="dialog"
                                             class="fp-btn fp-btn-primario fp-btn-sm mt-1">
                                             Registrar que ya se le entregó
                                         </button>
                                         @if ($this->devolverEnMp[$l->id] ?? false)
-                                            <button type="button" wire:click="entregarReembolso({{ $l->id }}, 'mercado_pago')"
-                                                wire:confirm="Se le devolverá ${{ number_format($porDevolver, 2) }} a su cuenta de Mercado Pago. ¿Continuar?"
+                                            <button type="button" wire:click="pedirReembolso({{ $l->id }}, 'mercado_pago')"
+                                                aria-haspopup="dialog"
                                                 class="fp-btn fp-btn-secundario fp-btn-sm mt-1 inline-flex items-center gap-1" data-devolver-mp="{{ $l->id }}">
                                                 <x-ui.logo-mercado-pago class="h-4 w-auto" /> Devolver en Mercado Pago
                                             </button>
@@ -791,22 +854,40 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     </div>
     </div>
 
+    {{-- A20: los dos pasos de la entrega preguntan igual. La trampa de foco
+         que este modal traia escrita a mano en Alpine se fue con el cambio:
+         x-panel.modal ya la trae, y tenerla dos veces era mantener lo mismo
+         en dos lugares. --}}
+    @if ($confirmandoListo)
+        <x-ui.confirmar titulo="¿Marcar listo para entrega?"
+            confirmar="marcarListo" cancelar="cancelarConfirmacionListo"
+            etiqueta="Marcar listo" etiquetaCargando="Avisando…" variante="primario">
+            Se le avisará al cliente del pedido <strong>{{ $this->pedido->folio }}</strong> para que pase a recoger.
+        </x-ui.confirmar>
+    @endif
+
+    @if ($reembolsoPorConfirmar)
+        <x-ui.confirmar
+            :titulo="$reembolsoPorConfirmar['metodo'] === 'mercado_pago' ? 'Devolver en Mercado Pago' : '¿Ya le entregaste el efectivo?'"
+            confirmar="confirmarReembolso" cancelar="cancelarReembolso"
+            :etiqueta="$reembolsoPorConfirmar['metodo'] === 'mercado_pago' ? 'Devolver' : 'Sí, ya se lo entregué'"
+            etiquetaCargando="Registrando…" variante="primario">
+            @if ($reembolsoPorConfirmar['metodo'] === 'mercado_pago')
+                Se le devolverán <strong class="tabular-nums">${{ number_format($reembolsoPorConfirmar['monto'], 2) }}</strong>
+                a su cuenta de Mercado Pago. La devolución sale de verdad y no se deshace.
+            @else
+                Esto deja registrado que ya le entregaste
+                <strong class="tabular-nums">${{ number_format($reembolsoPorConfirmar['monto'], 2) }}</strong> en efectivo.
+            @endif
+        </x-ui.confirmar>
+    @endif
+
     @if ($confirmandoEntrega)
-        <x-panel.modal titulo="Confirmar entrega" cerrar="cancelarConfirmacionEntrega">
-            <div x-on:keydown.tab.prevent="const botones = Array.from($el.querySelectorAll('button:not([disabled])')); const actual = botones.indexOf(document.activeElement); botones[(actual + ($event.shiftKey ? -1 : 1) + botones.length) % botones.length]?.focus()">
-                <p class="text-sm text-slate-600">
-                    ¿Confirmas que el cliente recibió el pedido <strong>{{ $this->pedido->folio }}</strong>?
-                    Se marcará como entregado.
-                </p>
-                <div class="mt-5 flex justify-end gap-2">
-                    <button type="button" wire:click="cancelarConfirmacionEntrega"
-                        wire:loading.attr="disabled" wire:target="marcarEntregado"
-                        class="fp-btn fp-btn-fantasma">Cancelar</button>
-                    <button type="button" wire:click="marcarEntregado"
-                        wire:loading.attr="disabled" wire:target="marcarEntregado"
-                        class="fp-btn fp-btn-primario">Confirmar entrega</button>
-                </div>
-            </div>
-        </x-panel.modal>
+        <x-ui.confirmar titulo="Confirmar entrega"
+            confirmar="marcarEntregado" cancelar="cancelarConfirmacionEntrega"
+            etiqueta="Confirmar entrega" etiquetaCargando="Entregando…" variante="primario">
+            ¿Confirmas que el cliente recibió el pedido <strong>{{ $this->pedido->folio }}</strong>?
+            Se marcará como entregado.
+        </x-ui.confirmar>
     @endif
 </div>
