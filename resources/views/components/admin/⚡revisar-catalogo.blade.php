@@ -791,10 +791,15 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                      propuesta que nadie miró. --}}
                 <td class="px-4 py-3">
                     @if ($producto->foto_propuesta_url)
-                        <img src="{{ $producto->foto_propuesta_url }}"
-                            alt="Foto propuesta para {{ $datos['codigo_catalogo'] ?? 'el producto' }}"
-                            width="96" height="96" loading="lazy" decoding="async"
-                            class="h-24 w-24 rounded object-cover {{ $producto->foto_estado === 'confirmada' ? 'ring-2 ring-fp-primary' : 'ring-1 ring-slate-200' }}">
+                        {{-- TG-376 A16: antes era un <img> de 96x96 con
+                             object-cover. Recortada y de ese tamaño no se
+                             puede decidir si la propuesta sirve: a un zapato
+                             al que le falta la punta se le ve igual de bien.
+                             Ahora se ve completa y se abre grande al tocarla. --}}
+                        <x-ui.imagen-ampliable :url="$producto->foto_propuesta_url"
+                            :alt="'Foto propuesta para '.($datos['codigo_catalogo'] ?? 'el producto')"
+                            tamano="media" modal="grande"
+                            class="{{ $producto->foto_estado === 'confirmada' ? 'ring-2 ring-fp-primary' : '' }}" />
                     @else
                         <span class="text-xs text-fp-text-muted">Sin foto</span>
                     @endif
