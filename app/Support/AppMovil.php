@@ -32,6 +32,39 @@ class AppMovil
         }
     }
 
+    /**
+     * TG-403 A40 — El APK directo, siempre el de R2.
+     *
+     * urlDescarga() de arriba devuelve la ficha de la tienda cuando existe,
+     * asi que no sirve para el aviso del inicio, que ofrece las dos cosas
+     * por separado: el archivo directo y la ficha.
+     */
+    public static function urlApk(): ?string
+    {
+        try {
+            return Storage::disk((string) config('footwearpoint.apk.disco'))
+                ->url((string) config('footwearpoint.apk.ruta'));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
+        }
+    }
+
+    /**
+     * La ficha publica de la tienda (Uptodown), o null si todavia no existe.
+     *
+     * Uptodown no publica al instante: la app se sube y ellos la revisan. Por
+     * eso esto puede ser null un buen rato, y quien lo use tiene que esconder
+     * su enlace en vez de enseñar uno roto.
+     */
+    public static function urlTienda(): ?string
+    {
+        $configurada = trim((string) config('services.app_movil.descarga_url'));
+
+        return $configurada !== '' ? $configurada : null;
+    }
+
     public static function urlAbrir(string $destino = 'perfil'): string
     {
         $host = (string) config('services.app_movil.host', 'footwearpoint.app');
