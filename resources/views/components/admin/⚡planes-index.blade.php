@@ -46,11 +46,40 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
         $planes = $this->planes;
         $suscripciones = \App\Models\Suscripcion::withoutGlobalScopes()->where('estado', 'activa')->count();
 
+        /*
+         * TG-383 A23 — El plan más contratado.
+         *
+         * Se cuentan DISTRIBUIDORAS DISTINTAS, no suscripciones: una misma
+         * distribuidora deja varias filas con el tiempo (renovaciones,
+         * cambios de plan) y contarlas todas inflaría el número.
+         *
+         * Solo las 'activa'. Los estados posibles son activa, prueba,
+         * cancelada, suspendida y vencida; "sin pruebas" de la tarjeta es
+         * dejar fuera las de prueba, porque una prueba todavía no dice que
+         * alguien haya elegido ese plan.
+         *
+         * Los empates se enseñan juntos: con dos planes a la par, mostrar
+         * uno solo sería elegir al azar cuál.
+         */
+        $porPlan = \App\Models\Suscripcion::withoutGlobalScopes()
+            ->where('estado', 'activa')
+            ->groupBy('plan_id')
+            ->selectRaw('plan_id, COUNT(DISTINCT distribuidora_id) as cuantas')
+            ->pluck('cuantas', 'plan_id');
+
+        $tope = (int) $porPlan->max();
+
+        $empatados = $tope > 0
+            ? $porPlan->filter(fn ($cuantas) => (int) $cuantas === $tope)->keys()->map(fn ($id) => (int) $id)->all()
+            : [];
+
         return [
             'activos' => $planes->where('activo', true)->count(),
             'total' => $planes->count(),
             'suscripciones' => $suscripciones,
             'desde' => $planes->where('activo', true)->min('precio_base_mensual'),
+            'mas_contratado' => $planes->whereIn('id', $empatados)->pluck('nombre')->sort()->values()->implode(' y '),
+            'mas_contratado_cuantas' => $tope,
         ];
     }
 
@@ -152,13 +181,19 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
     </x-panel.encabezado>
 
     @php($resumen = $this->resumen)
-    <div class="fp-escalonado mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4" data-metricas-admin>
+    {{-- A23: con la cuarta tarjeta ya no caben tres por fila sin apretarlas. --}}
+    <div class="fp-escalonado mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" data-metricas-admin>
         <x-panel.metrica titulo="Planes activos" :valor="$resumen['activos'].' / '.$resumen['total']" tono="exito"
             icono="M3 7h18v10H3zM3 11h18" :progreso="$resumen['total'] ? $resumen['activos'] / $resumen['total'] * 100 : 0" />
         <x-panel.metrica titulo="Suscripciones activas" :valor="$resumen['suscripciones']" detalle="Distribuidoras con plan vigente"
             icono="M9 12l2 2 4-4M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z" />
         <x-panel.metrica titulo="Plan más económico" :valor="$resumen['desde'] !== null ? '$'.number_format((float) $resumen['desde'], 2) : '—'" tono="neutral" detalle="Precio base mensual"
             icono="M12 8c-2 0-3 .9-3 2s1 2 3 2 3 .9 3 2-1 2-3 2m0-8V6m0 10v2" />
+        <x-panel.metrica titulo="Plan más contratado" :valor="$resumen['mas_contratado'] ?: '—'" tono="info"
+            :detalle="$resumen['mas_contratado_cuantas'] > 0
+                ? $resumen['mas_contratado_cuantas'].' '.\Illuminate\Support\Str::plural('distribuidora', $resumen['mas_contratado_cuantas'])
+                : 'Sin suscripciones activas'"
+            icono="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" data-metrica="plan-mas-contratado" />
     </div>
 
     @if ($mensaje)
