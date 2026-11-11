@@ -5,6 +5,7 @@
     'url' => null,
     'alt' => 'Producto',
     'tamano' => 'chica',
+    'modal' => 'chico',
 ])
 
 @php
@@ -20,6 +21,15 @@
         'portada' => 800,
         default => 40,
     };
+
+    /*
+     * TG-376 A16 — Que tan grande abre.
+     *
+     * 360 px alcanza para "a ver esa foto" en una lista, pero no para decidir
+     * si el recorte que propuso la IA sirve: a ese tamaño no se nota que al
+     * zapato le falta la punta. Donde se valida calidad se abre grande.
+     */
+    $anchoModal = $modal === 'grande' ? 'max-w-2xl' : 'max-w-[360px]';
 @endphp
 
 @if (filled($url))
@@ -39,7 +49,7 @@
                 <div x-show="abierto"
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-90 translate-y-2" x-transition:enter-end="opacity-100 scale-100 translate-y-0"
                     x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-                    class="relative w-full max-w-[360px] overflow-hidden rounded-2xl bg-white p-3 shadow-2xl shadow-fp-sidebar/40 ring-1 ring-fp-primary/20 motion-reduce:transition-none">
+                    class="relative w-full {{ $anchoModal }} overflow-hidden rounded-2xl bg-white p-3 shadow-2xl shadow-fp-sidebar/40 ring-1 ring-fp-primary/20 motion-reduce:transition-none">
                     <button type="button" @click="abierto = false" x-effect="abierto && $nextTick(() => $el.focus())"
                         class="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-fp-sidebar shadow ring-1 ring-slate-200 transition hover:rotate-90 hover:bg-fp-danger hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary motion-reduce:transform-none"
                         aria-label="Cerrar foto">

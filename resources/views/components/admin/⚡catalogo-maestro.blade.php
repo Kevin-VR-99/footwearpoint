@@ -1108,9 +1108,14 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 <ul class="flex flex-wrap gap-3">
                     @foreach ($this->fotosDeLaPublicacion as $foto)
                         <li class="w-28 space-y-1">
+                            {{-- TG-376 A16: object-contain y no cover. La foto
+                                 se revisa aqui, y recortada al cuadro no se ve
+                                 si el producto quedo cortado. El fondo claro
+                                 es para que la franja que sobra no parezca un
+                                 hueco. --}}
                             <img src="{{ $foto->urlMiniatura() }}" alt="Foto de {{ $fotosDeNombre }}"
                                 width="112" height="112" loading="lazy" decoding="async"
-                                class="h-28 w-28 rounded-lg object-cover {{ $foto->es_principal ? 'ring-2 ring-fp-primary' : 'ring-1 ring-slate-200' }}">
+                                class="h-28 w-28 rounded-lg bg-fp-page object-contain {{ $foto->es_principal ? 'ring-2 ring-fp-primary' : 'ring-1 ring-slate-200' }}">
                             @if ($foto->es_principal)
                                 <p class="text-center text-xs font-semibold text-fp-primary">Principal</p>
                             @else
