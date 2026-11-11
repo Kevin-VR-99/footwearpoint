@@ -19,6 +19,11 @@ class CambiarPasswordScreen extends StatefulWidget {
   /// TG-193: cuando la distribuidora le puso una contraseña temporal, esta
   /// pantalla es lo único que puede usar: no hay botón para regresar y al
   /// terminar se queda dentro de la app, no vuelve al perfil.
+  ///
+  /// TG-410: en este modo el primer campo se llama «Contraseña temporal»
+  /// (con «Contraseña actual» la persona buscaba la que tenía antes) y hay un
+  /// botón para volver al inicio de sesión, por si no la recuerda o entró con
+  /// la cuenta equivocada.
   final bool obligatorio;
 
   @override
@@ -32,6 +37,7 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
   final _confirmacion = TextEditingController();
 
   bool _guardando = false;
+  bool _saliendo = false;
   String? _error;
   Map<String, List<String>> _erroresServidor = const {};
 
@@ -93,6 +99,23 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
         _error = e.errores.isEmpty ? e.mensaje : null;
       });
     }
+  }
+
+  /// TG-410: la única salida del modo obligatorio. Cierra la sesión de verdad
+  /// (el servidor la deja cerrar aunque la contraseña sea temporal) y la raíz
+  /// de la app vuelve sola al inicio de sesión.
+  Future<void> _volverAlInicio() async {
+    setState(() => _saliendo = true);
+    await context.read<AuthProvider>().logout();
+  }
+
+  /// En modo obligatorio el campo se llama «Contraseña temporal», así que el
+  /// error del servidor tiene que nombrarla igual.
+  String? _errorDeLaActual() {
+    final error = _erroresServidor['password_actual']?.first;
+    if (error == null || !widget.obligatorio) return error;
+
+    return error.replaceFirst('contraseña actual', 'contraseña temporal');
   }
 
   // Mismas reglas que CambiarPasswordRequest (y que el cambio por enlace).
@@ -193,12 +216,18 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
                         const SizedBox(height: 24),
                         _CampoPassword(
                           controller: _actual,
-                          etiqueta: 'Contraseña actual',
-                          habilitado: !_guardando,
+                          etiqueta: widget.obligatorio ? 'Contraseña temporal' : 'Contraseña actual',
+                          ayuda: widget.obligatorio
+                              ? 'La que te dio tu distribuidora y con la que acabas de entrar.'
+                              : null,
+                          habilitado: !_guardando && !_saliendo,
                           autofill: AutofillHints.password,
-                          validator: (valor) =>
-                              (valor == null || valor.isEmpty) ? 'Escribe tu contraseña actual.' : null,
-                          errorServidor: _erroresServidor['password_actual']?.first,
+                          validator: (valor) => (valor == null || valor.isEmpty)
+                              ? (widget.obligatorio
+                                    ? 'Escribe la contraseña temporal.'
+                                    : 'Escribe tu contraseña actual.')
+                              : null,
+                          errorServidor: _errorDeLaActual(),
                           alCambiar: () => _limpiarErrorServidor('password_actual'),
                         ),
                         const SizedBox(height: 16),
@@ -206,7 +235,7 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
                           controller: _nueva,
                           etiqueta: 'Nueva contraseña',
                           ayuda: 'Mínimo 8 caracteres, con letras y números. Evita 12345678 o tu nombre.',
-                          habilitado: !_guardando,
+                          habilitado: !_guardando && !_saliendo,
                           autofill: AutofillHints.newPassword,
                           validator: _validarNueva,
                           errorServidor: _erroresServidor['password']?.first,
@@ -216,7 +245,7 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
                         _CampoPassword(
                           controller: _confirmacion,
                           etiqueta: 'Confirma la nueva contraseña',
-                          habilitado: !_guardando,
+                          habilitado: !_guardando && !_saliendo,
                           autofill: AutofillHints.newPassword,
                           validator: _validarConfirmacion,
                           alEnviar: _guardar,
@@ -224,7 +253,7 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
                         if (_error != null) ...[const SizedBox(height: 16), AvisoError(mensaje: _error!)],
                         const SizedBox(height: 24),
                         FilledButton(
-                          onPressed: _guardando ? null : _guardar,
+                          onPressed: _guardando || _saliendo ? null : _guardar,
                           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
                           child: _guardando
                               ? const SizedBox(
@@ -234,6 +263,19 @@ class _CambiarPasswordScreenState extends State<CambiarPasswordScreen> {
                                 )
                               : const Text('Cambiar contraseña'),
                         ),
+                        if (widget.obligatorio) ...[
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: _guardando || _saliendo ? null : _volverAlInicio,
+                            child: const Text('Volver al inicio de sesión'),
+                          ),
+                          Text(
+                            '¿No recuerdas la contraseña temporal? Vuelve al inicio y usa '
+                            '«¿Olvidaste tu contraseña?», o pide una nueva a tu distribuidora.',
+                            textAlign: TextAlign.center,
+                            style: tema.textTheme.bodySmall?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                          ),
+                        ],
                       ],
                     ),
                   ),

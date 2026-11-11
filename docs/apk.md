@@ -229,7 +229,7 @@ Tres páginas que se abren desde un correo muestran los botones «Abrir la app»
 
 Ese enlace sale de `APP_MOVIL_DESCARGA_URL`. Cuando Uptodown publique la app, se pone ahí la URL de su ficha, en el servicio web de Railway (`footwearpoint` → **Variables**). Railway vuelve a desplegar al guardar la variable, y el despliegue regenera la caché de configuración. Los otros servicios no la necesitan.
 
-Si la variable está vacía, el enlace se arma con el disco del APK (`APK_DISK`, que por omisión es `productos`), y **ese disco no tiene URL pública**: el enlace sale a la dirección privada de R2 (`…r2.cloudflarestorage.com/…`), que no abre sin credenciales. Por eso conviene dejar la variable siempre puesta.
+Si la variable está vacía, el enlace se arma con el disco del APK (`APK_DISK`, que por omisión es `productos`), con la URL pública de `AWS_URL` (la misma de las fotos): `…r2.dev/app-movil/footwearpoint.apk`. Antes de TG-410 ese disco no tenía URL pública, y el enlace salía a la dirección privada de R2 (`…r2.cloudflarestorage.com/…`), que da error sin credenciales.
 
 No cambian con la variable:
 

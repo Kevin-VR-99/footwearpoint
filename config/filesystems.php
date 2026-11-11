@@ -79,6 +79,10 @@ return [
             'secret' => env('AWS_SECRET_ACCESS_KEY'),
             'region' => env('AWS_DEFAULT_REGION'),
             'bucket' => env('AWS_BUCKET'),
+            // TG-410: sin 'url', url() arma la dirección privada de la API de
+            // R2 (r2.cloudflarestorage.com) y el botón «Descargar la app»
+            // daba error. Es la misma URL pública que usa el disco s3.
+            'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'visibility' => 'public',
