@@ -141,6 +141,69 @@ class extends Component
     </section>
 
     {{-- Planes --}}
+    {{--
+        TG-403 A40 — Aviso de descarga de la app.
+
+        Se dibuja igual para todos, sin mirar el navegador, por una razon que
+        no se ve aqui: el service worker (TG-282) guarda una copia ANONIMA de
+        este inicio y se la entrega a cualquiera cuando no hay internet. Si el
+        aviso cambiara segun el telefono, la copia guardada le enseñaria a uno
+        lo que le toca a otro. Por eso dice "Android" con todas sus letras en
+        vez de esconderse en un iPhone.
+
+        Cada enlace aparece solo si existe. La ficha de Uptodown tarda en
+        salir: la app se sube y ellos la revisan, asi que urlTienda() es null
+        hasta que publiquen y se ponga APP_MOVIL_DESCARGA_URL en Railway. Un
+        boton a una URL vacia es peor que no tener boton.
+    --}}
+    @php($apk = \App\Support\AppMovil::urlApk())
+    @php($tienda = \App\Support\AppMovil::urlTienda())
+
+    @if ($apk || $tienda)
+        <section aria-labelledby="descarga-app" class="fp-tarjeta p-6 sm:p-8" data-revelar data-descarga-app>
+            <div class="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-between">
+                <div class="text-center sm:text-left">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-fp-primary">Solo Android</p>
+                    <h3 id="descarga-app" class="mt-1 text-2xl font-bold text-fp-sidebar sm:text-3xl">
+                        ¿Eres cliente mayorista?
+                    </h3>
+                    <p class="mt-2 max-w-xl text-sm text-slate-600">
+                        Descarga la app para pedir desde tu teléfono, ver el catálogo de tu distribuidora
+                        y seguir tus pedidos. Por ahora solo hay versión para Android.
+                    </p>
+                </div>
+
+                <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                    @if ($tienda)
+                        <a href="{{ $tienda }}" target="_blank" rel="noopener noreferrer"
+                            class="fp-btn fp-btn-primario justify-center" data-descarga="uptodown">
+                            Descargar en Uptodown
+                        </a>
+                    @endif
+
+                    @if ($apk)
+                        {{-- download para que el navegador lo guarde en vez de
+                             intentar abrirlo; con un APK no sabria que hacer. --}}
+                        <a href="{{ $apk }}" download
+                            class="fp-btn {{ $tienda ? 'fp-btn-secundario' : 'fp-btn-primario' }} justify-center"
+                            data-descarga="apk">
+                            Descargar el APK
+                        </a>
+                    @endif
+                </div>
+            </div>
+
+            @unless ($tienda)
+                {{-- Sin la ficha, el unico camino es el archivo suelto, y
+                     Android avisa de "origen desconocido" al instalarlo. Mas
+                     vale decirlo antes que dejar a alguien a medias. --}}
+                <p class="mt-4 text-center text-xs text-fp-text-muted sm:text-left">
+                    Al instalar el archivo, Android te pedirá permiso para instalar apps de esta fuente.
+                </p>
+            @endunless
+        </section>
+    @endif
+
     <section id="planes">
         <div class="text-center" data-revelar>
             <h3 class="text-2xl font-bold text-fp-sidebar sm:text-3xl">Planes</h3>
