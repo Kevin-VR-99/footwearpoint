@@ -763,12 +763,12 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     <x-panel.encabezado titulo="Distribuidoras" class="mb-6">
             <p class="mt-1 text-sm text-fp-text-muted">Solicitudes, altas y estado de las tiendas</p>
         <x-slot:acciones>
-        @if (!$mostrandoFormularioCrear)
+            {{-- A22: ya no se esconde al abrir. Antes el formulario salia en
+                 la propia pagina y el boton sobraba; ahora es un modal. --}}
             <button type="button" wire:click="abrirFormularioCrear"
-                class="fp-btn fp-btn-primario">
+                aria-haspopup="dialog" class="fp-btn fp-btn-primario">
                 + Nueva distribuidora
             </button>
-        @endif
         </x-slot:acciones>
     </x-panel.encabezado>
 
@@ -793,122 +793,104 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     @endif
 
     @if ($mostrandoFormularioCrear)
-        <form wire:submit="crearDistribuidora"
-            class="fp-formulario fp-aparecer mb-6 p-5 space-y-4 max-w-3xl">
-            <h3 class="text-lg font-semibold text-fp-sidebar">Nueva distribuidora</h3>
+        {{-- TG-382 A22: antes esto era un formulario que se desplegaba encima
+             de la tabla y la empujaba hacia abajo. Ahora es un modal, con los
+             campos de x-ui.campo (etiqueta amarrada al control, error y borde
+             rojo sin reescribirlos trece veces) y en dos columnas. Las
+             validaciones no se tocan: son las mismas de crearDistribuidora(). --}}
+        <x-panel.modal titulo="Nueva distribuidora" cerrar="cancelarCrear"
+            formulario="crearDistribuidora" ancho="max-w-3xl" data-alta-distribuidora>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="fp-campo md:col-span-2">
-                    <label for="distribuidoras-index-nuevo-nombre-comercial" class="block text-sm font-medium mb-1 text-slate-700">Nombre comercial *</label>
-                    <input id="distribuidoras-index-nuevo-nombre-comercial" type="text" wire:model.live.debounce.400ms="nuevo_nombre_comercial"
-                        class="w-full rounded-lg text-sm">
-                    @error('nuevo_nombre_comercial')
-                        <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div class="fp-campo">
-                    <label for="distribuidoras-index-nuevo-razon-social" class="block text-sm font-medium mb-1 text-slate-700">Razón social</label>
-                    <input id="distribuidoras-index-nuevo-razon-social" type="text" wire:model="nuevo_razon_social"
-                        class="w-full rounded-lg text-sm">
-                </div>
-                <div class="fp-campo">
-                    <label for="distribuidoras-index-nuevo-rfc" class="block text-sm font-medium mb-1 text-slate-700">RFC</label>
-                    <input id="distribuidoras-index-nuevo-rfc" type="text" wire:model="nuevo_rfc" class="w-full rounded-lg text-sm">
-                    @error('nuevo_rfc')
-                        <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div class="fp-campo">
-                    <label for="distribuidoras-index-nuevo-slug" class="block text-sm font-medium mb-1 text-slate-700">Slug * (URL interna)</label>
-                    <input id="distribuidoras-index-nuevo-slug" type="text" wire:model="nuevo_slug" class="w-full rounded-lg text-sm">
-                    @error('nuevo_slug')
-                        <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div class="fp-campo">
-                    <label for="distribuidoras-index-nuevo-subdominio" class="block text-sm font-medium mb-1 text-slate-700">Subdominio</label>
-                    <input id="distribuidoras-index-nuevo-subdominio" type="text" wire:model="nuevo_subdominio"
-                        class="w-full rounded-lg text-sm" placeholder="calzados-ejemplo">
-                    @error('nuevo_subdominio')
-                        <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div class="fp-campo">
-                    <label for="distribuidoras-index-nuevo-email-publico" class="block text-sm font-medium mb-1 text-slate-700">Email público</label>
-                    <input id="distribuidoras-index-nuevo-email-publico" type="email" wire:model="nuevo_email_publico"
-                        class="w-full rounded-lg text-sm">
-                </div>
-                <div class="fp-campo">
-                    <label for="distribuidoras-index-nuevo-telefono-publico" class="block text-sm font-medium mb-1 text-slate-700">Teléfono público</label>
-                    <input id="distribuidoras-index-nuevo-telefono-publico" type="text" wire:model="nuevo_telefono_publico"
-                        class="w-full rounded-lg text-sm">
-                </div>
-                <div class="fp-campo md:col-span-2">
-                    <label for="distribuidoras-index-nuevo-direccion-publica" class="block text-sm font-medium mb-1 text-slate-700">Dirección pública</label>
-                    <input id="distribuidoras-index-nuevo-direccion-publica" type="text" wire:model="nuevo_direccion_publica"
-                        class="w-full rounded-lg text-sm">
-                </div>
-                <div class="fp-campo md:col-span-2">
-                    <label for="distribuidoras-index-nuevo-descripcion-publica" class="block text-sm font-medium mb-1 text-slate-700">Descripción pública</label>
-                    <textarea id="distribuidoras-index-nuevo-descripcion-publica" wire:model="nuevo_descripcion_publica" rows="2" class="w-full rounded-lg text-sm"></textarea>
-                </div>
-                <div class="fp-campo md:col-span-2">
-                    <label for="distribuidoras-index-nuevo-horario-publico" class="block text-sm font-medium mb-1 text-slate-700">Horario público</label>
-                    <input id="distribuidoras-index-nuevo-horario-publico" type="text" wire:model="nuevo_horario_publico"
-                        class="w-full rounded-lg text-sm" placeholder="Lunes a sábado 9:00–19:00">
-                </div>
+            <div class="grid grid-cols-1 gap-fp-bloque md:grid-cols-2">
+                <x-ui.campo etiqueta="Nombre comercial" para="distribuidoras-index-nuevo-nombre-comercial"
+                    error="nuevo_nombre_comercial" requerido class="md:col-span-2">
+                    <x-ui.entrada id="distribuidoras-index-nuevo-nombre-comercial"
+                        wire:model.live.debounce.400ms="nuevo_nombre_comercial" />
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Razón social" para="distribuidoras-index-nuevo-razon-social" error="nuevo_razon_social">
+                    <x-ui.entrada id="distribuidoras-index-nuevo-razon-social" wire:model="nuevo_razon_social" />
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="RFC" para="distribuidoras-index-nuevo-rfc" error="nuevo_rfc">
+                    <x-ui.entrada id="distribuidoras-index-nuevo-rfc" wire:model="nuevo_rfc" class="uppercase" />
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Slug" para="distribuidoras-index-nuevo-slug" error="nuevo_slug"
+                    requerido ayuda="Es la URL interna de la tienda.">
+                    <x-ui.entrada id="distribuidoras-index-nuevo-slug" wire:model="nuevo_slug" />
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Subdominio" para="distribuidoras-index-nuevo-subdominio" error="nuevo_subdominio">
+                    <x-ui.entrada id="distribuidoras-index-nuevo-subdominio" wire:model="nuevo_subdominio"
+                        placeholder="calzados-ejemplo" />
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Email público" para="distribuidoras-index-nuevo-email-publico" error="nuevo_email_publico">
+                    <x-ui.entrada tipo="email" id="distribuidoras-index-nuevo-email-publico" wire:model="nuevo_email_publico" />
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Teléfono público" para="distribuidoras-index-nuevo-telefono-publico" error="nuevo_telefono_publico">
+                    <x-ui.entrada tipo="tel" id="distribuidoras-index-nuevo-telefono-publico" wire:model="nuevo_telefono_publico" />
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Dirección pública" para="distribuidoras-index-nuevo-direccion-publica"
+                    error="nuevo_direccion_publica" class="md:col-span-2">
+                    <x-ui.entrada id="distribuidoras-index-nuevo-direccion-publica" wire:model="nuevo_direccion_publica" />
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Descripción pública" para="distribuidoras-index-nuevo-descripcion-publica"
+                    error="nuevo_descripcion_publica" class="md:col-span-2">
+                    <textarea id="distribuidoras-index-nuevo-descripcion-publica"
+                        wire:model="nuevo_descripcion_publica" rows="2" class="fp-control w-full"></textarea>
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Horario público" para="distribuidoras-index-nuevo-horario-publico"
+                    error="nuevo_horario_publico" class="md:col-span-2">
+                    <x-ui.entrada id="distribuidoras-index-nuevo-horario-publico" wire:model="nuevo_horario_publico"
+                        placeholder="Lunes a sábado 9:00–19:00" />
+                </x-ui.campo>
             </div>
 
-            <div class="flex flex-wrap gap-4 text-sm">
-                <label class="flex items-center gap-2">
+            <div class="mt-4 flex flex-wrap gap-4 text-sm">
+                <label class="flex cursor-pointer items-center gap-2">
                     <input type="checkbox" wire:model="nuevo_activar_ya" class="rounded">
                     Activar de inmediato (si no, queda pendiente)
                 </label>
-                <label class="flex items-center gap-2">
+                <label class="flex cursor-pointer items-center gap-2">
                     <input type="checkbox" wire:model="nuevo_marketplace_visible" class="rounded">
                     Visible en marketplace
                 </label>
             </div>
 
-            <div class="border-t pt-4">
-                <h4 class="text-sm font-semibold text-slate-700 mb-2">Administrador de la tienda</h4>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="fp-campo">
-                        <label for="distribuidoras-index-admin-nombre" class="block text-sm font-medium mb-1 text-slate-700">Nombre *</label>
-                        <input id="distribuidoras-index-admin-nombre" type="text" wire:model="admin_nombre"
-                            class="w-full rounded-lg text-sm">
-                        @error('admin_nombre')
-                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div class="fp-campo">
-                        <label for="distribuidoras-index-admin-email" class="block text-sm font-medium mb-1 text-slate-700">Email login *</label>
-                        <input id="distribuidoras-index-admin-email" type="email" wire:model="admin_email"
-                            class="w-full rounded-lg text-sm">
-                        @error('admin_email')
-                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div class="fp-campo">
-                        <label for="distribuidoras-index-admin-password" class="block text-sm font-medium mb-1 text-slate-700">Contraseña * (mínimo 8, con letras y números)</label>
-                        <input id="distribuidoras-index-admin-password" type="password" wire:model="admin_password"
-                            class="w-full rounded-lg text-sm">
-                        @error('admin_password')
-                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
-                        @enderror
-                    </div>
+            <div class="mt-4 border-t border-slate-200 pt-4">
+                <h4 class="mb-2 text-sm font-semibold text-slate-700">Administrador de la tienda</h4>
+
+                <div class="grid grid-cols-1 gap-fp-bloque md:grid-cols-3">
+                    <x-ui.campo etiqueta="Nombre" para="distribuidoras-index-admin-nombre" error="admin_nombre" requerido>
+                        <x-ui.entrada id="distribuidoras-index-admin-nombre" wire:model="admin_nombre" />
+                    </x-ui.campo>
+
+                    <x-ui.campo etiqueta="Email login" para="distribuidoras-index-admin-email" error="admin_email" requerido>
+                        <x-ui.entrada tipo="email" id="distribuidoras-index-admin-email" wire:model="admin_email" />
+                    </x-ui.campo>
+
+                    <x-ui.campo etiqueta="Contraseña" para="distribuidoras-index-admin-password" error="admin_password"
+                        requerido ayuda="Mínimo 8, con letras y números.">
+                        <x-ui.entrada tipo="password" id="distribuidoras-index-admin-password" wire:model="admin_password" />
+                    </x-ui.campo>
                 </div>
             </div>
 
-            <div class="flex gap-2">
-                <button type="submit" class="fp-btn fp-btn-primario">
-                    Crear distribuidora
+            <x-slot:pie>
+                <button type="button" wire:click="cancelarCrear" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button class="fp-btn fp-btn-primario"
+                    wire:loading.attr="disabled" wire:target="crearDistribuidora">
+                    <span wire:loading.remove wire:target="crearDistribuidora">Crear distribuidora</span>
+                    <span wire:loading wire:target="crearDistribuidora">Creando…</span>
                 </button>
-                <button type="button" wire:click="cancelarCrear" class="fp-btn fp-btn-fantasma">
-                    Cancelar
-                </button>
-            </div>
-        </form>
+            </x-slot:pie>
+        </x-panel.modal>
     @endif
 
     @if ($mostrarSuscripcion)
