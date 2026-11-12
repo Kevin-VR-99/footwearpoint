@@ -29,7 +29,7 @@
      * si el recorte que propuso la IA sirve: a ese tamaño no se nota que al
      * zapato le falta la punta. Donde se valida calidad se abre grande.
      */
-    $anchoModal = $modal === 'grande' ? 'max-w-2xl' : 'max-w-[360px]';
+    $anchoModal = $modal === 'grande' ? 'max-w-5xl' : 'max-w-[360px]';
 @endphp
 
 @if (filled($url))
@@ -55,7 +55,14 @@
                         aria-label="Cerrar foto">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
-                    <img src="{{ $url }}" alt="{{ $alt }}" class="aspect-square w-full rounded-xl bg-fp-page object-contain" loading="lazy">
+                    {{-- A16: en grande NO se fuerza el cuadrado. Las fotos de
+                         catalogo son apaisadas, y metidas en un cuadro dejaban
+                         dos franjas grises enormes arriba y abajo mientras el
+                         zapato se quedaba chico en medio. Sin el cuadro usa
+                         todo el ancho; el max-h evita que una foto muy alta se
+                         salga de la pantalla. --}}
+                    <img src="{{ $url }}" alt="{{ $alt }}" loading="lazy"
+                        class="w-full rounded-xl bg-fp-page object-contain {{ $modal === 'grande' ? 'max-h-[75vh]' : 'aspect-square' }}">
                     <p class="mt-2 truncate px-1 text-center text-sm font-medium text-fp-sidebar">{{ $alt }}</p>
                 </div>
             </div>
