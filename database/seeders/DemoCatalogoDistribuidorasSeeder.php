@@ -10,7 +10,7 @@ use App\Models\ProductoDestacado;
 use App\Models\StockLocal;
 use App\Models\Sucursal;
 use App\Services\Distribuidora\ActivarLineaDistribuidoraAction;
-use App\Services\Distribuidora\FijarDescuentoMayoristaAction;
+use App\Services\Distribuidora\FijarDescuentoLineaAction;
 use App\Services\Distribuidora\GestionarOfertaDistribuidoraAction;
 use App\Support\Tenant;
 use Database\Seeders\Support\DemoEnProduccion;
@@ -89,7 +89,9 @@ class DemoCatalogoDistribuidorasSeeder extends Seeder
                 $lineas[] = $linea;
             }
 
-            app(FijarDescuentoMayoristaAction::class)->ejecutar($descuento);
+            foreach ($lineas as $linea) {
+                app(FijarDescuentoLineaAction::class)->ejecutar($linea->id, $descuento);
+            }
 
             foreach ($preciosPropios as $modelo => $precio) {
                 $ofertas->ponerPrecioMayorista($this->productoCampana($modelo)->id, $precio);

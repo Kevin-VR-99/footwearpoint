@@ -5,6 +5,7 @@ namespace App\Services\Suscripcion;
 use App\Models\Distribuidora;
 use App\Models\Pago;
 use App\Models\Suscripcion;
+use App\Services\Suscripcion\CalendarioVencimiento;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Distribuidora\CupoLineasDistribuidora;
 use App\Services\MercadoPago\ClienteMercadoPago;
@@ -27,7 +28,7 @@ use Illuminate\Support\Facades\Route;
  * cuando Mercado Pago confirma (aviso de G9, regreso o "verificar").
  *
  * Reglas:
- *   - la distribuidora debe estar activa;
+ *   - la distribuidora debe estar activa, o suspendida solo por falta de pago;
  *   - se paga la suscripción activa, vencida o pendiente de su primer pago
  *     (TG-220) más reciente;
  *   - un mes a la vez y como máximo un mes por adelantado (fecha_fin ≤ hoy + 1 mes);
@@ -131,7 +132,7 @@ class CrearPagoSuscripcionMercadoPagoAction
     /** Por qué todavía no se puede pagar la mensualidad, o null si sí. */
     public static function motivoParaNoCobrar(Distribuidora $distribuidora, ?Suscripcion $suscripcion): ?string
     {
-        if ($distribuidora->estado !== 'activa') {
+        if ($distribuidora->estado !== 'activa' && ! $distribuidora->suspendidaPorFaltaDePago()) {
             return MercadoPagoException::DISTRIBUIDORA_NO_ACTIVA;
         }
 
@@ -168,16 +169,21 @@ class CrearPagoSuscripcionMercadoPagoAction
     }
 
     /**
-     * El periodo que queda pagado: un mes desde que termina el actual, o
-     * desde hoy si ya venció o si es el primer pago (TG-220).
+     * El periodo que queda pagado.
+     *
+     * Vigente o dentro de los 5 días de gracia: un mes desde la fecha_fin
+     * anterior. Después del día 5, o en el primer pago: un mes desde hoy.
+     * Si el mes siguiente es más corto, se usa el último día de ese mes.
      *
      * @return array{desde: Carbon, hasta: Carbon}
      */
     public static function periodoAlPagar(Suscripcion $suscripcion): array
     {
         $fin = $suscripcion->fecha_fin?->copy()->startOfDay();
-        $vigente = $suscripcion->estado === 'activa' && $fin !== null && $fin->gte(today());
-        $desde = $vigente ? $fin : today();
+        $hoy = today()->startOfDay();
+        $desde = $fin !== null && CalendarioVencimiento::diasDesde($fin, $hoy) <= CalendarioVencimiento::DIAS_GRACIA
+            ? $fin
+            : $hoy;
 
         return ['desde' => $desde, 'hasta' => $desde->copy()->addMonthNoOverflow()];
     }
@@ -299,7 +305,7 @@ class CrearPagoSuscripcionMercadoPagoAction
 
         // De regreso, a la misma pestaña (ahí se confirma el pago). El primer
         // pago (TG-220) regresa a la pantalla de pago inicial.
-        $retorno = $pago->suscripcion?->estado === Suscripcion::PENDIENTE_PAGO
+        $retorno = $pago->suscripcion?->estado === Suscripcion::PENDIENTE_PAGO || $distribuidora->suspendidaPorFaltaDePago()
             ? route('distribuidora.pago-inicial')
             : route('distribuidora.configuracion', ['pestana' => 'suscripcion']);
         if (str_starts_with($retorno, 'https://')) {

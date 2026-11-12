@@ -18,7 +18,6 @@ class RevendedorDistribuidora extends Model
         'estado',
         'fecha_alta',
         'notas',
-        'comision_porcentaje',
     ];
 
     protected $casts = [

@@ -538,14 +538,17 @@ class SuscripcionCheckoutProTest extends TestCase
     // 4. Suscripción vencida o cancelada
     // ---------------------------------------------------------------
 
-    public function test_una_suscripcion_vencida_se_reactiva_por_un_mes_desde_hoy(): void
+    public function test_una_suscripcion_en_gracia_se_renueva_desde_la_fecha_de_fin(): void
     {
-        $this->suscripcion()->update(['estado' => 'vencida', 'fecha_fin' => today()->subDays(5)->toDateString()]);
+        // El día 5 de gracia todavía conserva la fecha de vencimiento anterior.
+        $fin = today()->subDays(5)->startOfDay();
+        $nueva = $fin->copy()->addMonthNoOverflow();
+        $this->suscripcion()->update(['estado' => 'vencida', 'fecha_fin' => $fin->toDateString()]);
 
         $this->como(self::ADMIN);
         Livewire::test('distribuidora.suscripcion')
             ->assertSee('Vencida')
-            ->assertSet('pagadoHastaAlPagar', today()->addMonthNoOverflow()->format('d/m/Y'));
+            ->assertSet('pagadoHastaAlPagar', $nueva->format('d/m/Y'));
 
         $pago = $this->pagar();
         $this->enMercadoPago($this->aprobado($pago));
@@ -553,7 +556,7 @@ class SuscripcionCheckoutProTest extends TestCase
 
         $suscripcion = $this->suscripcion();
         $this->assertSame('activa', $suscripcion->estado);
-        $this->assertSame(today()->addMonthNoOverflow()->toDateString(), $suscripcion->fecha_fin->toDateString());
+        $this->assertSame($nueva->toDateString(), $suscripcion->fecha_fin->toDateString());
     }
 
     public function test_si_la_suscripcion_se_cancelo_antes_de_confirmarse_el_pago_se_registra_sin_renovar(): void

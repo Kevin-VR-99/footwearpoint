@@ -33,7 +33,6 @@ class ConfiguracionDistribuidora extends Model
 
     protected $fillable = [
         'distribuidora_id',
-        'comision_porcentaje_default',
         'anticipo_por_producto',
         'dias_solicitud_cambio',
         'dias_gestion_devolucion',
@@ -48,6 +47,9 @@ class ConfiguracionDistribuidora extends Model
         'mp_token_expira_en',
         'mp_aviso_reconexion_at',
         'stock_minimo_general',
+        'banco',
+        'clabe',
+        'titular_cuenta',
     ];
 
     /**

@@ -97,7 +97,10 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // TG-220: las acciones de Livewire también respetan el cobro inicial.
-        \Livewire\Livewire::addPersistentMiddleware([\App\Http\Middleware\CobroInicialPendiente::class]);
+        \Livewire\Livewire::addPersistentMiddleware([
+            \App\Http\Middleware\CobroInicialPendiente::class,
+            \App\Http\Middleware\SoloPagoPorFaltaDePago::class,
+        ]);
 
         $appUrl = rtrim((string) config('app.url'), '/');
 

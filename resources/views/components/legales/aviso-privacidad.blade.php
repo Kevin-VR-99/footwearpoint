@@ -91,12 +91,12 @@
     <p>Según cómo uses la plataforma, se tratan estos datos:</p>
     <ul class="list-disc pl-5 space-y-1">
         <li><strong>Cualquier cuenta:</strong> nombre, correo electrónico, teléfono, contraseña (solo se guarda cifrada, con un algoritmo de un solo sentido), rol, permisos, estado de la cuenta y foto de perfil opcional, que puedes subir desde el panel o desde la app.</li>
-        <li><strong>Distribuidoras:</strong> nombre comercial, razón social, RFC, teléfono (y si es de WhatsApp), correo, dirección y horario públicos, logotipo, sucursales con su dirección y teléfono, el plan contratado y la cuenta de Mercado Pago que conectan.</li>
+        <li><strong>Distribuidoras:</strong> nombre comercial, razón social, RFC, teléfono (y si es de WhatsApp), correo, dirección y horario públicos, logotipo, sucursales con su dirección y teléfono, el plan contratado, la cuenta de Mercado Pago que conectan y, si aceptan transferencias, el banco, la CLABE y el titular de su cuenta.</li>
         <li><strong>Personal de la distribuidora:</strong> nombre, correo, teléfono, dirección, foto, puesto y permisos dentro del panel.</li>
         <li><strong>Clientes mayoristas:</strong> nombre, correo, teléfono, foto, número de cliente y las distribuidoras con las que trabajan. En la app pueden anotar el nombre y el teléfono de sus propios clientes, con lo que les venden, para organizar sus pedidos.</li>
         <li><strong>Clientes directos:</strong> nombre, correo, teléfono, foto, dirección de contacto y las notas que la distribuidora agregue.</li>
-        <li><strong>Operación:</strong> pedidos, anticipos, saldos, pagos, vales, cambios y devoluciones, entregas y recolección en sucursal, ventas registradas en la sucursal, y las metas y comisiones que la distribuidora asigna a sus clientes mayoristas.</li>
-        <li><strong>Pagos:</strong> los pagos en línea se hacen en <strong>Mercado Pago</strong>. FootwearPoint <strong>no recibe ni guarda</strong> números de tarjeta ni datos bancarios; solo recibe el resultado del pago: identificador, monto, estado y fecha.</li>
+        <li><strong>Operación:</strong> pedidos, anticipos, saldos, pagos, vales, cambios y devoluciones, entregas y recolección en sucursal, y ventas registradas en la sucursal.</li>
+        <li><strong>Pagos:</strong> los pagos en línea se hacen en <strong>Mercado Pago</strong>. FootwearPoint <strong>no recibe ni guarda</strong> números de tarjeta; solo recibe el resultado del pago: identificador, monto, estado y fecha. Si pagas un pedido por transferencia, se guarda el <strong>comprobante</strong> que subes (la imagen o el archivo, su nombre y quién lo subió), que solo pueden ver tú y la distribuidora de ese pedido.</li>
         <li><strong>Datos técnicos:</strong> el identificador de tu celular para enviarte notificaciones push; la dirección IP y el navegador de tu sesión en el sitio web; la dirección IP, la fecha y la versión con que aceptaste estos documentos; la bitácora de acciones del panel (quién hizo qué, cuándo y desde qué IP), y el registro de actividad (punto 4).</li>
     </ul>
     <p>
@@ -109,11 +109,12 @@
     <ul class="list-disc pl-5 space-y-1">
         <li><strong>Cuentas:</strong> crear, verificar y administrar tu cuenta, iniciar sesión, cambiar o recuperar tu contraseña y confirmar cambios de correo o teléfono.</li>
         <li><strong>Pedidos:</strong> registrar pedidos de calzado y darles seguimiento hasta la entrega o la recolección en sucursal, y llevar anticipos, saldos, vales, cambios y devoluciones.</li>
-        <li><strong>Pagos:</strong> cobrar anticipos, saldos y la suscripción de las distribuidoras por medio de Mercado Pago, y conciliar los pagos.</li>
+        <li><strong>Pagos:</strong> cobrar anticipos, saldos y la suscripción de las distribuidoras por medio de Mercado Pago, y conciliar los pagos. Para los pagos por transferencia, mostrar a quien debe pagar un pedido el banco, la CLABE y el titular de su distribuidora, y guardar el comprobante para que ella lo revise. El dinero va directo de tu banco al de la distribuidora: FootwearPoint no lo recibe ni lo custodia.</li>
         <li><strong>Catálogo:</strong> publicar los productos de cada distribuidora, con sus fotos, precios y tallas, en el panel, la app y su tienda pública.</li>
         <li><strong>App móvil:</strong> mostrarte tu catálogo, tus pedidos y tus vales, y enviarte avisos por notificación push, por la bandeja de la app y por correo.</li>
         <li><strong>Soporte:</strong> atender dudas, aclaraciones y solicitudes como las de derechos ARCO.</li>
         <li><strong>Seguridad y auditoría:</strong> llevar la bitácora de acciones y el registro de actividad, limitar los intentos de acceso y prevenir el uso indebido de la plataforma.</li>
+        <li><strong>Obligaciones legales:</strong> cumplir las que apliquen y atender requerimientos de autoridades competentes.</li>
     </ul>
     <p>
         <strong>Finalidades secundarias:</strong> hoy FootwearPoint <strong>no</strong> usa tus datos para
@@ -163,7 +164,7 @@
         datos por cuenta nuestra (encargados), y que algunas veces lo hacen fuera de México:
     </p>
     <ul class="list-disc pl-5 space-y-1">
-        <li><strong>Railway:</strong> servidores y base de datos de la plataforma.</li>
+        <li><strong>Railway:</strong> servidores y base de datos de la plataforma, donde también se guardan los comprobantes de transferencia.</li>
         <li><strong>Cloudflare R2:</strong> almacenamiento de fotos, logotipos, catálogos, exportaciones y respaldos.</li>
         <li><strong>Google:</strong> envío de correos del sistema (Gmail) y de notificaciones push (Firebase Cloud Messaging), que recibe el identificador de tu celular y el texto del aviso.</li>
         <li><strong>Anthropic:</strong> lectura con inteligencia artificial de los catálogos de fábrica para importar productos. Solo recibe el catálogo y las fotos de los productos, no datos de personas.</li>

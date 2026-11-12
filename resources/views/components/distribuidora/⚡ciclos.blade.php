@@ -36,6 +36,7 @@ new class extends Component {
 
     public function abrirFormularioCrearCiclo(): void
     {
+        $this->exigirAdmin();
         $this->cicloEditandoId = null;
         $this->ciclo_dia_cierre = 5;
         $this->ciclo_hora_cierre = '18:00';
@@ -48,6 +49,7 @@ new class extends Component {
 
     public function abrirFormularioEditarCiclo(int $id): void
     {
+        $this->exigirAdmin();
         $ciclo = ConfiguracionCiclo::with('diasRecepcion')->findOrFail($id);
         $this->cicloEditandoId = $ciclo->id;
         $this->ciclo_dia_cierre = $ciclo->dia_cierre;
@@ -67,6 +69,7 @@ new class extends Component {
 
     public function guardarCiclo(): void
     {
+        $this->exigirAdmin();
         $datos = $this->validate([
             'ciclo_dia_cierre' => ['required', 'integer', 'between:1,7'],
             'ciclo_hora_cierre' => ['required', 'date_format:H:i'],
@@ -97,6 +100,14 @@ new class extends Component {
         $this->cicloEditandoId = null;
         $this->cargarCiclos();
         $this->dispatch('guardado', mensaje: 'Configuración de ciclo guardada correctamente.');
+    }
+
+    private function exigirAdmin(): void
+    {
+        $usuario = auth()->user();
+        abort_if($usuario === null || \App\Support\Tenant::id() === null, 403);
+        app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId(\App\Support\Tenant::id());
+        abort_unless($usuario->hasRole('admin_distribuidora'), 403);
     }
 };
 ?>

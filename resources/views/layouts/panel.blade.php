@@ -31,11 +31,12 @@
 <body class="min-h-screen bg-fp-page text-slate-800 antialiased" x-data="{
     sidebarOpen: false,
     openCatalogo: {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'true' : 'false' }},
-    openOperacion: {{ request()->routeIs('stock.*', 'punto-venta.*', 'ciclo.*', 'pedidos.*', 'vales.*', 'compras.*', 'cambios.*', 'reportes.*', 'ventas.*', 'caja.*', 'conteos.*', 'clientes.historial*', 'comisiones.*') ? 'true' : 'false' }},
+    openOperacion: {{ request()->routeIs('stock.*', 'punto-venta.*', 'ciclo.*', 'pedidos.*', 'vales.*', 'compras.*', 'cambios.*', 'reportes.*', 'ventas.*', 'caja.*', 'conteos.*', 'clientes.historial*') ? 'true' : 'false' }},
     openMas: {{ request()->routeIs('auditoria.*') ? 'true' : 'false' }},
     openSistema: {{ request()->routeIs('distribuidora.configuracion', 'distribuidora.perfil', 'distribuidora.empleados', 'distribuidora.mayoristas', 'distribuidora.clientes-directos') ? 'true' : 'false' }},
 }"
     @keydown.escape.window="sidebarOpen = false">
+    <x-ui.saltar-al-contenido />
     @php
         $esAdminDistribuidora = false;
         $puedeConfiguracion = false;
@@ -308,7 +309,18 @@
                 </div>
             </header>
 
-            <main class="fp-contenido flex-1 p-4 sm:p-6 overflow-auto">
+            <main id="contenido" tabindex="-1" class="fp-contenido flex-1 p-4 sm:p-6 overflow-auto">
+                @php($avisoGracia = app(\App\Services\Suscripcion\AvisoGraciaSuscripcion::class)->actual())
+                @if ($avisoGracia)
+                    <div class="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="status" data-aviso-gracia>
+                        <p>{{ $avisoGracia['texto'] }}</p>
+                        @if ($esAdminDistribuidora)
+                            <a href="{{ $avisoGracia['url'] }}" wire:navigate class="mt-1 inline-block font-semibold underline">Pagar mensualidad</a>
+                        @else
+                            <p class="mt-1">El administrador de tu distribuidora puede pagarla en Configuración.</p>
+                        @endif
+                    </div>
+                @endif
                 {{ $slot }}
             </main>
         </div>

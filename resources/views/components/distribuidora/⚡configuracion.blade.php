@@ -7,8 +7,7 @@ use Livewire\Component;
 new #[Layout('layouts.panel')] class extends Component {
     public const PESTANAS = [
         'general' => 'Anticipos y plazos',
-        'ciclos' => 'Ciclos de compra',
-        'mercado-pago' => 'Mercado Pago',
+        'mercado-pago' => 'Métodos de pago',
         // TG-230 (G11): pago de la mensualidad con Mercado Pago.
         'suscripcion' => 'Suscripción',
     ];
@@ -42,7 +41,7 @@ new #[Layout('layouts.panel')] class extends Component {
 <div class="mx-auto max-w-5xl">
     {{-- Encabezado minimalista --}}
     <x-panel.encabezado eyebrow="Administración" titulo="Configuración" nivel="h1"
-        subtitulo="Anticipos, ciclos, Mercado Pago y suscripción." class="mb-6">
+        subtitulo="Anticipos, métodos de pago y suscripción." class="mb-6">
         <x-slot:acciones>
         <span class="inline-flex items-center gap-1.5 self-start rounded-full border border-fp-danger/20 bg-fp-danger-soft px-2.5 py-1 text-[11px] font-medium text-fp-badge-danger-fg">
             <span class="h-1.5 w-1.5 rounded-full bg-fp-danger"></span>
@@ -64,7 +63,6 @@ new #[Layout('layouts.panel')] class extends Component {
     @php
         $iconos = [
         'general' => 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4',
-        'ciclos' => 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
         'suscripcion' => 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
     ];
     @endphp
@@ -93,10 +91,11 @@ new #[Layout('layouts.panel')] class extends Component {
     <div class="fp-tarjeta fp-aparecer p-4 sm:p-6" wire:key="panel-config-{{ $pestanaActiva }}">
         @if ($pestanaActiva === 'general')
             <livewire:distribuidora.general :key="'config-general'" />
-        @elseif ($pestanaActiva === 'ciclos')
-            <livewire:distribuidora.ciclos :key="'config-ciclos'" />
         @elseif ($pestanaActiva === 'mercado-pago')
-            <livewire:distribuidora.mercado-pago :key="'config-mercado-pago'" />
+            <livewire:distribuidora.datos-bancarios :key="'config-datos-bancarios'" />
+            <div class="mt-8">
+                <livewire:distribuidora.mercado-pago :key="'config-mercado-pago'" />
+            </div>
         @elseif ($pestanaActiva === 'suscripcion')
             <livewire:distribuidora.suscripcion :key="'config-suscripcion'" />
         @endif

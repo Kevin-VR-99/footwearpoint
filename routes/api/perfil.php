@@ -24,4 +24,5 @@ Route::prefix('perfil')->middleware('auth:sanctum')->group(function () {
     // Cambiar correo o teléfono: solo se aplica al abrir el enlace del correo.
     Route::post('/correo', [PerfilUsuarioController::class, 'cambiarCorreo'])->middleware('throttle:6,1');
     Route::post('/telefono', [PerfilUsuarioController::class, 'cambiarTelefono'])->middleware('throttle:6,1');
+    Route::post('/recapturar-telefono', [PerfilUsuarioController::class, 'recapturarTelefono'])->middleware('throttle:6,1');
 });

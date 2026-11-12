@@ -146,6 +146,9 @@ require __DIR__.'/web/funciones.php';
 */
 
 Route::middleware(['auth', 'tenant.team'])->group(function () {
+    Route::livewire('/telefono/recapturar', 'auth.recapturar-telefono')
+        ->name('telefono.recapturar');
+
     Route::post('/logout', function () {
         // Solo este dispositivo: Auth::logout() cambia el remember_token y
         // sacaria al usuario de todos sus otros navegadores.
@@ -228,6 +231,10 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
     Route::livewire('/pedidos/{id}', 'pedidos.show')
         ->whereNumber('id')
         ->name('pedidos.show');
+
+    Route::get('/pedidos/{id}/comprobante-transferencia', [\App\Http\Controllers\Pedido\ComprobanteTransferenciaController::class, 'ver'])
+        ->whereNumber('id')
+        ->name('pedidos.comprobante-transferencia');
 
     // Paquete E
     Route::livewire('/vales', 'vales.index')

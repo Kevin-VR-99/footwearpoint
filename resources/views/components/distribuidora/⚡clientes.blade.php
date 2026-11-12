@@ -518,6 +518,7 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                     <div class="fp-campo">
                         <label for="clientes-cliente-telefono" class="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
                         <input id="clientes-cliente-telefono" type="text" wire:model="cliente_telefono" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                        <p class="mt-1 text-xs text-slate-500">10 dígitos. Si ya existe en esta distribuidora, no se guarda otro.</p>
                     </div>
                     <div class="fp-campo">
                         <label for="clientes-cliente-email" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>

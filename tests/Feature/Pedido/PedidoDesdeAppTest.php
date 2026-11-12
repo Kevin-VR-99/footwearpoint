@@ -2,9 +2,10 @@
 
 namespace Tests\Feature\Pedido;
 
+use App\Models\Campana;
 use App\Models\ClienteDirecto;
-use App\Models\ConfiguracionDistribuidora;
 use App\Models\DisponibilidadVarianteCampana;
+use App\Models\DistribuidoraLinea;
 use App\Models\Distribuidora;
 use App\Models\Pedido;
 use App\Models\ProductoCampana;
@@ -67,7 +68,7 @@ class PedidoDesdeAppTest extends TestCase
 
     /**
      * Una variante que se puede pedir. Para que menudeo y mayoreo salgan
-     * distintos, la distribuidora demo tiene un descuento de mayoreo (TG-212).
+     * distintos, la línea de esa variante tiene un descuento de mayoreo.
      */
     private function variantePedible(): DisponibilidadVarianteCampana
     {
@@ -81,9 +82,13 @@ class PedidoDesdeAppTest extends TestCase
 
         $this->assertNotNull($disponibilidad, 'El seeder demo no dejó ninguna variante que se pueda pedir.');
 
-        // Se fija directo en la base: esto corre antes de iniciar sesión.
-        ConfiguracionDistribuidora::withoutGlobalScopes()
+        $lineaId = (int) Campana::withoutGlobalScopes()
+            ->whereKey(ProductoCampana::withoutGlobalScopes()->whereKey($disponibilidad->producto_campana_id)->value('campana_id'))
+            ->value('linea_id');
+
+        DistribuidoraLinea::withoutGlobalScopes()
             ->where('distribuidora_id', Distribuidora::where('slug', 'calzados-ramirez')->value('id'))
+            ->where('linea_id', $lineaId)
             ->update(['descuento_mayorista_pct' => 25]);
 
         return $disponibilidad;

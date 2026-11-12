@@ -83,6 +83,9 @@ class AuthProvider extends ChangeNotifier {
   /// cambiarla antes de poder usar la app.
   bool _debeCambiarPassword = false;
 
+  /// El teléfono se vació porque estaba repetido en la distribuidora.
+  bool _debeRecapturarTelefono = false;
+
   /// TG-189 (A11): mientras no confirme su correo no puede enviar pedidos ni
   /// pagar. No se le saca de la app: solo se le avisa y se le ofrece pedir
   /// otro enlace.
@@ -113,6 +116,7 @@ class AuthProvider extends ChangeNotifier {
   int? get distribuidoraId => _distribuidoraId;
   bool get legalesAceptados => _legalesAceptados;
   bool get debeCambiarPassword => _debeCambiarPassword;
+  bool get debeRecapturarTelefono => _debeRecapturarTelefono;
   bool get emailVerificado => _emailVerificado;
 
   /// TG-281: el nombre de la distribuidora, para enseñarlo en Mi perfil.
@@ -372,6 +376,7 @@ class AuthProvider extends ChangeNotifier {
     final legalesAceptados = datos['legales_aceptados'] as bool? ?? false;
     // Si el servidor no manda la llave (versión vieja), se asume que no.
     final debeCambiar = datos['debe_cambiar_password'] as bool? ?? false;
+    final debeRecapturar = datos['debe_recapturar_telefono'] as bool? ?? false;
     // Si el servidor no manda la llave (version vieja), se asume confirmado
     // para no inventarle un problema a nadie.
     final verificado = datos['email_verificado'] as bool? ?? true;
@@ -381,6 +386,7 @@ class AuthProvider extends ChangeNotifier {
     _distribuidoraId = distribuidoraId;
     _legalesAceptados = legalesAceptados;
     _debeCambiarPassword = debeCambiar;
+    _debeRecapturarTelefono = debeRecapturar;
     _emailVerificado = verificado;
     _distribuidoraNombre = datos['distribuidora'] as String?;
   }
@@ -392,6 +398,14 @@ class AuthProvider extends ChangeNotifier {
 
     _debeCambiarPassword = false;
     _corregirCopia('debe_cambiar_password', false);
+    notifyListeners();
+  }
+
+  void confirmarTelefonoRecapturado() {
+    if (!_debeRecapturarTelefono) return;
+
+    _debeRecapturarTelefono = false;
+    _corregirCopia('debe_recapturar_telefono', false);
     notifyListeners();
   }
 
@@ -451,6 +465,7 @@ class AuthProvider extends ChangeNotifier {
     _distribuidoraId = null;
     _legalesAceptados = false;
     _debeCambiarPassword = false;
+    _debeRecapturarTelefono = false;
     _emailVerificado = true;
     _distribuidoraNombre = null;
     _conDatosGuardados = false;

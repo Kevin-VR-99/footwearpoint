@@ -1,22 +1,28 @@
 <?php
 
+use App\Livewire\Concerns\AltaRapidaDeCliente;
 use App\Models\ClienteDirecto;
 use App\Models\RevendedorDistribuidora;
 use App\Models\Vale;
 use App\Services\Vale\EmitirValeAction;
+use App\Support\BusquedaDeCliente;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends Component
 {
+    use AltaRapidaDeCliente;
+    use WithFileUploads;
     use WithPagination;
 
     public string $propietario_tipo = 'cliente_directo';
     public string $propietario_id = '';
+    public string $busquedaMayorista = '';
     public string $monto_original = '';
     public string $motivo = '';
     public string $filtro_tipo = '';
@@ -63,7 +69,42 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
         return ClienteDirecto::query()
             ->where('estado', 'activo')
             ->orderBy('nombre')
-            ->get(['id', 'nombre']);
+            ->get(['id', 'nombre', 'telefono']);
+    }
+
+    public function getClientesFiltradosProperty()
+    {
+        return $this->clientes
+            ->filter(fn (ClienteDirecto $cliente) => BusquedaDeCliente::coincide($cliente->nombre, $cliente->telefono, $this->busquedaCliente))
+            ->values();
+    }
+
+    public function getRevendedoresFiltradosProperty()
+    {
+        return $this->revendedores
+            ->filter(function (RevendedorDistribuidora $afiliacion) {
+                return BusquedaDeCliente::coincide(
+                    $afiliacion->revendedor?->nombre,
+                    $afiliacion->revendedor?->telefono,
+                    $this->busquedaMayorista,
+                );
+            })
+            ->values();
+    }
+
+    public function updatedPropietarioTipo(): void
+    {
+        $this->propietario_id = '';
+        $this->busquedaCliente = '';
+        $this->busquedaMayorista = '';
+        $this->primeraCompra = 'no';
+        $this->avisoCliente = '';
+    }
+
+    protected function asignarClienteDirecto(int $id): void
+    {
+        $this->propietario_tipo = 'cliente_directo';
+        $this->propietario_id = (string) $id;
     }
 
     public function getRevendedoresProperty()
@@ -99,8 +140,9 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
             ]);
 
             $this->mensaje = "Vale {$vale->folio} emitido correctamente.";
-            $this->reset(['propietario_id', 'monto_original', 'motivo']);
+            $this->reset(['propietario_id', 'monto_original', 'motivo', 'busquedaCliente', 'busquedaMayorista', 'avisoCliente']);
             $this->propietario_tipo = 'cliente_directo';
+            $this->primeraCompra = 'no';
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'Datos inválidos.';
         } catch (\Throwable $e) {
@@ -142,27 +184,31 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 </select>
             </div>
 
-            <div class="fp-campo">
+            <div class="fp-campo" data-propietario-vale>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Propietario</label>
                 @if ($propietario_tipo === 'cliente_directo')
-                    <select wire:model="propietario_id" aria-label="Propietario del vale"
-                            class="w-full rounded-lg text-sm focus:ring-fp-primary">
-                        <option value="">— Seleccionar cliente —</option>
-                        @foreach ($this->clientes as $c)
-                            <option value="{{ $c->id }}">{{ $c->nombre }}</option>
-                        @endforeach
-                    </select>
+                    @include('cliente.selector-alta', [
+                        'seleccion' => 'propietario_id',
+                        'opciones' => $this->clientesFiltrados,
+                        'vacio' => '— Seleccionar cliente —',
+                        'etiqueta' => 'Propietario del vale',
+                    ])
                 @else
+                    <x-ui.buscador wire:model.live.debounce.400ms="busquedaMayorista"
+                        placeholder="Buscar por nombre o teléfono" etiqueta="Buscar cliente mayorista" />
                     <select wire:model="propietario_id" aria-label="Propietario del vale"
-                            class="w-full rounded-lg text-sm focus:ring-fp-primary">
+                            class="mt-2 w-full rounded-lg text-sm focus:ring-fp-primary">
                         <option value="">— Seleccionar cliente mayorista —</option>
-                        @foreach ($this->revendedores as $r)
+                        @foreach ($this->revendedoresFiltrados as $r)
                             <option value="{{ $r->id }}">
                                 {{ $r->revendedor?->nombre ?? 'Cliente mayorista #'.$r->id }}
                                 @if ($r->codigo_interno) ({{ $r->codigo_interno }}) @endif
                             </option>
                         @endforeach
                     </select>
+                    @if (trim($busquedaMayorista) !== '' && $this->revendedoresFiltrados->isEmpty())
+                        <p class="mt-1 text-xs text-slate-500">No hay clientes mayoristas que coincidan con la búsqueda.</p>
+                    @endif
                 @endif
                 @error('propietario_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
             </div>

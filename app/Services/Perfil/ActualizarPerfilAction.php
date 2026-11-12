@@ -2,8 +2,10 @@
 
 namespace App\Services\Perfil;
 
+use App\Models\ClienteDirecto;
 use App\Models\Revendedor;
 use App\Models\Usuario;
+use App\Support\TelefonoCliente;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -44,6 +46,13 @@ class ActualizarPerfilAction
                 ]);
             }
 
+            if ($contacto instanceof ClienteDirecto) {
+                $telefono = $this->telefonoDeCliente($contacto, $telefono);
+                if ($telefono !== null) {
+                    $datos['telefono_por_recapturar'] = false;
+                }
+            }
+
             $datos['telefono'] = $telefono;
         }
 
@@ -56,5 +65,35 @@ class ActualizarPerfilAction
         $usuario->update($datos);
 
         return $usuario->refresh();
+    }
+
+    private function telefonoDeCliente(ClienteDirecto $cliente, ?string $telefono): ?string
+    {
+        $escrito = trim((string) $telefono);
+
+        if ($escrito === '') {
+            return null;
+        }
+
+        $normalizado = TelefonoCliente::normalizar($escrito);
+
+        if ($normalizado === null) {
+            throw ValidationException::withMessages([
+                'telefono' => [TelefonoCliente::MENSAJE_DIGITOS],
+            ]);
+        }
+
+        $ocupado = ClienteDirecto::query()
+            ->whereKeyNot($cliente->id)
+            ->where('telefono', $normalizado)
+            ->exists();
+
+        if ($ocupado) {
+            throw ValidationException::withMessages([
+                'telefono' => [TelefonoCliente::MENSAJE_REPETIDO],
+            ]);
+        }
+
+        return $normalizado;
     }
 }

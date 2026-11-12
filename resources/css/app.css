@@ -16,7 +16,11 @@
     --color-fp-danger: #DC2626;
     --color-fp-danger-soft: #FEF2F2;
     --color-fp-page: #F5F6FA;
-    --color-fp-text-muted: #64748B;
+    /* A21 — Medido: #64748B daba 4.41:1 sobre el fondo de pagina (#F5F6FA)
+       y AA pide 4.5. Sobre blanco si pasaba (4.76), por eso no se notaba:
+       fallaba justo fuera de las tarjetas. Este da 5.47 en la pagina y 5.91
+       en blanco, y a simple vista es el mismo gris. */
+    --color-fp-text-muted: #586579;
 
     /* Insignias: fondo claro + texto oscuro (>= 4.5:1) */
     --color-fp-badge-neutral-bg: #E2E8F0;
@@ -239,6 +243,25 @@ html.fp-js [data-revelar]:not(.revelado) {
         font-size: var(--text-fp-ayuda);
         line-height: var(--text-fp-ayuda--line-height);
         color: var(--color-fp-danger);
+    }
+
+    /* A21 — «Saltar al contenido» (x-ui.saltar-al-contenido).
+       Fuera de la pantalla hasta que recibe el foco. No se usa .sr-only
+       porque eso lo dejaria invisible tambien enfocado, y entonces habria
+       un enlace enfocado que no se ve. */
+    .fp-saltar {
+        position: fixed;
+        inset-inline-start: 0.75rem;
+        top: -5rem;
+        z-index: 100;
+        transition: top .15s ease;
+    }
+    /* :focus y no :focus-visible: este enlace tiene que verse SIEMPRE que
+       reciba el foco. Con focus-visible el navegador decide, y hay casos
+       (foco puesto por codigo, o al volver atras) en que no lo pinta: ahi
+       quedaria un enlace enfocado e invisible, que es peor que no tenerlo. */
+    .fp-saltar:focus {
+        top: 0.75rem;
     }
 
     /* Buscador (x-ui.buscador). */
@@ -615,7 +638,7 @@ html.fp-js [data-revelar]:not(.revelado) {
     .fp-logo-entrada, .fp-datos-cascada > * { animation: none !important; }
     .fp-metrica-icono, .fp-accion, .fp-insignia, .fp-pestana, .fp-formulario, .fp-campo > label { transition: none !important; }
     /* A19: el buscador sigue abriendo, pero de golpe en vez de deslizando. */
-    .fp-buscador-hueco > .fp-buscador { transition: none !important; }
+    .fp-buscador-hueco > .fp-buscador, .fp-saltar { transition: none !important; }
     .fp-metrica:hover .fp-metrica-icono, .fp-accion:active, .fp-insignia:hover, .fp-pestana:active { transform: none !important; }
 }
 

@@ -51,16 +51,19 @@ class MenuComprasTest extends TestCase
     {
         $this->comoPanel(self::ADMIN);
         $this->get(route('compras.anticipos'))->assertOk()
-            ->assertSee('data-anticipos-vacio', false)
-            ->assertDontSee('anticipo_por_producto', false)
+            ->assertSee('data-anticipos-config', false)
+            ->assertSee('data-anticipos-pendientes', false)
+            ->assertSee('Anticipo por producto (MXN)')
             ->assertDontSee('Emisión manual')
-            ->assertDontSee('wire:click="emitir"', false);
+            ->assertDontSee('Días de vigencia del vale');
 
         $this->comoPanel(self::EMPLEADO);
         $html = $this->get(route('ciclo.index'))->assertOk()->getContent();
         $this->assertStringContainsString('>Compras</a>', $this->bloque($html));
         $this->assertStringNotContainsString('Comisiones', $this->bloque($html));
-        $this->get(route('compras.anticipos'))->assertOk()->assertDontSee('anticipo_por_producto', false);
+        $this->get(route('compras.anticipos'))->assertOk()
+            ->assertSee('data-anticipos-pendientes', false)
+            ->assertDontSee('data-anticipos-config', false);
 
         $this->staffDe(self::EMPLEADO)
             ->forceFill(['permisos_finos' => [PermisoModuloService::INVENTARIO_CONTEO => false]])

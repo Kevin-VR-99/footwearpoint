@@ -12,19 +12,32 @@ use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Services\Pedido\AgregarLineaPedidoAction;
 use App\Services\Pedido\QuitarLineaPedidoAction;
+use App\Services\Cliente\AltaRapidaClienteDirecto;
 use App\Services\Pedido\CrearPedidoBorradorAction;
 use App\Services\Pedido\EnviarPedidoAction;
 use App\Support\MensajeError;
+use App\Support\TelefonoCliente;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class extends Component {
+    use WithFileUploads;
+
     public string $tipo = 'cliente_directo';
+    public string $primeraCompra = 'no';
     public string $propietario_id = '';
     public string $busquedaPropietario = '';
+    public string $altaNombre = '';
+    public string $altaTelefono = '';
+    public string $altaCorreo = '';
+    public string $altaDireccion = '';
+    public $altaFoto = null;
+    public string $clienteExistenteNombre = '';
     public string $sucursal_id = '';
     public string $observaciones = '';
 
@@ -73,6 +86,8 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
     {
         $this->propietario_id = '';
         $this->busquedaPropietario = '';
+        $this->primeraCompra = 'no';
+        $this->clienteExistenteNombre = '';
     }
 
     public function updatedLineaId(): void
@@ -115,8 +130,15 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             $nombre = $this->tipo === 'cliente_directo'
                 ? $propietario->nombre
                 : $propietario->revendedor?->nombre;
+            $telefono = $this->tipo === 'cliente_directo'
+                ? (string) ($propietario->telefono ?? '')
+                : (string) ($propietario->revendedor?->telefono ?? '');
+            $digitosBusqueda = preg_replace('/\D/', '', $termino) ?? '';
+            $digitosTelefono = preg_replace('/\D/', '', $telefono) ?? '';
 
-            return str_contains(mb_strtolower($nombre ?? ''), $termino);
+            return str_contains(mb_strtolower($nombre ?? ''), $termino)
+                || ($digitosBusqueda !== '' && $digitosTelefono !== '' && str_contains($digitosTelefono, $digitosBusqueda))
+                || str_contains(mb_strtolower($telefono), $termino);
         })->values();
     }
 
@@ -280,10 +302,81 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
             $this->pedidoId = $pedido->id;
             $this->mensaje = 'Borrador creado: '.$pedido->folio;
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo crear.';
         } catch (\Throwable $e) {
             $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo crear el borrador. Intenta de nuevo.');
+        }
+    }
+
+    public function crearPrimeraCompra(CrearPedidoBorradorAction $pedidos, AltaRapidaClienteDirecto $alta)
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+        $this->clienteExistenteNombre = '';
+
+        $this->validate([
+            'altaNombre' => 'required|string|max:150',
+            'altaTelefono' => 'required|string|max:30',
+            'altaCorreo' => 'nullable|email|max:190',
+            'altaDireccion' => 'nullable|string|max:300',
+            'altaFoto' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'sucursal_id' => 'required|integer|min:1',
+            'observaciones' => 'nullable|string|max:2000',
+        ], [
+            'altaNombre.required' => 'Escribe el nombre.',
+            'altaTelefono.required' => 'Escribe el teléfono.',
+        ]);
+
+        if (TelefonoCliente::normalizar($this->altaTelefono) === null) {
+            $this->errorMsg = TelefonoCliente::MENSAJE_DIGITOS;
+
+            return;
+        }
+
+        try {
+            $resultado = $alta->resolver(
+                $this->altaNombre,
+                $this->altaTelefono,
+                $this->altaCorreo,
+                $this->altaDireccion,
+                $this->altaFoto,
+            );
+        } catch (ValidationException $e) {
+            $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo crear el cliente.';
+
+            return;
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo crear el cliente. Intenta de nuevo.');
+
+            return;
+        }
+
+        $cliente = $resultado['cliente'];
+
+        if (! $resultado['nuevo']) {
+            $this->propietario_id = (string) $cliente->id;
+            $this->primeraCompra = 'no';
+            $this->clienteExistenteNombre = $cliente->nombre;
+            $this->mensaje = 'Ese teléfono ya está registrado. Se usará a '.$cliente->nombre.'.';
+
+            return;
+        }
+
+        try {
+            $this->propietario_id = (string) $cliente->id;
+            $pedido = $pedidos->ejecutar([
+                'tipo' => 'cliente_directo',
+                'propietario_id' => $cliente->id,
+                'sucursal_id' => (int) $this->sucursal_id,
+                'observaciones' => $this->observaciones ?: null,
+            ]);
+            $this->pedidoId = $pedido->id;
+            $this->mensaje = 'Borrador creado: '.$pedido->folio;
+        } catch (ValidationException $e) {
+            $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo crear el cliente.';
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo crear el cliente. Intenta de nuevo.');
         }
     }
 
@@ -402,8 +495,16 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
             <div class="fp-campo" wire:key="selector-propietario-{{ $tipo }}">
                 <label for="create-propietario-id" class="block text-sm text-slate-600 mb-1">Propietario</label>
+                @if ($tipo === 'cliente_directo')
+                    <fieldset class="mb-3" data-primera-compra>
+                        <legend class="block text-sm text-slate-600 mb-1">¿Primera compra?</legend>
+                        <label class="mr-4 text-sm"><input type="radio" wire:model.live="primeraCompra" value="si"> Sí</label>
+                        <label class="text-sm"><input type="radio" wire:model.live="primeraCompra" value="no"> No</label>
+                    </fieldset>
+                @endif
+                @if ($tipo !== 'cliente_directo' || $primeraCompra !== 'si')
                 <x-ui.buscador wire:model.live.debounce.400ms="busquedaPropietario"
-                    placeholder="Buscar por nombre" etiqueta="Buscar propietario del pedido" />
+                    placeholder="Buscar por nombre o teléfono" etiqueta="Buscar propietario del pedido" />
                 {{-- Sin diferir la selección: al cambiar de tipo no se debe reenviar un ID del tipo anterior. --}}
                 {{-- Si cambia la lista, reiniciar solo el select: su valor puede seguir igual y Alpine no vuelve a aplicarlo tras el morph de opciones. --}}
                 <select id="create-propietario-id" wire:model.live="propietario_id"
@@ -425,6 +526,25 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                         @endif
                     </p>
                 @endif
+                @else
+                    <div class="space-y-3" data-alta-rapida>
+                        <label class="block text-sm">Nombre
+                            <input type="text" wire:model="altaNombre" class="mt-1 w-full rounded-lg text-sm" data-alta-nombre>
+                        </label>
+                        <label class="block text-sm">Teléfono
+                            <input type="text" wire:model="altaTelefono" class="mt-1 w-full rounded-lg text-sm" data-alta-telefono>
+                        </label>
+                        <label class="block text-sm">Correo (opcional)
+                            <input type="email" wire:model="altaCorreo" class="mt-1 w-full rounded-lg text-sm">
+                        </label>
+                        <label class="block text-sm">Dirección (opcional)
+                            <input type="text" wire:model="altaDireccion" class="mt-1 w-full rounded-lg text-sm">
+                        </label>
+                        <label class="block text-sm">Foto (opcional)
+                            <input type="file" wire:model="altaFoto" accept="image/*" class="mt-1 w-full text-sm">
+                        </label>
+                    </div>
+                @endif
             </div>
 
             <div class="fp-campo">
@@ -442,7 +562,11 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                     class="w-full rounded-lg text-sm"></textarea>
             </div>
 
-            <x-panel.boton wire:click="crearBorrador" wire:loading.attr="disabled">Crear borrador</x-panel.boton>
+            @if ($tipo === 'cliente_directo' && $primeraCompra === 'si')
+                <x-panel.boton wire:click="crearPrimeraCompra" wire:loading.attr="disabled">Crear borrador</x-panel.boton>
+            @else
+                <x-panel.boton wire:click="crearBorrador" wire:loading.attr="disabled">Crear borrador</x-panel.boton>
+            @endif
         </div>
     @else
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">

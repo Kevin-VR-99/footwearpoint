@@ -102,53 +102,51 @@ class PreciosYPublicacionPantallaTest extends TestCase
         $this->get(route('catalogo.precios'))->assertForbidden();
     }
 
-    public function test_fijar_el_descuento_cambia_el_mayoreo_que_se_muestra(): void
+    public function test_la_pantalla_ya_no_tiene_descuento_general(): void
     {
         $pc = $this->producto(1000, 'Bota descuento');
 
         $this->pantalla()
-            ->set('descuento', '25')
-            ->call('guardarDescuento')
-            ->assertSet('errorMsg', '')
+            ->assertDontSee('Descuento general de mayoreo')
+            ->assertSee('El porcentaje por línea es aproximado')
             ->set('busqueda', 'Bota descuento')
-            ->assertSee('$750.00');
+            ->assertSee('$1,000.00');
 
-        $this->assertEqualsWithDelta(25, (float) ConfiguracionDistribuidora::query()->value('descuento_mayorista_pct'), 0.001);
+        $this->assertEqualsWithDelta(0, (float) ConfiguracionDistribuidora::query()->value('descuento_mayorista_pct'), 0.001);
     }
 
-    public function test_el_descuento_de_la_linea_se_guarda_aparte_y_el_vacio_vuelve_al_general(): void
+    public function test_el_descuento_de_la_linea_cambia_el_mayoreo_y_el_vacio_lo_quita(): void
     {
         $pc = $this->producto(1000, 'Bota de linea');
         $lineaId = (int) $pc->campana->linea_id;
 
         $this->pantalla()
-            ->set('descuento', '10')
-            ->call('guardarDescuento')
-            ->assertSet('errorMsg', '')
-            ->assertSet("descuentosLinea.$lineaId", '')
             ->set('busqueda', 'Bota de linea')
-            ->assertSee('$900.00')
+            ->assertSee('$1,000.00')
             ->set("descuentosLinea.$lineaId", '40')
             ->call('guardarDescuentoLinea', $lineaId)
             ->assertSet('errorMsg', '')
             ->assertSee('$600.00')
             ->set("descuentosLinea.$lineaId", '')
             ->call('guardarDescuentoLinea', $lineaId)
-            ->assertSet('mensaje', 'Esta línea vuelve a usar el descuento general.')
-            ->assertSee('$900.00');
+            ->assertSet('mensaje', 'Esta línea queda sin descuento.')
+            ->assertSee('$1,000.00');
     }
 
     public function test_un_descuento_fuera_de_rango_muestra_un_mensaje_legible(): void
     {
+        $pc = $this->producto(1000, 'Bota rango');
+        $lineaId = (int) $pc->campana->linea_id;
+
         $this->pantalla()
-            ->set('descuento', '150')
-            ->call('guardarDescuento')
+            ->set("descuentosLinea.$lineaId", '150')
+            ->call('guardarDescuentoLinea', $lineaId)
             ->assertSet('errorMsg', 'El descuento de mayoreo tiene que ser un porcentaje de 0 a 99.99.');
 
         $this->pantalla()
-            ->set('descuento', 'abc')
-            ->call('guardarDescuento')
-            ->assertSet('errorMsg', 'Escribe el descuento como un número, por ejemplo 15.');
+            ->set("descuentosLinea.$lineaId", 'abc')
+            ->call('guardarDescuentoLinea', $lineaId)
+            ->assertSet('errorMsg', 'Escribe el descuento de la línea como un número, por ejemplo 15.');
     }
 
     public function test_poner_y_quitar_precio_propio(): void

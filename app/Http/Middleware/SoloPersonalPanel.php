@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\ClienteDirecto;
 use App\Services\Auth\AccesoPanelWebService;
 use Closure;
 use Illuminate\Http\Request;
@@ -36,6 +37,10 @@ class SoloPersonalPanel
         $motivo = $usuario ? $this->acceso->motivoSinAcceso($usuario) : null;
 
         if ($motivo !== null) {
+            if ($usuario && ClienteDirecto::debeRecapturarTelefono($usuario) && ! $request->routeIs('telefono.recapturar')) {
+                return redirect()->route('telefono.recapturar');
+            }
+
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

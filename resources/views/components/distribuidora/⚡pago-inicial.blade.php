@@ -3,6 +3,7 @@
 use App\Models\Distribuidora;
 use App\Models\Pago;
 use App\Models\Suscripcion;
+use App\Services\Auth\AccesoPanelWebService;
 use App\Services\MercadoPago\MercadoPagoException;
 use App\Services\MercadoPago\TokenMercadoPagoPlataforma;
 use App\Services\Suscripcion\CrearPagoSuscripcionMercadoPagoAction;
@@ -42,15 +43,24 @@ new #[Layout('layouts.guest')] #[Title('Paga tu primer mes — FootwearPoint')] 
 
     public string $aviso = '';
 
+    public bool $porFaltaDePago = false;
+
     public function mount()
     {
-        if ($this->confirmarRegreso() || $this->yaPagado()) {
-            session()->flash('status', '¡Recibimos tu pago! Tu suscripción ya está activa.');
+        return $this->enTenant(function () {
+            $this->porFaltaDePago = $this->faltaDePago();
 
-            return $this->redirect(route('dashboard'));
-        }
+            if ($this->confirmarRegreso() || (! $this->porFaltaDePago && $this->yaPagado())) {
+                session()->flash('status', '¡Recibimos tu pago! Tu suscripción ya está activa.');
 
-        $this->cargar();
+                return $this->redirect(route('dashboard'));
+            }
+
+            $this->porFaltaDePago = $this->faltaDePago();
+            $this->cargar();
+
+            return null;
+        });
     }
 
     public function pagar(CrearPagoSuscripcionMercadoPagoAction $accion)
@@ -58,16 +68,18 @@ new #[Layout('layouts.guest')] #[Title('Paga tu primer mes — FootwearPoint')] 
         $this->soloAdministrador();
         $this->limpiar();
 
-        try {
-            $resultado = $accion->ejecutar($this->distribuidoraId());
-        } catch (\Throwable $e) {
-            $this->error = MensajeError::paraUsuario($e, MercadoPagoException::SUSCRIPCION_NO_SE_PUDO_COBRAR);
-            $this->cargar();
+        return $this->enTenant(function () use ($accion) {
+            try {
+                $resultado = $accion->ejecutar($this->distribuidoraId());
+            } catch (\Throwable $e) {
+                $this->error = MensajeError::paraUsuario($e, MercadoPagoException::SUSCRIPCION_NO_SE_PUDO_COBRAR);
+                $this->cargar();
 
-            return null;
-        }
+                return null;
+            }
 
-        return $this->redirect($resultado['init_point']);
+            return $this->redirect($resultado['init_point']);
+        });
     }
 
     public function verificar(VerificarPagoSuscripcionMercadoPagoAction $accion)
@@ -75,25 +87,27 @@ new #[Layout('layouts.guest')] #[Title('Paga tu primer mes — FootwearPoint')] 
         $this->soloAdministrador();
         $this->limpiar();
 
-        try {
-            $resultado = $accion->ejecutar($this->distribuidoraId());
-        } catch (\Throwable $e) {
-            $this->error = MensajeError::paraUsuario($e, 'No se pudo verificar el pago con Mercado Pago. Intenta de nuevo en unos minutos.');
+        return $this->enTenant(function () use ($accion) {
+            try {
+                $resultado = $accion->ejecutar($this->distribuidoraId());
+            } catch (\Throwable $e) {
+                $this->error = MensajeError::paraUsuario($e, 'No se pudo verificar el pago con Mercado Pago. Intenta de nuevo en unos minutos.');
+                $this->cargar();
+
+                return null;
+            }
+
+            if ($resultado === VerificarPagoSuscripcionMercadoPagoAction::APLICADO) {
+                session()->flash('status', '¡Recibimos tu pago! Tu suscripción ya está activa.');
+
+                return $this->redirect(route('dashboard'));
+            }
+
+            $this->mostrar($resultado);
             $this->cargar();
 
             return null;
-        }
-
-        if ($resultado === VerificarPagoSuscripcionMercadoPagoAction::APLICADO) {
-            session()->flash('status', '¡Recibimos tu pago! Tu suscripción ya está activa.');
-
-            return $this->redirect(route('dashboard'));
-        }
-
-        $this->mostrar($resultado);
-        $this->cargar();
-
-        return null;
+        });
     }
 
     /** True si al volver de Mercado Pago el pago quedó aplicado. */
@@ -169,6 +183,21 @@ new #[Layout('layouts.guest')] #[Title('Paga tu primer mes — FootwearPoint')] 
         return Suscripcion::pendientePrimerPago($this->distribuidoraId()) === null;
     }
 
+    private function faltaDePago(): bool
+    {
+        return (bool) Distribuidora::query()->find($this->distribuidoraId())?->suspendidaPorFaltaDePago();
+    }
+
+    /**
+     * Suspendida por falta de pago, Tenant::id() es null a propósito (así la
+     * app y el resto del panel no operan). Aquí se resuelve igual, solo para
+     * esta pantalla.
+     */
+    private function enTenant(callable $callback): mixed
+    {
+        return Tenant::forzar($this->distribuidoraId(), $callback);
+    }
+
     private function cargar(): void
     {
         $id = $this->distribuidoraId();
@@ -176,9 +205,12 @@ new #[Layout('layouts.guest')] #[Title('Paga tu primer mes — FootwearPoint')] 
         $this->distribuidora = (string) Distribuidora::query()->findOrFail($id)->nombre_comercial;
 
         app(PermissionRegistrar::class)->setPermissionsTeamId($id);
+        auth()->user()?->unsetRelation('roles');
         $this->esAdministrador = (bool) auth()->user()?->hasRole('admin_distribuidora');
 
-        $suscripcion = Suscripcion::pendientePrimerPago($id);
+        $suscripcion = $this->porFaltaDePago
+            ? CrearPagoSuscripcionMercadoPagoAction::suscripcionPorPagar()
+            : Suscripcion::pendientePrimerPago($id);
 
         $this->plan = $suscripcion === null ? null : [
             'nombre'             => $suscripcion->plan?->nombre ?? 'Plan',
@@ -201,6 +233,7 @@ new #[Layout('layouts.guest')] #[Title('Paga tu primer mes — FootwearPoint')] 
     private function soloAdministrador(): void
     {
         app(PermissionRegistrar::class)->setPermissionsTeamId($this->distribuidoraId());
+        auth()->user()?->unsetRelation('roles');
 
         abort_unless(auth()->user()?->hasRole('admin_distribuidora'), 403);
     }
@@ -208,9 +241,14 @@ new #[Layout('layouts.guest')] #[Title('Paga tu primer mes — FootwearPoint')] 
     private function distribuidoraId(): int
     {
         $id = Tenant::id();
+
+        if ($id === null && auth()->user() !== null) {
+            $id = app(AccesoPanelWebService::class)->staffActivo(auth()->user())?->distribuidora_id;
+        }
+
         abort_if($id === null, 403, 'No se pudo determinar la distribuidora.');
 
-        return $id;
+        return (int) $id;
     }
 
     private function limpiar(): void
@@ -225,10 +263,18 @@ new #[Layout('layouts.guest')] #[Title('Paga tu primer mes — FootwearPoint')] 
 
 <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-8 space-y-5">
     <div class="text-center">
-        <h1 class="text-2xl font-bold text-slate-900">Paga tu primer mes</h1>
-        <p class="text-sm text-slate-500 mt-1">
-            <strong>{{ $distribuidora }}</strong> ya fue aprobada. Para empezar a usar FootwearPoint, paga tu primer mes.
-        </p>
+        @if ($porFaltaDePago)
+            <h1 class="text-2xl font-bold text-slate-900">Paga tu mensualidad para reactivar</h1>
+            <p class="text-sm text-slate-500 mt-1">
+                <strong>{{ $distribuidora }}</strong> está suspendida por falta de pago.
+                Al confirmarse el pago se reactiva, y el mes cuenta desde hoy.
+            </p>
+        @else
+            <h1 class="text-2xl font-bold text-slate-900">Paga tu primer mes</h1>
+            <p class="text-sm text-slate-500 mt-1">
+                <strong>{{ $distribuidora }}</strong> ya fue aprobada. Para empezar a usar FootwearPoint, paga tu primer mes.
+            </p>
+        @endif
     </div>
 
     @if ($error)
@@ -247,7 +293,13 @@ new #[Layout('layouts.guest')] #[Title('Paga tu primer mes — FootwearPoint')] 
                 <p>Líneas extra activas: {{ $desglose['lineas_extra'] }} × {{ $mxn($desglose['precio_linea_extra']) }}</p>
             @endif
             <p class="pt-2 text-lg font-bold text-slate-900">Total a pagar: {{ $mxn($desglose['total']) }}</p>
-            <p class="text-xs text-slate-500">Tu mes empieza a contar el día en que se confirme el pago.</p>
+            <p class="text-xs text-slate-500">
+                @if ($porFaltaDePago)
+                    El mes cuenta desde el día en que se confirme el pago.
+                @else
+                    Tu mes empieza a contar el día en que se confirme el pago.
+                @endif
+            </p>
         </div>
     @endif
 
@@ -270,7 +322,11 @@ new #[Layout('layouts.guest')] #[Title('Paga tu primer mes — FootwearPoint')] 
         @endif
     @else
         <p class="text-sm text-slate-600">
-            El administrador de tu distribuidora debe pagar el primer mes. En cuanto se confirme el pago podrás entrar al panel.
+            @if ($porFaltaDePago)
+                El administrador de tu distribuidora debe pagar la mensualidad. En cuanto se confirme el pago podrán entrar al panel.
+            @else
+                El administrador de tu distribuidora debe pagar el primer mes. En cuanto se confirme el pago podrás entrar al panel.
+            @endif
         </p>
     @endif
 

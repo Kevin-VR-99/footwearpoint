@@ -23,9 +23,9 @@ use Throwable;
  */
 class NotificarPagoSuscripcionAction
 {
-    public function ejecutar(Pago $pago, Suscripcion $suscripcion, bool $renovada): void
+    public function ejecutar(Pago $pago, Suscripcion $suscripcion, bool $renovada, bool $reactivada = false): void
     {
-        Tenant::forzar((int) $pago->distribuidora_id, function () use ($pago, $suscripcion, $renovada) {
+        Tenant::forzar((int) $pago->distribuidora_id, function () use ($pago, $suscripcion, $renovada, $reactivada) {
             $lineaExtra = $pago->referencia === Pago::REFERENCIA_LINEA_EXTRA;
             $monto = '$'.number_format((float) $pago->monto, 2);
             $hasta = $suscripcion->fecha_fin?->format('d/m/Y');
@@ -39,6 +39,10 @@ class NotificarPagoSuscripcionAction
             } elseif ($renovada) {
                 $titulo = 'Recibimos el pago de tu mensualidad';
                 $mensaje = "Mercado Pago confirmó tu pago de {$monto} (folio {$pago->folio}). Tu suscripción queda pagada hasta el {$hasta}.";
+
+                if ($reactivada) {
+                    $mensaje .= ' Tu distribuidora quedó activa de nuevo.';
+                }
             } else {
                 $titulo = 'Recibimos el pago de tu mensualidad';
                 $mensaje = "Mercado Pago confirmó tu pago de {$monto} (folio {$pago->folio}). El equipo de FootwearPoint revisará tu suscripción.";
@@ -62,12 +66,12 @@ class NotificarPagoSuscripcionAction
                 ]));
 
             if ($lineaExtra || $renovada) {
-                $this->enviarCorreo($pago, $suscripcion, $lineaExtra);
+                $this->enviarCorreo($pago, $suscripcion, $lineaExtra, $reactivada);
             }
         });
     }
 
-    private function enviarCorreo(Pago $pago, Suscripcion $suscripcion, bool $lineaExtra): void
+    private function enviarCorreo(Pago $pago, Suscripcion $suscripcion, bool $lineaExtra, bool $reactivada = false): void
     {
         $distribuidora = Distribuidora::query()->find($pago->distribuidora_id);
 
@@ -89,6 +93,7 @@ class NotificarPagoSuscripcionAction
                     plan: $suscripcion->plan?->nombre,
                     lineasExtra: (int) $suscripcion->lineas_extra_contratadas,
                     nombreDestinatario: $nombre,
+                    reactivada: $reactivada && ! $lineaExtra,
                 ));
             } catch (Throwable $e) {
                 report($e);

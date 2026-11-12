@@ -93,7 +93,7 @@ class CatalogoDemoTest extends TestCase
         $this->comoLaDistribuidora(DemoDistribuidoraSeeder::SLUG, function () {
             $precios = new PrecioEfectivo;
 
-            $this->assertGreaterThan(0, $precios->descuentoMayorista());
+            $this->assertSame(0.0, $precios->descuentoMayorista());
 
             $catalogo = new CatalogoVisible;
             $visibles = $catalogo->consulta()->pluck('producto_campana.id');
@@ -113,14 +113,10 @@ class CatalogoDemoTest extends TestCase
 
             $this->assertSame(1, $ocultos);
 
-            // Y hay un producto con precio propio: su mayoreo no sale del
-            // descuento general.
-            $conPrecioPropio = ProductoCampana::query()
-                ->whereKey($visibles)
-                ->get()
-                ->filter(fn (ProductoCampana $p) => $precios->mayoreo($p) !== $this->conDescuento($p, $precios));
-
-            $this->assertCount(1, $conPrecioPropio);
+            $this->assertSame(
+                1,
+                OfertaDistribuidora::query()->whereNotNull('precio_mayorista')->count()
+            );
         });
     }
 
@@ -160,11 +156,6 @@ class CatalogoDemoTest extends TestCase
     public function test_las_pruebas_no_suben_las_fotos_de_la_demo(): void
     {
         $this->assertSame(0, ProductoImagen::count());
-    }
-
-    private function conDescuento(ProductoCampana $producto, PrecioEfectivo $precios): float
-    {
-        return round((float) $producto->precio_publico * (1 - $precios->descuentoMayorista() / 100), 2);
     }
 
     /** @return mixed */

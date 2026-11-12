@@ -2,7 +2,6 @@
 
 namespace App\Services\Catalogo;
 
-use App\Models\ConfiguracionDistribuidora;
 use App\Models\DistribuidoraLinea;
 use App\Models\OfertaDistribuidora;
 use App\Models\ProductoCampana;
@@ -21,16 +20,14 @@ use App\Models\ProductoCampana;
  *   - MAYOREO: lo paga el cliente mayorista (el revendedor). Si la
  *     distribuidora le puso precio propio a ese producto, ese; si no, el de
  *     menudeo menos el descuento de esa línea. Si la línea no tiene el suyo,
- *     se usa el descuento general.
+ *     el descuento es 0.
  */
 class PrecioEfectivo
 {
     /** @var array<int, float|null> precio propio por producto de temporada, ya consultado */
     private array $preciosPropios = [];
 
-    private ?float $descuento = null;
-
-    /** @var array<int, float|null>|null porcentaje por línea activa; null en el valor = usa el general */
+    /** @var array<int, float|null>|null porcentaje por línea activa; null en el valor = sin descuento */
     private ?array $descuentosPorLinea = null;
 
     public function menudeo(ProductoCampana $productoCampana): float
@@ -91,30 +88,20 @@ class PrecioEfectivo
         return $this;
     }
 
-    /** El descuento general de la distribuidora, en porcentaje. */
+    /** Ya no hay descuento general. Si la línea no tiene el suyo, es 0. */
     public function descuentoMayorista(): float
     {
-        if ($this->descuento === null) {
-            $configurado = (float) (ConfiguracionDistribuidora::query()->value('descuento_mayorista_pct') ?? 0);
-
-            // La columna acepta cualquier número; aquí no se dejan pasar
-            // descuentos que darían precios negativos o más caros que el
-            // menudeo. El campo se valida al guardarlo (FijarDescuentoMayoristaAction).
-            $this->descuento = max(0.0, min(99.99, $configurado));
-        }
-
-        return $this->descuento;
+        return 0.0;
     }
 
     /** Vuelve a leer configuración y ofertas (después de cambiarlas). */
     public function olvidarLoConsultado(): void
     {
         $this->preciosPropios = [];
-        $this->descuento = null;
         $this->descuentosPorLinea = null;
     }
 
-    /** El porcentaje que aplica a esa línea, o el general si no tiene el suyo. */
+    /** El porcentaje de esa línea, o 0 si no tiene el suyo. */
     public function descuentoParaLinea(?int $lineaId): float
     {
         if ($lineaId !== null && array_key_exists($lineaId, $this->descuentosPorLinea()) && $this->descuentosPorLinea()[$lineaId] !== null) {

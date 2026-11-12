@@ -133,6 +133,7 @@ Además de `usuario`, `rol` y `distribuidora_id`, la sesión trae tres banderas 
 |---|---|
 | `legales_aceptados` (E1-04) | `false` si todavía no acepta el aviso de privacidad **y** los términos. La app muestra la pantalla de aceptación y llama a `auth/aceptar-legales` |
 | `debe_cambiar_password` (TG-193) | `true` si le dieron una contraseña temporal. La app manda a cambiarla; el servidor bloquea casi todo lo demás con un 403 |
+| `debe_recapturar_telefono` | `true` si a ese cliente directo se le vació el teléfono por estar repetido. La app pide uno de 10 dígitos en `POST /api/perfil/recapturar-telefono`. Mientras tanto el resto de la API responde 403 |
 | `email_verificado` (TG-189) | `false` si no ha abierto el enlace de confirmación. No bloquea entrar, pero sí enviar pedidos y pagar |
 
 `rol` en una respuesta exitosa es `revendedor` o `cliente_directo` (o `null`, ver la nota de abajo). El personal interno no puede entrar por aquí: ver errores.
@@ -483,6 +484,26 @@ Estados posibles: `borrador`, `colocado`, `en_revision`, `confirmado`, `parcialm
 - `pago_mercado_pago_pendiente_tipo`: de qué es ese pago pendiente: `anticipo` o `saldo_pedido` (cliente directo; la app verifica con `.../anticipo/...` o `.../saldo/...`) o `total_revendedor` (cliente mayorista). `null` si no hay. Si es `total_revendedor`, la app muestra "Verificar pago" y llama a `.../total/mercado-pago/verificar`.
 
 `pago_mercado_pago_pendiente` y `pago_mercado_pago_pendiente_tipo` vienen en `GET /api/pedidos/{id}` y en la respuesta de `verificar`, pero **no** en el listado `GET /api/pedidos`. Los tres `puede_pagar_*_mercado_pago` vienen en los tres.
+
+**Transferencia SPEI.** Si la distribuidora guardó banco, CLABE y titular, el pedido trae `transferencia`:
+
+```json
+{
+  "transferencia": {
+    "banco": "BBVA",
+    "clabe": "012180001234567899",
+    "titular": "Calzados Ramírez",
+    "monto": 1600.0,
+    "concepto": "PED-0001",
+    "aviso": "FootwearPoint no recibe ni custodia estos pagos",
+    "comprobante": null
+  }
+}
+```
+
+`monto` es el saldo pendiente. `concepto` es el folio. Sin datos bancarios, `transferencia` es `null` y no se muestra nada. `comprobante` es `{ "nombre", "tamano" }` si el cliente ya subió un archivo, o `null`. El archivo no cuenta como pago.
+
+`POST /api/pedidos/{id}/comprobante-transferencia` lo manda el cliente del pedido (multipart, campo `comprobante`; PDF, JPG, PNG o WEBP; máximo 5 MB). Respuesta 201: el pago sigue pendiente. El personal no puede subirlo. `GET` de esa misma ruta descarga el archivo; lo ven la distribuidora del pedido y su cliente. Otra persona recibe 404.
 
 ### POST `/api/pedidos`
 
@@ -1074,9 +1095,9 @@ Estados: `solicitada → autorizada | rechazada`; `autorizada → enviada_fabric
 
 `{ "estado": "autorizada", "nota": "opcional", "monto_vale": 900 }`. `nota` es obligatoria al rechazar. `monto_vale` (opcional, al pasar a `vale_emitido`) no puede ser mayor que el subtotal de la línea; por omisión es el subtotal. Permiso fino `cambios.resolver`. Transición no permitida → 409.
 
-### `GET /api/revendedor/comisiones?periodo=AAAA-MM` (cliente mayorista)
+### Comisiones de clientes mayoristas
 
-Su comisión del mes (por omisión el actual): `{ "data": { "periodo", "porcentaje", "pedidos_pagados", "venta_pagada", "comision", "meta", "avance", "lugar" } }`. Cuenta los pedidos del mes (por fecha de colocación) ya pagados por completo. `meta`/`avance` son `null` si no hay meta. La app lo muestra en Inicio («Tu meta del mes»).
+`GET /api/revendedor/comisiones` y `GET /api/distribuidora/comisiones` ya no existen: responden 404. La app nueva no las llama.
 
 ### Cambios en `GET /api/pedidos` y `GET /api/pedidos/{id}`
 
@@ -1233,7 +1254,6 @@ Existen en `/api` y están probados, pero los consume el panel web, no la app de
 | `POST /api/reembolsos-mercado-pago/{id}/reintentar` | Vuelve a mandar un reembolso `fallido` (permiso `ventas.cancelar` para ventas, `pagos.registrar` para pedidos); 409 si no está fallido |
 | `POST /api/distribuidora/accesos/{tipo}/{id}/baja` | Dar de baja (`tipo`: revendedor, cliente, empleado; `motivo` opcional). Revoca sesiones de la app y bloquea el login. Solo administración |
 | `POST /api/distribuidora/accesos/{tipo}/{id}/reactivar` | Reactivar un acceso dado de baja. Solo administración |
-| `GET /api/distribuidora/comisiones?periodo=AAAA-MM` | Ranking de comisiones y metas de clientes mayoristas (permiso fino `comisiones.ver`) |
 | `POST /api/webhooks/mercado-pago` | Aviso de Mercado Pago cuando cambia un pago (TG-228). En producción exige firma válida (`x-signature` con `ts` de menos de 5 min) |
 | `POST /api/csp-report` | El navegador avisa lo que la CSP bloquearía (auditoría 21-oct-2026) |
 

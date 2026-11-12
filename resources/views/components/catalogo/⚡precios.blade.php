@@ -1,13 +1,11 @@
 <?php
 
 use App\Exceptions\OperacionInvalidaException;
-use App\Models\ConfiguracionDistribuidora;
 use App\Models\DistribuidoraLinea;
 use App\Services\Catalogo\CatalogoParaConfigurarPrecios;
 use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Services\Distribuidora\FijarDescuentoLineaAction;
-use App\Services\Distribuidora\FijarDescuentoMayoristaAction;
 use App\Services\Distribuidora\GestionarOfertaDistribuidoraAction;
 use App\Support\MensajeError;
 use App\Support\Tenant;
@@ -20,7 +18,7 @@ use Livewire\WithPagination;
 /**
  * Precios y publicación de la distribuidora (TG-249, E4-14).
  *
- * Aquí la distribuidora fija su descuento general de mayoreo, pone o quita un
+ * Aquí la distribuidora fija el descuento de cada línea, pone o quita un
  * precio de mayoreo propio por producto y oculta o vuelve a mostrar productos.
  * El menudeo es el del catálogo y no se puede cambiar.
  *
@@ -34,7 +32,6 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
     public string $busqueda = '';
     #[Url]
     public string $filtro = CatalogoParaConfigurarPrecios::FILTRO_TODOS;
-    public string $descuento = '0';
 
     /** @var array<int, string> porcentaje capturado por línea activa */
     public array $descuentosLinea = [];
@@ -49,7 +46,6 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
     {
         abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
 
-        $this->descuento = (string) (float) (ConfiguracionDistribuidora::query()->value('descuento_mayorista_pct') ?? 0);
         $this->cargarDescuentosDeLinea();
     }
 
@@ -77,22 +73,6 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
         $this->resetPage();
     }
 
-    public function guardarDescuento(): void
-    {
-        $this->ejecutar(function () {
-            if (! is_numeric(str_replace(',', '.', trim($this->descuento)))) {
-                throw new OperacionInvalidaException('Escribe el descuento como un número, por ejemplo 15.', 422);
-            }
-
-            $config = app(FijarDescuentoMayoristaAction::class)->ejecutar((float) str_replace(',', '.', trim($this->descuento)));
-            $this->descuento = (string) (float) $config->descuento_mayorista_pct;
-
-            $this->cargarDescuentosDeLinea();
-
-            return 'Descuento general de mayoreo guardado.';
-        }, 'No se pudo guardar el descuento.');
-    }
-
     public function guardarDescuentoLinea(int $lineaId): void
     {
         $this->ejecutar(function () use ($lineaId) {
@@ -102,7 +82,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
                 app(FijarDescuentoLineaAction::class)->ejecutar($lineaId, null);
                 $this->descuentosLinea[$lineaId] = '';
 
-                return 'Esta línea vuelve a usar el descuento general.';
+                return 'Esta línea queda sin descuento.';
             }
 
             if (! is_numeric($texto)) {
@@ -138,7 +118,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
             app(GestionarOfertaDistribuidoraAction::class)->quitarPrecioMayorista($productoCampanaId);
             unset($this->preciosPropios[$productoCampanaId]);
 
-            return 'Listo: ese producto vuelve a usar el descuento de su línea, o el general si la línea no tiene el suyo.';
+            return 'Listo: ese producto vuelve a usar el descuento de su línea.';
         }, 'No se pudo quitar el precio.');
     }
 
@@ -206,20 +186,9 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
         <x-panel.alerta tipo="error">{{ $errorMsg }}</x-panel.alerta>
     @endif
 
-    <div class="fp-tarjeta p-4 fp-formulario fp-aparecer">
-        <form wire:submit="guardarDescuento" class="flex flex-wrap items-end gap-3">
-            <label class="text-sm">
-                <span class="block font-medium text-slate-700">Descuento general de mayoreo (%)</span>
-                <input type="text" inputmode="decimal" wire:model="descuento" class="mt-1 w-32 rounded-lg text-sm">
-            </label>
-            <button type="submit" class="fp-btn fp-btn-primario">Guardar descuento</button>
-            <p class="text-xs text-fp-text-muted">Se usa en las líneas activas que todavía no tienen un descuento propio, y en los productos sin precio propio.</p>
-        </form>
-    </div>
-
     <div class="fp-tarjeta p-4 fp-aparecer">
         <h2 class="text-sm font-semibold text-slate-800">Descuento por línea activa</h2>
-        <p class="mt-1 text-xs text-fp-text-muted">Cada línea puede tener un porcentaje distinto. Si dejas el campo vacío y guardas, esa línea usa el descuento general.</p>
+        <p class="mt-1 text-xs text-fp-text-muted" data-nota-descuento-linea>El porcentaje por línea es aproximado: varía según la lista de precios. Si dejas el campo vacío y guardas, esa línea queda sin descuento.</p>
         @if ($this->lineasActivas->isEmpty())
             <p class="mt-3 text-sm text-slate-500">Todavía no tienes líneas activas.</p>
         @else
@@ -229,7 +198,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
                         <label class="text-sm">
                             <span class="block font-medium text-slate-700">{{ $fila->linea?->nombre }} (%)</span>
                             <input type="text" inputmode="decimal" wire:model="descuentosLinea.{{ $fila->linea_id }}"
-                                placeholder="General {{ $descuento }}%" class="mt-1 w-32 rounded-lg text-sm">
+                                placeholder="Sin descuento" class="mt-1 w-32 rounded-lg text-sm">
                         </label>
                         <button type="submit" class="fp-btn fp-btn-primario">Guardar</button>
                     </form>
