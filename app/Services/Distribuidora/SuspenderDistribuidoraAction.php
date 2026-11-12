@@ -41,7 +41,10 @@ class SuspenderDistribuidoraAction
                 throw new OperacionInvalidaException(self::MENSAJE_NO_ACTIVA, 422);
             }
 
-            $actual->update(['estado' => 'suspendida']);
+            $actual->update([
+                'estado' => 'suspendida',
+                'motivo_suspension' => Distribuidora::MOTIVO_MANUAL,
+            ]);
 
             return $actual;
         });

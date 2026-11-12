@@ -12,4 +12,8 @@ Artisan::command('inspire', function () {
 | (`php artisan sanctum:prune-expired --hours=24`) NO se programa aquí: en
 | Railway cada comando corre como su propio servicio cron
 | (ver docs/railway-produccion.md, "footwearpoint-limpiar-tokens").
+|
+| El vencimiento de la mensualidad (`php artisan suscripciones:vencer`)
+| tampoco se programa aquí. Por omisión solo avisa. Cómo activar la
+| suspensión al sexto día: docs/vencimiento-suscripcion.md.
 */

@@ -65,6 +65,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // solo ve la pantalla de pago (y puede cerrar sesión).
         $middleware->appendToGroup('web', \App\Http\Middleware\CobroInicialPendiente::class);
         $middleware->appendToGroup('api', \App\Http\Middleware\CobroInicialPendiente::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\SoloPagoPorFaltaDePago::class);
+        $middleware->appendToGroup('api', \App\Http\Middleware\SoloPagoPorFaltaDePago::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Monitoreo de errores: solo reporta si SENTRY_LARAVEL_DSN está puesto

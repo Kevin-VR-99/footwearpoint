@@ -34,7 +34,10 @@ class ReactivarDistribuidoraAction
                 throw new OperacionInvalidaException(self::MENSAJE_NO_SUSPENDIDA, 422);
             }
 
-            $actual->update(['estado' => 'activa']);
+            $actual->update([
+                'estado' => 'activa',
+                'motivo_suspension' => null,
+            ]);
 
             return $actual;
         });

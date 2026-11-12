@@ -21,6 +21,12 @@ class Distribuidora extends Model
      */
     public const ESTADOS_SIN_OPERACION = ['pendiente', 'suspendida', 'rechazada'];
 
+    /** Suspensión hecha por el admin general. Un pago no la levanta. */
+    public const MOTIVO_MANUAL = 'manual';
+
+    /** Suspensión del comando diario, al sexto día sin pagar la mensualidad. */
+    public const MOTIVO_FALTA_PAGO = 'falta_pago';
+
     protected $fillable = [
         'nombre_comercial',
         'razon_social',
@@ -41,6 +47,7 @@ class Distribuidora extends Model
         'fecha_solicitud',
         'fecha_aprobacion',
         'motivo_rechazo',
+        'motivo_suspension',
     ];
 
     protected $casts = [
@@ -54,6 +61,15 @@ class Distribuidora extends Model
     public function puedeOperar(): bool
     {
         return ! in_array($this->estado, self::ESTADOS_SIN_OPERACION, true);
+    }
+
+    /**
+     * Suspendida por el comando de vencimiento. Un pago de la mensualidad
+     * la reactiva. Sin motivo, o con motivo manual, un pago no cambia el estado.
+     */
+    public function suspendidaPorFaltaDePago(): bool
+    {
+        return $this->estado === 'suspendida' && $this->motivo_suspension === self::MOTIVO_FALTA_PAGO;
     }
 
     /**

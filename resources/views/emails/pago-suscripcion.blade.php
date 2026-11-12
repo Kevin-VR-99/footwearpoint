@@ -35,6 +35,9 @@
         @if ($pagadoHasta)
             <p>Tu suscripción queda pagada hasta el <strong>{{ $pagadoHasta }}</strong>.</p>
         @endif
+        @if ($reactivada)
+            <p>Tu distribuidora quedó activa de nuevo. Ya puedes usar el panel.</p>
+        @endif
         <p>
             @if ($lineasExtra > 0)
                 La siguiente factura cobra el plan con el que iniciaste más {{ $lineasExtra }} {{ $lineasExtra === 1 ? 'línea extra activa' : 'líneas extra activas' }} por encima de las incluidas.

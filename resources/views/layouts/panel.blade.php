@@ -310,6 +310,17 @@
             </header>
 
             <main id="contenido" tabindex="-1" class="fp-contenido flex-1 p-4 sm:p-6 overflow-auto">
+                @php($avisoGracia = app(\App\Services\Suscripcion\AvisoGraciaSuscripcion::class)->actual())
+                @if ($avisoGracia)
+                    <div class="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="status" data-aviso-gracia>
+                        <p>{{ $avisoGracia['texto'] }}</p>
+                        @if ($esAdminDistribuidora)
+                            <a href="{{ $avisoGracia['url'] }}" wire:navigate class="mt-1 inline-block font-semibold underline">Pagar mensualidad</a>
+                        @else
+                            <p class="mt-1">El administrador de tu distribuidora puede pagarla en Configuración.</p>
+                        @endif
+                    </div>
+                @endif
                 {{ $slot }}
             </main>
         </div>
