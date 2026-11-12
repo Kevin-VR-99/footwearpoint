@@ -218,7 +218,8 @@ class TransferenciaYOpenpayTest extends TestCase
 
         $this->get(route('terminos'))
             ->assertOk()
-            ->assertSee('FootwearPoint no recibe ni custodia estos pagos');
+            // TG-321: redacción de los términos 1.3.
+            ->assertSee('FootwearPoint no recibe ni guarda el dinero');
     }
 
     private function guardarCuenta(): void
