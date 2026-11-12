@@ -80,6 +80,11 @@ class AccesoPanelWebService
 
         $distribuidora = $staff->distribuidora;
 
+        if ($distribuidora !== null && $distribuidora->suspendidaPorFaltaDePago()) {
+            // Entra al panel, pero solo llega a la pantalla de pago.
+            return null;
+        }
+
         if ($distribuidora !== null && ! $distribuidora->puedeOperar()) {
             return match ($distribuidora->estado) {
                 'rechazada' => self::mensajeDistribuidoraRechazada($distribuidora->motivo_rechazo),

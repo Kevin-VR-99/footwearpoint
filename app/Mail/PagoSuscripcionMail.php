@@ -29,6 +29,7 @@ class PagoSuscripcionMail extends Mailable
         public ?string $plan = null,
         public int $lineasExtra = 0,
         public ?string $nombreDestinatario = null,
+        public bool $reactivada = false,
     ) {
     }
 

@@ -158,6 +158,13 @@ Verificación: `curl -I https://footwearpoint.app/build/assets/app-XXXX.css` tra
   archivo vive 24 h (`EXPORTACIONES_HORAS_VIGENCIA`). Solo lo baja quien lo pidió, en su distribuidora.
 - Cron opcional `footwearpoint-limpiar-exportaciones`: start command `php artisan exportaciones:limpiar`,
   schedule `15 11 * * *` (5:15 CDMX), restart policy Never.
+
+## J. Vencimiento de la mensualidad (no creado)
+
+El comando `php artisan suscripciones:vencer` **no tiene servicio** en Railway.
+Por omisión solo avisa y no suspende. El alta del cron y el paso a modo
+suspender están en `docs/vencimiento-suscripcion.md`. No se crea hasta que
+los términos que describen la gracia y la suspensión estén publicados.
 - Migración nueva: `2026_10_21_130000_crea_exportaciones` (la corre el pre-deploy).
 
 ---

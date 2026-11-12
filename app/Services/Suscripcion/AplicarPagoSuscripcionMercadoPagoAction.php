@@ -2,6 +2,7 @@
 
 namespace App\Services\Suscripcion;
 
+use App\Models\Distribuidora;
 use App\Models\Pago;
 use App\Models\Suscripcion;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
@@ -26,8 +27,11 @@ use Throwable;
  * monto y que el dinero haya llegado a la cuenta de FootwearPoint
  * (collector_id obligatorio aquí).
  *
- * Al aplicar, la suscripción queda activa un mes más (desde su fecha de fin,
- * o desde hoy si ya venció) y las líneas extra se vuelven a contar con lo que
+ * Al aplicar, la suscripción queda activa un mes más (desde su fecha de fin
+ * si sigue vigente o está en los 5 días de gracia, o desde hoy si ya pasó
+ * la gracia). Si la distribuidora estaba suspendida por falta de pago, queda
+ * activa. Una suspensión manual no se levanta. Las líneas extra se vuelven
+ * a contar con lo que
  * tiene activo hoy (CobroSuscripcion::recalcularExtrasParaRenovar, para esta
  * suscripción). Si mientras tanto la suscripción se canceló (el admin general
  * asignó otro plan), el pago se aplica pero no renueva nada y queda marcado
@@ -90,7 +94,7 @@ class AplicarPagoSuscripcionMercadoPagoAction
             return self::NO_APLICA;
         }
 
-        [$estado, $aplicado, $suscripcion, $renovada] = Tenant::forzar(
+        [$estado, $aplicado, $suscripcion, $renovada, $reactivada] = Tenant::forzar(
             (int) $pago->distribuidora_id,
             fn () => DB::transaction(fn () => $this->aplicar($pago, $pagoMp))
         );
@@ -98,7 +102,7 @@ class AplicarPagoSuscripcionMercadoPagoAction
         if ($estado === self::APLICADO) {
             // El pago ya quedó; si el aviso falla, solo se reporta.
             try {
-                $this->notificar->ejecutar($aplicado, $suscripcion, $renovada);
+                $this->notificar->ejecutar($aplicado, $suscripcion, $renovada, $reactivada);
             } catch (Throwable $e) {
                 report($e);
             }
@@ -107,17 +111,17 @@ class AplicarPagoSuscripcionMercadoPagoAction
         return $estado;
     }
 
-    /** @return array{0: string, 1: ?Pago, 2: ?Suscripcion, 3: bool} */
+    /** @return array{0: string, 1: ?Pago, 2: ?Suscripcion, 3: bool, 4: bool} */
     private function aplicar(Pago $pago, array $pagoMp): array
     {
         $actual = Pago::query()->whereKey($pago->id)->lockForUpdate()->first();
 
         if ($actual === null || $actual->estado === 'aplicado') {
-            return [self::YA_APLICADO, null, null, false];
+            return [self::YA_APLICADO, null, null, false, false];
         }
 
         if ($actual->estado === 'revertido') {
-            return [self::NO_APLICA, null, null, false];
+            return [self::NO_APLICA, null, null, false, false];
         }
 
         $suscripcion = Suscripcion::query()->whereKey($actual->suscripcion_id)->lockForUpdate()->firstOrFail();
@@ -141,6 +145,7 @@ class AplicarPagoSuscripcionMercadoPagoAction
         }
 
         $renovada = in_array($suscripcion->estado, CrearPagoSuscripcionMercadoPagoAction::ESTADOS_PAGABLES, true);
+        $reactivada = false;
 
         if ($renovada) {
             ['hasta' => $hasta] = CrearPagoSuscripcionMercadoPagoAction::periodoAlPagar($suscripcion);
@@ -154,6 +159,8 @@ class AplicarPagoSuscripcionMercadoPagoAction
                 'fecha_fin'                => $hasta->toDateString(),
                 'lineas_extra_contratadas' => max(0, app(CupoLineasDistribuidora::class)->activas() - (int) $suscripcion->lineas_incluidas_contratadas),
             ]);
+
+            $reactivada = $this->reactivarPorFaltaDePago($suscripcion);
         }
 
         $this->auditoria->ejecutar('pago.mercado_pago.aplicado', 'pago', $actual->id, ['estado' => $estadoAnterior], [
@@ -178,7 +185,36 @@ class AplicarPagoSuscripcionMercadoPagoAction
             ]);
         }
 
-        return [self::APLICADO, $actual->fresh(), $suscripcion, $renovada];
+        return [self::APLICADO, $actual->fresh(), $suscripcion, $renovada, $reactivada];
+    }
+
+    /** Solo levanta la suspensión por falta de pago. La manual se queda. */
+    private function reactivarPorFaltaDePago(Suscripcion $suscripcion): bool
+    {
+        $distribuidora = Distribuidora::query()->lockForUpdate()->find($suscripcion->distribuidora_id);
+
+        if ($distribuidora === null || ! $distribuidora->suspendidaPorFaltaDePago()) {
+            return false;
+        }
+
+        $distribuidora->update([
+            'estado' => 'activa',
+            'motivo_suspension' => null,
+        ]);
+
+        $this->auditoria->ejecutar(
+            'distribuidora.reactivada_por_pago',
+            'distribuidora',
+            $distribuidora->id,
+            ['estado' => 'suspendida', 'motivo_suspension' => Distribuidora::MOTIVO_FALTA_PAGO],
+            [
+                'estado' => 'activa',
+                'motivo_suspension' => null,
+                'suscripcion_id' => $suscripcion->id,
+            ]
+        );
+
+        return true;
     }
 
     /**
@@ -211,7 +247,7 @@ class AplicarPagoSuscripcionMercadoPagoAction
             ]
         );
 
-        return [self::APLICADO, $actual->fresh(), $suscripcion, false];
+        return [self::APLICADO, $actual->fresh(), $suscripcion, false, false];
     }
 
     private function fechaAprobacion(array $pagoMp): Carbon
