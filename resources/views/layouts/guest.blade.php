@@ -19,9 +19,12 @@
 <body class="fp-acceso-fondo min-h-screen text-slate-800 antialiased">
     <div class="fp-acceso-capa" aria-hidden="true"></div>
     <div class="min-h-screen flex items-center justify-center p-4">
-        <div class="fp-contenido w-full max-w-md">
+        {{-- A21: <main> para que haya una region principal, igual que en los
+             demas layouts. Aqui NO va el enlace de salto: esta pantalla es
+             una sola tarjeta y no hay menu que saltarse. --}}
+        <main id="contenido" tabindex="-1" class="fp-contenido w-full max-w-md">
             {{ $slot }}
-        </div>
+        </main>
     </div>
 
     @livewireScripts
