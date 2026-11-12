@@ -20,9 +20,9 @@ new #[Layout('layouts.public')] #[Title('Aviso de privacidad — FootwearPoint')
     <h1 class="text-2xl font-bold text-fp-sidebar">Aviso de privacidad</h1>
     {{-- TG-322: versión y fecha a la vista desde arriba, en un tono que pasa AA. --}}
     <p class="mt-2 inline-flex flex-wrap gap-x-2 rounded-lg bg-fp-badge-info-bg px-3 py-1.5 text-sm text-fp-badge-info-fg">
-        <span>Versión {{ config('legal.version') }}</span>
+        <span>Versión {{ \App\Support\DocumentosLegales::version('aviso_privacidad') }}</span>
         <span aria-hidden="true" class="hidden sm:inline">·</span>
-        <span>Última actualización: {{ config('legal.fecha_actualizacion') }}</span>
+        <span>Última actualización: {{ \App\Support\DocumentosLegales::fecha('aviso_privacidad') }}</span>
     </p>
 
     <div class="mt-6 text-[0.9375rem] sm:text-base">

@@ -18,6 +18,8 @@ class SoloPagoPorFaltaDePago
 
     private const RUTAS_WEB = [
         'distribuidora.pago-inicial',
+        // TG-323: aceptar los documentos legales va antes que el pago.
+        'legales.aceptar',
         'logout',
         'login',
         'mercado-pago.webhook',
@@ -30,6 +32,7 @@ class SoloPagoPorFaltaDePago
     private const RUTAS_API = [
         'api/auth/me',
         'api/auth/logout',
+        'api/auth/aceptar-legales',
         'api/perfil',
         'api/perfil/password',
     ];

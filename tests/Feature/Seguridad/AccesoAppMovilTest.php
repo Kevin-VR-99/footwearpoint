@@ -157,6 +157,11 @@ class AccesoAppMovilTest extends TestCase
 
         $this->asignarRol($usuario, 'revendedor', $distribuidoraId);
 
+        // TG-323: como las cuentas del seeder, ya aceptó los documentos vigentes.
+        foreach (\App\Support\DocumentosLegales::tipos() as $tipo) {
+            \App\Support\DocumentosLegales::registrar($usuario, $tipo, null);
+        }
+
         return $usuario;
     }
 
@@ -178,6 +183,11 @@ class AccesoAppMovilTest extends TestCase
         ]);
 
         $this->asignarRol($usuario, 'cliente_directo', $distribuidoraId);
+
+        // TG-323: como las cuentas del seeder, ya aceptó los documentos vigentes.
+        foreach (\App\Support\DocumentosLegales::tipos() as $tipo) {
+            \App\Support\DocumentosLegales::registrar($usuario, $tipo, null);
+        }
 
         return $usuario;
     }

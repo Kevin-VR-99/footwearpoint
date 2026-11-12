@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../models/documento_legal.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../services/pago_mercado_pago_service.dart';
 import '../tema/fp_colores.dart';
 
+/// E1-04 / TG-323 (K24): aceptar el aviso de privacidad y los términos.
+///
+/// Es la pantalla raíz mientras falte aceptar la versión vigente de alguno.
+/// Antes mostraba un resumen propio, escrito en la app, que no era el texto
+/// real y mandaba la versión «1.0» fija. Ahora muestra los documentos que el
+/// servidor dice que faltan, con su versión, y abre el texto completo en el
+/// navegador. La versión que se guarda la pone el servidor.
 class AvisoPrivacidadScreen extends StatefulWidget {
-  const AvisoPrivacidadScreen({super.key});
+  const AvisoPrivacidadScreen({super.key, this.abrirEnlace = abrirEnNavegador});
+
+  /// Para las pruebas: cómo se abre la página de cada documento.
+  final AbrirEnlace abrirEnlace;
 
   @override
   State<AvisoPrivacidadScreen> createState() => _AvisoPrivacidadScreenState();
@@ -14,6 +27,21 @@ class AvisoPrivacidadScreen extends StatefulWidget {
 class _AvisoPrivacidadScreenState extends State<AvisoPrivacidadScreen> {
   bool _isLoading = false;
   bool _aceptoTodo = false;
+
+  List<DocumentoLegal> _documentos(AuthProvider auth) =>
+      auth.legalesPendientes.isEmpty ? DocumentoLegal.ambos : auth.legalesPendientes;
+
+  Future<void> _leer(DocumentoLegal documento) async {
+    final url = documento.url;
+    if (url == null) return;
+
+    final abierto = await widget.abrirEnlace(Uri.parse(url));
+    if (!abierto && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo abrir el documento. Búscalo en $url')),
+      );
+    }
+  }
 
   Future<void> _aceptarYLlenarRegistro() async {
     if (!_aceptoTodo) return;
@@ -24,16 +52,13 @@ class _AvisoPrivacidadScreenState extends State<AvisoPrivacidadScreen> {
 
     try {
       final auth = context.read<AuthProvider>();
-      final api = auth.api;
 
-      // Petición al endpoint correspondiente para guardar la aceptación en Laravel
-      await api.post(
+      await auth.api.post(
         'auth/aceptar-legales',
         cuerpo: {
           'documentos': [
-            {'tipo_documento': 'aviso_privacidad', 'version': '1.0'},
-            {'tipo_documento': 'terminos_condiciones', 'version': '1.0'},
-          ]
+            for (final documento in _documentos(auth)) {'tipo_documento': documento.tipo},
+          ],
         },
       );
 
@@ -68,6 +93,10 @@ class _AvisoPrivacidadScreenState extends State<AvisoPrivacidadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final documentos = _documentos(auth);
+    final tema = Theme.of(context);
+
     return PopScope(
       canPop: false,
       child: Scaffold(
@@ -80,134 +109,135 @@ class _AvisoPrivacidadScreenState extends State<AvisoPrivacidadScreen> {
           elevation: 0,
         ),
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              const Text(
+                'Documentos legales',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Para usar FootwearPoint, lee y acepta estos documentos. '
+                'Si ya los habías aceptado, te los pedimos otra vez porque cambiaron.',
+                style: tema.textTheme.bodyMedium?.copyWith(color: Colors.black87),
+              ),
+              const SizedBox(height: 16),
+              for (final documento in documentos) ...[
+                _TarjetaDocumento(documento: documento, alLeer: () => _leer(documento)),
+                const SizedBox(height: 12),
+              ],
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: _aceptoTodo,
+                      onChanged: (val) {
+                        setState(() {
+                          _aceptoTodo = val ?? false;
+                        });
+                      },
+                    ),
+                    Expanded(
+                      child: Text(
+                        documentos.length == 1 && documentos.first.tipo == 'aviso_privacidad'
+                            ? 'He leído y acepto el aviso de privacidad.'
+                            : documentos.length == 1
+                            ? 'He leído y acepto los términos y condiciones.'
+                            : 'He leído y acepto el aviso de privacidad y los términos y condiciones.',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 50,
+                child: FilledButton(
+                  onPressed: (_aceptoTodo && !_isLoading) ? _aceptarYLlenarRegistro : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: FpColores.sidebar,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text(
+                          'Aceptar y Continuar',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Si no acepta, la única salida es cerrar la sesión.
+              TextButton(
+                onPressed: _isLoading ? null : () => context.read<AuthProvider>().logout(),
+                child: const Text('No acepto, cerrar sesión'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Un documento: su nombre, su versión y el botón para leerlo completo.
+class _TarjetaDocumento extends StatelessWidget {
+  const _TarjetaDocumento({required this.documento, required this.alLeer});
+
+  final DocumentoLegal documento;
+  final VoidCallback alLeer;
+
+  @override
+  Widget build(BuildContext context) {
+    final detalle = [
+      if (documento.version != null) 'Versión ${documento.version}',
+      if (documento.fecha != null) 'actualizado el ${documento.fecha}',
+    ].join(', ');
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.description_outlined, color: FpColores.primario),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Aviso de Privacidad y Términos de Uso',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Para continuar operando en FootwearPoint, es obligatorio leer y aceptar nuestras políticas vigentes.',
-                  style: TextStyle(fontSize: 14, color: Colors.black54),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Scrollbar(
-                      thumbVisibility: true,
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              '1. Identidad y Domicilio del Responsable',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                            ),
-                            SizedBox(height: 6),
-                            Text(
-                              'FootwearPoint, en cumplimiento con la Ley Federal de Protección de Datos Personales, es responsable del tratamiento y resguardo de la información proporcionada por los usuarios y distribuidores de la plataforma.',
-                              style: TextStyle(fontSize: 13, color: Colors.black87),
-                            ),
-                            SizedBox(height: 14),
-                            Text(
-                              '2. Finalidad del Tratamiento de Datos',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                            ),
-                            SizedBox(height: 6),
-                            Text(
-                              'Los datos personales recabados (nombre, correo electrónico, teléfono y datos de transacciones de calzado) serán utilizados exclusivamente para: gestión de pedidos, control de inventarios de distribuidores, notificaciones push y autenticación segura en el sistema.',
-                              style: TextStyle(fontSize: 13, color: Colors.black87),
-                            ),
-                            SizedBox(height: 14),
-                            Text(
-                              '3. Consentimiento y Versión',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                            ),
-                            SizedBox(height: 6),
-                            Text(
-                              'Al marcar la casilla de aceptación y continuar, usted otorga su consentimiento expreso para el registro de su aceptación en nuestros servidores seguros.',
-                              style: TextStyle(fontSize: 13, color: Colors.black87),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Row(
-                    children: [
-                      Checkbox(
-                        value: _aceptoTodo,
-                        onChanged: (val) {
-                          setState(() {
-                            _aceptoTodo = val ?? false;
-                          });
-                        },
-                      ),
-                      const Expanded(
-                        child: Text(
-                          'He leído y acepto el Aviso de Privacidad y los Términos de Uso.',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 50,
-                  child: FilledButton(
-                    onPressed: (_aceptoTodo && !_isLoading) ? _aceptarYLlenarRegistro : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: FpColores.sidebar,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          )
-                        : const Text(
-                            'Aceptar y Continuar',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Si no acepta, la única salida es cerrar la sesión.
-                TextButton(
-                  onPressed: _isLoading ? null : () => context.read<AuthProvider>().logout(),
-                  child: const Text('No acepto, cerrar sesión'),
-                ),
+                Text(documento.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                if (detalle.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(detalle, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                ],
               ],
             ),
           ),
-        ),
+          if (documento.url != null)
+            TextButton(
+              onPressed: alLeer,
+              child: Text('Leer', semanticsLabel: 'Leer ${documento.nombre}'),
+            ),
+        ],
       ),
     );
   }

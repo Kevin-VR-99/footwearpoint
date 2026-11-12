@@ -98,6 +98,7 @@ class AppServiceProvider extends ServiceProvider
 
         // TG-220: las acciones de Livewire también respetan el cobro inicial.
         \Livewire\Livewire::addPersistentMiddleware([
+            \App\Http\Middleware\LegalesVigentes::class,
             \App\Http\Middleware\CobroInicialPendiente::class,
             \App\Http\Middleware\SoloPagoPorFaltaDePago::class,
         ]);

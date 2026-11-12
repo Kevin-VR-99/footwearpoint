@@ -225,7 +225,7 @@
     <h2 id="aviso-cambios" class="fp-legal-titulo">{{ $titulo('aviso-cambios') }}</h2>
     <p>
         Cualquier cambio se publicará en <a href="{{ route('aviso-privacidad') }}" class="fp-enlace break-all">{{ route('aviso-privacidad') }}</a>
-        con un número de versión y una fecha nuevos, y te avisaremos dentro de la plataforma. Las aceptaciones
+        con un número de versión y una fecha nuevos, y te pediremos aceptarlo dentro de la plataforma. Las aceptaciones
         de versiones anteriores se conservan con su número de versión.
     </p>
 
@@ -236,5 +236,5 @@
         <strong>Secretaría Anticorrupción y Buen Gobierno</strong>.
     </p>
 
-    <p class="text-xs text-slate-600">Aviso de privacidad · Versión {{ config('legal.version') }} · Última actualización: {{ config('legal.fecha_actualizacion') }}</p>
+    <p class="text-xs text-slate-600">Aviso de privacidad · Versión {{ \App\Support\DocumentosLegales::version('aviso_privacidad') }} · Última actualización: {{ \App\Support\DocumentosLegales::fecha('aviso_privacidad') }}</p>
 </div>

@@ -1,7 +1,7 @@
 <?php
 
 use App\Rules\CorreoConDominioReal;
-use App\Models\AceptacionLegal;
+use App\Support\DocumentosLegales;
 use App\Models\PlanSuscripcion;
 use App\Models\Usuario;
 use App\Services\Distribuidora\CrearDistribuidoraAction;
@@ -189,21 +189,11 @@ class extends Component
         app(NotificarSolicitudAltaAction::class)->ejecutar($distribuidora, $administrador);
     }
 
-    /** Igual que en la pantalla de aceptar documentos: version 1.0. */
+    /** TG-323: la versión vigente de cada documento (antes guardaba «1.0» fija). */
     private function guardarAceptacionLegal(Usuario $usuario, ?string $ip): void
     {
-        foreach (['aviso_privacidad', 'terminos_condiciones'] as $documento) {
-            AceptacionLegal::firstOrCreate(
-                [
-                    'usuario_id' => $usuario->id,
-                    'tipo_documento' => $documento,
-                    'version' => '1.0',
-                ],
-                [
-                    'fecha_aceptacion' => now(),
-                    'ip_origen' => $ip,
-                ]
-            );
+        foreach (DocumentosLegales::tipos() as $documento) {
+            DocumentosLegales::registrar($usuario, $documento, $ip);
         }
     }
 

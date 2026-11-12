@@ -12,7 +12,7 @@ http.Response _json(Object cuerpo, int codigo) =>
     http.Response(jsonEncode(cuerpo), codigo, headers: {'content-type': 'application/json; charset=utf-8'});
 
 /// Sesión como la manda el servidor, con o sin los legales aceptados (E1-04).
-Map<String, dynamic> _sesion({required bool legales}) => {
+Map<String, dynamic> _sesion({required bool legales, List<Map<String, dynamic>>? pendientes}) => {
   'usuario': {
     'id': 7,
     'nombre': 'María López',
@@ -23,7 +23,17 @@ Map<String, dynamic> _sesion({required bool legales}) => {
   'rol': 'revendedor',
   'distribuidora_id': 1,
   'legales_aceptados': legales,
+  'legales_pendientes': ?pendientes,
   'debe_cambiar_password': false,
+};
+
+/// TG-323: lo que manda el servidor cuando cambió la versión del aviso.
+const _avisoNuevo = {
+  'tipo_documento': 'aviso_privacidad',
+  'nombre': 'Aviso de privacidad',
+  'version': '1.3',
+  'fecha_actualizacion': '20 de noviembre de 2026',
+  'url': 'https://footwearpoint.app/aviso-privacidad',
 };
 
 /// TG-190: aceptación obligatoria del aviso de privacidad y los términos.
@@ -32,7 +42,9 @@ void main() {
 
   /// Servidor falso: la sesión trae legales_aceptados en false hasta que se
   /// llama a auth/aceptar-legales, igual que el de verdad.
-  MockClient servidor({required bool legales, bool aceptarFalla = false}) {
+  late List<String> cuerpos;
+
+  MockClient servidor({required bool legales, bool aceptarFalla = false, List<Map<String, dynamic>>? pendientes}) {
     var aceptados = legales;
 
     return MockClient((peticion) async {
@@ -45,9 +57,10 @@ void main() {
         }, 200);
       }
       if (ruta == '/auth/me') {
-        return _json({'data': _sesion(legales: aceptados)}, 200);
+        return _json({'data': _sesion(legales: aceptados, pendientes: aceptados ? const [] : pendientes)}, 200);
       }
       if (ruta == '/auth/aceptar-legales') {
+        cuerpos.add(peticion.body);
         if (aceptarFalla) {
           return _json({'message': 'No se pudo registrar la aceptación.'}, 500);
         }
@@ -70,7 +83,10 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  setUp(() => rutas = []);
+  setUp(() {
+    rutas = [];
+    cuerpos = [];
+  });
 
   testWidgets('al reabrir la app sin legales aceptados muestra el aviso y conserva la sesión', (tester) async {
     FlutterSecureStorage.setMockInitialValues(<String, String>{'token_sanctum': '1|token'});
@@ -151,5 +167,57 @@ void main() {
 
     expect(find.text('Sesión iniciada'), findsOneWidget);
     expect(find.text('Políticas y Privacidad'), findsNothing);
+  });
+
+  // ------------------------------------------------------------------
+  // TG-323 (K24): los documentos reales y su versión
+  // ------------------------------------------------------------------
+
+  testWidgets('TG-323: muestra solo el documento que cambió, con su versión', (tester) async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{'token_sanctum': '1|token'});
+
+    await tester.pumpWidget(
+      FootwearPointApp(api: ApiService(cliente: servidor(legales: false, pendientes: [_avisoNuevo]))),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aviso de privacidad'), findsOneWidget);
+    expect(find.text('Versión 1.3, actualizado el 20 de noviembre de 2026'), findsOneWidget);
+    expect(find.text('Términos y condiciones'), findsNothing);
+    expect(find.text('He leído y acepto el aviso de privacidad.'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Leer'), findsOneWidget);
+    // Ya no está el resumen propio de la app.
+    expect(find.textContaining('en cumplimiento'), findsNothing);
+  });
+
+  testWidgets('TG-323: al aceptar manda solo el tipo, sin versión inventada', (tester) async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{'token_sanctum': '1|token'});
+
+    await tester.pumpWidget(
+      FootwearPointApp(api: ApiService(cliente: servidor(legales: false, pendientes: [_avisoNuevo]))),
+    );
+    await tester.pumpAndSettle();
+    await aceptar(tester);
+
+    expect(cuerpos, hasLength(1));
+    expect(jsonDecode(cuerpos.single), {
+      'documentos': [
+        {'tipo_documento': 'aviso_privacidad'},
+      ],
+    });
+    expect(cuerpos.single, isNot(contains('1.0')));
+    expect(find.text('Sesión iniciada'), findsOneWidget);
+  });
+
+  testWidgets('TG-323: si el servidor no dice cuáles faltan, pide los dos', (tester) async {
+    FlutterSecureStorage.setMockInitialValues(<String, String>{'token_sanctum': '1|token'});
+
+    await tester.pumpWidget(FootwearPointApp(api: ApiService(cliente: servidor(legales: false))));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aviso de privacidad'), findsOneWidget);
+    expect(find.text('Términos y condiciones'), findsOneWidget);
+    // Sin URL no hay botón para leer.
+    expect(find.widgetWithText(TextButton, 'Leer'), findsNothing);
   });
 }
