@@ -49,7 +49,7 @@ class MenuTiendaTest extends TestCase
             $this->assertStringContainsString(route('cambios.index'), $bloque);
             $this->assertStringContainsString('Caja y cortes', $bloque);
             $this->assertStringContainsString('Historial de clientes', $bloque);
-            $this->assertStringContainsString('Comisiones', $bloque);
+            $this->assertStringNotContainsString('Comisiones', $bloque);
             $this->assertStringContainsString(route('stock.index').'"', $this->enlaceTienda($html));
         }
 

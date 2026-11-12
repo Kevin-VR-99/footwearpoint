@@ -1094,9 +1094,9 @@ Estados: `solicitada → autorizada | rechazada`; `autorizada → enviada_fabric
 
 `{ "estado": "autorizada", "nota": "opcional", "monto_vale": 900 }`. `nota` es obligatoria al rechazar. `monto_vale` (opcional, al pasar a `vale_emitido`) no puede ser mayor que el subtotal de la línea; por omisión es el subtotal. Permiso fino `cambios.resolver`. Transición no permitida → 409.
 
-### `GET /api/revendedor/comisiones?periodo=AAAA-MM` (cliente mayorista)
+### Comisiones de clientes mayoristas
 
-Su comisión del mes (por omisión el actual): `{ "data": { "periodo", "porcentaje", "pedidos_pagados", "venta_pagada", "comision", "meta", "avance", "lugar" } }`. Cuenta los pedidos del mes (por fecha de colocación) ya pagados por completo. `meta`/`avance` son `null` si no hay meta. La app lo muestra en Inicio («Tu meta del mes»).
+`GET /api/revendedor/comisiones` y `GET /api/distribuidora/comisiones` ya no existen: responden 404. La app nueva no las llama.
 
 ### Cambios en `GET /api/pedidos` y `GET /api/pedidos/{id}`
 
@@ -1253,7 +1253,6 @@ Existen en `/api` y están probados, pero los consume el panel web, no la app de
 | `POST /api/reembolsos-mercado-pago/{id}/reintentar` | Vuelve a mandar un reembolso `fallido` (permiso `ventas.cancelar` para ventas, `pagos.registrar` para pedidos); 409 si no está fallido |
 | `POST /api/distribuidora/accesos/{tipo}/{id}/baja` | Dar de baja (`tipo`: revendedor, cliente, empleado; `motivo` opcional). Revoca sesiones de la app y bloquea el login. Solo administración |
 | `POST /api/distribuidora/accesos/{tipo}/{id}/reactivar` | Reactivar un acceso dado de baja. Solo administración |
-| `GET /api/distribuidora/comisiones?periodo=AAAA-MM` | Ranking de comisiones y metas de clientes mayoristas (permiso fino `comisiones.ver`) |
 | `POST /api/webhooks/mercado-pago` | Aviso de Mercado Pago cuando cambia un pago (TG-228). En producción exige firma válida (`x-signature` con `ts` de menos de 5 min) |
 | `POST /api/csp-report` | El navegador avisa lo que la CSP bloquearía (auditoría 21-oct-2026) |
 

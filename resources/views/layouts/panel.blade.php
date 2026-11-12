@@ -31,7 +31,7 @@
 <body class="min-h-screen bg-fp-page text-slate-800 antialiased" x-data="{
     sidebarOpen: false,
     openCatalogo: {{ request()->routeIs('distribuidora.catalogo', 'catalogo.*') ? 'true' : 'false' }},
-    openOperacion: {{ request()->routeIs('stock.*', 'punto-venta.*', 'ciclo.*', 'pedidos.*', 'vales.*', 'compras.*', 'cambios.*', 'reportes.*', 'ventas.*', 'caja.*', 'conteos.*', 'clientes.historial*', 'comisiones.*') ? 'true' : 'false' }},
+    openOperacion: {{ request()->routeIs('stock.*', 'punto-venta.*', 'ciclo.*', 'pedidos.*', 'vales.*', 'compras.*', 'cambios.*', 'reportes.*', 'ventas.*', 'caja.*', 'conteos.*', 'clientes.historial*') ? 'true' : 'false' }},
     openMas: {{ request()->routeIs('auditoria.*') ? 'true' : 'false' }},
     openSistema: {{ request()->routeIs('distribuidora.configuracion', 'distribuidora.perfil', 'distribuidora.empleados', 'distribuidora.mayoristas', 'distribuidora.clientes-directos') ? 'true' : 'false' }},
 }"

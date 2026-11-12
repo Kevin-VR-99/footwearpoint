@@ -38,7 +38,6 @@ class PermisoModuloService
     public const INVENTARIO_CONTEO = 'inventario.conteo';
     public const CLIENTES_VER = 'clientes.ver';
     public const CLIENTES_IMPORTAR = 'clientes.importar';
-    public const COMISIONES_VER = 'comisiones.ver';
     public const CAMBIOS_RESOLVER = 'cambios.resolver';
 
     /** permiso => [etiqueta, prendido por omisión] */
@@ -52,7 +51,6 @@ class PermisoModuloService
         self::CAMBIOS_RESOLVER  => ['Autorizar y resolver cambios', true],
         self::VENTAS_CANCELAR   => ['Cancelar ventas de mostrador', false],
         self::CLIENTES_IMPORTAR => ['Importar clientes', false],
-        self::COMISIONES_VER    => ['Ver comisiones y metas', false],
     ];
 
     /** Los de siempre (spatie), con su etiqueta para la pantalla de empleados. */

@@ -32,7 +32,7 @@ class PermisosFinosEmpleadoTest extends TestCase
         foreach ([PermisoModuloService::PAGOS_REGISTRAR, PermisoModuloService::STOCK_AJUSTAR, PermisoModuloService::COSTOS_VER, PermisoModuloService::CAJA_OPERAR] as $p) {
             $this->assertTrue($permisos->puede($empleado, $p), $p);
         }
-        foreach ([PermisoModuloService::VENTAS_CANCELAR, PermisoModuloService::CLIENTES_IMPORTAR, PermisoModuloService::COMISIONES_VER] as $p) {
+        foreach ([PermisoModuloService::VENTAS_CANCELAR, PermisoModuloService::CLIENTES_IMPORTAR] as $p) {
             $this->assertFalse($permisos->puede($empleado, $p), $p);
         }
 
