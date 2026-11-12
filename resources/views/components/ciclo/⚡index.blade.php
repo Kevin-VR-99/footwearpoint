@@ -21,6 +21,8 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
     public string $mensaje = '';
     public string $errorMsg = '';
 
+    public bool $configurandoCiclo = false;
+
     public function mount()
     {
         if (! Auth::check()) {
@@ -190,6 +192,29 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         $this->errorMsg = '';
     }
 
+    public function getPuedeConfigurarCicloProperty(): bool
+    {
+        $usuario = Auth::user();
+        if ($usuario === null || Tenant::id() === null) {
+            return false;
+        }
+
+        app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId(Tenant::id());
+
+        return $usuario->hasRole('admin_distribuidora');
+    }
+
+    public function abrirConfigurarCiclo(): void
+    {
+        abort_unless($this->puedeConfigurarCiclo, 403);
+        $this->configurandoCiclo = true;
+    }
+
+    public function cerrarConfigurarCiclo(): void
+    {
+        $this->configurandoCiclo = false;
+    }
+
     public function fecha($valor, bool $conHora = true): string
     {
         if ($valor === null || $valor === '') {
@@ -207,6 +232,11 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
     <x-panel.encabezado titulo="Ciclo de compra"
         subtitulo="Pedidos agrupados por ciclo, consolidado para fábrica y avance del pedido." class="mb-6">
         <x-slot:acciones>
+        @if ($this->puedeConfigurarCiclo)
+            <button type="button" wire:click="abrirConfigurarCiclo" class="fp-btn fp-btn-secundario shrink-0" data-configurar-ciclo>
+                Configurar ciclo
+            </button>
+        @endif
         <div class="w-full sm:w-72">
             <label for="index-cicloId" class="block text-sm font-medium text-slate-700 mb-1">Ciclo</label>
             <select id="index-cicloId" wire:model.live="cicloId"
@@ -218,6 +248,12 @@ new #[Layout('layouts.panel')] #[Title('Ciclo de compra — FootwearPoint')] cla
         </div>
         </x-slot:acciones>
     </x-panel.encabezado>
+
+    @if ($configurandoCiclo && $this->puedeConfigurarCiclo)
+        <x-panel.modal titulo="Configurar ciclo" cerrar="cerrarConfigurarCiclo" ancho="max-w-3xl">
+            <livewire:distribuidora.ciclos />
+        </x-panel.modal>
+    @endif
 
     @if ($mensaje)
         <x-panel.alerta tipo="exito" class="mb-4">
