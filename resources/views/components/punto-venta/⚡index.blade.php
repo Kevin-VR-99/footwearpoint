@@ -1,10 +1,12 @@
 <?php
 
+use App\Livewire\Concerns\AltaRapidaDeCliente;
 use App\Models\ClienteDirecto;
 use App\Models\ProductoCampana;
 use App\Services\Catalogo\CatalogoVisible;
 use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\PrecioEfectivo;
+use App\Support\BusquedaDeCliente;
 use App\Models\StockLocal;
 use App\Services\VentaDirecta\RegistrarVentaDirectaService;
 use App\Support\MensajeError;
@@ -15,9 +17,12 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class extends Component
 {
+    use AltaRapidaDeCliente;
+    use WithFileUploads;
     /** Tasa documentada en el Plan de Tareas. El modelo no tiene columna de tasa. */
     private const TASA_IVA = 0.16;
 
@@ -170,7 +175,19 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         return ClienteDirecto::query()
             ->where('estado', 'activo')
             ->orderBy('nombre')
-            ->get(['id', 'nombre']);
+            ->get(['id', 'nombre', 'telefono']);
+    }
+
+    public function getClientesFiltradosProperty()
+    {
+        return $this->clientes
+            ->filter(fn (ClienteDirecto $cliente) => BusquedaDeCliente::coincide($cliente->nombre, $cliente->telefono, $this->busquedaCliente))
+            ->values();
+    }
+
+    protected function asignarClienteDirecto(int $id): void
+    {
+        $this->cliente_directo_id = (string) $id;
     }
 
     /** Suma de líneas. Estos importes YA INCLUYEN IVA. */
@@ -356,6 +373,9 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
     {
         $this->lineas = [];
         $this->cliente_directo_id = '';
+        $this->busquedaCliente = '';
+        $this->primeraCompra = 'no';
+        $this->avisoCliente = '';
         $this->metodo_pago = 'efectivo';
         $this->recibido = '';
         $this->mensaje = '';
@@ -697,15 +717,13 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                     @endif
                     @endif
 
-                    <div class="fp-campo">
-                        <label for="index-cliente-directo-id" class="block text-sm font-medium text-slate-700 mb-1">Cliente (opcional)</label>
-                        <select id="index-cliente-directo-id" wire:model="cliente_directo_id"
-                                class="w-full rounded-lg text-sm focus:ring-fp-primary">
-                            <option value="">— Venta de mostrador —</option>
-                            @foreach ($this->clientes as $cliente)
-                                <option value="{{ $cliente->id }}">{{ $cliente->nombre }}</option>
-                            @endforeach
-                        </select>
+                    <div data-cliente-venta>
+                        @include('cliente.selector-alta', [
+                            'seleccion' => 'cliente_directo_id',
+                            'opciones' => $this->clientesFiltrados,
+                            'vacio' => '— Venta de mostrador —',
+                            'etiqueta' => 'Cliente (opcional)',
+                        ])
                     </div>
 
                     <button type="button" wire:click="cobrar" wire:loading.attr="disabled"

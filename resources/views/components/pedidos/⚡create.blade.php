@@ -12,10 +12,9 @@ use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Services\Pedido\AgregarLineaPedidoAction;
 use App\Services\Pedido\QuitarLineaPedidoAction;
-use App\Services\Distribuidora\GestionarClienteDirectoAction;
+use App\Services\Cliente\AltaRapidaClienteDirecto;
 use App\Services\Pedido\CrearPedidoBorradorAction;
 use App\Services\Pedido\EnviarPedidoAction;
-use App\Services\Perfil\FotoPerfil;
 use App\Support\MensajeError;
 use App\Support\TelefonoCliente;
 use App\Support\Tenant;
@@ -310,7 +309,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         }
     }
 
-    public function crearPrimeraCompra(CrearPedidoBorradorAction $pedidos, GestionarClienteDirectoAction $clientes, FotoPerfil $fotos)
+    public function crearPrimeraCompra(CrearPedidoBorradorAction $pedidos, AltaRapidaClienteDirecto $alta)
     {
         $this->mensaje = '';
         $this->errorMsg = '';
@@ -329,39 +328,42 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             'altaTelefono.required' => 'Escribe el teléfono.',
         ]);
 
-        $telefono = TelefonoCliente::normalizar($this->altaTelefono);
-
-        if ($telefono === null) {
+        if (TelefonoCliente::normalizar($this->altaTelefono) === null) {
             $this->errorMsg = TelefonoCliente::MENSAJE_DIGITOS;
 
             return;
         }
 
-        $existente = ClienteDirecto::query()->where('telefono', $telefono)->first();
+        try {
+            $resultado = $alta->resolver(
+                $this->altaNombre,
+                $this->altaTelefono,
+                $this->altaCorreo,
+                $this->altaDireccion,
+                $this->altaFoto,
+            );
+        } catch (ValidationException $e) {
+            $this->errorMsg = collect($e->errors())->flatten()->first() ?? 'No se pudo crear el cliente.';
 
-        if ($existente) {
-            $this->propietario_id = (string) $existente->id;
+            return;
+        } catch (\Throwable $e) {
+            $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo crear el cliente. Intenta de nuevo.');
+
+            return;
+        }
+
+        $cliente = $resultado['cliente'];
+
+        if (! $resultado['nuevo']) {
+            $this->propietario_id = (string) $cliente->id;
             $this->primeraCompra = 'no';
-            $this->clienteExistenteNombre = $existente->nombre;
-            $this->mensaje = 'Ese teléfono ya está registrado. Se usará a '.$existente->nombre.'.';
+            $this->clienteExistenteNombre = $cliente->nombre;
+            $this->mensaje = 'Ese teléfono ya está registrado. Se usará a '.$cliente->nombre.'.';
 
             return;
         }
 
         try {
-            $cliente = $clientes->crear([
-                'nombre' => trim($this->altaNombre),
-                'telefono' => $telefono,
-                'email' => trim($this->altaCorreo) !== '' ? trim($this->altaCorreo) : null,
-                'direccion_contacto' => trim($this->altaDireccion) !== '' ? trim($this->altaDireccion) : null,
-            ]);
-
-            if ($this->altaFoto) {
-                $cliente->forceFill([
-                    'foto_url' => $fotos->guardar($this->altaFoto, 'clientes-directos', $cliente->foto_url),
-                ])->save();
-            }
-
             $this->propietario_id = (string) $cliente->id;
             $pedido = $pedidos->ejecutar([
                 'tipo' => 'cliente_directo',
