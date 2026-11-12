@@ -9,7 +9,7 @@ use App\Support\Tenant;
 /**
  * Descuento de mayoreo de una línea activa de esta distribuidora.
  *
- * El general sigue existiendo: se usa solo cuando esta línea no tiene el suyo.
+ * Si el porcentaje queda vacío, la línea no tiene descuento.
  */
 class FijarDescuentoLineaAction
 {

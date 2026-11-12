@@ -16,7 +16,7 @@ use App\Models\Suscripcion;
 use App\Models\Usuario;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Services\Distribuidora\ActivarLineaDistribuidoraAction;
-use App\Services\Distribuidora\FijarDescuentoMayoristaAction;
+use App\Services\Distribuidora\FijarDescuentoLineaAction;
 use App\Services\Distribuidora\GestionarOfertaDistribuidoraAction;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
@@ -27,7 +27,7 @@ use Tests\TestCase;
  * TG-212 (Ola 2, K5) — Precio de mayoreo y productos ocultos (E4-14).
  *
  * El catálogo y su precio de menudeo son iguales para todas (D8). Lo que cada
- * distribuidora decide es su mayoreo (un descuento general, o un precio propio
+ * distribuidora decide es su mayoreo (el descuento de la línea, o un precio propio
  * por producto) y si le esconde algún producto a sus clientes.
  */
 class PreciosDeLaDistribuidoraTest extends TestCase
@@ -59,7 +59,9 @@ class PreciosDeLaDistribuidoraTest extends TestCase
 
     private function conDescuentoDe(float $porcentaje): void
     {
-        app(FijarDescuentoMayoristaAction::class)->ejecutar($porcentaje);
+        $lineaId = (int) Campana::where('estado', 'activa')->value('linea_id');
+        $this->asegurarQueVendeLaLinea($lineaId);
+        app(FijarDescuentoLineaAction::class)->ejecutar($lineaId, $porcentaje);
     }
 
     /** El producto de la temporada demo, de una línea que la distribuidora ya vende. */
@@ -320,8 +322,8 @@ class PreciosDeLaDistribuidoraTest extends TestCase
                 'descuento_mayorista_pct' => 10,
             ]);
 
-            // Y su mayoreo sale de SU propio descuento.
-            $this->assertEqualsWithDelta(900.00, (new PrecioEfectivo())->mayoreo($producto), 0.001);
+            // Sin precio propio ni descuento de línea, el mayoreo es el de catálogo.
+            $this->assertEqualsWithDelta(1000.00, (new PrecioEfectivo())->mayoreo($producto), 0.001);
         });
 
         // La primera sigue con su precio propio.

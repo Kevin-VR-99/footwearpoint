@@ -3,11 +3,12 @@
 namespace Tests\Feature\Sprint4;
 
 use App\Models\Distribuidora;
+use App\Models\DistribuidoraLinea;
 use App\Models\OfertaDistribuidora;
 use App\Models\ProductoCampana;
 use App\Models\Usuario;
 use App\Services\Catalogo\PrecioEfectivo;
-use App\Services\Distribuidora\FijarDescuentoMayoristaAction;
+use App\Services\Distribuidora\FijarDescuentoLineaAction;
 use App\Services\Distribuidora\GestionarOfertaDistribuidoraAction;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
@@ -54,7 +55,10 @@ class CatalogoDeLaAppTest extends TestCase
     private function conDescuentoDe(float $porcentaje): void
     {
         $this->como('admin@calzadosramirez.test');
-        app(FijarDescuentoMayoristaAction::class)->ejecutar($porcentaje);
+
+        foreach (DistribuidoraLinea::query()->vigentes()->pluck('linea_id') as $lineaId) {
+            app(FijarDescuentoLineaAction::class)->ejecutar((int) $lineaId, $porcentaje);
+        }
     }
 
     private function catalogo(): array
@@ -132,7 +136,7 @@ class CatalogoDeLaAppTest extends TestCase
         $this->conDescuentoDe(30);
         $this->como(self::MARIA);
 
-        // El primero que NO tenga precio propio: el descuento general solo se
+        // El primero que NO tenga precio propio: el descuento de la línea solo se
         // nota en esos, y el catalogo demo ya trae uno con su propio precio
         // (TG-217).
         $primero = collect($this->catalogo())->firstWhere(
@@ -157,7 +161,7 @@ class CatalogoDeLaAppTest extends TestCase
         );
     }
 
-    public function test_el_precio_propio_del_producto_le_gana_al_descuento_general(): void
+    public function test_el_precio_propio_del_producto_le_gana_al_descuento_de_la_linea(): void
     {
         $this->conDescuentoDe(10);
 
