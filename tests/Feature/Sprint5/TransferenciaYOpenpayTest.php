@@ -214,7 +214,8 @@ class TransferenciaYOpenpayTest extends TestCase
         $this->get(route('aviso-privacidad'))
             ->assertOk()
             ->assertSee('la CLABE y el titular')
-            ->assertSee('FootwearPoint no recibe ni custodia ese dinero');
+            // TG-322: redacción del aviso 1.3.
+            ->assertSee('FootwearPoint no lo recibe ni lo custodia');
 
         $this->get(route('terminos'))
             ->assertOk()
