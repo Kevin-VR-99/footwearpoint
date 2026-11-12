@@ -133,6 +133,7 @@ Además de `usuario`, `rol` y `distribuidora_id`, la sesión trae tres banderas 
 |---|---|
 | `legales_aceptados` (E1-04) | `false` si todavía no acepta el aviso de privacidad **y** los términos. La app muestra la pantalla de aceptación y llama a `auth/aceptar-legales` |
 | `debe_cambiar_password` (TG-193) | `true` si le dieron una contraseña temporal. La app manda a cambiarla; el servidor bloquea casi todo lo demás con un 403 |
+| `debe_recapturar_telefono` | `true` si a ese cliente directo se le vació el teléfono por estar repetido. La app pide uno de 10 dígitos en `POST /api/perfil/recapturar-telefono`. Mientras tanto el resto de la API responde 403 |
 | `email_verificado` (TG-189) | `false` si no ha abierto el enlace de confirmación. No bloquea entrar, pero sí enviar pedidos y pagar |
 
 `rol` en una respuesta exitosa es `revendedor` o `cliente_directo` (o `null`, ver la nota de abajo). El personal interno no puede entrar por aquí: ver errores.

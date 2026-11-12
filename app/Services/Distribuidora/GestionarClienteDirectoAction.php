@@ -4,6 +4,9 @@ namespace App\Services\Distribuidora;
 
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\ClienteDirecto;
+use App\Support\TelefonoCliente;
+use App\Support\Tenant;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Alta y edición de clientes directos desde el panel.
@@ -43,7 +46,10 @@ class GestionarClienteDirectoAction
         }
 
         if (array_key_exists('telefono', $datos)) {
-            $datos['telefono'] = $this->telefono($datos);
+            $datos['telefono'] = $this->telefono($datos, (int) $cliente->id);
+            if ($datos['telefono'] !== null) {
+                $datos['telefono_por_recapturar'] = false;
+            }
         }
 
         $cliente->fill($datos);
@@ -52,11 +58,39 @@ class GestionarClienteDirectoAction
         return $cliente->fresh();
     }
 
-    /** Un teléfono vacío se guarda como "sin teléfono", igual que en la app. */
-    private function telefono(array $datos): ?string
+    /**
+     * Vacío se guarda como null. Si escribieron algo, tiene que quedar en
+     * 10 dígitos y no repetirse en la misma distribuidora.
+     */
+    private function telefono(array $datos, ?int $exceptoId = null): ?string
     {
-        $telefono = trim((string) ($datos['telefono'] ?? ''));
+        $escrito = trim((string) ($datos['telefono'] ?? ''));
 
-        return $telefono === '' ? null : $telefono;
+        if ($escrito === '') {
+            return null;
+        }
+
+        $telefono = TelefonoCliente::normalizar($escrito);
+
+        if ($telefono === null) {
+            throw ValidationException::withMessages([
+                'telefono' => [TelefonoCliente::MENSAJE_DIGITOS],
+            ]);
+        }
+
+        $distribuidoraId = (int) ($datos['distribuidora_id'] ?? Tenant::id());
+        $ocupado = ClienteDirecto::query()
+            ->when($exceptoId !== null, fn ($q) => $q->whereKeyNot($exceptoId))
+            ->where('telefono', $telefono)
+            ->when($distribuidoraId > 0, fn ($q) => $q->where('distribuidora_id', $distribuidoraId))
+            ->exists();
+
+        if ($ocupado) {
+            throw ValidationException::withMessages([
+                'telefono' => [TelefonoCliente::MENSAJE_REPETIDO],
+            ]);
+        }
+
+        return $telefono;
     }
 }

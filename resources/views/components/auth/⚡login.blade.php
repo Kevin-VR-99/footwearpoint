@@ -119,6 +119,13 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
         $motivo = $acceso->motivoSinAcceso($usuario);
 
         if ($motivo !== null) {
+            if (\App\Models\ClienteDirecto::debeRecapturarTelefono($usuario)) {
+                Auth::login($usuario, false);
+                session()->regenerate();
+
+                return $this->redirect(route('telefono.recapturar'), navigate: true);
+            }
+
             $this->addError('email', $motivo);
 
             return;

@@ -59,6 +59,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // TG-193: con una contraseña temporal puesta, la API solo deja ver la
         // sesión, cambiar la contraseña y cerrar sesión.
         $middleware->appendToGroup('api', \App\Http\Middleware\DebeCambiarPassword::class);
+        $middleware->appendToGroup('api', \App\Http\Middleware\DebeRecapturarTelefono::class);
 
         // TG-220: la distribuidora aprobada que no ha pagado su primer mes
         // solo ve la pantalla de pago (y puede cerrar sesión).

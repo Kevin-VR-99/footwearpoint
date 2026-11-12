@@ -128,6 +128,20 @@ class PerfilUsuarioController extends Controller
         ]);
     }
 
+    /** POST /api/perfil/recapturar-telefono: el cliente cuyo número se vació por estar repetido. */
+    public function recapturarTelefono(Request $request, ActualizarPerfilAction $accion): JsonResponse
+    {
+        $telefono = trim((string) $request->input('telefono'));
+        $usuario = $request->user();
+        $accion->ejecutar($usuario, $usuario->nombreVisible() ?? '', $telefono, true);
+
+        return response()->json([
+            'data' => $this->datosUsuario($usuario->refresh()),
+            'message' => 'Teléfono guardado.',
+            'debe_recapturar_telefono' => false,
+        ]);
+    }
+
     /**
      * Misma forma que el objeto "usuario" del login y de auth/me, para que la
      * app lo lea con el mismo modelo.
