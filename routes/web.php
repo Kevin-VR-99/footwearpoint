@@ -229,6 +229,10 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
         ->whereNumber('id')
         ->name('pedidos.show');
 
+    Route::get('/pedidos/{id}/comprobante-transferencia', [\App\Http\Controllers\Pedido\ComprobanteTransferenciaController::class, 'ver'])
+        ->whereNumber('id')
+        ->name('pedidos.comprobante-transferencia');
+
     // Paquete E
     Route::livewire('/vales', 'vales.index')
         ->name('vales.index');

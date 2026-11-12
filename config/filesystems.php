@@ -110,6 +110,16 @@ return [
             'report' => false,
         ],
 
+        // Comprobante de transferencia del cliente. Disco local privado:
+        // no se publica y no usa el bucket de las fotos.
+        'comprobantes' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/comprobantes'),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => false,
+        ],
+
         // TG-235 (G17): respaldos de la base de datos. Bucket PRIVADO y
         // credenciales propias (nunca el bucket público de las fotos).
         'respaldos' => [

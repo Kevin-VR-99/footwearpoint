@@ -1,5 +1,5 @@
 {{--
-    Aviso de privacidad integral, versión 1.1 (24-oct-2026).
+    Aviso de privacidad integral, versión 1.2 (12-nov-2026).
 
     Lo usan la pantalla de aceptar documentos (auth.aceptar-legales) y la
     página pública /aviso-privacidad. Base: Ley Federal de Protección de Datos
@@ -44,7 +44,7 @@
         <li><strong>Imágenes:</strong> foto de perfil, logotipo de la distribuidora y fotos de productos que se suben a la plataforma.</li>
         <li><strong>Distribuidoras:</strong> nombre comercial o razón social, RFC, datos de contacto, sucursales y la cuenta de Mercado Pago que conectan.</li>
         <li><strong>Operación:</strong> pedidos, anticipos, saldos, pagos, vales, cambios y entregas. Los revendedores pueden capturar nombre y teléfono de sus propios clientes para organizar pedidos.</li>
-        <li><strong>Datos financieros y de pago:</strong> los pagos en línea se hacen en <strong>Mercado Pago</strong>. FootwearPoint <strong>no recibe ni guarda</strong> números de tarjeta ni datos bancarios completos; solo recibe el resultado del pago (identificador, monto, estado y fecha).</li>
+        <li><strong>Datos financieros y de pago:</strong> los pagos en línea se hacen en <strong>Mercado Pago</strong>. FootwearPoint <strong>no recibe ni guarda</strong> números de tarjeta; solo recibe el resultado del pago (identificador, monto, estado y fecha). La distribuidora puede guardar en su configuración el banco, la CLABE y el titular de su cuenta para que su cliente le pague por transferencia. Esos datos son patrimoniales de la distribuidora y se muestran solo a quien debe pagar ese pedido. FootwearPoint no recibe ni custodia ese dinero.</li>
         <li><strong>Dispositivo y uso:</strong> identificador del celular para notificaciones push (token de Firebase), dirección IP, fecha y hora de la aceptación de documentos y bitácora de acciones en la plataforma.</li>
     </ul>
     <p>
@@ -58,6 +58,7 @@
         <li>Crear, verificar y administrar tu cuenta, e iniciar sesión de forma segura.</li>
         <li>Registrar y dar seguimiento a pedidos de calzado bajo pedido, cambios, vales y recolección en sucursal (Click & Collect).</li>
         <li>Cobrar anticipos, saldos y suscripciones por medio de Mercado Pago y conciliar los pagos.</li>
+        <li>Mostrar a quien debe pagar un pedido el banco, la CLABE y el titular que guardó su distribuidora, para que pueda transferirle. FootwearPoint no recibe ni custodia esos pagos.</li>
         <li>Enviarte avisos por correo, por la bandeja de la app y por notificación push sobre tus pedidos, pagos, vales y cuenta.</li>
         <li>Recuperar tu contraseña, atender aclaraciones y dar soporte.</li>
         <li>Mantener la seguridad de la plataforma (bitácora, prevención de fraude y de accesos indebidos).</li>

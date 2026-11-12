@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Services\Pago\CrearPagoPedidoMercadoPagoAction;
+use App\Services\Pedido\DatosTransferenciaPedido;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -120,7 +121,31 @@ class PedidoResource extends JsonResource
             // TG-229 (G10): el cliente mayorista ya puede pagar su pedido con
             // Mercado Pago (pedido enviado, sin entregar y con saldo > 0).
             'puede_pagar_total_mercado_pago' => CrearPagoPedidoMercadoPagoAction::puedePagarMayorista($this->resource, $resumen),
+            // SPEI a la cuenta de la distribuidora. null si no guardó datos.
+            // El comprobante, si existe, no cuenta como pago.
+            'transferencia' => $this->transferencia(),
             'created_at' => optional($this->created_at)->toIso8601String(),
         ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function transferencia(): ?array
+    {
+        $datos = app(DatosTransferenciaPedido::class)->para($this->resource);
+
+        if ($datos === null) {
+            return null;
+        }
+
+        $comprobante = $this->resource->relationLoaded('comprobanteTransferencia')
+            ? $this->resource->comprobanteTransferencia
+            : $this->resource->comprobanteTransferencia()->first();
+
+        $datos['comprobante'] = $comprobante === null ? null : [
+            'nombre' => $comprobante->nombre_original,
+            'tamano' => (int) $comprobante->tamano,
+        ];
+
+        return $datos;
     }
 }

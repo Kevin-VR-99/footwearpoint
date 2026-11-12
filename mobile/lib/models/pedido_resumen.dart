@@ -27,10 +27,14 @@ class PedidoResumen {
     this.pagoMercadoPagoPendiente = false,
     this.pagoMercadoPagoPendienteTipo,
     this.compartirTexto,
+    this.transferencia,
   });
 
   /// Resumen del pedido listo para mandarlo por WhatsApp (solo en el detalle).
   final String? compartirTexto;
+
+  /// Datos para pagar por transferencia. Null si la distribuidora no los guardó.
+  final DatosTransferencia? transferencia;
 
   final int id;
   final String folio;
@@ -137,6 +141,42 @@ class PedidoResumen {
       pagoMercadoPagoPendiente: json['pago_mercado_pago_pendiente'] == true,
       pagoMercadoPagoPendienteTipo: json['pago_mercado_pago_pendiente_tipo'] as String?,
       compartirTexto: json['compartir_texto'] as String?,
+      transferencia: DatosTransferencia.desdeJson(json['transferencia']),
+    );
+  }
+}
+
+/// Cuenta de la distribuidora para un SPEI. El comprobante no cuenta como pago.
+class DatosTransferencia {
+  const DatosTransferencia({
+    required this.banco,
+    required this.clabe,
+    required this.titular,
+    required this.monto,
+    required this.concepto,
+    required this.aviso,
+    this.comprobanteNombre,
+  });
+
+  final String banco;
+  final String clabe;
+  final String titular;
+  final double monto;
+  final String concepto;
+  final String aviso;
+  final String? comprobanteNombre;
+
+  static DatosTransferencia? desdeJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final comprobante = json['comprobante'];
+    return DatosTransferencia(
+      banco: json['banco'] as String? ?? '',
+      clabe: json['clabe'] as String? ?? '',
+      titular: json['titular'] as String? ?? '',
+      monto: (json['monto'] as num?)?.toDouble() ?? 0,
+      concepto: json['concepto'] as String? ?? '',
+      aviso: json['aviso'] as String? ?? '',
+      comprobanteNombre: comprobante is Map<String, dynamic> ? comprobante['nombre'] as String? : null,
     );
   }
 }

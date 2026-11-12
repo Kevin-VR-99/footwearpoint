@@ -12,6 +12,7 @@ import '../services/pedido_service.dart';
 import '../tema/fp_colores.dart';
 import 'producto_detalle_screen.dart';
 import '../widgets/botones_pago_mercado_pago.dart';
+import '../widgets/datos_transferencia.dart';
 import '../widgets/foto_calzado.dart';
 import '../widgets/bajo_pedido.dart';
 import '../widgets/fp_componentes.dart';
@@ -442,6 +443,7 @@ class _PedidoDetalleScreenState extends State<PedidoDetalleScreen> {
           ),
         ),
         // TG-268: pagar o verificar con Mercado Pago, según el servidor.
+        DatosTransferenciaPedido(pedido: pedido, alSubir: _cargar),
         if (pedido.pagoMercadoPagoDisponible != null || pedido.pagoMercadoPagoPorVerificar != null) ...[
           const SizedBox(height: 12),
           BotonesPagoMercadoPago(pedido: pedido, alTerminar: _cargar),

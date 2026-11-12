@@ -484,6 +484,26 @@ Estados posibles: `borrador`, `colocado`, `en_revision`, `confirmado`, `parcialm
 
 `pago_mercado_pago_pendiente` y `pago_mercado_pago_pendiente_tipo` vienen en `GET /api/pedidos/{id}` y en la respuesta de `verificar`, pero **no** en el listado `GET /api/pedidos`. Los tres `puede_pagar_*_mercado_pago` vienen en los tres.
 
+**Transferencia SPEI.** Si la distribuidora guardó banco, CLABE y titular, el pedido trae `transferencia`:
+
+```json
+{
+  "transferencia": {
+    "banco": "BBVA",
+    "clabe": "012180001234567899",
+    "titular": "Calzados Ramírez",
+    "monto": 1600.0,
+    "concepto": "PED-0001",
+    "aviso": "FootwearPoint no recibe ni custodia estos pagos",
+    "comprobante": null
+  }
+}
+```
+
+`monto` es el saldo pendiente. `concepto` es el folio. Sin datos bancarios, `transferencia` es `null` y no se muestra nada. `comprobante` es `{ "nombre", "tamano" }` si el cliente ya subió un archivo, o `null`. El archivo no cuenta como pago.
+
+`POST /api/pedidos/{id}/comprobante-transferencia` lo manda el cliente del pedido (multipart, campo `comprobante`; PDF, JPG, PNG o WEBP; máximo 5 MB). Respuesta 201: el pago sigue pendiente. El personal no puede subirlo. `GET` de esa misma ruta descarga el archivo; lo ven la distribuidora del pedido y su cliente. Otra persona recibe 404.
+
 ### POST `/api/pedidos`
 
 Crea el pedido en estado `borrador`.
