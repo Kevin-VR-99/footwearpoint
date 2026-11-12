@@ -60,7 +60,27 @@ class FotosCompletasParaRevisarTest extends TestCase
 
         $this->assertStringContainsString('max-w-[360px]', $normal);
         $this->assertStringNotContainsString('max-w-[360px]', $grande);
-        $this->assertStringContainsString('max-w-2xl', $grande);
+        $this->assertStringContainsString('max-w-5xl', $grande);
+    }
+
+    /**
+     * En grande no se fuerza el cuadrado.
+     *
+     * Las fotos de catalogo son apaisadas. Metidas en un cuadro, un tercio de
+     * la caja se iba en franjas grises y el zapato se quedaba chico en medio:
+     * medido, 648x432 de foto util contra 968x645 sin el cuadro.
+     */
+    public function test_en_grande_la_foto_no_se_encierra_en_un_cuadrado(): void
+    {
+        $grande = Blade::render('<x-ui.imagen-ampliable url="https://ejemplo.test/foto.webp" alt="Zapato" modal="grande" />');
+        $normal = Blade::render('<x-ui.imagen-ampliable url="https://ejemplo.test/foto.webp" alt="Zapato" />');
+
+        // La etiqueta <img> del modal: la del boton no lleva aspect-square.
+        $this->assertStringContainsString('max-h-[75vh]', $grande);
+        $this->assertStringNotContainsString('aspect-square w-full', $grande);
+
+        // El chico se queda como estaba: solo cambia donde se valida calidad.
+        $this->assertStringContainsString('aspect-square', $normal);
     }
 
     /** La foto grande tampoco se recorta: para eso se abre. */
