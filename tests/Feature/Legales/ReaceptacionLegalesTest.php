@@ -117,6 +117,7 @@ class ReaceptacionLegalesTest extends TestCase
     /** La app 1.3.3 manda «1.0» fija: se ignora y se guarda la vigente. */
     public function test_la_api_ignora_la_version_que_manda_la_app_y_conserva_la_anterior(): void
     {
+        $anterior = DocumentosLegales::version(DocumentosLegales::AVISO);
         $this->nuevoAviso();
         $cliente = $this->usuario(self::CLIENTE);
 
@@ -130,9 +131,9 @@ class ReaceptacionLegalesTest extends TestCase
             ->assertJsonPath('data.0.version', '9.9');
 
         $this->assertDatabaseMissing('aceptaciones_legales', ['usuario_id' => $cliente->id, 'version' => '1.0']);
-        // La aceptación anterior (1.2) sigue ahí, junto a la nueva.
+        // La aceptación anterior sigue ahí, junto a la nueva.
         $this->assertSame(
-            ['1.2', '9.9'],
+            [$anterior, '9.9'],
             AceptacionLegal::where('usuario_id', $cliente->id)->where('tipo_documento', 'aviso_privacidad')
                 ->orderBy('version')->pluck('version')->all()
         );
