@@ -25,7 +25,9 @@ use Illuminate\Support\Facades\DB;
  *    pendiente y se rechaza con ese motivo, sin inventarlo).
  *  - Tope acumulado por partida: nunca más unidades de las compradas.
  *  - Idempotente por clave; concurrencia con bloqueo del pedido y sus partidas.
- *  - Vigencia 90 días desde la emisión; a nombre del dueño del pedido.
+ *  - Vigencia: «Días de vigencia del vale» de la distribuidora (90 por
+ *    omisión, mínimo 30); a nombre del dueño del pedido. El sobrante que
+ *    nace al canjearla dura siempre Vale::DIAS_VIGENCIA_TIPIFICADO.
  *
  * Fuera de alcance (pendiente, rechazo explícito): partidas no surtidas o
  * parciales, y partidas con una solicitud de cambio del flujo anterior.

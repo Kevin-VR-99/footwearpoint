@@ -2,6 +2,7 @@
 
 namespace App\Services\Vale;
 
+use App\Models\ConfiguracionDistribuidora;
 use App\Models\Vale;
 use App\Models\ValeMovimiento;
 use App\Services\Notificacion\NotificarValeEmitidoAction;
@@ -63,6 +64,26 @@ class CrearValeTipificado extends EmitirValeAction
         }
     }
 
+    /**
+     * La nota de devolución vence según «Días de vigencia del vale» de su
+     * distribuidora (Configuración general), el mismo ajuste de los vales
+     * normales. Los demás tipos, sobrante incluido, duran siempre
+     * Vale::DIAS_VIGENCIA_TIPIFICADO. Sin configuración (o con un valor
+     * inválido de antes del mínimo) se usa ese mismo número.
+     */
+    public function diasDeVigencia(string $tipo, int $distribuidoraId): int
+    {
+        if ($tipo !== Vale::TIPO_DEVOLUCION) {
+            return Vale::DIAS_VIGENCIA_TIPIFICADO;
+        }
+
+        $dias = (int) ConfiguracionDistribuidora::withoutGlobalScopes()
+            ->where('distribuidora_id', $distribuidoraId)
+            ->value('dias_vigencia_vale');
+
+        return $dias >= 1 ? $dias : Vale::DIAS_VIGENCIA_TIPIFICADO;
+    }
+
     public function staffActual(): ?int
     {
         return $this->staffIdActual();
@@ -96,7 +117,7 @@ class CrearValeTipificado extends EmitirValeAction
             'monto_original' => $monto,
             'saldo_actual' => $monto,
             'fecha_emision' => $ahora,
-            'fecha_vencimiento' => $ahora->copy()->addDays(Vale::DIAS_VIGENCIA_TIPIFICADO),
+            'fecha_vencimiento' => $ahora->copy()->addDays($this->diasDeVigencia($tipo, $propietario['distribuidora_id'])),
             'estado' => 'activo',
             'tipo' => $tipo,
             'motivo' => mb_substr($motivo, 0, 300),

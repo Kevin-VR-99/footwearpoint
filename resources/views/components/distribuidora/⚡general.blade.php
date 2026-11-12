@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ConfiguracionDistribuidora;
+use App\Models\Vale;
 use App\Services\Distribuidora\ActualizarConfiguracionDistribuidoraAction;
 use Livewire\Component;
 
@@ -31,7 +32,7 @@ new class extends Component {
             'anticipo_por_producto' => ['required', 'numeric', 'min:0'],
             'dias_solicitud_cambio' => ['required', 'integer', 'min:1'],
             'dias_gestion_devolucion' => ['required', 'integer', 'min:1'],
-            'dias_vigencia_vale' => ['required', 'integer', 'min:1'],
+            'dias_vigencia_vale' => ['required', 'integer', 'min:'.Vale::DIAS_VIGENCIA_MINIMA],
             'dias_maximos_recoleccion' => ['required', 'integer', 'min:1'],
             'stock_minimo_general' => ['required', 'integer', 'min:0', 'max:100000'],
         ]);
@@ -64,7 +65,9 @@ new class extends Component {
             </div>
             <div class="fp-campo col-span-2">
                 <label for="general-dias-vigencia-vale" class="block text-sm font-medium text-slate-700 mb-1">Días de vigencia del vale</label>
-                <input id="general-dias-vigencia-vale" type="number" wire:model="dias_vigencia_vale" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                <input id="general-dias-vigencia-vale" type="number" min="{{ \App\Models\Vale::DIAS_VIGENCIA_MINIMA }}" wire:model="dias_vigencia_vale" aria-describedby="ayuda-vigencia-vale" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
+                <p id="ayuda-vigencia-vale" class="mt-1 text-xs text-slate-600" data-ayuda-vigencia-vale>Aplica a los vales y a las notas de devolución que emitas desde ahora. Mínimo {{ \App\Models\Vale::DIAS_VIGENCIA_MINIMA }} días. El vale de sobrante siempre dura {{ \App\Models\Vale::DIAS_VIGENCIA_TIPIFICADO }} días.</p>
+                @error('dias_vigencia_vale') <p class="mt-1 text-sm text-fp-danger">{{ $message }}</p> @enderror
             </div>
         </div>
         <div class="fp-campo" data-stock-minimo-general>

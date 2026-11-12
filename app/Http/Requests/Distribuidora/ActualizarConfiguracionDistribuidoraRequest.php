@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Distribuidora;
 
+use App\Models\Vale;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ActualizarConfiguracionDistribuidoraRequest extends FormRequest
@@ -24,7 +25,7 @@ class ActualizarConfiguracionDistribuidoraRequest extends FormRequest
             'anticipo_por_producto'    => ['sometimes', 'required', 'numeric', 'min:0'],
             'dias_solicitud_cambio'    => ['sometimes', 'required', 'integer', 'min:1'],
             'dias_gestion_devolucion'  => ['sometimes', 'required', 'integer', 'min:1'],
-            'dias_vigencia_vale'       => ['sometimes', 'required', 'integer', 'min:1'],
+            'dias_vigencia_vale'       => ['sometimes', 'required', 'integer', 'min:'.Vale::DIAS_VIGENCIA_MINIMA],
             'dias_maximos_recoleccion' => ['sometimes', 'required', 'integer', 'min:1'],
         ];
     }
