@@ -93,8 +93,16 @@ new class extends Component {
                         </td>
                         <td class="px-6 py-3.5 text-slate-600">{{ $pc->producto?->marca?->nombre ?? '—' }}</td>
                         <td class="px-6 py-3.5 text-slate-600">
-                            {{ $pc->campana?->linea?->nombre ?? '—' }}
-                            <span class="block text-xs text-fp-text-muted">{{ $pc->campana?->nombre }}</span>
+                            {{-- A24: el logo junto al nombre. Con varias lineas en
+                                 la misma tabla, el logo se reconoce de un vistazo
+                                 mucho antes que el texto. --}}
+                            <span class="flex items-center gap-2">
+                                <x-ui.avatar-linea :linea="$pc->campana?->linea" tamano="sm" />
+                                <span>
+                                    {{ $pc->campana?->linea?->nombre ?? '—' }}
+                                    <span class="block text-xs text-fp-text-muted">{{ $pc->campana?->nombre }}</span>
+                                </span>
+                            </span>
                         </td>
                         <td class="px-6 py-3.5 text-slate-600">{{ $pc->codigo_catalogo }}</td>
                         <td class="px-6 py-3.5 text-right tabular-nums">${{ number_format($this->precios->menudeo($pc), 2) }}</td>

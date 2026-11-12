@@ -45,7 +45,13 @@ new class extends Component {
                 @forelse ($this->campanas as $campana)
                     <tr>
                         <td class="px-6 py-3.5 font-medium text-slate-900">{{ $campana->nombre }}</td>
-                        <td class="px-6 py-3.5 text-slate-600">{{ $campana->linea?->nombre ?? '—' }}</td>
+                        <td class="px-6 py-3.5 text-slate-600">
+                            {{-- A24 --}}
+                            <span class="flex items-center gap-2">
+                                <x-ui.avatar-linea :linea="$campana->linea" tamano="sm" />
+                                {{ $campana->linea?->nombre ?? '—' }}
+                            </span>
+                        </td>
                         <td class="px-6 py-3.5 text-slate-600">
                             {{ $campana->fecha_inicio?->format('d/m/Y') ?? '—' }}
                             —

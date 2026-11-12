@@ -154,7 +154,15 @@ new #[Layout('layouts.panel')] #[Title('Mis líneas — FootwearPoint')] class e
             @foreach ($this->lineas as $linea)
                 @php($mia = $this->mias->get($linea->id))
                 <tr class="border-t">
-                    <td class="p-3 font-medium">{{ $linea->nombre }}</td>
+                    <td class="p-3 font-medium">
+                        {{-- A24: aqui se eligen las lineas que vende la
+                             distribuidora, asi que el logo ayuda a no
+                             confundirse al activar una. --}}
+                        <span class="flex items-center gap-2">
+                            <x-ui.avatar-linea :linea="$linea" />
+                            {{ $linea->nombre }}
+                        </span>
+                    </td>
                     <td class="p-3">
                         @if ($mia?->activa)
                             Sí{{ $mia->es_extra ? ' · extra' : '' }}
