@@ -19,6 +19,7 @@
 
 {{-- TG-234: paleta fp-* del admin general y barra con la estructura del panel de distribuidora. --}}
 <body class="flex min-h-screen flex-col bg-fp-page text-slate-800 antialiased">
+    <x-ui.saltar-al-contenido />
     {{-- TG-282: el inicio se puede ver sin internet, desde una copia
          guardada. Decirlo evita que alguien tome por vigente un precio o un
          plan que quizá ya cambió. El script va suelto y no depende del JS
@@ -74,7 +75,7 @@
         </div>
     </header>
 
-    <main class="fp-contenido mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-5">
+    <main id="contenido" tabindex="-1" class="fp-contenido mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-5">
         {{ $slot }}
     </main>
 

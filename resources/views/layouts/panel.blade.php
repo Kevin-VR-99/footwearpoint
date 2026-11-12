@@ -36,6 +36,7 @@
     openSistema: {{ request()->routeIs('distribuidora.configuracion', 'distribuidora.perfil', 'distribuidora.empleados', 'distribuidora.mayoristas', 'distribuidora.clientes-directos') ? 'true' : 'false' }},
 }"
     @keydown.escape.window="sidebarOpen = false">
+    <x-ui.saltar-al-contenido />
     @php
         $esAdminDistribuidora = false;
         $puedeConfiguracion = false;
@@ -308,7 +309,7 @@
                 </div>
             </header>
 
-            <main class="fp-contenido flex-1 p-4 sm:p-6 overflow-auto">
+            <main id="contenido" tabindex="-1" class="fp-contenido flex-1 p-4 sm:p-6 overflow-auto">
                 {{ $slot }}
             </main>
         </div>

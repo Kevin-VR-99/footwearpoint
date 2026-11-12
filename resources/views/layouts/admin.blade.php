@@ -23,6 +23,7 @@
 
 <body class="min-h-screen bg-fp-page text-slate-800 antialiased" x-data="{ sidebarOpen: false }"
     @keydown.escape.window="sidebarOpen = false">
+    <x-ui.saltar-al-contenido />
     <div class="min-h-screen flex">
         {{-- TG-234: barra lateral plegable con el mismo patrón que layouts/panel (Alpine sidebarOpen). --}}
         <aside
@@ -130,7 +131,7 @@
                     </x-panel.menu-usuario>
                 </div>
             </header>
-            <main class="fp-contenido flex-1 p-6 lg:p-8 overflow-auto">
+            <main id="contenido" tabindex="-1" class="fp-contenido flex-1 p-6 lg:p-8 overflow-auto">
                 {{ $slot }}
             </main>
         </div>
