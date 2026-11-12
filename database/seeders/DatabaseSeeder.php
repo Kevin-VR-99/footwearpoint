@@ -42,6 +42,9 @@ class DatabaseSeeder extends Seeder
             DemoCatalogoDistribuidorasSeeder::class,
             DemoContactosSeeder::class,
             CategoriaDirectorioSeeder::class,
+            // Al final: marca como aceptados los documentos vigentes de todas
+            // las cuentas de arriba (TG-323).
+            AceptacionesLegalesDePruebaSeeder::class,
         ]);
 
         $this->resumen();

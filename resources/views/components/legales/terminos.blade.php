@@ -193,5 +193,5 @@
     <h2 id="terminos-contacto" class="fp-legal-titulo">{{ $titulo('terminos-contacto') }}</h2>
     <p>Dudas, aclaraciones o cancelaciones: <a href="mailto:{{ $correo }}" class="fp-enlace">{{ $correo }}</a>.</p>
 
-    <p class="text-xs text-slate-600">Términos y condiciones · Versión {{ config('legal.version') }} · Última actualización: {{ config('legal.fecha_actualizacion') }}</p>
+    <p class="text-xs text-slate-600">Términos y condiciones · Versión {{ \App\Support\DocumentosLegales::version('terminos_condiciones') }} · Última actualización: {{ \App\Support\DocumentosLegales::fecha('terminos_condiciones') }}</p>
 </div>

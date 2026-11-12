@@ -61,6 +61,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('api', \App\Http\Middleware\DebeCambiarPassword::class);
         $middleware->appendToGroup('api', \App\Http\Middleware\DebeRecapturarTelefono::class);
 
+        // TG-323 (K24): si cambió la versión del aviso o de los términos,
+        // primero se aceptan (antes que los candados de pago, que dejan pasar
+        // la pantalla de aceptar).
+        $middleware->appendToGroup('web', \App\Http\Middleware\LegalesVigentes::class);
+        $middleware->appendToGroup('api', \App\Http\Middleware\LegalesVigentes::class);
+
         // TG-220: la distribuidora aprobada que no ha pagado su primer mes
         // solo ve la pantalla de pago (y puede cerrar sesión).
         $middleware->appendToGroup('web', \App\Http\Middleware\CobroInicialPendiente::class);
