@@ -1,5 +1,5 @@
 {{--
-    Términos y condiciones de uso, versión 1.1 (24-oct-2026).
+    Términos y condiciones de uso, versión 1.2 (12-nov-2026).
 
     Lo usan la pantalla de aceptar documentos (auth.aceptar-legales) y la
     página pública /terminos. Los datos sin definir (jurisdicción) salen de
@@ -40,6 +40,7 @@
         <li>Los pedidos están sujetos a disponibilidad de fábrica y surtido parcial.</li>
         <li>El anticipo mínimo y políticas de cambio/devolución se aplican según la configuración de la distribuidora.</li>
         <li>Los pagos en línea se procesan en Mercado Pago, en la cuenta de la distribuidora, conforme a sus términos. FootwearPoint no guarda datos de tarjetas.</li>
+        <li>Si el cliente paga por transferencia a la cuenta de la distribuidora, el dinero va de su banco al de ella. FootwearPoint no recibe ni custodia estos pagos. El pago cuenta cuando la distribuidora lo confirma.</li>
         <li>Las aclaraciones sobre un pedido, cambio o devolución se atienden primero con la distribuidora.</li>
     </ul>
 

@@ -14,7 +14,7 @@ use Throwable;
 /**
  * TG-225 (G6) — Ida y vuelta con la pantalla oficial de Mercado Pago.
  *
- * Siempre regresa a Configuración → Mercado Pago con un mensaje en español;
+ * Siempre regresa a Configuración → Métodos de pago con un mensaje en español;
  * los detalles técnicos solo van al log.
  */
 class MercadoPagoOAuthController extends Controller

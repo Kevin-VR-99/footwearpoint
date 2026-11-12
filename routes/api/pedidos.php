@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\PagoMercadoPagoController;
 use App\Http\Controllers\Api\PedidoController;
+use App\Http\Controllers\Pedido\ComprobanteTransferenciaController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -44,6 +45,12 @@ Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empl
         Route::post('/pedidos/{id}/detalle/{detalleId}/resolucion', [PedidoController::class, 'resolverNoSurtido'])
             ->whereNumber(['id', 'detalleId']);
         Route::delete('/pedidos/{pedidoId}/lineas/{lineaId}', [PedidoController::class, 'quitarLinea']);
+
+        // El cliente sube el comprobante. No registra el pago.
+        Route::post('/pedidos/{id}/comprobante-transferencia', [ComprobanteTransferenciaController::class, 'subir'])
+            ->whereNumber('id');
+        Route::get('/pedidos/{id}/comprobante-transferencia', [ComprobanteTransferenciaController::class, 'ver'])
+            ->whereNumber('id');
     });
 
 Route::middleware(['auth:sanctum', 'tenant.team', 'role:admin_distribuidora|empleado'])

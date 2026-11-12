@@ -87,7 +87,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
     public function getPedidoProperty()
     {
         return Pedido::query()
-            ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle', 'pagos', 'distribuidora', 'reembolsosMercadoPago'])
+            ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor', 'detalle', 'pagos', 'distribuidora', 'reembolsosMercadoPago', 'comprobanteTransferencia'])
             ->findOrFail($this->pedidoId);
     }
 
@@ -610,6 +610,8 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             </div>
         @endif
     </div>
+
+    <x-pedidos.datos-transferencia :pedido="$this->pedido" />
 
     @if ($this->pedido->estado !== 'borrador' && $this->puedeRegistrarPago)
         <div class="mb-6 fp-tarjeta p-4 fp-formulario fp-aparecer">

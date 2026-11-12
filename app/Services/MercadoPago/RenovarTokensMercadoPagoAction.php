@@ -130,9 +130,9 @@ class RenovarTokensMercadoPagoAction
             : 'Vuelve a conectar tu cuenta de Mercado Pago';
         $mensaje = $vencido
             ? 'La autorización de tu cuenta de Mercado Pago venció y tus clientes no pueden pagarte en línea. '
-                .'Entra a Configuración → Mercado Pago y vuelve a conectarla.'
+                .'Entra a Configuración → Métodos de pago y vuelve a conectarla.'
             : 'La autorización de tu cuenta de Mercado Pago vence alrededor del '.$vence->format('d/m/Y')
-                .' y no se pudo renovar sola. Entra a Configuración → Mercado Pago y vuelve a conectarla para seguir cobrando en línea.';
+                .' y no se pudo renovar sola. Entra a Configuración → Métodos de pago y vuelve a conectarla para seguir cobrando en línea.';
 
         Tenant::forzar($distribuidoraId, function () use ($distribuidoraId, $configuracion, $titulo, $mensaje, $conCorreo) {
             $administradores = DistribuidoraStaff::with('usuario')

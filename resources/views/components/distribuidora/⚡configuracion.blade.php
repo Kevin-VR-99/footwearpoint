@@ -7,7 +7,7 @@ use Livewire\Component;
 new #[Layout('layouts.panel')] class extends Component {
     public const PESTANAS = [
         'general' => 'Anticipos y plazos',
-        'mercado-pago' => 'Mercado Pago',
+        'mercado-pago' => 'Métodos de pago',
         // TG-230 (G11): pago de la mensualidad con Mercado Pago.
         'suscripcion' => 'Suscripción',
     ];
@@ -41,7 +41,7 @@ new #[Layout('layouts.panel')] class extends Component {
 <div class="mx-auto max-w-5xl">
     {{-- Encabezado minimalista --}}
     <x-panel.encabezado eyebrow="Administración" titulo="Configuración" nivel="h1"
-        subtitulo="Anticipos, Mercado Pago y suscripción." class="mb-6">
+        subtitulo="Anticipos, métodos de pago y suscripción." class="mb-6">
         <x-slot:acciones>
         <span class="inline-flex items-center gap-1.5 self-start rounded-full border border-fp-danger/20 bg-fp-danger-soft px-2.5 py-1 text-[11px] font-medium text-fp-badge-danger-fg">
             <span class="h-1.5 w-1.5 rounded-full bg-fp-danger"></span>
@@ -92,7 +92,10 @@ new #[Layout('layouts.panel')] class extends Component {
         @if ($pestanaActiva === 'general')
             <livewire:distribuidora.general :key="'config-general'" />
         @elseif ($pestanaActiva === 'mercado-pago')
-            <livewire:distribuidora.mercado-pago :key="'config-mercado-pago'" />
+            <livewire:distribuidora.datos-bancarios :key="'config-datos-bancarios'" />
+            <div class="mt-8">
+                <livewire:distribuidora.mercado-pago :key="'config-mercado-pago'" />
+            </div>
         @elseif ($pestanaActiva === 'suscripcion')
             <livewire:distribuidora.suscripcion :key="'config-suscripcion'" />
         @endif

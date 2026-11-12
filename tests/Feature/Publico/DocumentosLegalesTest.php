@@ -17,7 +17,7 @@ use Tests\TestCase;
  * El texto de los dos documentos vive ahora en los parciales x-legales.*, que
  * usan tanto las páginas públicas como la pantalla de aceptar. Lo que estas
  * pruebas cuidan es que no haya dos versiones del texto y que la versión
- * vigente (1.1, config/legal.php) sea la que se muestra y se guarda. Las
+ * vigente (1.2, config/legal.php) sea la que se muestra y se guarda. Las
  * aceptaciones de la 1.0 se conservan y no obligan a aceptar otra vez.
  */
 class DocumentosLegalesTest extends TestCase
@@ -56,8 +56,8 @@ class DocumentosLegalesTest extends TestCase
         $this->get(route('aviso-privacidad'))
             ->assertOk()
             ->assertSee('Aviso de privacidad')
-            ->assertSee('Versión 1.1')
-            ->assertSee('24 de octubre de 2026')
+            ->assertSee('Versión 1.2')
+            ->assertSee('12 de noviembre de 2026')
             ->assertSee(self::DEL_AVISO)
             ->assertSee('Click & Collect', false);
     }
@@ -69,8 +69,8 @@ class DocumentosLegalesTest extends TestCase
         $this->get(route('terminos'))
             ->assertOk()
             ->assertSee('Términos y condiciones')
-            ->assertSee('Versión 1.1')
-            ->assertSee('24 de octubre de 2026')
+            ->assertSee('Versión 1.2')
+            ->assertSee('12 de noviembre de 2026')
             ->assertSee(self::DE_LOS_TERMINOS);
     }
 
@@ -105,7 +105,7 @@ class DocumentosLegalesTest extends TestCase
             ->assertSee(self::DE_LOS_TERMINOS);
     }
 
-    public function test_aceptar_los_dos_documentos_guarda_la_version_1_1(): void
+    public function test_aceptar_los_dos_documentos_guarda_la_version_vigente(): void
     {
         $empleado = $this->empleado();
         $this->actingAs($empleado);
@@ -121,7 +121,7 @@ class DocumentosLegalesTest extends TestCase
             $this->assertDatabaseHas('aceptaciones_legales', [
                 'usuario_id' => $empleado->id,
                 'tipo_documento' => $tipo,
-                'version' => '1.1',
+                'version' => '1.2',
             ]);
         }
     }
@@ -267,7 +267,7 @@ class DocumentosLegalesTest extends TestCase
             ->assertJsonPath('data.legales_aceptados', true);
     }
 
-    /** La API sin versión explícita guarda la vigente (1.1). */
+    /** La API sin versión explícita guarda la vigente (1.2). */
     public function test_la_api_sin_version_guarda_la_vigente(): void
     {
         $empleado = $this->empleado();
@@ -278,7 +278,7 @@ class DocumentosLegalesTest extends TestCase
         $this->assertDatabaseHas('aceptaciones_legales', [
             'usuario_id' => $empleado->id,
             'tipo_documento' => 'aviso_privacidad',
-            'version' => '1.1',
+            'version' => '1.2',
         ]);
     }
 }

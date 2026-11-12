@@ -48,6 +48,9 @@ class ConfiguracionDistribuidora extends Model
         'mp_token_expira_en',
         'mp_aviso_reconexion_at',
         'stock_minimo_general',
+        'banco',
+        'clabe',
+        'titular_cuenta',
     ];
 
     /**

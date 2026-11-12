@@ -5,7 +5,7 @@
 | Documentos legales (aviso de privacidad y términos y condiciones)
 |--------------------------------------------------------------------------
 |
-| Versión 1.1 (24 de octubre de 2026). Los datos que el equipo aún no ha
+| Versión 1.2 (12 de noviembre de 2026). Los datos que el equipo aún no ha
 | definido (domicilio, quién atiende ARCO, tribunales) NO se inventan: salen
 | del entorno. Si una variable está vacía, la vista muestra un texto neutro.
 |
@@ -14,9 +14,9 @@
 return [
 
     // Versión vigente que se guarda en aceptaciones_legales al aceptar.
-    'version' => '1.1',
+    'version' => '1.2',
 
-    'fecha_actualizacion' => '24 de octubre de 2026',
+    'fecha_actualizacion' => '12 de noviembre de 2026',
 
     // Correo del proyecto para privacidad, derechos ARCO y aclaraciones.
     'correo_contacto' => env('LEGAL_CORREO_CONTACTO') ?: 'footwearpoint.mx@gmail.com',
