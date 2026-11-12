@@ -29,6 +29,33 @@
     --color-fp-badge-warning-fg: #9A3412;
     --color-fp-badge-danger-bg: #FEE2E2;
     --color-fp-badge-danger-fg: #991B1B;
+
+    /* ---------------------------------------------------------------
+       A18 — Radio, tipografía y espacio del sistema de diseño.
+
+       Antes cada vista decidía: se encontraron 6 formas distintas de
+       escribir un <select> y 8 de escribir un <input>, unas con
+       rounded-lg y otras con rounded-md. Estos tokens le dan UN nombre
+       a cada decisión, para que la respuesta no dependa de quién
+       escribió la pantalla.
+       --------------------------------------------------------------- */
+
+    /* Radio. Tres, no más: control, contenedor y píldora. */
+    --radius-fp-control: 0.5rem;
+    --radius-fp-contenedor: 0.75rem;
+    --radius-fp-pildora: 9999px;
+
+    /* Tipografía de formulario: la etiqueta y el texto chico de abajo
+       (ayuda y error), que hoy se escriben a mano 199 y 128 veces. */
+    --text-fp-etiqueta: 0.875rem;
+    --text-fp-etiqueta--line-height: 1.25rem;
+    --text-fp-ayuda: 0.75rem;
+    --text-fp-ayuda--line-height: 1rem;
+
+    /* Espacio. "campo" es la separación entre etiqueta, control y error;
+       "bloque" la que hay entre un campo y el siguiente. */
+    --spacing-fp-campo: 0.375rem;
+    --spacing-fp-bloque: 0.75rem;
 }
 /* TG-234: entrada al hacer scroll en la página de inicio. */
 /* Solo se oculta si el JS ya arrancó (html.fp-js); sin JS o si falla, queda visible. */
@@ -113,6 +140,23 @@ html.fp-js [data-revelar]:not(.revelado) {
         box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-fp-danger) 25%, transparent);
     }
 
+    /* A20 — El mismo borde rojo para los campos de x-ui.campo.
+       ---------------------------------------------------------------
+       A18 cambio la clase del mensaje de error a .fp-campo-error, y las
+       reglas de arriba solo conocian .text-fp-danger: los campos
+       convertidos se quedaron enseñando el texto del error pero SIN
+       marcar el campo. Se mira el contenedor y no el hermano de al lado
+       para que siga funcionando aunque el mensaje cambie de lugar
+       dentro del campo (por ejemplo si algun dia va arriba del control). */
+    .fp-campo:has(> .fp-campo-error) :is(input, select, textarea) {
+        border-color: var(--color-fp-danger);
+        background-color: var(--color-fp-danger-soft);
+    }
+    .fp-campo:has(> .fp-campo-error) :is(input, select, textarea):focus {
+        border-color: var(--color-fp-danger);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-fp-danger) 25%, transparent);
+    }
+
     /* Archivos: caja con borde punteado y botón con la paleta. */
     :where(input[type='file']) {
         display: block;
@@ -144,6 +188,57 @@ html.fp-js [data-revelar]:not(.revelado) {
         font-weight: 600;
         color: var(--color-fp-primary);
         cursor: pointer;
+    }
+
+    /* A18 — La clase del control estándar (x-ui.entrada, x-ui.selector).
+       La base de arriba ya le da borde, fondo y foco a cualquier control;
+       esto solo fija el radio y el tamaño del texto con los tokens, para
+       que no vuelvan a convivir rounded-md y rounded-lg. */
+    .fp-control {
+        border-radius: var(--radius-fp-control);
+        font-size: var(--text-fp-etiqueta);
+        line-height: var(--text-fp-etiqueta--line-height);
+    }
+
+    /* Un campo completo: etiqueta, control y el texto de abajo (x-ui.campo).
+       ----------------------------------------------------------------
+       OJO: .fp-campo ya existia antes de A18 como envoltura de campo, y
+       es la que hace que la etiqueta se tiña al enfocar (mas abajo). Se
+       usa en 22 archivos, y 125 de esas etiquetas traen su propio mb-1.
+       Si la maquetacion se le colgara a .fp-campo, ese gap se sumaria al
+       margen de las 125 y les cambiaria el diseño sin que nadie lo pida.
+       Por eso el apilado vive en su propia clase: x-ui.campo lleva las
+       dos, hereda el comportamiento de la casa y no toca lo de antes. */
+    .fp-campo-apilado {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-fp-campo);
+    }
+
+    .fp-campo-etiqueta {
+        font-size: var(--text-fp-etiqueta);
+        line-height: var(--text-fp-etiqueta--line-height);
+        font-weight: 500;
+        color: var(--color-slate-700);
+    }
+
+    /* El asterisco de obligatorio no se lee solo: el componente le pone
+       además un aria-label, para quien usa lector de pantalla. */
+    .fp-campo-requerido {
+        color: var(--color-fp-danger);
+    }
+
+    .fp-campo-ayuda {
+        font-size: var(--text-fp-ayuda);
+        line-height: var(--text-fp-ayuda--line-height);
+        color: var(--color-fp-text-muted);
+    }
+
+    /* El error: una sola forma, en vez de las 4 que había. */
+    .fp-campo-error {
+        font-size: var(--text-fp-ayuda);
+        line-height: var(--text-fp-ayuda--line-height);
+        color: var(--color-fp-danger);
     }
 
     /* Buscador (x-ui.buscador). */
@@ -182,6 +277,73 @@ html.fp-js [data-revelar]:not(.revelado) {
     .fp-buscador > input.fp-buscador-input:focus {
         border-color: var(--color-fp-primary);
         box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-fp-primary) 25%, transparent), 0 2px 6px -1px rgb(17 30 56 / 0.10);
+    }
+
+    /* ---------------------------------------------------------------
+       A19 - Buscador compacto que se expande.
+
+       La regla era "expande sin desplazar los botones". Por eso el
+       buscador va dentro de un HUECO que conserva su tamaño pase lo que
+       pase: para el acomodo de la barra nada cambia, asi que nada se
+       mueve. El que crece es el buscador, posicionado encima del hueco.
+
+       Crece la envoltura y no el <input>: asi la regla de siempre
+       (.fp-buscador > input { width: 100% }) se queda intacta y el input
+       simplemente sigue a su etiqueta.
+
+       Queda abierto mientras haya texto, con :has(input:not(
+       :placeholder-shown)). Es CSS y no JavaScript porque no hay estado
+       que guardar, y si se cerrara al salir del campo con algo escrito
+       se perderia de vista lo que se esta filtrando.
+
+       Solo de sm en adelante: en telefono ocupa el ancho completo y no
+       hay botones al lado que proteger.
+       --------------------------------------------------------------- */
+    .fp-buscador-hueco { display: block; }
+
+    @media (min-width: 40rem) {
+        .fp-buscador-hueco {
+            /* Se afinan por pantalla con una utilidad arbitraria, por
+               ejemplo [--fp-buscador-abierto:32rem]. */
+            --fp-buscador-reposo: 15rem;
+            --fp-buscador-abierto: 26rem;
+
+            position: relative;
+            flex: 0 0 auto;
+            width: var(--fp-buscador-reposo);
+            min-height: 2.75rem;
+        }
+
+        /* Se abre con min-width y no con width a proposito, y costo
+           encontrarlo: en estas pantallas algo le fija el ancho al
+           buscador con mas prioridad, al punto de que ni width en linea
+           con !important lo mueve (inline-size tampoco, que es lo
+           mismo). min-width pasa limpio y da el mismo resultado. Si
+           alguien lo "arregla" cambiandolo a width, deja de abrir. */
+        .fp-buscador-hueco > .fp-buscador {
+            position: absolute;
+            inset-inline-start: 0;
+            top: 0;
+            min-width: var(--fp-buscador-reposo);
+            transition: min-width .22s ease;
+        }
+
+        /* Abierto. Lo pone el JS como estilo en linea, no esta regla.
+           ------------------------------------------------------------
+           Se intento primero con CSS puro (:focus-within y
+           :has(input:not(:placeholder-shown))) y no aplica en estas
+           pantallas: la regla esta bien formada, cae en el @media
+           correcto, el navegador soporta los tres selectores y la
+           envoltura si coincide con :focus-within, pero el ancho no
+           cambia ni con !important. La misma regla inyectada a mano en
+           un <style> si funciona, asi que algo del apilado de capas de
+           Tailwind la tapa. No se encontro que.
+           El estilo en linea gana sobre cualquier capa, asi que el
+           abrir vive en resources/js/app.js. Esta clase queda solo para
+           que el buscador se levante por encima de lo de al lado. */
+        .fp-buscador-hueco[data-abierto] > .fp-buscador {
+            z-index: 2;
+        }
     }
 }
 
@@ -440,6 +602,8 @@ html.fp-js [data-revelar]:not(.revelado) {
     .fp-metrica-barra, .fp-formulario::before, .fp-modal, .fp-insignia-viva .fp-insignia-punto, .fp-vacio-icono,
     .fp-logo-entrada, .fp-datos-cascada > * { animation: none !important; }
     .fp-metrica-icono, .fp-accion, .fp-insignia, .fp-pestana, .fp-formulario, .fp-campo > label { transition: none !important; }
+    /* A19: el buscador sigue abriendo, pero de golpe en vez de deslizando. */
+    .fp-buscador-hueco > .fp-buscador { transition: none !important; }
     .fp-metrica:hover .fp-metrica-icono, .fp-accion:active, .fp-insignia:hover, .fp-pestana:active { transform: none !important; }
 }
 

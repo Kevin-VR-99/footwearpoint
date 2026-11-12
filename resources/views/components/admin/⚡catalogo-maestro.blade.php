@@ -1108,9 +1108,14 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                 <ul class="flex flex-wrap gap-3">
                     @foreach ($this->fotosDeLaPublicacion as $foto)
                         <li class="w-28 space-y-1">
+                            {{-- TG-376 A16: object-contain y no cover. La foto
+                                 se revisa aqui, y recortada al cuadro no se ve
+                                 si el producto quedo cortado. El fondo claro
+                                 es para que la franja que sobra no parezca un
+                                 hueco. --}}
                             <img src="{{ $foto->urlMiniatura() }}" alt="Foto de {{ $fotosDeNombre }}"
                                 width="112" height="112" loading="lazy" decoding="async"
-                                class="h-28 w-28 rounded-lg object-cover {{ $foto->es_principal ? 'ring-2 ring-fp-primary' : 'ring-1 ring-slate-200' }}">
+                                class="h-28 w-28 rounded-lg bg-fp-page object-contain {{ $foto->es_principal ? 'ring-2 ring-fp-primary' : 'ring-1 ring-slate-200' }}">
                             @if ($foto->es_principal)
                                 <p class="text-center text-xs font-semibold text-fp-primary">Principal</p>
                             @else
@@ -1455,39 +1460,55 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     @endif
     @if ($creando === 'producto')
         <x-panel.modal titulo="Nuevo producto" cerrar="cerrarCrear" formulario="guardarProducto" data-alta-catalogo="producto">
-            <div class="grid grid-cols-1 gap-3">
+            {{-- A18, pantalla piloto. Antes cada campo era <control> +
+                 @error a mano, y el nombre del campo vivia en el placeholder:
+                 al escribir desaparecia y ya no se sabia que iba ahi. Ahora
+                 la etiqueta es de verdad y esta amarrada al control. --}}
+            <div class="grid grid-cols-1 gap-fp-bloque">
                 <x-ui.buscador wire:model.live.debounce.300ms="buscarMarcaOpcion" placeholder="Filtrar marcas…" etiqueta="Filtrar la lista de marcas" data-buscador-opciones="producto_marca_id" />
-                <select wire:model="producto_marca_id" aria-label="Marca" class="rounded-lg text-sm">
-                    <option value="">Marca</option>
-                    @foreach ($this->marcasOpciones as $marca)
-                        <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
-                    @endforeach
-                </select>
-                @error('producto_marca_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-                <select wire:model="producto_categoria_id" class="rounded-lg text-sm">
-                    <option value="">Categoría</option>
-                    @foreach ($this->categorias as $categoria)
-                        <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
-                    @endforeach
-                </select>
-                @error('producto_categoria_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-                <input type="text" wire:model="producto_modelo" placeholder="Modelo" class="rounded-lg text-sm">
-                @error('producto_modelo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-                <input type="text" wire:model="producto_nombre" placeholder="Nombre" class="rounded-lg text-sm">
-                @error('producto_nombre') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-                <select wire:model="producto_campana_id" class="rounded-lg text-sm">
-                    <option value="">Temporada</option>
-                    {{-- La vigencia va en la etiqueta: con la campaña actual y la
-                         próxima de la misma línea, los nombres se parecen demasiado. --}}
-                    @foreach ($this->temporadas as $temporada)
-                        <option value="{{ $temporada->id }}">{{ $temporada->linea?->nombre }} — {{ $temporada->nombre }} ({{ $temporada->temporada?->etiquetaVigencia() }})</option>
-                    @endforeach
-                </select>
-                @error('producto_campana_id') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-                <input type="text" wire:model="producto_codigo" placeholder="Código de catálogo" class="rounded-lg text-sm">
-                @error('producto_codigo') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
-                <input type="number" step="0.01" wire:model="producto_precio" placeholder="Precio de menudeo" class="rounded-lg text-sm">
-                @error('producto_precio') <span class="text-xs text-fp-danger">{{ $message }}</span> @enderror
+
+                <x-ui.campo etiqueta="Marca" para="producto-marca" error="producto_marca_id" requerido>
+                    <x-ui.selector id="producto-marca" wire:model="producto_marca_id" vacio="Elige una marca">
+                        @foreach ($this->marcasOpciones as $marca)
+                            <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
+                        @endforeach
+                    </x-ui.selector>
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Categoría" para="producto-categoria" error="producto_categoria_id" requerido>
+                    <x-ui.selector id="producto-categoria" wire:model="producto_categoria_id" vacio="Elige una categoría">
+                        @foreach ($this->categorias as $categoria)
+                            <option value="{{ $categoria->id }}">{{ $categoria->nombre }}</option>
+                        @endforeach
+                    </x-ui.selector>
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Modelo" para="producto-modelo" error="producto_modelo" requerido>
+                    <x-ui.entrada id="producto-modelo" wire:model="producto_modelo" />
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Nombre" para="producto-nombre" error="producto_nombre" requerido>
+                    <x-ui.entrada id="producto-nombre" wire:model="producto_nombre" />
+                </x-ui.campo>
+
+                {{-- La vigencia va en cada opcion: con la campaña actual y la
+                     próxima de la misma línea, los nombres se parecen demasiado. --}}
+                <x-ui.campo etiqueta="Temporada" para="producto-temporada" error="producto_campana_id" requerido
+                    ayuda="Solo se puede publicar en la temporada actual o en la próxima.">
+                    <x-ui.selector id="producto-temporada" wire:model="producto_campana_id" vacio="Elige una temporada">
+                        @foreach ($this->temporadas as $temporada)
+                            <option value="{{ $temporada->id }}">{{ $temporada->linea?->nombre }} — {{ $temporada->nombre }} ({{ $temporada->temporada?->etiquetaVigencia() }})</option>
+                        @endforeach
+                    </x-ui.selector>
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Código de catálogo" para="producto-codigo" error="producto_codigo" requerido>
+                    <x-ui.entrada id="producto-codigo" wire:model="producto_codigo" />
+                </x-ui.campo>
+
+                <x-ui.campo etiqueta="Precio de menudeo" para="producto-precio" error="producto_precio" requerido>
+                    <x-ui.entrada tipo="number" step="0.01" id="producto-precio" wire:model="producto_precio" />
+                </x-ui.campo>
             </div>
             <x-slot:pie>
                 <button type="button" wire:click="cerrarCrear" class="fp-btn fp-btn-secundario">Cancelar</button>

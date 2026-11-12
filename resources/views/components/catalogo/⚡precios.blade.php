@@ -240,8 +240,11 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
 
     <div class="relative flex flex-wrap gap-3 fp-tarjeta p-4 fp-formulario fp-aparecer">
         <x-ui.cargando objetivo="busqueda,filtro,gotoPage,nextPage,previousPage" />
-        <x-ui.buscador wire:model.live.debounce.400ms="busqueda"
-            placeholder="Buscar por nombre, modelo, código o marca" etiqueta="Buscar productos" class="min-w-64 flex-1" />
+        {{-- A19: se le quita flex-1 a proposito. Las utilidades ganan sobre
+             @layer components, asi que flex-1 anularia el flex:0 0 auto que
+             es justo lo que impide que los botones se muevan. --}}
+        <x-ui.buscador compacto wire:model.live.debounce.400ms="busqueda"
+            placeholder="Buscar por nombre, modelo, código o marca" etiqueta="Buscar productos" />
         <select wire:model.live="filtro" aria-label="Filtrar productos" class="rounded-lg text-sm">
             <option value="todos">Todos</option>
             <option value="ocultos">Solo ocultos</option>
