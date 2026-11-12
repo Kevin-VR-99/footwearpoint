@@ -10,6 +10,7 @@ import 'screens/aviso_privacidad_screen.dart';
 import 'screens/cambiar_password_screen.dart';
 import 'screens/cascaron_principal.dart';
 import 'screens/login_screen.dart';
+import 'screens/recapturar_telefono_screen.dart';
 import 'services/aperturas_push.dart';
 import 'services/api_service.dart';
 import 'services/enlaces_app.dart';
@@ -80,6 +81,8 @@ class _Raiz extends StatelessWidget {
     final sinAcceso = context.select<AuthProvider, bool>((auth) => auth.sinAcceso);
     final debeCambiarPassword =
         context.select<AuthProvider, bool>((auth) => auth.debeCambiarPassword);
+    final debeRecapturarTelefono =
+        context.select<AuthProvider, bool>((auth) => auth.debeRecapturarTelefono);
     final legalesAceptados =
         context.select<AuthProvider, bool>((auth) => auth.legalesAceptados);
     final conDatosGuardados =
@@ -101,7 +104,7 @@ class _Raiz extends StatelessWidget {
     // la copia guardada, enseñar esas pantallas es mandar a la persona a un
     // botón que va a fallar; mejor decirle que no hay conexión y ofrecerle
     // reintentar.
-    if (conDatosGuardados && haySesion && (!legalesAceptados || debeCambiarPassword)) {
+    if (conDatosGuardados && haySesion && (!legalesAceptados || debeCambiarPassword || debeRecapturarTelefono)) {
       return const _SinConexionScreen();
     }
 
@@ -115,6 +118,10 @@ class _Raiz extends StatelessWidget {
     // así que de nada serviría saltarse esta pantalla.
     if (haySesion && debeCambiarPassword) {
       return const CambiarPasswordScreen(obligatorio: true);
+    }
+
+    if (haySesion && debeRecapturarTelefono) {
+      return const RecapturarTelefonoScreen();
     }
 
     // TG-281: el Inicio ya no es la pantalla raiz; lo es el cascaron con la

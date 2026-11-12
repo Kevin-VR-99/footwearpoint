@@ -7,6 +7,7 @@ use App\Models\ClienteDirecto;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Auth\PermisoModuloService;
 use App\Support\MensajeError;
+use App\Support\TelefonoCliente;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Throwable;
@@ -54,7 +55,7 @@ class ImportarClientesAction
         }
 
         $existentesEmail = ClienteDirecto::query()->whereNotNull('email')->pluck('email')->map(fn ($e) => mb_strtolower(trim($e)))->flip();
-        $existentesTel = ClienteDirecto::query()->whereNotNull('telefono')->pluck('telefono')->map(fn ($t) => preg_replace('/\D/', '', $t))->filter()->flip();
+        $existentesTel = ClienteDirecto::query()->whereNotNull('telefono')->pluck('telefono')->map(fn ($t) => TelefonoCliente::normalizar($t))->filter()->flip();
         $vistosEmail = [];
         $vistosTel = [];
         $filas = [];
@@ -91,11 +92,11 @@ class ImportarClientesAction
             }
 
             if ($r['telefono'] !== null) {
-                $digitos = preg_replace('/\D/', '', $r['telefono']);
-                if (strlen($digitos) < 10 || strlen($digitos) > 15) {
-                    $errores[] = 'El teléfono debe tener de 10 a 15 dígitos.';
+                $digitos = TelefonoCliente::normalizar($r['telefono']);
+                if ($digitos === null) {
+                    $errores[] = TelefonoCliente::MENSAJE_DIGITOS;
                 } elseif (isset($existentesTel[$digitos])) {
-                    $errores[] = 'Ya existe un cliente con ese teléfono.';
+                    $errores[] = TelefonoCliente::MENSAJE_REPETIDO;
                 } elseif (isset($vistosTel[$digitos])) {
                     $errores[] = 'Teléfono repetido en el archivo (fila '.$vistosTel[$digitos].').';
                 }

@@ -301,6 +301,7 @@ class AuthController extends Controller
             // TG-193: si es true, la app debe mandarla a cambiar su
             // contraseña antes de dejarla usar lo demás.
             'debe_cambiar_password' => (bool) $usuario->debe_cambiar_password,
+            'debe_recapturar_telefono' => \App\Models\ClienteDirecto::debeRecapturarTelefono($usuario),
             // TG-189 (A11): si es false, la app muestra el aviso y el botón
             // para reenviar el enlace. No la saca de la app: solo enviar un
             // pedido pide el correo confirmado.
