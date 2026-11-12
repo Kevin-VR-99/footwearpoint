@@ -38,6 +38,11 @@ class DocumentosLegalesTest extends TestCase
         $this->withoutVite();
         Tenant::olvidarCache();
         PropietarioActual::olvidarCache();
+
+        // TG-323: las cuentas de prueba ya traen aceptada la versión vigente
+        // (AceptacionesLegalesDePruebaSeeder). Aquí se prueba aceptar desde
+        // cero, así que se empieza sin ninguna.
+        AceptacionLegal::query()->delete();
     }
 
     private function empleado(): Usuario
@@ -243,10 +248,10 @@ class DocumentosLegalesTest extends TestCase
     }
 
     /**
-     * Quien ya aceptó la 1.0 no queda bloqueado: la API sigue diciendo
-     * legales_aceptados = true (no hay re-aceptación forzada).
+     * TG-323 (K24): antes, quien aceptó la 1.0 no tenía que aceptar otra vez
+     * (bastaba con cualquier versión). Ahora cuenta solo la vigente.
      */
-    public function test_quien_acepto_la_1_0_no_tiene_que_aceptar_otra_vez(): void
+    public function test_quien_acepto_la_1_0_tiene_que_aceptar_la_vigente(): void
     {
         $empleado = Usuario::where('email', 'maria.lopez@revendedor.test')->firstOrFail();
         AceptacionLegal::where('usuario_id', $empleado->id)->delete();
@@ -264,10 +269,11 @@ class DocumentosLegalesTest extends TestCase
 
         $this->withHeader('Authorization', 'Bearer '.$token)->getJson('/api/auth/me')
             ->assertOk()
-            ->assertJsonPath('data.legales_aceptados', true);
+            ->assertJsonPath('data.legales_aceptados', false)
+            ->assertJsonCount(2, 'data.legales_pendientes');
     }
 
-    /** La API sin versión explícita guarda la vigente (1.2). */
+    /** La API sin versión explícita guarda la vigente de cada documento. */
     public function test_la_api_sin_version_guarda_la_vigente(): void
     {
         $empleado = $this->empleado();
@@ -278,7 +284,7 @@ class DocumentosLegalesTest extends TestCase
         $this->assertDatabaseHas('aceptaciones_legales', [
             'usuario_id' => $empleado->id,
             'tipo_documento' => 'aviso_privacidad',
-            'version' => '1.2',
+            'version' => \App\Support\DocumentosLegales::version('aviso_privacidad'),
         ]);
     }
 }

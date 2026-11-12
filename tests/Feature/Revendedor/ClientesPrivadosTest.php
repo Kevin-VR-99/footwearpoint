@@ -54,6 +54,11 @@ class ClientesPrivadosTest extends TestCase
                 ->firstOrFail();
 
             app(ActivarCuentaAccesoAction::class)->paraRevendedor($afiliacion, $email, 'password');
+
+            // TG-323: cuenta recién activada; aquí no se prueba la aceptación.
+            foreach (\App\Support\DocumentosLegales::tipos() as $tipo) {
+                \App\Support\DocumentosLegales::registrar(Usuario::where('email', $email)->firstOrFail(), $tipo, null);
+            }
         }
 
         $this->comoUsuario(Usuario::where('email', $email)->firstOrFail());

@@ -131,7 +131,8 @@ Además de `usuario`, `rol` y `distribuidora_id`, la sesión trae tres banderas 
 
 | Campo | Qué significa |
 |---|---|
-| `legales_aceptados` (E1-04) | `false` si todavía no acepta el aviso de privacidad **y** los términos. La app muestra la pantalla de aceptación y llama a `auth/aceptar-legales` |
+| `legales_aceptados` (E1-04, TG-323) | `false` si le falta aceptar la **versión vigente** del aviso de privacidad o de los términos (una versión anterior no cuenta). La app muestra la pantalla de aceptación y llama a `auth/aceptar-legales`. Mientras sea `false`, el resto de la API responde 403 con `legales_pendientes: true` |
+| `legales_pendientes` (TG-323) | Lista de lo que falta aceptar, vacía si no falta nada. Cada uno trae `tipo_documento`, `nombre`, `version`, `fecha_actualizacion` y `url` (la página pública donde se lee completo) |
 | `debe_cambiar_password` (TG-193) | `true` si le dieron una contraseña temporal. La app manda a cambiarla; el servidor bloquea casi todo lo demás con un 403 |
 | `debe_recapturar_telefono` | `true` si a ese cliente directo se le vació el teléfono por estar repetido. La app pide uno de 10 dígitos en `POST /api/perfil/recapturar-telefono`. Mientras tanto el resto de la API responde 403 |
 | `email_verificado` (TG-189) | `false` si no ha abierto el enlace de confirmación. No bloquea entrar, pero sí enviar pedidos y pagar |
@@ -252,20 +253,22 @@ Requiere token. (E1-04)
 
 Registra que esta cuenta aceptó el aviso de privacidad y los términos. La app lo llama desde la pantalla de aceptación, que sale cuando `legales_aceptados` viene en `false`.
 
-**Entrada:** se puede mandar **sin cuerpo**. Si no se manda nada, el servidor registra los dos documentos en su versión `1.0`, que es lo que hace la app.
+**Entrada:** se puede mandar **sin cuerpo**: el servidor registra los dos documentos. Con `documentos`, solo los que se manden (`aviso_privacidad`, `terminos_condiciones`); si no viene ninguno válido responde 422.
 
 ```json
-{ "documentos": [ { "tipo_documento": "aviso_privacidad", "version": "1.0" }, { "tipo_documento": "terminos_condiciones", "version": "1.0" } ] }
+{ "documentos": [ { "tipo_documento": "aviso_privacidad" } ] }
 ```
+
+**La versión la pone el servidor** (TG-323): siempre guarda la vigente de cada documento. Si la app manda `version`, se ignora; la app 1.3.3 y anteriores mandan `"1.0"` fija y siguen funcionando. Las aceptaciones de versiones anteriores se conservan: hay una fila por cuenta, documento y versión.
 
 **Salida (201)**
 
 ```json
 {
   "data": [
-    { "tipo_documento": "aviso_privacidad", "version": "1.0", "fecha_aceptacion": "2026-10-11T18:20:00-06:00" },
-    { "tipo_documento": "terminos_condiciones", "version": "1.0", "fecha_aceptacion": "2026-10-11T18:20:00-06:00" }
+    { "tipo_documento": "aviso_privacidad", "version": "1.2", "fecha_aceptacion": "2026-11-12T18:20:00-06:00" }
   ],
+  "legales_aceptados": true,
   "message": "Documentos legales aceptados correctamente."
 }
 ```

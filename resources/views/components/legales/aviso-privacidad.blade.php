@@ -152,5 +152,5 @@
         <strong>Secretaría Anticorrupción y Buen Gobierno</strong> del Gobierno de México.
     </p>
 
-    <p class="text-xs text-slate-500">Versión {{ config('legal.version') }} — Última actualización: {{ config('legal.fecha_actualizacion') }}</p>
+    <p class="text-xs text-slate-500">Versión {{ \App\Support\DocumentosLegales::version('aviso_privacidad') }} — Última actualización: {{ \App\Support\DocumentosLegales::fecha('aviso_privacidad') }}</p>
 </div>

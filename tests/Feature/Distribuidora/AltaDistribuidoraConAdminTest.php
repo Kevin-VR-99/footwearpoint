@@ -166,6 +166,12 @@ class AltaDistribuidoraConAdminTest extends TestCase
         Tenant::olvidarCache();
         $this->assertSame($distribuidora->id, Tenant::id());
 
+        // TG-323: la cuenta la creó el admin general, así que nadie ha
+        // aceptado todavía los documentos: lo primero es aceptarlos.
+        $this->get(route('auditoria.index'))->assertRedirect(route('legales.aceptar'));
+        Livewire::test('auth.aceptar-legales')->set('aviso', true)->set('terminos', true)->call('aceptar')
+            ->assertRedirect(route('dashboard'));
+
         // Una pantalla que exige role:admin_distribuidora.
         $this->get(route('auditoria.index'))->assertOk();
     }
