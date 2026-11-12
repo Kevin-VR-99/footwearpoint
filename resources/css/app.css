@@ -508,6 +508,18 @@ html.fp-js [data-revelar]:not(.revelado) {
     .fp-chip { transition: background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .15s ease; }
     .fp-chip:hover { transform: translateY(-1px); }
     .fp-chip:active { transform: scale(.97); }
+
+    /* TG-322: documentos legales. El margen deja ver el título bajo la
+       cabecera fija de la página pública al llegar desde el índice. */
+    .fp-legal-titulo {
+        margin-top: 1.75rem;
+        scroll-margin-top: 5.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.4;
+        color: var(--color-fp-sidebar);
+    }
+    .fp-legal-titulo:target { color: var(--color-fp-primary); }
 }
 
 @media (prefers-reduced-motion: reduce) {
