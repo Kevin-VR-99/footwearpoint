@@ -15,6 +15,8 @@
 return [
     'aviso_privacidad' => [
         '1.2' => 'fa2b43f430df846ed7b257d439f6480b354b9b09dcfecab57f6b184f07eb4227',
+        // TG-322 (K23)
+        '1.3' => '5d8abcc0bf722e6b80cac0a0200fe854180b5ad48ec56f97fb6f834f51524e93',
     ],
     'terminos_condiciones' => [
         '1.2' => '36ad8976a1ff26755057701b7d97eb529737138fe6828267c5d9aad68ea339e0',

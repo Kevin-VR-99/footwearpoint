@@ -24,7 +24,8 @@ return [
     'documentos' => [
         'aviso_privacidad' => [
             'nombre' => 'Aviso de privacidad',
-            'version' => '1.2',
+            // TG-322 (K23): aviso alineado al sistema y a la LFPDPPP vigente.
+            'version' => '1.3',
             'fecha_actualizacion' => '12 de noviembre de 2026',
             'ruta' => 'aviso-privacidad',
             'vista' => 'components/legales/aviso-privacidad.blade.php',

@@ -61,10 +61,9 @@ class DocumentosLegalesTest extends TestCase
         $this->get(route('aviso-privacidad'))
             ->assertOk()
             ->assertSee('Aviso de privacidad')
-            ->assertSee('Versión 1.2')
+            ->assertSee('Versión 1.3')
             ->assertSee('12 de noviembre de 2026')
-            ->assertSee(self::DEL_AVISO)
-            ->assertSee('Click & Collect', false);
+            ->assertSee(self::DEL_AVISO);
     }
 
     public function test_los_terminos_abren_sin_sesion(): void
@@ -126,7 +125,7 @@ class DocumentosLegalesTest extends TestCase
             $this->assertDatabaseHas('aceptaciones_legales', [
                 'usuario_id' => $empleado->id,
                 'tipo_documento' => $tipo,
-                'version' => '1.2',
+                'version' => \App\Support\DocumentosLegales::version($tipo),
             ]);
         }
     }
@@ -190,16 +189,16 @@ class DocumentosLegalesTest extends TestCase
     public function test_el_aviso_1_1_trae_los_apartados_de_la_lfpdppp(): void
     {
         $this->get(route('aviso-privacidad'))->assertOk()
-            ->assertSee('Identidad y domicilio del responsable')
-            ->assertSee('Finalidades primarias')
+            ->assertSee('Quién es responsable de tus datos')
+            ->assertSee('Finalidades necesarias para el servicio')
             ->assertSee('Finalidades secundarias')
             ->assertSee('Mercado Pago')
             ->assertSee('Railway')
-            ->assertSee('Cloudflare')
+            ->assertSee('Cloudflare R2')
             ->assertSee('Firebase')
-            ->assertSee('inteligencia artificial')
+            ->assertSee('Anthropic')
             ->assertSee('Derechos ARCO')
-            ->assertSee('Revocación del consentimiento')
+            ->assertSee('Revocar el consentimiento')
             ->assertSee('Cookies')
             ->assertSee('Cambios a este aviso')
             ->assertSee('Secretaría Anticorrupción y Buen Gobierno')
@@ -226,8 +225,9 @@ class DocumentosLegalesTest extends TestCase
         ]);
 
         $this->get(route('aviso-privacidad'))->assertOk()
-            ->assertSee('Para conocer el domicilio del responsable')
-            ->assertDontSee('Domicilio del responsable:');
+            ->assertSee('Para conocer el domicilio de FootwearPoint')
+            ->assertDontSee('Domicilio de FootwearPoint:')
+            ->assertDontSee('dirigida a');
         $this->get(route('terminos'))->assertOk()
             ->assertSee('los tribunales competentes que correspondan conforme a la ley');
     }
@@ -241,7 +241,7 @@ class DocumentosLegalesTest extends TestCase
         ]);
 
         $this->get(route('aviso-privacidad'))->assertOk()
-            ->assertSee('Domicilio del responsable: Calle Prueba 123, Ciudad de Prueba.')
+            ->assertSee('Domicilio de FootwearPoint: Calle Prueba 123, Ciudad de Prueba.')
             ->assertSee('el Equipo de Privacidad');
         $this->get(route('terminos'))->assertOk()
             ->assertSee('los tribunales de Ciudad de Prueba');
