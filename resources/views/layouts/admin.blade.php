@@ -55,6 +55,8 @@
                     icono="M4 6h16M4 12h16M4 18h10">Catálogo maestro</x-panel.enlace-lateral>
                 <x-panel.enlace-lateral :href="route('admin.catalogos')" :activo="request()->routeIs('admin.catalogos')"
                     icono="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16">Catálogos para importar</x-panel.enlace-lateral>
+                <x-panel.enlace-lateral :href="route('admin.metricas')" :activo="request()->routeIs('admin.metricas')"
+                    icono="M3 3v18h18M7 15l3-4 3 3 4-6">Métricas</x-panel.enlace-lateral>
             </nav>
 
             <div class="border-t border-white/10 px-4 py-3">

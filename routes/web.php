@@ -324,6 +324,11 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_general'])->group(function
     Route::livewire('/admin/planes', 'admin.planes-index')
         ->name('admin.planes');
 
+    // TG-393 (A33): metricas del admin general. El grupo ya exige
+    // role:admin_general, asi que a cualquier otro le responde 403.
+    Route::livewire('/admin/metricas', 'admin.metricas')
+        ->name('admin.metricas');
+
     // TG-247 (R5): catálogo maestro, solo admin general.
     Route::livewire('/admin/catalogo', 'admin.catalogo-maestro')
         ->name('admin.catalogo');
