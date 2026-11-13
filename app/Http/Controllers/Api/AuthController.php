@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterEmpleadoRequest;
 use App\Models\DistribuidoraStaff;
 use App\Services\Notificacion\GestionarDispositivoFcmAction;
+use App\Support\DocumentosLegales;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 use App\Models\Usuario;
@@ -15,7 +16,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 use App\Http\Requests\Auth\AceptarLegalesRequest;
-use App\Models\AceptacionLegal;
 use App\Models\Distribuidora;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
@@ -272,16 +272,11 @@ class AuthController extends Controller
             $rol = $usuario->getRoleNames()->first();
         }
 
-        // Validación robusta y flexible de aceptación de legales vigentes (basta con que existan)
-        $avisoAceptado = AceptacionLegal::where('usuario_id', $usuario->id)
-            ->where('tipo_documento', 'aviso_privacidad')
-            ->exists();
-
-        $terminosAceptados = AceptacionLegal::where('usuario_id', $usuario->id)
-            ->where('tipo_documento', 'terminos_condiciones')
-            ->exists();
-
-        $legalesAceptados = $avisoAceptado && $terminosAceptados;
+        // TG-323 (K24): cuenta solo la versión VIGENTE de cada documento.
+        // Antes bastaba con haber aceptado cualquiera, así que subir la
+        // versión no le pedía nada a nadie.
+        $legalesPendientes = DocumentosLegales::pendientes($usuario);
+        $legalesAceptados = $legalesPendientes === [];
 
         return [
             'usuario' => [
@@ -298,6 +293,8 @@ class AuthController extends Controller
             // Si no tiene nombre comercial se usa la razón social; nunca el id.
             'distribuidora' => $this->nombreDistribuidora($distribuidoraId),
             'legales_aceptados' => $legalesAceptados,
+            // Qué falta aceptar, con su versión y la página donde se lee.
+            'legales_pendientes' => array_map(fn (string $tipo) => DocumentosLegales::resumen($tipo), $legalesPendientes),
             // TG-193: si es true, la app debe mandarla a cambiar su
             // contraseña antes de dejarla usar lo demás.
             'debe_cambiar_password' => (bool) $usuario->debe_cambiar_password,
@@ -396,45 +393,43 @@ class AuthController extends Controller
         }
     }
 
+    /**
+     * TG-323 (K24): guarda la aceptación de la versión VIGENTE de cada
+     * documento. La versión que mande la app se ignora (la 1.3.3 manda «1.0»
+     * fija) y las aceptaciones anteriores se conservan: una fila por
+     * usuario, documento y versión.
+     */
     public function aceptarLegales(Request $request)
     {
-        \Illuminate\Support\Facades\Log::info('Llegó petición de legales:', $request->all());
         $usuario = $request->user();
         $ip = $request->ip();
 
-        // Acepta de forma flexible cualquier estructura que mande la app
-        $documentos = $request->input('documentos', [
-            ['tipo_documento' => 'aviso_privacidad', 'version' => config('legal.version')],
-            ['tipo_documento' => 'terminos_condiciones', 'version' => config('legal.version')],
-        ]);
+        $tipos = collect($request->input('documentos', DocumentosLegales::tipos()))
+            ->map(fn ($doc) => is_array($doc) ? ($doc['tipo_documento'] ?? null) : $doc)
+            ->filter(fn ($tipo) => is_string($tipo) && DocumentosLegales::existe($tipo))
+            ->unique()
+            ->values();
 
-        $aceptadas = [];
+        if ($tipos->isEmpty()) {
+            return response()->json([
+                'message' => 'Indica qué documento aceptas.',
+                'errors' => ['documentos' => ['Indica qué documento aceptas.']],
+            ], 422);
+        }
 
-        foreach ($documentos as $doc) {
-            $tipo = is_array($doc) ? ($doc['tipo_documento'] ?? 'aviso_privacidad') : 'aviso_privacidad';
-            $version = is_array($doc) ? ($doc['version'] ?? config('legal.version')) : config('legal.version');
+        $aceptadas = $tipos->map(function (string $tipo) use ($usuario, $ip) {
+            $aceptacion = DocumentosLegales::registrar($usuario, $tipo, $ip);
 
-            $aceptacion = AceptacionLegal::updateOrCreate(
-                [
-                    'usuario_id'     => $usuario->id,
-                    'tipo_documento' => $tipo,
-                ],
-                [
-                    'version'          => $version,
-                    'fecha_aceptacion' => now(),
-                    'ip_origen'        => $ip,
-                ]
-            );
-
-            $aceptadas[] = [
+            return [
                 'tipo_documento'   => $aceptacion->tipo_documento,
                 'version'          => $aceptacion->version,
                 'fecha_aceptacion' => $aceptacion->fecha_aceptacion,
             ];
-        }
+        })->all();
 
         return response()->json([
             'data'    => $aceptadas,
+            'legales_aceptados' => DocumentosLegales::alCorriente($usuario),
             'message' => 'Documentos legales aceptados correctamente.',
         ], 201);
     }

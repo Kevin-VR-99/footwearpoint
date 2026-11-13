@@ -108,5 +108,5 @@
     <h2 class="font-semibold text-slate-800">9. Contacto</h2>
     <p>Dudas o aclaraciones: <a href="mailto:{{ $correo }}" class="fp-enlace">{{ $correo }}</a>.</p>
 
-    <p class="text-xs text-slate-500">Versión {{ config('legal.version') }} — Última actualización: {{ config('legal.fecha_actualizacion') }}</p>
+    <p class="text-xs text-slate-500">Versión {{ \App\Support\DocumentosLegales::version('terminos_condiciones') }} — Última actualización: {{ \App\Support\DocumentosLegales::fecha('terminos_condiciones') }}</p>
 </div>

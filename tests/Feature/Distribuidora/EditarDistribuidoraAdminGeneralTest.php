@@ -58,6 +58,10 @@ class EditarDistribuidoraAdminGeneralTest extends TestCase
             true,
         );
         $this->adminTienda = Usuario::where('email', 'laura@zapaterianorte.test')->firstOrFail();
+        // TG-323: aquí no se prueba la aceptación de los documentos legales.
+        foreach (\App\Support\DocumentosLegales::tipos() as $tipo) {
+            \App\Support\DocumentosLegales::registrar($this->adminTienda, $tipo, null);
+        }
         $this->adminTienda->forceFill(['email_verified_at' => now()->subDay()])->save();
     }
 

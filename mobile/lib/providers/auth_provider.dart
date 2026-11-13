@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
+import '../models/documento_legal.dart';
 import '../models/usuario.dart';
 import '../services/api_service.dart';
 import '../services/aperturas_push.dart';
@@ -79,6 +80,10 @@ class AuthProvider extends ChangeNotifier {
   /// app solo le muestra el aviso (ver _Raiz en main.dart).
   bool _legalesAceptados = false;
 
+  /// TG-323 (K24): cuáles faltan, con su versión y dónde leerlos. Vacía si
+  /// el servidor no lo dice (versión vieja): la pantalla pide los dos.
+  List<DocumentoLegal> _legalesPendientes = const [];
+
   /// TG-193: la distribuidora le puso una contraseña temporal y tiene que
   /// cambiarla antes de poder usar la app.
   bool _debeCambiarPassword = false;
@@ -115,6 +120,7 @@ class AuthProvider extends ChangeNotifier {
   String? get rol => _rol;
   int? get distribuidoraId => _distribuidoraId;
   bool get legalesAceptados => _legalesAceptados;
+  List<DocumentoLegal> get legalesPendientes => _legalesPendientes;
   bool get debeCambiarPassword => _debeCambiarPassword;
   bool get debeRecapturarTelefono => _debeRecapturarTelefono;
   bool get emailVerificado => _emailVerificado;
@@ -374,6 +380,10 @@ class AuthProvider extends ChangeNotifier {
     final distribuidoraId = datos['distribuidora_id'] as int?;
     // E1-04: si el servidor no manda la llave, se asume que no los aceptó.
     final legalesAceptados = datos['legales_aceptados'] as bool? ?? false;
+    final legalesPendientes = (datos['legales_pendientes'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(DocumentoLegal.desdeJson)
+        .toList(growable: false);
     // Si el servidor no manda la llave (versión vieja), se asume que no.
     final debeCambiar = datos['debe_cambiar_password'] as bool? ?? false;
     final debeRecapturar = datos['debe_recapturar_telefono'] as bool? ?? false;
@@ -385,6 +395,7 @@ class AuthProvider extends ChangeNotifier {
     _rol = rol;
     _distribuidoraId = distribuidoraId;
     _legalesAceptados = legalesAceptados;
+    _legalesPendientes = legalesPendientes;
     _debeCambiarPassword = debeCambiar;
     _debeRecapturarTelefono = debeRecapturar;
     _emailVerificado = verificado;
@@ -415,7 +426,9 @@ class AuthProvider extends ChangeNotifier {
     if (_legalesAceptados) return;
 
     _legalesAceptados = true;
+    _legalesPendientes = const [];
     _corregirCopia('legales_aceptados', true);
+    _corregirCopia('legales_pendientes', const <Object>[]);
     notifyListeners();
   }
 

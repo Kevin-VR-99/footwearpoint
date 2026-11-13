@@ -226,7 +226,8 @@ class SolicitarAltaTest extends TestCase
             $this->assertDatabaseHas('aceptaciones_legales', [
                 'usuario_id' => $admin->id,
                 'tipo_documento' => $documento,
-                'version' => '1.0',
+                // TG-323: la vigente, no «1.0» fija.
+                'version' => \App\Support\DocumentosLegales::version($documento),
             ]);
         }
 
