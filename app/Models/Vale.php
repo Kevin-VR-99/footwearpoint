@@ -39,6 +39,9 @@ class Vale extends Model
     /** TG-356 (ronda 34): notas y vales tipificados vencen 90 días después de su emisión. */
     public const DIAS_VIGENCIA_TIPIFICADO = 90;
 
+    /** Mínimo de «Días de vigencia del vale» (vales y notas de devolución), para que nadie emita vales que venzan casi de inmediato. */
+    public const DIAS_VIGENCIA_MINIMA = 30;
+
     public static function etiquetaTipo(?string $tipo): string
     {
         return match ($tipo) {

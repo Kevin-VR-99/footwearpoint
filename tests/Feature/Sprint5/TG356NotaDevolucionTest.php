@@ -3,6 +3,7 @@
 namespace Tests\Feature\Sprint5;
 
 use App\Models\ClienteDirecto;
+use App\Models\ConfiguracionDistribuidora;
 use App\Models\Distribuidora;
 use App\Models\DistribuidoraStaff;
 use App\Models\Pago;
@@ -22,6 +23,7 @@ use App\Services\Distribuidora\EliminarDistribuidoraAction;
 use App\Services\Pedido\RegistrarPagoPedidoAction;
 use App\Services\Vale\AplicarValeAction;
 use App\Services\Vale\BorrarValesPorOrigen;
+use App\Services\Vale\CrearValeTipificado;
 use App\Services\Vale\EmitirNotaDevolucionAction;
 use App\Services\VentaDirecta\RegistrarVentaDirectaService;
 use App\Support\Centavos;
@@ -473,6 +475,74 @@ class TG356NotaDevolucionTest extends TestCase
         $pantalla->set("devolver.$id", '2')->call('prepararDevolucion')->call('confirmarDevolucion')
             ->assertSet('errorDevolucion', 'De '.$pedido->detalle->first()->producto_nombre.' solo quedan 1 unidades por devolver.');
         $this->assertSame(1, Vale::where('tipo', Vale::TIPO_DEVOLUCION)->count());
+    }
+
+    // ------------------------------------------------------------------
+    // Vigencia de la nota por distribuidora (términos v1.3: «la define tu
+    // distribuidora»). El sobrante sigue fijo.
+    // ------------------------------------------------------------------
+
+    private function vigenciaDeLaDistribuidora(int $dias): void
+    {
+        ConfiguracionDistribuidora::withoutGlobalScopes()->where('distribuidora_id', Tenant::id())
+            ->update(['dias_vigencia_vale' => $dias]);
+    }
+
+    public function test_la_nota_vence_segun_la_vigencia_de_su_distribuidora(): void
+    {
+        $this->vigenciaDeLaDistribuidora(45);
+        $pedido = $this->pedido('entregado', [['100.00', 2]]);
+
+        $nota = $this->emitir($pedido, [$pedido->detalle->first()->id => 1]);
+
+        $this->assertSame('2026-12-22 12:00:00', $nota->fecha_vencimiento->format('Y-m-d H:i:s'));
+    }
+
+    public function test_cambiar_la_vigencia_no_mueve_las_notas_ya_emitidas(): void
+    {
+        $pedido = $this->pedido('entregado', [['100.00', 2]]);
+        $id = $pedido->detalle->first()->id;
+        $antes = $this->emitir($pedido, [$id => 1]);
+
+        $this->vigenciaDeLaDistribuidora(30);
+        $despues = $this->emitir($pedido, [$id => 1]);
+
+        $this->assertSame('2027-02-05 12:00:00', $antes->fresh()->fecha_vencimiento->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-12-07 12:00:00', $despues->fecha_vencimiento->format('Y-m-d H:i:s'));
+    }
+
+    public function test_el_sobrante_dura_siempre_lo_fijo_aunque_la_distribuidora_cambie_su_vigencia(): void
+    {
+        $this->vigenciaDeLaDistribuidora(30);
+        $origen = $this->pedido('entregado', [['100.00', 1]]);
+        $nota = $this->emitir($origen, [$origen->detalle->first()->id => 1]);
+
+        $this->aplicar($nota, $this->destino('40.00'), '40.00');
+
+        $sobrante = Vale::where('vale_origen_id', $nota->id)->firstOrFail();
+        $this->assertSame(Vale::TIPO_SOBRANTE, $sobrante->tipo);
+        $this->assertTrue($sobrante->fecha_vencimiento->equalTo(now()->addDays(Vale::DIAS_VIGENCIA_TIPIFICADO)));
+    }
+
+    public function test_sin_configuracion_la_nota_dura_lo_fijo(): void
+    {
+        $this->assertSame(Vale::DIAS_VIGENCIA_TIPIFICADO, app(CrearValeTipificado::class)->diasDeVigencia(Vale::TIPO_DEVOLUCION, 999999));
+        $this->assertSame(Vale::DIAS_VIGENCIA_TIPIFICADO, app(CrearValeTipificado::class)->diasDeVigencia(Vale::TIPO_ANTICIPO, Tenant::id()));
+    }
+
+    public function test_la_vigencia_no_acepta_menos_del_minimo_en_el_panel_ni_en_la_api(): void
+    {
+        Livewire::test('distribuidora.general')
+            ->assertSee('Mínimo '.Vale::DIAS_VIGENCIA_MINIMA.' días')
+            ->set('dias_vigencia_vale', Vale::DIAS_VIGENCIA_MINIMA - 1)
+            ->call('guardarConfiguracion')
+            ->assertHasErrors('dias_vigencia_vale')
+            ->set('dias_vigencia_vale', Vale::DIAS_VIGENCIA_MINIMA)
+            ->call('guardarConfiguracion')
+            ->assertHasNoErrors('dias_vigencia_vale');
+
+        $this->assertSame(Vale::DIAS_VIGENCIA_MINIMA, (int) ConfiguracionDistribuidora::withoutGlobalScopes()
+            ->where('distribuidora_id', Tenant::id())->value('dias_vigencia_vale'));
     }
 
     public function test_panel_sin_permiso_no_ve_controles_de_devolucion(): void
