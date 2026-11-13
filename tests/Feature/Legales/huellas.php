@@ -20,5 +20,7 @@ return [
     ],
     'terminos_condiciones' => [
         '1.2' => '36ad8976a1ff26755057701b7d97eb529737138fe6828267c5d9aad68ea339e0',
+        // TG-321 (K22)
+        '1.3' => 'e80a3547c0ca1be9737a9eae628dc061831eb025cd2ef58b57a95254dc228f97',
     ],
 ];
