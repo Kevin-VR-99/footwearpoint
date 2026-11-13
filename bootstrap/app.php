@@ -67,6 +67,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', \App\Http\Middleware\LegalesVigentes::class);
         $middleware->appendToGroup('api', \App\Http\Middleware\LegalesVigentes::class);
 
+        // TG-406 (A43): deja constancia de que alguien uso la plataforma hoy.
+        // El canal sale del grupo, no de adivinar el navegador: por 'api'
+        // entra la app movil y por 'web' el panel. Va al final del grupo para
+        // marcar solo lo que de verdad paso todos los candados.
+        $middleware->appendToGroup('web', \App\Http\Middleware\MarcarActividad::class.':panel');
+        $middleware->appendToGroup('api', \App\Http\Middleware\MarcarActividad::class.':app');
+
         // TG-220: la distribuidora aprobada que no ha pagado su primer mes
         // solo ve la pantalla de pago (y puede cerrar sesión).
         $middleware->appendToGroup('web', \App\Http\Middleware\CobroInicialPendiente::class);
