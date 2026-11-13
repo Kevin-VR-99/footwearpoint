@@ -119,6 +119,34 @@ class ApartadoMetricasTest extends TestCase
     }
 
     /**
+     * TG-406 (A43) — La alerta de que el registro de actividad no esta al dia.
+     *
+     * Un cron que dejo de correr no avisa solo: lo unico que se nota desde
+     * fuera es que los numeros se quedan viejos. Por eso la pantalla lo dice.
+     */
+    public function test_avisa_cuando_la_limpieza_de_actividad_no_ha_corrido(): void
+    {
+        $this->comoAdminGeneral();
+
+        // Recien instalado nunca ha corrido: ese ya es motivo de aviso.
+        $this->get('/admin/metricas')
+            ->assertOk()
+            ->assertSee('El registro de actividad no está al día.')
+            ->assertSee('todavía no ha corrido');
+    }
+
+    public function test_no_avisa_cuando_la_limpieza_acaba_de_correr(): void
+    {
+        $this->comoAdminGeneral();
+
+        $this->artisan('actividad:limpiar')->assertSuccessful();
+
+        $this->get('/admin/metricas')
+            ->assertOk()
+            ->assertDontSee('El registro de actividad no está al día.');
+    }
+
+    /**
      * El rango se cuenta en hora de México.
      *
      * Es la misma regla del registro de actividad: con UTC, lo que pasó a las

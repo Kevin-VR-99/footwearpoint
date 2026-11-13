@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Distribuidora;
+use App\Services\Actividad\ConsolidarActividad;
 use App\Models\PlanSuscripcion;
 use App\Support\MensajeError;
 use App\Support\Tenant;
@@ -122,6 +123,19 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
         return $this->dias !== '30' || $this->distribuidora !== '' || $this->plan !== '';
     }
 
+    /**
+     * TG-406 (A43) — Por que avisar que el registro de actividad no esta al
+     * dia, o null si todo bien.
+     *
+     * Va aqui porque un cron que dejo de correr no avisa solo: lo unico que
+     * se nota desde fuera es que los numeros se quedan viejos, y eso se
+     * descubre tarde y mal.
+     */
+    public function getAlertaActividadProperty(): ?string
+    {
+        return app(ConsolidarActividad::class)->motivoDeAlerta();
+    }
+
     public function getDistribuidorasProperty()
     {
         return Distribuidora::withoutGlobalScopes()
@@ -141,6 +155,13 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
 
     @if ($errorMsg)
         <x-panel.alerta tipo="peligro">{{ $errorMsg }}</x-panel.alerta>
+    @endif
+
+    @if ($this->alertaActividad)
+        <x-panel.alerta tipo="aviso" data-alerta-actividad>
+            <strong>El registro de actividad no está al día.</strong>
+            {{ $this->alertaActividad }}
+        </x-panel.alerta>
     @endif
 
     <x-panel.tarjeta class="p-4 sm:p-5" data-filtros-metricas>
