@@ -49,37 +49,21 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
         /*
          * TG-383 A23 — El plan más contratado.
          *
-         * Se cuentan DISTRIBUIDORAS DISTINTAS, no suscripciones: una misma
-         * distribuidora deja varias filas con el tiempo (renovaciones,
-         * cambios de plan) y contarlas todas inflaría el número.
-         *
-         * Solo las 'activa'. Los estados posibles son activa, prueba,
-         * cancelada, suspendida y vencida; "sin pruebas" de la tarjeta es
-         * dejar fuera las de prueba, porque una prueba todavía no dice que
-         * alguien haya elegido ese plan.
-         *
-         * Los empates se enseñan juntos: con dos planes a la par, mostrar
-         * uno solo sería elegir al azar cuál.
+         * La regla vive en App\Services\Metricas\PlanMasContratado desde
+         * A34: Métricas la necesita igual, y copiarla haría que las dos
+         * pantallas pudieran decir números distintos sin que nadie sepa cuál
+         * creer. Las tres decisiones que lleva (distribuidoras distintas, sin
+         * pruebas, empates juntos) están documentadas ahí.
          */
-        $porPlan = \App\Models\Suscripcion::withoutGlobalScopes()
-            ->where('estado', 'activa')
-            ->groupBy('plan_id')
-            ->selectRaw('plan_id, COUNT(DISTINCT distribuidora_id) as cuantas')
-            ->pluck('cuantas', 'plan_id');
-
-        $tope = (int) $porPlan->max();
-
-        $empatados = $tope > 0
-            ? $porPlan->filter(fn ($cuantas) => (int) $cuantas === $tope)->keys()->map(fn ($id) => (int) $id)->all()
-            : [];
+        $masContratado = app(\App\Services\Metricas\PlanMasContratado::class)->calcular();
 
         return [
             'activos' => $planes->where('activo', true)->count(),
             'total' => $planes->count(),
             'suscripciones' => $suscripciones,
             'desde' => $planes->where('activo', true)->min('precio_base_mensual'),
-            'mas_contratado' => $planes->whereIn('id', $empatados)->pluck('nombre')->sort()->values()->implode(' y '),
-            'mas_contratado_cuantas' => $tope,
+            'mas_contratado' => $masContratado['nombres'],
+            'mas_contratado_cuantas' => $masContratado['cuantas'],
         ];
     }
 

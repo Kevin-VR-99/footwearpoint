@@ -2,6 +2,7 @@
 
 use App\Models\Distribuidora;
 use App\Services\Actividad\ConsolidarActividad;
+use App\Services\Metricas\IndicadoresDeMetricas;
 use App\Models\PlanSuscripcion;
 use App\Support\MensajeError;
 use App\Support\Tenant;
@@ -136,6 +137,23 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
         return app(ConsolidarActividad::class)->motivoDeAlerta();
     }
 
+    /** TG-394 (A34) — Los numeros, con los filtros ya aplicados. */
+    public function getIndicadoresProperty(): array
+    {
+        return app(IndicadoresDeMetricas::class)->calcular(
+            $this->rango['desde'],
+            $this->rango['hasta'],
+            $this->distribuidoraElegida?->id,
+            $this->planElegido?->id,
+        );
+    }
+
+    /** Que quiere decir cada numero. Se enseña en pantalla, lo pide A34. */
+    public function getDefinicionesProperty(): array
+    {
+        return IndicadoresDeMetricas::definiciones();
+    }
+
     public function getDistribuidorasProperty()
     {
         return Distribuidora::withoutGlobalScopes()
@@ -213,13 +231,59 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
         </p>
     </x-panel.tarjeta>
 
-    {{-- Los indicadores y las gráficas son A34 y A35. Este hueco no es un
-         olvido: deja claro en pantalla que el apartado existe y que lo que
-         falta son los números, no el apartado. --}}
+    @php($n = $this->indicadores)
+    @php($d = $this->definiciones)
+
+    {{-- TG-394 (A34). Cada tarjeta lleva su definicion debajo: sin eso, dos
+         personas leen el mismo numero y entienden cosas distintas. --}}
+    <div class="fp-escalonado grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-indicadores-metricas>
+        <x-panel.tarjeta class="p-5" data-indicador="usuarios-activos">
+            <p class="text-sm font-medium text-slate-700">Usuarios activos</p>
+            <p class="mt-1 text-3xl font-bold text-fp-sidebar tabular-nums">{{ number_format($n['usuarios_activos']) }}</p>
+            <p class="mt-2 text-xs text-fp-text-muted">{{ $d['usuarios_activos'] }}</p>
+            @if ($n['periodo_recortado'])
+                {{-- El detalle solo se guarda 90 dias (A43). Decirlo evita que
+                     este numero se lea como si cubriera todo el periodo. --}}
+                <p class="mt-2 text-xs font-medium text-fp-badge-warning-fg" data-periodo-recortado>
+                    Solo desde el {{ \Illuminate\Support\Carbon::parse($n['usuarios_desde'])->locale('es')->translatedFormat('d \d\e F') }}:
+                    el detalle de actividad se guarda {{ \App\Models\ActividadDiaria::DIAS_QUE_SE_GUARDA }} días.
+                </p>
+            @endif
+        </x-panel.tarjeta>
+
+        <x-panel.tarjeta class="p-5" data-indicador="ingresos-suscripcion">
+            <p class="text-sm font-medium text-slate-700">Ingresos de suscripción</p>
+            <p class="mt-1 text-3xl font-bold text-fp-sidebar tabular-nums">${{ number_format($n['ingresos_suscripcion'], 2) }}</p>
+            <p class="mt-2 text-xs text-fp-text-muted">{{ $d['ingresos_suscripcion'] }}</p>
+        </x-panel.tarjeta>
+
+        <x-panel.tarjeta class="p-5" data-indicador="ventas-tienda">
+            <p class="text-sm font-medium text-slate-700">Ventas de las tiendas</p>
+            <p class="mt-1 text-3xl font-bold text-fp-sidebar tabular-nums">${{ number_format($n['ventas_tienda'], 2) }}</p>
+            <p class="mt-2 text-xs text-fp-text-muted">{{ $d['ventas_tienda'] }}</p>
+        </x-panel.tarjeta>
+
+        <x-panel.tarjeta class="p-5" data-indicador="plan-mas-contratado">
+            <p class="text-sm font-medium text-slate-700">Plan más contratado</p>
+            <p class="mt-1 text-2xl font-bold text-fp-sidebar">{{ $n['plan_mas_contratado'] ?: '—' }}</p>
+            <p class="text-xs text-fp-text-muted">
+                {{ $n['plan_mas_contratado_cuantas'] > 0
+                    ? $n['plan_mas_contratado_cuantas'].' '.\Illuminate\Support\Str::plural('distribuidora', $n['plan_mas_contratado_cuantas'])
+                    : 'Sin suscripciones activas' }}
+            </p>
+            <p class="mt-2 text-xs text-fp-text-muted">{{ $d['plan_mas_contratado'] }}</p>
+        </x-panel.tarjeta>
+    </div>
+
+    {{-- Lo dice la tarjeta y vale la pena que se lea: son dos bolsillos
+         distintos y sumarlos daria un numero que no significa nada. --}}
+    <x-panel.alerta tipo="info" data-dinero-separado>
+        Los <strong>ingresos de suscripción</strong> son de FootwearPoint; las <strong>ventas de las tiendas</strong>
+        son de cada distribuidora. Son dinero distinto y por eso nunca se suman.
+    </x-panel.alerta>
+
     <x-panel.tarjeta class="p-8 text-center" data-metricas-pendientes>
-        <p class="text-sm font-medium text-slate-700">Los indicadores llegan en la siguiente entrega.</p>
-        <p class="mt-1 text-sm text-fp-text-muted">
-            Este apartado ya tiene su acceso, sus filtros y sus permisos. Faltan las cifras y las gráficas.
-        </p>
+        <p class="text-sm font-medium text-slate-700">Las gráficas llegan en la siguiente entrega.</p>
+        <p class="mt-1 text-sm text-fp-text-muted">Los indicadores ya están; faltan las series y sus tablas.</p>
     </x-panel.tarjeta>
 </div>
