@@ -34,6 +34,12 @@ final class EtiquetasAuditoria
         'distribuidora.subdominio_actualizado' => 'Subdominio de la tienda actualizado',
         'distribuidora.datos_actualizados' => 'Datos de la distribuidora modificados',
         'distribuidora.admin_actualizado' => 'Administrador de la distribuidora modificado',
+        // Sesiones (TG-333)
+        'sesion.inicio_panel'             => 'Inicio de sesión (panel)',
+        'sesion.inicio_recordado'         => 'Inicio de sesión (recordado)',
+        'sesion.cierre_panel'             => 'Cierre de sesión (panel)',
+        'sesion.inicio_app'               => 'Inicio de sesión (app)',
+        'sesion.cierre_app'               => 'Cierre de sesión (app)',
         // Seguridad
         'password.enlace_restablecimiento' => 'Enlace para restablecer contraseña enviado',
         'password.temporal_generada'      => 'Contraseña temporal generada',
@@ -95,6 +101,7 @@ final class EtiquetasAuditoria
         'catalogo'             => 'Catálogo',
         'importacion_catalogo' => 'Catálogo',
         'password'             => 'Seguridad',
+        'sesion'               => 'Sesiones',
         'linea_extra'          => 'Configuración',
         'distribuidora'        => 'Configuración',
     ];
