@@ -15,8 +15,8 @@ use Tests\TestCase;
  * TG-321 (K22) — Términos y condiciones alineados al sistema.
  *
  * Borrador que pasará por revisión jurídica: estas pruebas cuidan que diga lo
- * que hace el sistema y que no adelante lo que es de K41 (vencimiento,
- * gracia y suspensión) ni afirme que ya cumple la ley.
+ * que hace el sistema y que no afirme que ya cumple la ley. Vencimiento,
+ * gracia y suspensión los cubre TerminosTG339Test (K41).
  */
 class TerminosTG321Test extends TestCase
 {
@@ -26,7 +26,7 @@ class TerminosTG321Test extends TestCase
 
     private const SECCIONES = [
         'terminos-que-es', 'terminos-cuentas', 'terminos-mensualidad', 'terminos-pagos',
-        'terminos-pedidos', 'terminos-vales', 'terminos-contenido', 'terminos-responsabilidad',
+        'terminos-vencimiento', 'terminos-pedidos', 'terminos-vales', 'terminos-contenido', 'terminos-responsabilidad',
         'terminos-cambios', 'terminos-ley', 'terminos-contacto',
     ];
 
@@ -164,12 +164,6 @@ class TerminosTG321Test extends TestCase
             'Si el pedido cuesta menos que la nota, la nota se usa completa y la diferencia queda en un vale nuevo a tu favor, que vence '
             .Vale::DIAS_VIGENCIA_TIPIFICADO.' días después de generarse.'
         );
-    }
-
-    /** Vencimiento, gracia y suspensión son de K41 (términos v1.3). */
-    public function test_no_adelanta_lo_que_es_de_k41(): void
-    {
-        $this->assertNoDice('gracia', 'suspend', 'suspensión', 'vencida');
     }
 
     public function test_no_afirma_que_cumple_la_ley(): void

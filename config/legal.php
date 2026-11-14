@@ -32,9 +32,9 @@ return [
         ],
         'terminos_condiciones' => [
             'nombre' => 'Términos y condiciones',
-            // TG-321 (K22): términos alineados al sistema.
-            'version' => '1.3',
-            'fecha_actualizacion' => '12 de noviembre de 2026',
+            // TG-339 (K41): vencimiento, gracia y cancelación de la mensualidad.
+            'version' => '1.4',
+            'fecha_actualizacion' => '13 de noviembre de 2026',
             'ruta' => 'terminos',
             'vista' => 'components/legales/terminos.blade.php',
         ],
