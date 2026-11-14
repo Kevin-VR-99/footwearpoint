@@ -4,6 +4,8 @@
     'acciones',
     'entidades',
     'usuarios',
+    // TG-333: el admin general ve sesiones de todas las distribuidoras.
+    'conDistribuidora' => false,
     'detalleId' => null,
 ])
 
@@ -90,6 +92,9 @@
                         <td class="px-4 py-3">
                             <div class="font-medium text-slate-800">{{ $row->usuario?->nombreVisible() ?? '—' }}</div>
                             <div class="text-xs text-slate-500">{{ $row->usuario?->email }}</div>
+                            @if ($conDistribuidora && $row->distribuidora_id)
+                                <div class="text-xs text-slate-600" data-distribuidora-auditoria>{{ $row->distribuidora?->nombre_comercial ?: $row->distribuidora?->razon_social }}</div>
+                            @endif
                         </td>
                         <td class="px-4 py-3">
                             <div class="text-[11px] uppercase tracking-wide text-fp-text-muted">{{ EtiquetasAuditoria::area($row->accion) }}</div>

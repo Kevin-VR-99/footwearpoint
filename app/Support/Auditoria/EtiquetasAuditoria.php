@@ -63,6 +63,12 @@ final class EtiquetasAuditoria
         'ciclo.configuracion_eliminada'   => 'Configuración de ciclo eliminada',
         'oferta.descuento_linea'          => 'Descuento de mayoreo por línea cambiado',
         'oferta.descuento_mayorista'      => 'Descuento general de mayoreo cambiado',
+        // Sesiones (TG-333)
+        'sesion.inicio_panel'             => 'Inicio de sesión (panel)',
+        'sesion.inicio_recordado'         => 'Inicio de sesión (recordado)',
+        'sesion.cierre_panel'             => 'Cierre de sesión (panel)',
+        'sesion.inicio_app'               => 'Inicio de sesión (app)',
+        'sesion.cierre_app'               => 'Cierre de sesión (app)',
         // Seguridad
         'password.enlace_restablecimiento' => 'Enlace para restablecer contraseña enviado',
         'password.temporal_generada'      => 'Contraseña temporal generada',
@@ -124,6 +130,7 @@ final class EtiquetasAuditoria
         'catalogo'             => 'Catálogo',
         'importacion_catalogo' => 'Catálogo',
         'password'             => 'Seguridad',
+        'sesion'               => 'Sesiones',
         'linea_extra'          => 'Configuración',
         'distribuidora'        => 'Configuración',
         'configuracion'        => 'Configuración',

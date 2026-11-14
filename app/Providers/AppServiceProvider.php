@@ -80,6 +80,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // TG-333 (K35): inicios y cierres de sesión del panel en la auditoría.
+        \App\Services\Auditoria\SesionesDelPanel::escuchar();
+
         // INC-002: política única de contraseñas para todo alta o cambio.
         // uncompromised() consulta HaveIBeenPwned; solo en producción para
         // que pruebas y desarrollo no dependan de la red (la lista offline
