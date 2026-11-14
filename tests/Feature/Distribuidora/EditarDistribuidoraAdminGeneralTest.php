@@ -236,9 +236,13 @@ class EditarDistribuidoraAdminGeneralTest extends TestCase
 
     public function test_sin_cambios_no_deja_auditoria(): void
     {
+        // TG-334: el alta ya deja «distribuidora.creada»; aquí cuenta lo que
+        // agrega la edición.
+        $antes = Auditoria::withoutGlobalScopes()->where('accion', 'like', 'distribuidora.%')->count();
+
         $this->editar()->assertHasNoErrors();
 
-        $this->assertSame(0, Auditoria::withoutGlobalScopes()->where('accion', 'like', 'distribuidora.%')->count());
+        $this->assertSame($antes, Auditoria::withoutGlobalScopes()->where('accion', 'like', 'distribuidora.%')->count());
     }
 
     public function test_si_no_tiene_administrador_lo_dice_y_guarda_la_distribuidora(): void

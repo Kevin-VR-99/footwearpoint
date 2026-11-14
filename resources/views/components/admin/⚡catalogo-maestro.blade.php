@@ -503,13 +503,18 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             'activo' => true,
         ]);
 
-        ProductoCampana::create([
+        $publicacion = ProductoCampana::create([
             'producto_id' => $producto->id,
             'campana_id' => $datos['producto_campana_id'],
             'codigo_catalogo' => $datos['producto_codigo'],
             'precio_publico' => $datos['producto_precio'],
             'activo' => true,
         ]);
+
+        // TG-334: el alta a mano, con las mismas acciones que el resto del
+        // catálogo maestro (sin distribuidora; la ve el admin general).
+        app(\App\Services\Auditoria\AuditarCambios::class)->creado($producto, 'catalogo.producto.creado', 'producto');
+        app(\App\Services\Auditoria\AuditarCambios::class)->creado($publicacion, 'catalogo.publicacion.creada', 'producto_campana');
 
         $this->reset(
             'producto_marca_id',

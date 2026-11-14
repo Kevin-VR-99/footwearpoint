@@ -3,6 +3,7 @@
 namespace App\Services\Distribuidora;
 
 use App\Models\Distribuidora;
+use App\Services\Auditoria\AuditarCambios;
 use App\Support\WhatsApp;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -22,7 +23,8 @@ class ActualizarPerfilDistribuidoraAction
         }
 
         $distribuidora->fill($datos);
-        $distribuidora->save();
+        // TG-334: el perfil que edita la propia distribuidora, solo lo que cambió.
+        app(AuditarCambios::class)->guardar($distribuidora, 'distribuidora.perfil_actualizado', 'distribuidora');
 
         return $distribuidora->fresh();
     }

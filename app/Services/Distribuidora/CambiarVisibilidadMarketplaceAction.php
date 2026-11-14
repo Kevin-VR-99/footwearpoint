@@ -2,6 +2,8 @@
 
 namespace App\Services\Distribuidora;
 
+use App\Services\Auditoria\RegistrarAuditoriaAction;
+
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\Distribuidora;
 
@@ -27,7 +29,14 @@ class CambiarVisibilidadMarketplaceAction
             throw new OperacionInvalidaException(self::MENSAJE_SOLO_ACTIVAS, 422);
         }
 
+        $antes = (bool) $distribuidora->marketplace_visible;
         $distribuidora->update(['marketplace_visible' => $visible]);
+
+        // TG-334: solo si de verdad cambió.
+        if ($antes !== $visible) {
+            app(RegistrarAuditoriaAction::class)->ejecutar('distribuidora.marketplace_visibilidad', 'distribuidora', (int) $distribuidora->id,
+                ['marketplace_visible' => $antes], ['marketplace_visible' => $visible]);
+        }
 
         return $distribuidora;
     }

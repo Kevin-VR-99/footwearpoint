@@ -3,6 +3,8 @@
 namespace App\Services\Distribuidora;
 
 use App\Models\ConfiguracionCiclo;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class ConfiguracionCicloAction
@@ -32,6 +34,10 @@ class ConfiguracionCicloAction
             $ciclo = ConfiguracionCiclo::create($datos);
             $this->sincronizarDiasRecepcion($ciclo, $diasRecepcion);
 
+            // TG-334
+            app(RegistrarAuditoriaAction::class)->ejecutar('ciclo.configuracion_creada', 'configuracion_ciclo', (int) $ciclo->id, null,
+                Arr::except($ciclo->getAttributes(), ['created_at', 'updated_at']) + ['dias_recepcion' => $this->dias($ciclo)]);
+
             return $ciclo->fresh('diasRecepcion');
         });
     }
@@ -47,14 +53,39 @@ class ConfiguracionCicloAction
             }
 
             $ciclo->fill($datos);
+
+            // TG-334: el antes y el después solo de lo que cambió, días incluidos.
+            $previos = [];
+            $nuevos = [];
+            foreach (array_diff(array_keys($ciclo->getDirty()), ['created_at', 'updated_at']) as $campo) {
+                $previos[$campo] = $ciclo->getRawOriginal($campo);
+                $nuevos[$campo] = $ciclo->getAttribute($campo);
+            }
+            $diasAntes = $this->dias($ciclo);
+
             $ciclo->save();
 
             if ($diasRecepcion !== null) {
                 $this->sincronizarDiasRecepcion($ciclo, $diasRecepcion);
+                $diasDespues = $this->dias($ciclo);
+                if ($diasAntes !== $diasDespues) {
+                    $previos['dias_recepcion'] = $diasAntes;
+                    $nuevos['dias_recepcion'] = $diasDespues;
+                }
+            }
+
+            if ($nuevos !== []) {
+                app(RegistrarAuditoriaAction::class)->ejecutar('ciclo.configuracion_actualizada', 'configuracion_ciclo', (int) $ciclo->id, $previos, $nuevos);
             }
 
             return $ciclo->fresh('diasRecepcion');
         });
+    }
+
+    /** @return list<int> */
+    private function dias(ConfiguracionCiclo $ciclo): array
+    {
+        return $ciclo->diasRecepcion()->orderBy('dia_semana')->pluck('dia_semana')->map(fn ($d) => (int) $d)->all();
     }
 
     private function desactivarConfiguracionVigente(?int $excepto = null): void

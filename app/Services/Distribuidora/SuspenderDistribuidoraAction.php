@@ -2,6 +2,8 @@
 
 namespace App\Services\Distribuidora;
 
+use App\Services\Auditoria\RegistrarAuditoriaAction;
+
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\Distribuidora;
 use Illuminate\Support\Facades\DB;
@@ -41,10 +43,16 @@ class SuspenderDistribuidoraAction
                 throw new OperacionInvalidaException(self::MENSAJE_NO_ACTIVA, 422);
             }
 
+            $previos = ['estado' => $actual->estado, 'motivo_suspension' => $actual->motivo_suspension];
+
             $actual->update([
                 'estado' => 'suspendida',
                 'motivo_suspension' => Distribuidora::MOTIVO_MANUAL,
             ]);
+
+            // TG-334: sin distribuidora; lo ve el admin general.
+            app(RegistrarAuditoriaAction::class)->ejecutar('distribuidora.suspendida', 'distribuidora', (int) $actual->id,
+                $previos, ['estado' => 'suspendida', 'motivo_suspension' => Distribuidora::MOTIVO_MANUAL]);
 
             return $actual;
         });

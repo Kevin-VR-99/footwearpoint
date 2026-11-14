@@ -3,6 +3,7 @@
 namespace App\Services\Distribuidora;
 
 use App\Models\ConfiguracionDistribuidora;
+use App\Services\Auditoria\AuditarCambios;
 
 class ActualizarConfiguracionDistribuidoraAction
 {
@@ -12,7 +13,8 @@ class ActualizarConfiguracionDistribuidoraAction
         // la sección 1.6 aplica a operaciones que escriben en MÁS de una tabla).
         $config = ConfiguracionDistribuidora::firstOrFail();
         $config->fill($datos);
-        $config->save();
+        // TG-334: solo lo que cambió.
+        app(AuditarCambios::class)->guardar($config, 'configuracion.actualizada', 'configuracion_distribuidora');
 
         return $config->fresh();
     }

@@ -2,6 +2,8 @@
 
 namespace App\Services\Distribuidora;
 
+use App\Services\Auditoria\RegistrarAuditoriaAction;
+
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\Distribuidora;
 use Illuminate\Support\Facades\DB;
@@ -59,12 +61,18 @@ class RechazarDistribuidoraAction
                 throw new OperacionInvalidaException(self::MENSAJE_NO_PENDIENTE, 422);
             }
 
+            $previos = ['estado' => $actual->estado, 'motivo_rechazo' => $actual->motivo_rechazo];
+
             $actual->update([
                 'estado'              => 'rechazada',
                 'motivo_rechazo'      => $motivo,
                 // Una pendiente no debería estar visible, pero por si acaso.
                 'marketplace_visible' => false,
             ]);
+
+            // TG-334: sin distribuidora; lo ve el admin general.
+            app(RegistrarAuditoriaAction::class)->ejecutar('distribuidora.rechazada', 'distribuidora', (int) $actual->id,
+                $previos, ['estado' => 'rechazada', 'motivo_rechazo' => $motivo]);
 
             return $actual;
         });

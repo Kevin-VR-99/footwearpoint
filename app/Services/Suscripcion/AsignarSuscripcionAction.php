@@ -6,6 +6,7 @@ use App\Exceptions\OperacionInvalidaException;
 use App\Models\Distribuidora;
 use App\Models\PlanSuscripcion;
 use App\Models\Suscripcion;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 
@@ -44,7 +45,7 @@ class AsignarSuscripcionAction
             throw new OperacionInvalidaException(self::MENSAJE_PLAN_INACTIVO, 422);
         }
 
-        return Tenant::forzar((int) $distribuidora->id, fn () => DB::transaction(function () use ($distribuidora, $plan, $meses, $lineasExtra, $renovacionAutomatica) {
+        $suscripcion = Tenant::forzar((int) $distribuidora->id, fn () => DB::transaction(function () use ($distribuidora, $plan, $meses, $lineasExtra, $renovacionAutomatica) {
             Suscripcion::query()
                 ->where('distribuidora_id', $distribuidora->id)
                 // TG-220: también la que esperaba su primer pago.
@@ -67,5 +68,18 @@ class AsignarSuscripcionAction
                 'renovacion_automatica'         => $renovacionAutomatica,
             ]);
         }));
+
+        // TG-334: fuera de Tenant::forzar, para que quede sin distribuidora
+        // (la ve el admin general en /admin/auditoria).
+        app(RegistrarAuditoriaAction::class)->ejecutar('suscripcion.asignada', 'suscripcion', (int) $suscripcion->id, null, [
+            'distribuidora_id' => (int) $distribuidora->id,
+            'plan_id'          => (int) $plan->id,
+            'meses'            => $meses,
+            'fecha_inicio'     => $suscripcion->fecha_inicio?->toDateString(),
+            'fecha_fin'        => $suscripcion->fecha_fin?->toDateString(),
+            'lineas_extra_contratadas' => $lineasExtra,
+        ]);
+
+        return $suscripcion;
     }
 }

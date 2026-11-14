@@ -4,6 +4,7 @@ namespace App\Services\Directorio;
 
 use App\Models\CategoriaDirectorio;
 use App\Models\Distribuidora;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -46,6 +47,8 @@ class AsignarCategoriasDirectorioAction
             throw ValidationException::withMessages(['categorias' => [self::MENSAJE_NO_DISPONIBLE]]);
         }
 
+        $antes = $distribuidora->categoriasDirectorio()->orderBy('categorias_directorio.id')->pluck('categorias_directorio.id')->all();
+
         DB::transaction(function () use ($distribuidora, $activas) {
             $inactivasQueTenia = $distribuidora->categoriasDirectorio()
                 ->where('categorias_directorio.activa', false)
@@ -53,6 +56,14 @@ class AsignarCategoriasDirectorioAction
 
             $distribuidora->categoriasDirectorio()->sync($activas->merge($inactivasQueTenia)->unique()->all());
         });
+
+        $despues = $distribuidora->categoriasDirectorio()->orderBy('categorias_directorio.id')->pluck('categorias_directorio.id')->all();
+
+        // TG-334: solo si cambió la lista.
+        if ($antes !== $despues) {
+            app(RegistrarAuditoriaAction::class)->ejecutar('distribuidora.categorias_directorio', 'distribuidora', (int) $distribuidora->id,
+                ['categorias' => $antes], ['categorias' => $despues]);
+        }
 
         return $distribuidora->categoriasDirectorio()->orderBy('nombre')->get();
     }

@@ -3,6 +3,7 @@
 namespace App\Services\Directorio;
 
 use App\Models\CategoriaDirectorio;
+use App\Services\Auditoria\AuditarCambios;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -62,11 +63,16 @@ class GuardarCategoriaDirectorioAction
         }
 
         try {
+            // TG-334: con AuditarCambios, solo lo que cambió.
             if ($categoria === null) {
-                return CategoriaDirectorio::create($valores + ['activa' => true]);
+                $nueva = CategoriaDirectorio::create($valores + ['activa' => true]);
+                app(AuditarCambios::class)->creado($nueva, 'categoria_directorio.creada', 'categoria_directorio');
+
+                return $nueva;
             }
 
-            $categoria->update($valores);
+            $categoria->fill($valores);
+            app(AuditarCambios::class)->guardar($categoria, 'categoria_directorio.actualizada', 'categoria_directorio');
 
             return $categoria->fresh();
         } catch (QueryException $e) {

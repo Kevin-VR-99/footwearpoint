@@ -4,6 +4,7 @@ namespace App\Services\Distribuidora;
 
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\DistribuidoraLinea;
+use App\Services\Auditoria\AuditarCambios;
 use App\Support\Tenant;
 
 /**
@@ -40,7 +41,9 @@ class FijarDescuentoLineaAction
             );
         }
 
-        $fila->update(['descuento_mayorista_pct' => $porcentaje]);
+        // TG-334: solo si cambió.
+        $fila->descuento_mayorista_pct = $porcentaje;
+        app(AuditarCambios::class)->guardar($fila, 'oferta.descuento_linea', 'distribuidora_linea');
 
         return $fila->fresh();
     }

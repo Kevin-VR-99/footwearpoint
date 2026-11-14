@@ -71,7 +71,9 @@ class TransferenciaYOpenpayTest extends TestCase
 
         $auditoria = Auditoria::query()->where('accion', 'datos_bancarios.actualizados')->firstOrFail();
         $this->assertNull($auditoria->datos_previos['clabe']);
-        $this->assertSame(self::CLABE, $auditoria->datos_nuevos['clabe']);
+        // TG-334: la auditoría guarda la CLABE enmascarada, solo sus últimos 4 dígitos.
+        $this->assertSame(str_repeat('•', 14).substr(self::CLABE, -4), $auditoria->datos_nuevos['clabe']);
+        $this->assertStringNotContainsString(self::CLABE, json_encode($auditoria->datos_nuevos, JSON_UNESCAPED_UNICODE));
 
         Mail::assertSent(\App\Mail\CambioClabeMail::class, function ($mail) {
             return $mail->hasTo(self::ADMIN)
