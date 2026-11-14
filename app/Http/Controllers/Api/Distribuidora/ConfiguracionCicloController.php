@@ -53,6 +53,8 @@ class ConfiguracionCicloController extends Controller
 
     public function destroy(ConfiguracionCiclo $ciclo): JsonResponse
     {
+        // TG-334
+        app(\App\Services\Auditoria\AuditarCambios::class)->eliminado($ciclo, 'ciclo.configuracion_eliminada', 'configuracion_ciclo');
         $ciclo->delete();
 
         return response()->json([

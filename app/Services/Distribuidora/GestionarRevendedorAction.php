@@ -5,6 +5,7 @@ namespace App\Services\Distribuidora;
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\Revendedor;
 use App\Models\RevendedorDistribuidora;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 
@@ -40,6 +41,16 @@ class GestionarRevendedorAction
                 'fecha_alta'      => now()->toDateString(),
             ]);
 
+            // TG-334
+            app(RegistrarAuditoriaAction::class)->ejecutar('cliente_mayorista.creado', 'revendedor_distribuidora', (int) $afiliacion->id, null, [
+                'nombre'         => $revendedor->nombre,
+                'telefono'       => $revendedor->telefono,
+                'email'          => $revendedor->email,
+                'codigo_interno' => $afiliacion->codigo_interno,
+                'notas'          => $afiliacion->notas,
+                'estado'         => $afiliacion->estado,
+            ]);
+
             return $afiliacion->fresh('revendedor');
         });
     }
@@ -70,12 +81,30 @@ class GestionarRevendedorAction
                 $datosContacto['telefono'] = $telefono === '' ? null : $telefono;
             }
 
+            // TG-334: un solo registro con lo que cambió de los dos renglones.
+            $previos = [];
+            $nuevos = [];
+
             if ($datosContacto !== []) {
-                $afiliacion->revendedor->fill($datosContacto)->save();
+                $revendedor = $afiliacion->revendedor->fill($datosContacto);
+                foreach (array_keys($revendedor->getDirty()) as $campo) {
+                    $previos[$campo] = $revendedor->getRawOriginal($campo);
+                    $nuevos[$campo] = $revendedor->getAttribute($campo);
+                }
+                $revendedor->save();
             }
 
             if ($datosAfiliacion !== []) {
-                $afiliacion->fill($datosAfiliacion)->save();
+                $afiliacion->fill($datosAfiliacion);
+                foreach (array_keys($afiliacion->getDirty()) as $campo) {
+                    $previos[$campo] = $afiliacion->getRawOriginal($campo);
+                    $nuevos[$campo] = $afiliacion->getAttribute($campo);
+                }
+                $afiliacion->save();
+            }
+
+            if ($nuevos !== []) {
+                app(RegistrarAuditoriaAction::class)->ejecutar('cliente_mayorista.actualizado', 'revendedor_distribuidora', (int) $afiliacion->id, $previos, $nuevos);
             }
 
             return $afiliacion->fresh('revendedor');

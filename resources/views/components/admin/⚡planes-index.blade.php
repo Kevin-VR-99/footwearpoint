@@ -109,11 +109,14 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
             'activo'              => $this->activo,
         ];
 
+        // TG-334: con AuditarCambios, solo lo que cambió.
         if ($this->editId) {
-            PlanSuscripcion::findOrFail($this->editId)->update($data);
+            $plan = PlanSuscripcion::findOrFail($this->editId)->fill($data);
+            app(\App\Services\Auditoria\AuditarCambios::class)->guardar($plan, 'plan.actualizado', 'plan_suscripcion');
             $this->mensaje = 'Plan actualizado correctamente.';
         } else {
-            PlanSuscripcion::create($data);
+            $plan = PlanSuscripcion::create($data);
+            app(\App\Services\Auditoria\AuditarCambios::class)->creado($plan, 'plan.creado', 'plan_suscripcion');
             $this->mensaje = 'Plan creado correctamente.';
         }
 
@@ -123,14 +126,16 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
     public function desactivar(int $id)
     {
         $plan = PlanSuscripcion::findOrFail($id);
-        $plan->update(['activo' => false]);
+        $plan->activo = false;
+        app(\App\Services\Auditoria\AuditarCambios::class)->guardar($plan, 'plan.desactivado', 'plan_suscripcion');
         $this->mensaje = "Plan «{$plan->nombre}» desactivado.";
     }
 
     public function activar(int $id)
     {
         $plan = PlanSuscripcion::findOrFail($id);
-        $plan->update(['activo' => true]);
+        $plan->activo = true;
+        app(\App\Services\Auditoria\AuditarCambios::class)->guardar($plan, 'plan.activado', 'plan_suscripcion');
         $this->mensaje = "Plan «{$plan->nombre}» activado.";
     }
 

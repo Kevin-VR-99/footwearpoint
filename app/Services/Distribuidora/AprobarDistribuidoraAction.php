@@ -2,6 +2,8 @@
 
 namespace App\Services\Distribuidora;
 
+use App\Services\Auditoria\RegistrarAuditoriaAction;
+
 use App\Models\Distribuidora;
 use App\Models\DistribuidoraStaff;
 use App\Support\Tenant;
@@ -44,6 +46,8 @@ class AprobarDistribuidoraAction
         }
 
         DB::transaction(function () use ($distribuidora, $plan) {
+            $estadoAnterior = $distribuidora->estado;
+
             $distribuidora->update([
                 'estado'           => 'activa',
                 'fecha_aprobacion' => now(),
@@ -70,6 +74,11 @@ class AprobarDistribuidoraAction
             foreach ($administradores as $staff) {
                 $this->roles->asignarAdministrador($staff->usuario, $distribuidora);
             }
+
+            // TG-334
+            app(RegistrarAuditoriaAction::class)->ejecutar('distribuidora.aprobada', 'distribuidora', (int) $distribuidora->id,
+                ['estado' => $estadoAnterior],
+                ['estado' => 'activa', 'plan_id' => (int) $plan->id]);
         });
 
         $distribuidora = $distribuidora->fresh();

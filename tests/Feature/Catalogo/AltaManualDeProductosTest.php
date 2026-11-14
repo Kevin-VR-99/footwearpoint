@@ -141,6 +141,33 @@ class AltaManualDeProductosTest extends TestCase
         );
     }
 
+    /** TG-334 (K36): el alta a mano deja rastro en la auditoría del admin general. */
+    public function test_el_alta_manual_queda_en_la_auditoria_del_admin_general(): void
+    {
+        $admin = $this->comoAdminGeneral();
+
+        Livewire::test('admin.catalogo-maestro')
+            ->set('pestana', 'productos')
+            ->call('abrirCrear', 'producto')
+            ->set($this->formulario($this->campanaVigente(), 'A14-AUDITADO'))
+            ->call('guardarProducto')
+            ->assertHasNoErrors();
+
+        $publicacion = ProductoCampana::where('codigo_catalogo', 'A14-AUDITADO')->firstOrFail();
+        $registros = \App\Models\Auditoria::withoutGlobalScopes()
+            ->whereIn('accion', ['catalogo.producto.creado', 'catalogo.publicacion.creada'])
+            ->orderBy('id')->get();
+
+        $this->assertSame(['catalogo.producto.creado', 'catalogo.publicacion.creada'], $registros->pluck('accion')->all());
+        foreach ($registros as $registro) {
+            $this->assertSame($admin->id, $registro->usuario_id);
+            $this->assertNull($registro->distribuidora_id);
+            $this->assertNull($registro->datos_previos);
+        }
+        $this->assertSame((int) $publicacion->producto_id, $registros[0]->entidad_id);
+        $this->assertSame('A14-AUDITADO', $registros[1]->datos_nuevos['codigo_catalogo']);
+    }
+
     public function test_el_producto_de_la_temporada_vigente_si_llega_al_catalogo_de_la_distribuidora(): void
     {
         $this->comoAdminGeneral();

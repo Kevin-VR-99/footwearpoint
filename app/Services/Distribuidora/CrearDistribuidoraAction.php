@@ -5,6 +5,7 @@ namespace App\Services\Distribuidora;
 use App\Models\Distribuidora;
 use App\Models\DistribuidoraStaff;
 use App\Models\Usuario;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -101,6 +102,17 @@ class CrearDistribuidoraAction
 
             $this->roles->ejecutar($distribuidora);
             $this->roles->asignarAdministrador($usuario, $distribuidora);
+
+            // TG-334: el alta, sin distribuidora (la ve el admin general). Si
+            // viene del formulario público, no hay usuario que la haga.
+            app(RegistrarAuditoriaAction::class)->ejecutar('distribuidora.creada', 'distribuidora', (int) $distribuidora->id, null, [
+                'nombre_comercial' => $distribuidora->nombre_comercial,
+                'razon_social'     => $distribuidora->razon_social,
+                'rfc'              => $distribuidora->rfc,
+                'slug'             => $distribuidora->slug,
+                'estado'           => $distribuidora->estado,
+                'admin_email'      => $usuario->email,
+            ]);
 
             // TG-220 (A11): el correo para confirmar que la cuenta es suya,
             // igual que en ActivarCuentaAccesoAction. Va después de la

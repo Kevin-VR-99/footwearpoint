@@ -4,6 +4,7 @@ namespace App\Services\Distribuidora;
 
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\ClienteDirecto;
+use App\Services\Auditoria\AuditarCambios;
 use App\Support\TelefonoCliente;
 use App\Support\Tenant;
 use Illuminate\Validation\ValidationException;
@@ -24,7 +25,7 @@ class GestionarClienteDirectoAction
     public function crear(array $datos): ClienteDirecto
     {
         // distribuidora_id se completa solo, vía BelongsToTenant (Fase 0).
-        return ClienteDirecto::create([
+        $cliente = ClienteDirecto::create([
             'nombre'             => $datos['nombre'],
             'telefono'           => $this->telefono($datos),
             'email'              => $datos['email'] ?? null,
@@ -32,6 +33,11 @@ class GestionarClienteDirectoAction
             'notas'              => $datos['notas'] ?? null,
             'estado'             => 'activo',
         ]);
+
+        // TG-334
+        app(AuditarCambios::class)->creado($cliente, 'cliente_directo.creado', 'cliente_directo');
+
+        return $cliente;
     }
 
     public function actualizar(ClienteDirecto $cliente, array $datos): ClienteDirecto
@@ -53,7 +59,8 @@ class GestionarClienteDirectoAction
         }
 
         $cliente->fill($datos);
-        $cliente->save();
+        // TG-334: guarda y deja en la auditoría solo lo que cambió.
+        app(AuditarCambios::class)->guardar($cliente, 'cliente_directo.actualizado', 'cliente_directo');
 
         return $cliente->fresh();
     }

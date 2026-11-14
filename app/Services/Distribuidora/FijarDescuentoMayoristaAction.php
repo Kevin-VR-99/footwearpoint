@@ -4,6 +4,7 @@ namespace App\Services\Distribuidora;
 
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\ConfiguracionDistribuidora;
+use App\Services\Auditoria\AuditarCambios;
 use App\Support\Tenant;
 
 /**
@@ -35,7 +36,10 @@ class FijarDescuentoMayoristaAction
             );
         }
 
-        $configuracion->update(['descuento_mayorista_pct' => round($porcentaje, 2)]);
+        // TG-334: ninguna pantalla ni la API usan esta acción hoy; queda
+        // auditada para cuando se conecte.
+        $configuracion->descuento_mayorista_pct = round($porcentaje, 2);
+        app(AuditarCambios::class)->guardar($configuracion, 'oferta.descuento_mayorista', 'configuracion_distribuidora');
 
         return $configuracion->fresh();
     }
