@@ -73,8 +73,8 @@ class DocumentosLegalesTest extends TestCase
         $this->get(route('terminos'))
             ->assertOk()
             ->assertSee('Términos y condiciones')
-            ->assertSee('Versión 1.3')
-            ->assertSee('12 de noviembre de 2026')
+            ->assertSee('Versión 1.4')
+            ->assertSee('13 de noviembre de 2026')
             ->assertSee(self::DE_LOS_TERMINOS);
     }
 

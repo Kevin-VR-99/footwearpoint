@@ -1,6 +1,7 @@
 {{--
-    Términos y condiciones de uso (TG-321, K22). Borrador alineado al
-    sistema; pasará por revisión jurídica antes de darse por definitivo.
+    Términos y condiciones de uso (TG-321, K22; vencimiento y cancelación de
+    la mensualidad en TG-339, K41). Borrador alineado al sistema; pasará por
+    revisión jurídica antes de darse por definitivo.
 
     Lo usan la pantalla de aceptar documentos (auth.aceptar-legales) y la
     página pública /terminos. Los datos sin definir (jurisdicción) salen de
@@ -11,8 +12,10 @@
     Reglas para editarlo:
     - Solo reglas que existen en el código. Lo que el equipo no ha decidido no
       se inventa: va como pendiente en el PR.
-    - Vencimiento, periodo de gracia y suspensión por falta de pago NO van
-      aquí: son de K41 (términos v1.3).
+    - Vencimiento, gracia y suspensión: la fuente es
+      docs/vencimiento-suscripcion.md y suscripciones:vencer (PR #321). La
+      suspensión se redacta como algo que puede pasar: el comando solo avisa
+      mientras no se active el modo «suspender».
     - Referencia: LFPC, art. 76 Bis (última reforma DOF 12/12/2025),
       verificado en diputados.gob.mx el 12/11/2026.
     - Los ids de las secciones llevan el prefijo «terminos-» porque la
@@ -26,6 +29,7 @@
         'terminos-que-es'      => 'Qué es FootwearPoint y quién es quién',
         'terminos-cuentas'     => 'Quién puede usar la plataforma',
         'terminos-mensualidad' => 'Planes y mensualidad de las distribuidoras',
+        'terminos-vencimiento' => 'Vencimiento, gracia y cancelación de la mensualidad',
         'terminos-pagos'       => 'Pagos de los pedidos',
         'terminos-pedidos'     => 'Pedidos, anticipos y entregas',
         'terminos-vales'       => 'Vales y notas de cambio',
@@ -101,9 +105,30 @@
         <li>Cada línea adicional a las incluidas cuesta <strong>$150 MXN</strong> al mes. Se cobra en el momento en que se agrega.</li>
         <li><strong>El primer mes se paga antes de usar el panel.</strong> Mientras no se pague, el administrador solo puede entrar a la pantalla de pago.</li>
         <li>Cada pago cubre un mes. <strong>No hay cobros automáticos</strong>: para seguir el mes siguiente, el administrador vuelve a pagar desde el panel, con Mercado Pago.</li>
-        <li><strong>Para no renovar</strong> basta con no pagar el mes siguiente; no se hace ningún cargo adicional. Para cancelar el servicio y dar de baja tu distribuidora, escríbenos al correo de contacto.</li>
         <li>Los cambios de precio se avisarán por la plataforma o por correo antes de aplicarse, y aplican desde el siguiente mes.</li>
         <li><strong>Facturación:</strong> hoy FootwearPoint no emite factura electrónica (CFDI) por la mensualidad ni cobra IVA sobre ella. Si eso cambia, se avisará con una nueva versión de estos términos antes de aplicarse.</li>
+    </ul>
+
+    <h2 id="terminos-vencimiento" class="fp-legal-titulo">{{ $titulo('terminos-vencimiento') }}</h2>
+    <p>
+        La mensualidad está pagada hasta el <strong>día de vencimiento</strong> que ves en el panel, que es el
+        último día pagado. Los días se cuentan en fechas de calendario, con la hora de la Ciudad de México.
+    </p>
+    <ul class="list-disc pl-5 space-y-1">
+        <li><strong>Avisos antes de vencer:</strong> FootwearPoint avisa por correo al administrador de la distribuidora 3 días y 1 día antes del vencimiento, y el mismo día del vencimiento por correo y en el panel. Ese día la distribuidora sigue activa.</li>
+        <li><strong>Periodo de gracia:</strong> durante los <strong>5 días</strong> siguientes al vencimiento, la mensualidad queda vencida, pero la distribuidora <strong>sigue operando con normalidad</strong>. Cada uno de esos días recibe un aviso en el panel y por correo.</li>
+        <li><strong>Suspensión por falta de pago:</strong> a partir del <strong>sexto día</strong> sin pago, FootwearPoint <strong>podrá suspender</strong> a la distribuidora. Si la suspende, se le avisa por correo y su personal solo puede entrar a la pantalla de pago del panel hasta que se pague.</li>
+        <li><strong>Al pagar dentro de la gracia</strong> (o antes de vencer), el nuevo vencimiento es el anterior más un mes, así que no se pierden días.</li>
+        <li><strong>Al pagar después del quinto día de gracia</strong>, o ya suspendida por falta de pago, el nuevo vencimiento es la fecha en que se aplica el pago más un mes.</li>
+        <li>Si el mes siguiente es más corto, el vencimiento queda en su último día (por ejemplo, del 31 de enero pasa al 28 de febrero, o al 29 si el año es bisiesto).</li>
+        <li>Si la distribuidora estaba suspendida por falta de pago, <strong>al aplicarse el pago se reactiva</strong>.</li>
+        <li>Una suspensión que decide FootwearPoint por otro motivo (no por falta de pago) <strong>no se levanta con un pago</strong>.</li>
+        <li>La mensualidad se paga en el <strong>panel web</strong>. La app móvil no cobra la mensualidad.</li>
+    </ul>
+    <p><strong>Cancelación:</strong></p>
+    <ul class="list-disc pl-5 space-y-1">
+        <li><strong>Para no renovar</strong> basta con no pagar el mes siguiente. No se hace ningún cargo adicional: la mensualidad vence y sigue lo que se describe arriba.</li>
+        <li>Para cancelar el servicio y dar de baja tu distribuidora, escríbenos al correo de contacto. Hoy no hay un botón para cancelar desde el panel.</li>
     </ul>
 
     <h2 id="terminos-pagos" class="fp-legal-titulo">{{ $titulo('terminos-pagos') }}</h2>
