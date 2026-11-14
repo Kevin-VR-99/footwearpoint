@@ -38,7 +38,12 @@ new #[Layout('layouts.admin')] #[Title('Auditoría — Admin')] class extends Co
      */
     protected function consultaBase(): Builder
     {
-        return Auditoria::withoutGlobalScopes()->whereNull('distribuidora_id');
+        // Lo de FootwearPoint (sin distribuidora) y, TG-333, los inicios y
+        // cierres de sesión de todas las distribuidoras.
+        return Auditoria::withoutGlobalScopes()
+            ->with('distribuidora:id,nombre_comercial,razon_social')
+            ->where(fn (Builder $q) => $q->whereNull('distribuidora_id')
+                ->orWhere('accion', 'like', 'sesion.%'));
     }
 };
 ?>
@@ -48,5 +53,5 @@ new #[Layout('layouts.admin')] #[Title('Auditoría — Admin')] class extends Co
         subtitulo="Cambios al catálogo compartido y otras operaciones de FootwearPoint." class="mb-6" />
 
     <x-auditoria.lista :registros="$this->registros" :areas="$this->areas" :acciones="$this->acciones"
-        :entidades="$this->entidades" :usuarios="$this->usuarios" :detalle-id="$detalleId" />
+        :entidades="$this->entidades" :usuarios="$this->usuarios" :detalle-id="$detalleId" :con-distribuidora="true" />
 </div>

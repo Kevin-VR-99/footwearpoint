@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterEmpleadoRequest;
 use App\Models\DistribuidoraStaff;
+use App\Services\Auditoria\RegistrarSesionAction;
 use App\Services\Notificacion\GestionarDispositivoFcmAction;
 use App\Support\DocumentosLegales;
 use App\Support\Tenant;
@@ -139,6 +140,9 @@ class AuthController extends Controller
         // (device_name que manda la app o, si no viene, el User-Agent) y solo
         // se conservan los últimos MAX_TOKENS_POR_USUARIO de cada persona.
         $token = $usuario->createToken(self::nombreDelDispositivo($request))->plainTextToken;
+
+        // TG-333 (K35): inicio de sesión de la app en la auditoría, sin IP.
+        app(RegistrarSesionAction::class)->ejecutar($usuario, RegistrarSesionAction::INICIO_APP);
         $this->recortarTokens($usuario);
 
         return response()->json([
@@ -325,6 +329,10 @@ class AuthController extends Controller
         if (! empty($datos['fcm_token'])) {
             $dispositivos->quitar($request->user(), $datos['fcm_token']);
         }
+
+        // TG-333 (K35): solo el cierre que pide la persona; un token que
+        // vence solo no pasa por aquí.
+        app(RegistrarSesionAction::class)->ejecutar($request->user(), RegistrarSesionAction::CIERRE_APP);
 
         $request->user()->currentAccessToken()->delete();
 
