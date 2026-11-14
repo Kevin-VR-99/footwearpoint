@@ -191,7 +191,8 @@ La 1.3.3+8 es la primera versión firmada con la llave del proyecto. La ayuda de
 
 | Versión | Fecha | Firma | Huella del archivo (SHA-256) |
 | --- | --- | --- | --- |
-| 1.3.3+8 | Pendiente de publicar (con los arreglos de TG-410) | Llave del proyecto | `62270d842895a430ed124faf0c01dba7707b6bc02b4426e2f3617b07bb7e357a` |
+| 1.3.3+8 | En revisión en Uptodown (con los arreglos de TG-410) | Llave del proyecto | `62270d842895a430ed124faf0c01dba7707b6bc02b4426e2f3617b07bb7e357a` |
+| 1.3.4+9 | Pendiente de publicar (pantalla nueva para aceptar los legales de TG-323, datos para pagar por transferencia, teléfono único y sin comisiones) | Llave del proyecto | `476f9fdcfbc38e1892ae4988b070696ca7e112fd7ca56999990577aec53464da` |
 
 ## APK de descarga directa (R2)
 
@@ -215,7 +216,7 @@ Ese archivo tiene que ser **siempre el mismo APK que está en Uptodown**. Si con
 
    - `Last-Modified` tiene que ser la fecha de la subida.
    - `Content-Type` tiene que ser `application/vnd.android.package-archive`.
-   - `ETag` tiene que ser el MD5 del APK nuevo; para la 1.3.3+8, `70012736fda81c3421fcf4884356a204`. Si el `ETag` trae un guion (por ejemplo `…-4`), R2 lo subió en partes y ese valor no es el MD5: en ese caso hay que descargarlo y comparar su SHA-256 con el de la tabla de versiones.
+   - `ETag` tiene que ser el MD5 del APK nuevo; para la 1.3.4+9, `9b629b939fce611ae96b5f5fca02271c` (la 1.3.3+8 era `70012736fda81c3421fcf4884356a204`). Si el `ETag` trae un guion (por ejemplo `…-4`), R2 lo subió en partes y ese valor no es el MD5: en ese caso hay que descargarlo y comparar su SHA-256 con el de la tabla de versiones.
    - **El tamaño no sirve para comprobar.** La 1.3.2+7 de depuración y la 1.3.3+8 pesan lo mismo: 56,174,812 bytes.
 
 Antes de la 1.3.3+8, ese archivo era la 1.3.2+7 firmada con la llave de depuración (subida el 23/10/2026).
