@@ -48,18 +48,30 @@ class MapaUbicacionTest extends TestCase
             ->firstOrFail();
     }
 
-    public function test_la_tienda_con_direccion_muestra_el_mapa_y_como_llegar(): void
+    /**
+     * TG-401 (A38): la dirección del mapa sigue estando, pero YA NO en el src
+     * de un iframe. Va guardada en un data-, que el navegador no pide solo, y
+     * el mapa aparece cuando la persona da permiso. Por eso aquí se comprueba
+     * las dos cosas: que la dirección está, y que nadie la carga sin permiso.
+     */
+    public function test_la_tienda_con_direccion_guarda_el_mapa_sin_cargarlo_y_ofrece_como_llegar(): void
     {
         $ramirez = $this->ramirez();
         $ramirez->update(['direccion_publica' => 'Av. Central 123, Comitán, Chiapas']);
         $consulta = rawurlencode('Av. Central 123, Comitán, Chiapas, México');
 
-        $this->tienda($ramirez)
+        $respuesta = $this->tienda($ramirez)
             ->assertOk()
             ->assertSee('Ubicación')
             ->assertSee('https://maps.google.com/maps?q='.$consulta.'&output=embed')
             ->assertSee('Cómo llegar')
             ->assertSee('https://www.google.com/maps/dir/?api=1&destination='.$consulta);
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/<iframe[^>]*\bsrc\s*=\s*"[^"]*maps\.google/i',
+            $respuesta->getContent(),
+            'El mapa volvió al src de un iframe: se cargaría sin que nadie lo permita.'
+        );
     }
 
     public function test_la_tienda_sin_direccion_no_muestra_mapa(): void
