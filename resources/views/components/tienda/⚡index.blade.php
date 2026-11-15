@@ -166,10 +166,26 @@ new class extends Component {
                     Cómo llegar
                 </a>
             </div>
+            {{-- TG-401 (A38): el mapa lo pone Google, que es un tercero. El
+                 iframe NO viene en el HTML: viene este hueco con la dirección
+                 guardada, y el JavaScript lo cambia por el mapa cuando la
+                 persona da permiso (resources/js/mapa-con-permiso.js).
+                 Mientras no lo dé, su navegador no se conecta con Google. --}}
             <div class="overflow-hidden rounded-xl border border-slate-200">
-                <iframe src="{{ \App\Support\MapaUbicacion::urlInsertar($distribuidora) }}"
-                        title="Mapa con la ubicación de {{ $distribuidora->nombre_comercial }}"
-                        class="h-72 w-full" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                <div data-mapa-con-permiso
+                     data-src="{{ \App\Support\MapaUbicacion::urlInsertar($distribuidora) }}"
+                     data-titulo="Mapa con la ubicación de {{ $distribuidora->nombre_comercial }}"
+                     class="flex h-72 w-full flex-col items-center justify-center gap-3 bg-fp-page px-6 text-center">
+                    <p class="text-sm text-slate-700">
+                        El mapa lo pone <strong>Google</strong>. Para verlo aquí, tu navegador tiene que conectarse con ellos.
+                    </p>
+                    <button type="button" data-permitir-mapa class="fp-btn fp-btn-sm fp-btn-primario">
+                        Mostrar el mapa
+                    </button>
+                    <p class="text-xs text-fp-text-muted">
+                        La dirección está arriba, y «Cómo llegar» abre Google en otra pestaña.
+                    </p>
+                </div>
             </div>
         </section>
     @endif

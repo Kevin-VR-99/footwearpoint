@@ -76,7 +76,18 @@
                 Tienda en FootwearPoint
             </span>
         </div>
+        {{-- TG-401 (A38): aquí vive el mapa, así que aquí tiene que poder
+             cambiarse la decisión. Empieza escondido y lo enseña el
+             JavaScript; sin JavaScript no abriría nada. --}}
+        <div class="mx-auto -mt-3 flex max-w-6xl justify-center px-4 pb-6 text-xs">
+            <button type="button" data-abrir-consentimiento hidden
+                class="rounded hover:text-white hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
+                Preferencias de cookies
+            </button>
+        </div>
     </footer>
+
+    <x-ui.consentimiento-cookies />
 
     @livewireScripts
 </body>

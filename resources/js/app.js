@@ -1,4 +1,11 @@
 import './bootstrap';
+import iniciarConsentimiento from './consentimiento';
+import iniciarMapaConPermiso from './mapa-con-permiso';
+
+// TG-401 (A38): va de primero. Quien cargue un tercero necesita poder
+// preguntar por window.fpConsentimiento desde que arranca.
+iniciarConsentimiento();
+iniciarMapaConPermiso();
 
 // Marca que el JS arrancó: solo entonces [data-revelar] empieza oculto (ver app.css).
 document.documentElement.classList.add('fp-js');

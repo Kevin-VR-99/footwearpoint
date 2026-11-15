@@ -90,9 +90,18 @@
             <p class="flex flex-wrap justify-center gap-4">
                 <a href="{{ route('aviso-privacidad') }}" class="hover:text-white hover:underline">Aviso de privacidad</a>
                 <a href="{{ route('terminos') }}" class="hover:text-white hover:underline">Términos y condiciones</a>
+                {{-- TG-401 (A38): se puede cambiar de opinión cuando sea. Empieza
+                     escondido y lo enseña el JavaScript; sin JavaScript no abriría
+                     nada y sería un control muerto. --}}
+                <button type="button" data-abrir-consentimiento hidden
+                    class="hover:text-white hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 rounded">
+                    Preferencias de cookies
+                </button>
             </p>
         </div>
     </footer>
+
+    <x-ui.consentimiento-cookies />
 
     @livewireScripts
 </body>
