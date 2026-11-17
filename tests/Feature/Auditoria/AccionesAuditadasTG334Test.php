@@ -115,6 +115,20 @@ class AccionesAuditadasTG334Test extends TestCase
         return $registro;
     }
 
+    /**
+     * Compara un arreglo leído de una columna JSON sin depender del orden de
+     * sus llaves: MariaDB lo conserva y MySQL 8 lo reordena (docs/pruebas.md,
+     * regla 1). Ordena las dos partes y compara estricto, para no perder la
+     * diferencia entre null y ''.
+     */
+    private function assertJsonIgual(array $esperado, ?array $real, string $mensaje = ''): void
+    {
+        $this->assertNotNull($real, $mensaje);
+        ksort($esperado);
+        ksort($real);
+        $this->assertSame($esperado, $real, $mensaje);
+    }
+
     private function assertSinDatosSensibles(Auditoria $registro): void
     {
         $json = json_encode([$registro->datos_previos, $registro->datos_nuevos], JSON_UNESCAPED_UNICODE);
@@ -200,8 +214,8 @@ class AccionesAuditadasTG334Test extends TestCase
         app(RechazarDistribuidoraAction::class)->ejecutar($distribuidora, 'Datos incompletos');
 
         $registro = $this->assertRegistro('distribuidora.rechazada', $admin, null);
-        $this->assertSame(['estado' => 'pendiente', 'motivo_rechazo' => null], $registro->datos_previos);
-        $this->assertSame(['estado' => 'rechazada', 'motivo_rechazo' => 'Datos incompletos'], $registro->datos_nuevos);
+        $this->assertJsonIgual(['estado' => 'pendiente', 'motivo_rechazo' => null], $registro->datos_previos);
+        $this->assertJsonIgual(['estado' => 'rechazada', 'motivo_rechazo' => 'Datos incompletos'], $registro->datos_nuevos);
     }
 
     public function test_suspender_y_reactivar_a_mano(): void
@@ -214,11 +228,11 @@ class AccionesAuditadasTG334Test extends TestCase
 
         $suspension = $this->assertRegistro('distribuidora.suspendida', $admin, null);
         $this->assertSame('activa', $suspension->datos_previos['estado']);
-        $this->assertSame(['estado' => 'suspendida', 'motivo_suspension' => Distribuidora::MOTIVO_MANUAL], $suspension->datos_nuevos);
+        $this->assertJsonIgual(['estado' => 'suspendida', 'motivo_suspension' => Distribuidora::MOTIVO_MANUAL], $suspension->datos_nuevos);
 
         $reactivacion = $this->assertRegistro('distribuidora.reactivada', $admin, null);
-        $this->assertSame(['estado' => 'suspendida', 'motivo_suspension' => Distribuidora::MOTIVO_MANUAL], $reactivacion->datos_previos);
-        $this->assertSame(['estado' => 'activa', 'motivo_suspension' => null], $reactivacion->datos_nuevos);
+        $this->assertJsonIgual(['estado' => 'suspendida', 'motivo_suspension' => Distribuidora::MOTIVO_MANUAL], $reactivacion->datos_previos);
+        $this->assertJsonIgual(['estado' => 'activa', 'motivo_suspension' => null], $reactivacion->datos_nuevos);
         $this->assertSame($segunda->id, $reactivacion->entidad_id);
     }
 
@@ -345,8 +359,8 @@ class AccionesAuditadasTG334Test extends TestCase
         $this->assertSame('Mayorista TG-334', $alta->datos_nuevos['nombre']);
 
         $cambio = $this->assertRegistro('cliente_mayorista.actualizado', $admin, Tenant::id());
-        $this->assertSame(['nombre' => 'Mayorista TG-334', 'notas' => null], $cambio->datos_previos);
-        $this->assertSame(['nombre' => 'Mayorista TG-334 bis', 'notas' => 'Paga los viernes'], $cambio->datos_nuevos);
+        $this->assertJsonIgual(['nombre' => 'Mayorista TG-334', 'notas' => null], $cambio->datos_previos);
+        $this->assertJsonIgual(['nombre' => 'Mayorista TG-334 bis', 'notas' => 'Paga los viernes'], $cambio->datos_nuevos);
     }
 
     public function test_configuracion_general_solo_lo_que_cambio(): void
