@@ -152,7 +152,7 @@ class TG355CambiosPedidosMostradorTest extends TestCase
             ->assertDontSee('Bota TG355');
     }
 
-    public function test_listado_se_separa_por_origen_al_alternar_y_conserva_busquedas(): void
+    public function test_listado_unificado_conserva_busquedas(): void
     {
         [$sp, $sv] = $this->solicitudes();
         $venta = $this->venta();

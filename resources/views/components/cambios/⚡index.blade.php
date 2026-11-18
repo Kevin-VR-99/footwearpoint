@@ -37,8 +37,11 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
 
     public string $estado = '';
 
-    /** Conservado por compatibilidad. */
+    /** Conservado por compatibilidad de tests legacy. */
     public string $espacio = 'pedidos';
+
+    public string $busqueda = '';
+    public string $errorBusqueda = '';
 
     public string $folioPedido = '';
     #[Locked]
@@ -61,6 +64,11 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
     public ?int $cambioLineaId = null;
     public string $cambioMotivo = '';
     public string $altaClienteDirectoId = '';
+
+    #[Locked]
+    public ?int $clienteSeleccionadoId = null;
+    #[Locked]
+    public array $ventasClienteIds = [];
 
     public string $mensaje = '';
     public string $errorMsg = '';
@@ -94,21 +102,79 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
 
     protected function asignarClienteDirecto(int $id): void
     {
-        if ($this->ventaId) {
-            $venta = VentaDirecta::query()->find($this->ventaId);
-            if ($venta && ! $venta->cliente_directo_id) {
-                $venta->update(['cliente_directo_id' => $id]);
-                unset($this->venta);
-            }
+        if (! $this->ventaId) {
+            return;
         }
+
+        $venta = VentaDirecta::query()->find($this->ventaId);
+        if (! $venta) {
+            $this->errorMsg = 'No se encontró la venta.';
+
+            return;
+        }
+
+        if ($venta->estado === 'anulada') {
+            $this->errorMsg = 'No se puede asignar un cliente a una venta anulada.';
+
+            return;
+        }
+
+        if ($venta->cliente_directo_id) {
+            return;
+        }
+
+        $cliente = ClienteDirecto::query()->where('estado', 'activo')->find($id);
+        if (! $cliente) {
+            $this->errorMsg = 'El cliente seleccionado no es válido.';
+
+            return;
+        }
+
+        $venta->update(['cliente_directo_id' => $cliente->id]);
+        unset($this->venta);
+    }
+
+    public function asignarCliente(int $id): void
+    {
+        $this->asignarClienteDirecto($id);
     }
 
     public function updatedAltaClienteDirectoId(string $id): void
     {
         if (is_numeric($id) && (int) $id > 0) {
             $this->asignarClienteDirecto((int) $id);
-            $this->avisoCliente = 'Cliente asignado a la venta.';
+            if (! $this->errorMsg) {
+                $this->avisoCliente = 'Cliente asignado a la venta.';
+            }
         }
+    }
+
+    public function getVentasClienteProperty()
+    {
+        if (empty($this->ventasClienteIds)) {
+            return collect();
+        }
+
+        return VentaDirecta::query()
+            ->with(['detalle', 'clienteDirecto'])
+            ->whereIn('id', $this->ventasClienteIds)
+            ->where('estado', '!=', 'anulada')
+            ->orderByDesc('fecha_venta')
+            ->orderByDesc('id')
+            ->get();
+    }
+
+    public function getClienteEncontradoProperty(): ?ClienteDirecto
+    {
+        return $this->clienteSeleccionadoId ? ClienteDirecto::query()->find($this->clienteSeleccionadoId) : null;
+    }
+
+    public function seleccionarVenta(int $id): void
+    {
+        $this->ventaId = $id;
+        $venta = VentaDirecta::query()->find($id);
+        $this->folioVenta = $venta?->folio ?? '';
+        unset($this->venta);
     }
 
     public function getClientesProperty()
@@ -151,31 +217,6 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         return app(ImagenDeProducto::class)->porProductoCampana(
             $this->venta?->detalle->pluck('producto_campana_id') ?? [],
         );
-    }
-
-    public function buscarPedido(): void
-    {
-        $this->pedidoEncontradoId = null;
-        $this->errorBusquedaPedido = '';
-        unset($this->pedidoEncontrado);
-
-        $folio = trim($this->folioPedido);
-        if ($folio === '') {
-            $this->errorBusquedaPedido = 'Escribe el folio del pedido que quieres buscar.';
-
-            return;
-        }
-
-        $pedido = Pedido::query()->where('folio', $folio)->first();
-        if (! $pedido) {
-            $this->errorBusquedaPedido = 'No se encontró un pedido con ese folio.';
-
-            return;
-        }
-
-        $this->pedidoEncontradoId = (int) $pedido->id;
-        $this->reiniciarDevolucion();
-        $this->notaEmitidaId = null;
     }
 
     private function reiniciarDevolucion(): void
@@ -280,59 +321,176 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
             : collect();
     }
 
-    public function buscarVenta(): void
+    public function buscar(): void
     {
         $this->mensaje = '';
         $this->errorMsg = '';
+        $this->errorBusqueda = '';
+        $this->errorBusquedaPedido = '';
+        $this->pedidoEncontradoId = null;
         $this->ventaId = null;
         $this->cambioLineaId = null;
+        $this->clienteSeleccionadoId = null;
+        $this->ventasClienteIds = [];
+        unset($this->pedidoEncontrado);
         unset($this->venta);
+        unset($this->ventasCliente);
 
-        $termino = trim($this->folioVenta);
+        $termino = trim($this->busqueda);
+
         if ($termino === '') {
-            $this->errorMsg = 'Escribe el folio de la venta que quieres cambiar.';
+            $this->errorBusqueda = 'Escribe un folio (PED-/VD-) o un teléfono de 10 dígitos.';
+            $this->errorMsg = $this->errorBusqueda;
 
             return;
         }
 
-        // 1. Buscar primero por folio exacto de la venta (ej. VD-...)
-        $venta = VentaDirecta::query()->where('folio', $termino)->first();
-        if ($venta) {
-            $this->ventaId = (int) $venta->id;
-
-            return;
-        }
-
-        // 2. Si no coincide con folio de venta, verificar si es teléfono de cliente
-        $tel = TelefonoCliente::normalizar($termino);
-        if ($tel !== null) {
-            $cliente = ClienteDirecto::query()->where('telefono', $tel)->first();
-            if ($cliente) {
-                $ventaCliente = VentaDirecta::query()
-                    ->where('cliente_directo_id', $cliente->id)
-                    ->where('estado', '!=', 'anulada')
-                    ->orderByDesc('fecha_venta')
-                    ->orderByDesc('id')
-                    ->first();
-
-                if ($ventaCliente) {
-                    $this->ventaId = (int) $ventaCliente->id;
-
-                    return;
-                }
-
-                $this->errorMsg = 'Ese cliente no tiene ventas registradas.';
+        // 1. Folio de Pedido (PED-...)
+        if (str_starts_with(strtoupper($termino), 'PED-')) {
+            $pedido = Pedido::query()->where('folio', $termino)->first();
+            if (! $pedido) {
+                $this->errorBusqueda = 'No se encontró un pedido con ese folio.';
+                $this->errorBusquedaPedido = $this->errorBusqueda;
+                $this->errorMsg = $this->errorBusqueda;
 
                 return;
             }
 
-            $this->errorMsg = 'No se encontró ningún cliente con ese teléfono.';
+            $this->pedidoEncontradoId = (int) $pedido->id;
+            $this->folioPedido = $pedido->folio;
+            $this->reiniciarDevolucion();
+            $this->notaEmitidaId = null;
 
             return;
         }
 
-        // 3. Si no es folio ni teléfono válido
-        $this->errorMsg = 'No existe una venta con el folio '.$termino.'.';
+        // 2. Folio de Venta (VD-...)
+        if (str_starts_with(strtoupper($termino), 'VD-')) {
+            $venta = VentaDirecta::query()->where('folio', $termino)->first();
+            if (! $venta) {
+                $this->errorBusqueda = 'No existe una venta con el folio '.$termino.'.';
+                $this->errorMsg = $this->errorBusqueda;
+
+                return;
+            }
+
+            if ($venta->estado === 'anulada') {
+                $this->errorBusqueda = 'Esa venta está anulada y no admite cambios.';
+                $this->errorMsg = $this->errorBusqueda;
+
+                return;
+            }
+
+            $this->ventaId = (int) $venta->id;
+            $this->folioVenta = $venta->folio;
+
+            return;
+        }
+
+        // 3. Teléfono de 10 dígitos
+        $tel = TelefonoCliente::normalizar($termino);
+        if ($tel !== null) {
+            $cliente = ClienteDirecto::query()->where('telefono', $tel)->first();
+            if (! $cliente) {
+                $this->errorBusqueda = 'No se encontró ningún cliente con ese teléfono.';
+                $this->errorMsg = $this->errorBusqueda;
+
+                return;
+            }
+
+            $ventas = VentaDirecta::query()
+                ->where('cliente_directo_id', $cliente->id)
+                ->where('estado', '!=', 'anulada')
+                ->orderByDesc('fecha_venta')
+                ->orderByDesc('id')
+                ->get();
+
+            if ($ventas->isEmpty()) {
+                $this->errorBusqueda = 'Ese cliente no tiene ventas registradas.';
+                $this->errorMsg = $this->errorBusqueda;
+
+                return;
+            }
+
+            $this->clienteSeleccionadoId = (int) $cliente->id;
+            $this->ventasClienteIds = $ventas->pluck('id')->all();
+            $this->ventaId = (int) $ventas->first()->id;
+            $this->folioVenta = $ventas->first()->folio;
+
+            return;
+        }
+
+        // 4. Si no es folio PED-/VD- ni teléfono de 10 dígitos
+        $this->errorBusqueda = 'Escribe un folio (PED-/VD-) o un teléfono de 10 dígitos.';
+        $this->errorMsg = $this->errorBusqueda;
+    }
+
+    public function buscarPedido(): void
+    {
+        $this->busqueda = $this->folioPedido;
+        $this->pedidoEncontradoId = null;
+        $this->errorBusquedaPedido = '';
+        unset($this->pedidoEncontrado);
+
+        $folio = trim($this->folioPedido);
+        if ($folio === '') {
+            $this->errorBusquedaPedido = 'Escribe el folio del pedido que quieres buscar.';
+            $this->errorBusqueda = $this->errorBusquedaPedido;
+
+            return;
+        }
+
+        $pedido = Pedido::query()->where('folio', $folio)->first();
+        if (! $pedido) {
+            $this->errorBusquedaPedido = 'No se encontró un pedido con ese folio.';
+            $this->errorBusqueda = $this->errorBusquedaPedido;
+
+            return;
+        }
+
+        $this->pedidoEncontradoId = (int) $pedido->id;
+        $this->reiniciarDevolucion();
+        $this->notaEmitidaId = null;
+    }
+
+    public function buscarVenta(): void
+    {
+        $termino = trim($this->folioVenta);
+        $this->busqueda = $termino;
+        if ($termino === '') {
+            $this->errorMsg = 'Escribe el folio de la venta que quieres cambiar.';
+            $this->errorBusqueda = $this->errorMsg;
+            $this->ventaId = null;
+
+            return;
+        }
+
+        $tel = TelefonoCliente::normalizar($termino);
+        if ($tel !== null) {
+            $this->buscar();
+
+            return;
+        }
+
+        $venta = VentaDirecta::query()->where('folio', $termino)->first();
+        if (! $venta) {
+            $this->errorMsg = 'No existe una venta con el folio '.$termino.'.';
+            $this->errorBusqueda = $this->errorMsg;
+            $this->ventaId = null;
+
+            return;
+        }
+
+        if ($venta->estado === 'anulada') {
+            $this->errorMsg = 'Esa venta está anulada y no admite cambios.';
+            $this->errorBusqueda = $this->errorMsg;
+            $this->ventaId = null;
+
+            return;
+        }
+
+        $this->ventaId = (int) $venta->id;
+        $this->folioVenta = $venta->folio;
     }
 
     public function getVentaProperty(): ?VentaDirecta
@@ -428,19 +586,67 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         <x-panel.alerta tipo="error">{{ $errorMsg }}</x-panel.alerta>
     @endif
 
-    {{-- Flujo unificado: Pedidos y Mostrador juntos sin pestañas separadas --}}
+    {{-- Flujo unificado: Buscador por folio (PED-/VD-) o teléfono del cliente --}}
+    <div class="fp-tarjeta p-4 fp-formulario fp-aparecer">
+        <p class="text-sm font-medium text-slate-800">Folio (PED-/VD-) o teléfono del cliente</p>
+        <p class="text-xs text-slate-500">Buscar pedido por folio (PED-…), venta de mostrador (VD-…) o teléfono del cliente de 10 dígitos.</p>
+        <form wire:submit="buscar" class="mt-3 flex gap-2">
+            <x-ui.buscador wire:model="busqueda" placeholder="Folio (PED-/VD-) o teléfono del cliente"
+                etiqueta="Buscar pedido por folio" class="w-full sm:w-96" />
+            <button type="submit" class="fp-btn fp-btn-primario rounded-xl"
+                wire:loading.attr="disabled" wire:target="buscar">Buscar</button>
+        </form>
+        @if ($errorBusqueda)
+            <x-panel.alerta tipo="error" class="mt-3">{{ $errorBusqueda }}</x-panel.alerta>
+        @endif
+        @if ($this->notaEmitida)
+            <x-panel.alerta tipo="exito" class="mt-3">
+                <span data-nota-emitida="{{ $this->notaEmitida->id }}">Nota de devolución {{ $this->notaEmitida->folio }} por ${{ number_format((float) $this->notaEmitida->monto_original, 2) }}.
+                Vence el {{ $this->notaEmitida->fecha_vencimiento?->timezone('America/Mexico_City')->format('d/m/Y H:i') }} (hora de Ciudad de México).</span>
+            </x-panel.alerta>
+        @endif
+    </div>
+
+    @if ($this->ventasCliente->isNotEmpty())
+        <div class="fp-tarjeta p-4 fp-aparecer" data-ventas-cliente>
+            <p class="text-sm font-medium text-slate-800">
+                Ventas registradas de {{ $this->clienteEncontrado?->nombre ?? 'cliente' }}
+                <span class="text-xs font-normal text-slate-500">({{ $this->ventasCliente->count() }} {{ $this->ventasCliente->count() === 1 ? 'venta encontrada' : 'ventas encontradas' }})</span>
+            </p>
+            <p class="text-xs text-slate-500 mt-1">Elige la venta para tramitar el cambio:</p>
+            <div class="mt-3 divide-y divide-slate-100">
+                @foreach ($this->ventasCliente as $vc)
+                    <div class="py-2.5 flex items-center justify-between gap-4 {{ $this->ventaId === $vc->id ? 'bg-indigo-50/60 -mx-2 px-2 rounded-lg' : '' }}">
+                        <div class="text-sm">
+                            <span class="font-medium text-slate-800">{{ $vc->folio }}</span>
+                            <span class="text-xs text-slate-500 ml-2">{{ $vc->fecha_venta?->format('d/m/Y') }}</span>
+                            <span class="text-xs text-slate-600 ml-2">Total: ${{ number_format((float) $vc->total, 2) }}</span>
+                            <span class="text-xs text-slate-500 ml-2">({{ $vc->detalle->count() }} {{ $vc->detalle->count() === 1 ? 'producto' : 'productos' }})</span>
+                        </div>
+                        <div>
+                            @if ($this->ventaId === $vc->id)
+                                <span class="text-xs font-semibold text-indigo-700 bg-indigo-100 px-2 py-1 rounded">Seleccionada</span>
+                            @else
+                                <button type="button" wire:click="seleccionarVenta({{ $vc->id }})" class="fp-btn fp-btn-secundario fp-btn-sm">
+                                    Seleccionar venta
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div class="fp-tarjeta p-4 fp-formulario fp-aparecer" data-espacio-panel="pedidos">
-        <p class="text-sm font-medium text-slate-800">Buscar pedido por folio</p>
-        <form wire:submit="buscarPedido" class="mt-3 flex gap-2">
-            <x-ui.buscador wire:model="folioPedido" placeholder="Folio completo del pedido (PED-…)"
-                etiqueta="Buscar pedido por folio" class="w-full sm:w-80" />
-            <button type="submit" class="fp-btn fp-btn-primario rounded-xl"
-                wire:loading.attr="disabled" wire:target="buscarPedido">Buscar pedido</button>
-        </form>
-        @if ($errorBusquedaPedido)
-            <x-panel.alerta tipo="error" class="mt-3">{{ $errorBusquedaPedido }}</x-panel.alerta>
-        @endif
+            <p class="text-sm font-medium text-slate-800">Detalle de pedido</p>
+            @if ($errorBusquedaPedido)
+                <x-panel.alerta tipo="error" class="mt-3">{{ $errorBusquedaPedido }}</x-panel.alerta>
+            @endif
+            @if (! $this->pedidoEncontrado)
+                <p class="mt-2 text-xs text-slate-500">Busca un pedido por folio (PED-…) arriba para consultar devoluciones.</p>
+            @endif
         @if ($this->notaEmitida)
             <x-panel.alerta tipo="exito" class="mt-3">
                 <span data-nota-emitida="{{ $this->notaEmitida->id }}">Nota de devolución {{ $this->notaEmitida->folio }} por ${{ number_format((float) $this->notaEmitida->monto_original, 2) }}.
@@ -520,11 +726,9 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
 
         <div class="fp-tarjeta p-4 fp-formulario fp-aparecer" data-espacio-panel="mostrador" data-espacio="mostrador">
             <p class="text-sm font-medium text-slate-800">Cambio de una venta de mostrador</p>
-            <p class="text-xs text-slate-500">Los cambios de pedidos se piden desde el detalle del pedido o desde la app del cliente.</p>
-            <form wire:submit="buscarVenta" class="mt-3 flex gap-2">
-                <x-ui.buscador wire:model="folioVenta" placeholder="Buscar por folio de la venta (VD-…) o teléfono del cliente" etiqueta="Buscar venta por folio o teléfono" class="w-full sm:w-80" />
-                <button type="submit" class="fp-btn fp-btn-primario rounded-xl">Buscar</button>
-            </form>
+            @unless ($this->venta)
+                <p class="mt-2 text-xs text-slate-500">Busca una venta por folio (VD-…) o teléfono del cliente arriba para tramitar un cambio.</p>
+            @endunless
 
             @if ($this->venta)
                 <div class="mt-4">
