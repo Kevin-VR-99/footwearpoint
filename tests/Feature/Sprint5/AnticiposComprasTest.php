@@ -82,6 +82,72 @@ class AnticiposComprasTest extends TestCase
         $this->assertSame($antes, ConfiguracionDistribuidora::query()->firstOrFail()->getRawOriginal('anticipo_por_producto'));
     }
 
+    public function test_buscador_filtra_por_folio_o_cliente(): void
+    {
+        $this->comoPanel(self::ADMIN);
+
+        $clienteA = ClienteDirecto::create([
+            'distribuidora_id' => \App\Support\Tenant::id(),
+            'nombre' => 'Cliente Buscador Uno',
+            'telefono' => '5511223344',
+            'estado' => 'activo',
+        ]);
+        $clienteB = ClienteDirecto::create([
+            'distribuidora_id' => \App\Support\Tenant::id(),
+            'nombre' => 'Cliente Buscador Dos',
+            'telefono' => '5566778899',
+            'estado' => 'activo',
+        ]);
+
+        $pedido1 = $this->crearPedidoConCliente($clienteA->id, 'FOL-ANT-001', 50);
+        $pedido2 = $this->crearPedidoConCliente($clienteB->id, 'FOL-ANT-002', 50);
+
+        Livewire::test('compras.anticipos')
+            ->assertSee('FOL-ANT-001')
+            ->assertSee('FOL-ANT-002')
+            ->set('busqueda', 'FOL-ANT-001')
+            ->assertSee('FOL-ANT-001')
+            ->assertDontSee('FOL-ANT-002')
+            ->set('busqueda', 'Buscador Dos')
+            ->assertSee('FOL-ANT-002')
+            ->assertDontSee('FOL-ANT-001')
+            ->set('busqueda', 'Inexistente XYZ')
+            ->assertSee('No se encontraron pedidos con anticipo pendiente');
+    }
+
+    private function crearPedidoConCliente(int $clienteId, string $folio, float $anticipo): int
+    {
+        $pedido = Pedido::create([
+            'distribuidora_id' => \App\Support\Tenant::id(),
+            'sucursal_id' => Sucursal::query()->value('id'),
+            'folio' => $folio,
+            'tipo' => 'cliente_directo',
+            'cliente_directo_id' => $clienteId,
+            'estado' => 'confirmado',
+            'subtotal' => 200,
+            'total' => 200,
+            'capturado_por_staff_id' => DistribuidoraStaff::query()->value('id'),
+        ]);
+        $pc = ProductoCampana::query()->firstOrFail();
+        PedidoDetalle::query()->forceCreate([
+            'distribuidora_id' => \App\Support\Tenant::id(),
+            'pedido_id' => $pedido->id,
+            'producto_campana_id' => $pc->id,
+            'variante_id' => Variante::query()->value('id'),
+            'producto_nombre' => 'Par',
+            'modelo' => 'M',
+            'talla' => '25',
+            'color' => 'Negro',
+            'cantidad' => 1,
+            'precio_unitario' => 200,
+            'subtotal' => 200,
+            'anticipo_requerido' => $anticipo,
+            'estado_surtido' => 'pendiente',
+        ]);
+
+        return (int) $pedido->id;
+    }
+
     private function pedido(string $tipo, string $estado, float $anticipo): int
     {
         $cliente = $tipo === 'cliente_directo' ? ClienteDirecto::query()->value('id') : null;

@@ -6,6 +6,7 @@ use App\Models\RevendedorDistribuidora;
 use App\Models\Vale;
 use App\Services\Vale\EmitirValeAction;
 use App\Support\BusquedaDeCliente;
+use App\Support\MensajeError;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -25,6 +26,8 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
     public string $busquedaMayorista = '';
     public string $monto_original = '';
     public string $motivo = '';
+    public string $busqueda = '';
+    public string $estado = '';
     public string $filtro_tipo = '';
     public string $mensaje = '';
     public string $errorMsg = '';
@@ -38,6 +41,12 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
         if (Tenant::id() === null) {
             abort(403, 'No se pudo determinar la distribuidora.');
         }
+    }
+
+    public function getPuedeEmitirProperty(): bool
+    {
+        return app(\App\Services\Auth\PermisoModuloService::class)
+            ->puede(Auth::user(), \App\Services\Auth\PermisoModuloService::VALES_EMITIR);
     }
 
     public function getValesProperty()
@@ -55,11 +64,44 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
             $query->porVencer()->reorder('fecha_vencimiento');
         }
 
+        if ($this->estado !== '' && in_array($this->estado, ['activo', 'agotado', 'vencido', 'bloqueado'], true)) {
+            $query->where('estado', $this->estado);
+        }
+
+        $termino = trim($this->busqueda);
+        if ($termino !== '') {
+            $clienteIds = ClienteDirecto::query()
+                ->get(['id', 'nombre', 'telefono'])
+                ->filter(fn (ClienteDirecto $c) => BusquedaDeCliente::coincide($c->nombre, $c->telefono, $termino))
+                ->pluck('id');
+
+            $revendedorAfiliacionIds = RevendedorDistribuidora::query()
+                ->with('revendedor:id,nombre,telefono')
+                ->get()
+                ->filter(fn (RevendedorDistribuidora $r) => BusquedaDeCliente::coincide($r->revendedor?->nombre, $r->revendedor?->telefono, $termino))
+                ->pluck('id');
+
+            $query->where(function ($q) use ($clienteIds, $revendedorAfiliacionIds) {
+                $q->whereIn('cliente_directo_id', $clienteIds)
+                    ->orWhereIn('revendedor_distribuidora_id', $revendedorAfiliacionIds);
+            });
+        }
+
         // Auditoría 21-oct-2026: paginado; antes traía todos los vales.
         return $query->paginate(25);
     }
 
     public function updatedFiltroTipo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedBusqueda(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedEstado(): void
     {
         $this->resetPage();
     }
@@ -115,8 +157,10 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
             ->get();
     }
 
-    public function emitir(EmitirValeAction $accion)
+    public function emitir(EmitirValeAction $accion, \App\Services\Auditoria\RegistrarAuditoriaAction $auditoria)
     {
+        abort_unless($this->puedeEmitir, 403, MensajeError::SIN_PERMISO);
+
         $this->mensaje = '';
         $this->errorMsg = '';
 
@@ -137,6 +181,14 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                 'propietario_id'   => (int) $this->propietario_id,
                 'monto_original'   => (float) $this->monto_original,
                 'motivo'           => $this->motivo !== '' ? $this->motivo : null,
+            ]);
+
+            $auditoria->ejecutar('vale.emitido', 'vale', (int) $vale->id, null, [
+                'folio' => $vale->folio,
+                'monto_original' => (float) $vale->monto_original,
+                'propietario_tipo' => $this->propietario_tipo,
+                'propietario_id' => (int) $this->propietario_id,
+                'motivo' => $this->motivo !== '' ? $this->motivo : null,
             ]);
 
             $this->mensaje = "Vale {$vale->folio} emitido correctamente.";
@@ -170,8 +222,9 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
         </x-panel.alerta>
     @endif
 
-    {{-- Formulario de emisión --}}
-    <div class="fp-tarjeta p-5 mb-6 fp-formulario fp-aparecer">
+    @if ($this->puedeEmitir)
+        {{-- Formulario de emisión --}}
+        <div class="fp-tarjeta p-5 mb-6 fp-formulario fp-aparecer">
         <h3 class="text-sm font-semibold text-slate-800 mb-4">Emitir vale</h3>
 
         <form wire:submit="emitir" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -236,19 +289,33 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
             </div>
         </form>
     </div>
+    @endif
 
     {{-- Listado --}}
     <div class="relative fp-tarjeta overflow-hidden fp-formulario fp-aparecer">
-        <x-ui.cargando objetivo="filtro_tipo,propietario_tipo,gotoPage,nextPage,previousPage" />
+        <x-ui.cargando objetivo="filtro_tipo,estado,busqueda,propietario_tipo,gotoPage,nextPage,previousPage" />
         <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
             <h3 class="text-sm font-semibold text-slate-800">Vales emitidos</h3>
-            <select wire:model.live="filtro_tipo" aria-label="Filtrar por tipo de propietario"
-                    class="rounded-lg text-sm focus:ring-fp-primary">
-                <option value="">Todos</option>
-                <option value="cliente_directo">Solo clientes</option>
-                <option value="revendedor">Solo clientes mayoristas</option>
-                <option value="por_vencer">Por vencer ({{ \App\Models\Vale::diasAvisoVencimiento() }} días o menos)</option>
-            </select>
+            <div class="flex flex-wrap items-center gap-2">
+                <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
+                    placeholder="Buscar por cliente o teléfono" etiqueta="Buscar vales por cliente o teléfono"
+                    class="w-56 sm:w-64" />
+                <select wire:model.live="estado" aria-label="Filtrar por estado"
+                        class="rounded-lg text-sm focus:ring-fp-primary">
+                    <option value="">Todos los estados</option>
+                    <option value="activo">Activo</option>
+                    <option value="agotado">Agotado</option>
+                    <option value="vencido">Vencido</option>
+                    <option value="bloqueado">Bloqueado</option>
+                </select>
+                <select wire:model.live="filtro_tipo" aria-label="Filtrar por tipo de propietario"
+                        class="rounded-lg text-sm focus:ring-fp-primary">
+                    <option value="">Todos los tipos</option>
+                    <option value="cliente_directo">Solo clientes</option>
+                    <option value="revendedor">Solo clientes mayoristas</option>
+                    <option value="por_vencer">Por vencer ({{ \App\Models\Vale::diasAvisoVencimiento() }} días o menos)</option>
+                </select>
+            </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -287,21 +354,11 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                                 @endif
                             </td>
                             <td class="px-4 py-3">
-                                @php
-                                    $colores = [
-                                        'activo'    => 'bg-fp-badge-success-bg text-fp-badge-success-fg',
-                                        'agotado'   => 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg',
-                                        'vencido'   => 'bg-fp-badge-warning-bg text-fp-badge-warning-fg',
-                                        'bloqueado' => 'bg-fp-badge-danger-bg text-fp-badge-danger-fg',
-                                    ];
-                                @endphp
-                                <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {{ $colores[$vale->estado] ?? 'bg-slate-100' }}">
-                                    {{ ucfirst($vale->estado) }}
-                                </span>
+                                <x-ui.insignia-estado :estado="$vale->estado" />
                             </td>
                         </tr>
                     @empty
-                        <x-panel.vacio colspan="6" mensaje="No hay vales emitidos todavía." />
+                        <x-panel.vacio colspan="6" :mensaje="($busqueda !== '' || $filtro_tipo !== '' || $estado !== '') ? 'No hay vales con estos filtros.' : 'No hay vales emitidos todavía.'" />
                     @endforelse
                 </tbody>
             </table>

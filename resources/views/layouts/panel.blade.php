@@ -169,7 +169,7 @@
                             {{-- Un solo ítem. Stock y Venta son pestañas de esas pantallas, con los mismos permisos. --}}
                             <a href="{{ route('stock.index') }}" wire:navigate data-nav-tienda
                                 class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('stock.*', 'punto-venta.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Tienda</a>
-                            {{-- Ciclo, Pedidos y Vales siguen en sus direcciones. Anticipos no tiene contenido aquí. --}}
+                            {{-- Ciclo, Pedidos, Vales y Anticipos son pestañas de Compras. --}}
                             <a href="{{ route('ciclo.index') }}" wire:navigate data-nav-compras
                                 class="fp-nav-item block rounded-lg px-3 py-2 text-sm transition {{ request()->routeIs('ciclo.*', 'pedidos.*', 'vales.*', 'compras.*') ? 'bg-white/15 font-medium text-white' : 'text-white/70 hover:bg-white/10 hover:text-white' }}">Compras</a>
                             <a href="{{ route('cambios.index') }}" wire:navigate
@@ -213,7 +213,7 @@
                     </div>
                     @endif
 
-                    @if ($puedeConfiguracion)
+                    @if ($esAdminDistribuidora)
                         <div class="pt-2">
                             <p class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
                                 Sistema</p>
@@ -290,7 +290,7 @@
                         <livewire:notificaciones.nav-badge />
 
                         <x-panel.menu-usuario :logotipo="$logotipoDistribuidora">
-                            @if ($puedeConfiguracion)
+                            @if ($esAdminDistribuidora)
                                 <a href="{{ route('distribuidora.perfil') }}" wire:navigate
                                     class="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium transition hover:bg-fp-page {{ request()->routeIs('distribuidora.perfil') ? 'bg-fp-page text-fp-primary' : 'text-slate-700' }}"
                                     role="menuitem">Perfil</a>

@@ -23,6 +23,10 @@ new #[Layout('layouts.panel')] #[Title('Anticipos — FootwearPoint')] class ext
 
     public int $dias_gestion_devolucion = 20;
 
+    public string $busqueda = '';
+
+    public bool $hayMasDeCien = false;
+
     public function mount(): void
     {
         if (! Auth::check()) {
@@ -65,6 +69,8 @@ new #[Layout('layouts.panel')] #[Title('Anticipos — FootwearPoint')] class ext
      */
     public function getPendientesProperty(): array
     {
+        $termino = trim($this->busqueda);
+
         $pedidos = Pedido::query()
             ->with('clienteDirecto:id,nombre')
             ->where('tipo', 'cliente_directo')
@@ -72,6 +78,12 @@ new #[Layout('layouts.panel')] #[Title('Anticipos — FootwearPoint')] class ext
                 PedidosPorRevendedorAction::ESTADOS_EXCLUIDOS_EXTRA,
                 RegistrarPagoPedidoAction::ESTADOS_CERRADOS,
             ))
+            ->when($termino !== '', function ($q) use ($termino) {
+                $q->where(function ($sub) use ($termino) {
+                    $sub->where('folio', 'like', "%{$termino}%")
+                        ->orWhereHas('clienteDirecto', fn ($cq) => $cq->where('nombre', 'like', "%{$termino}%"));
+                });
+            })
             ->orderByDesc('id')
             ->get(['id', 'folio', 'estado', 'cliente_directo_id']);
 
@@ -98,7 +110,9 @@ new #[Layout('layouts.panel')] #[Title('Anticipos — FootwearPoint')] class ext
             ];
         }
 
-        return $filas;
+        $this->hayMasDeCien = count($filas) > 100;
+
+        return array_slice($filas, 0, 100);
     }
 
     public function guardar(ActualizarConfiguracionDistribuidoraAction $accion): void
@@ -154,31 +168,50 @@ new #[Layout('layouts.panel')] #[Title('Anticipos — FootwearPoint')] class ext
     @endif
 
     <div class="fp-tarjeta overflow-hidden" data-anticipos-pendientes>
-        <table class="fp-tabla min-w-full text-sm">
-            <thead>
-                <tr>
-                    <th class="px-4 py-3 text-left">Pedido</th>
-                    <th class="px-4 py-3 text-left">Cliente</th>
-                    <th class="px-4 py-3 text-left">Estado</th>
-                    <th class="px-4 py-3 text-right">Anticipo pendiente</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($this->pendientes as $fila)
-                    <tr data-anticipo-pedido="{{ $fila['id'] }}">
-                        <td class="px-4 py-3">
-                            <a href="{{ route('pedidos.show', $fila['id']) }}" wire:navigate class="fp-enlace">{{ $fila['folio'] }}</a>
-                        </td>
-                        <td class="px-4 py-3">{{ $fila['cliente'] }}</td>
-                        <td class="px-4 py-3">{{ $fila['estado'] }}</td>
-                        <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['anticipo'], 2) }}</td>
-                    </tr>
-                @empty
+        <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <h3 class="text-sm font-semibold text-slate-800">Pedidos con anticipo pendiente</h3>
+            <x-ui.buscador wire:model.live.debounce.300ms="busqueda"
+                placeholder="Buscar por folio o cliente" etiqueta="Buscar pedidos por folio o cliente"
+                class="w-full sm:w-72" />
+        </div>
+
+        @if ($this->hayMasDeCien)
+            <div class="border-b border-amber-200 bg-amber-50 px-5 py-2.5 text-xs text-amber-900" role="status">
+                Mostrando los primeros 100 pedidos con anticipo pendiente. Usa el buscador para afinar resultados.
+            </div>
+        @endif
+
+        <div class="overflow-x-auto">
+            <table class="fp-tabla min-w-full text-sm">
+                <thead>
                     <tr>
-                        <td colspan="4" class="px-4 py-8 text-center text-slate-500">No hay pedidos de cliente directo con anticipo pendiente.</td>
+                        <th class="px-4 py-3 text-left">Pedido</th>
+                        <th class="px-4 py-3 text-left">Cliente</th>
+                        <th class="px-4 py-3 text-left">Estado</th>
+                        <th class="px-4 py-3 text-right">Anticipo pendiente</th>
                     </tr>
-                @endforelse
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @forelse ($this->pendientes as $fila)
+                        <tr data-anticipo-pedido="{{ $fila['id'] }}">
+                            <td class="px-4 py-3">
+                                <a href="{{ route('pedidos.show', $fila['id']) }}" wire:navigate class="fp-enlace">{{ $fila['folio'] }}</a>
+                            </td>
+                            <td class="px-4 py-3">{{ $fila['cliente'] }}</td>
+                            <td class="px-4 py-3">
+                                <x-ui.insignia-estado :estado="$fila['estado']" />
+                            </td>
+                            <td class="px-4 py-3 text-right tabular-nums">${{ number_format($fila['anticipo'], 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-4 py-8 text-center text-slate-500">
+                                {{ trim($busqueda) !== '' ? 'No se encontraron pedidos con anticipo pendiente que coincidan con la búsqueda.' : 'No hay pedidos de cliente directo con anticipo pendiente.' }}
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>

@@ -1,6 +1,5 @@
 {{--
-    Pestañas de Compras. Cada una abre la pantalla que ya existía.
-    Anticipos está en la navegación y todavía no muestra configuración ni listado.
+    Pestañas de Compras. Cada una abre la pantalla correspondiente (Ciclo, Pedidos, Vales y Anticipos).
 --}}
 @props(['activa' => 'ciclo'])
 
