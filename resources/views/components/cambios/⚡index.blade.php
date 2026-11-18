@@ -1,39 +1,43 @@
 <?php
 
+use App\Livewire\Concerns\AltaRapidaDeCliente;
+use App\Models\ClienteDirecto;
 use App\Models\Pedido;
 use App\Models\SolicitudCambio;
-use App\Models\VentaDirecta;
-use App\Services\Cambio\PlazoCambio;
-use App\Services\Catalogo\ImagenDeProducto;
-use App\Services\Cambio\SolicitarCambioAction;
 use App\Models\Vale;
 use App\Models\ValeDevolucionPartida;
+use App\Models\VentaDirecta;
+use App\Services\Cambio\PlazoCambio;
+use App\Services\Cambio\SolicitarCambioAction;
+use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Vale\EmitirNotaDevolucionAction;
 use App\Support\Centavos;
-use Illuminate\Support\Str;
 use App\Support\MensajeError;
+use App\Support\TelefonoCliente;
 use App\Support\Tenant;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
- * TG-254 (R12, E12-01) — Solicitudes de cambio de producto.
+ * TG-254 / TG-407 [G53] — Solicitudes de cambio de producto (flujo unificado).
  *
- * Lista las solicitudes de la distribuidora, permite moverlas por su flujo
- * (autorizar, rechazar, fábrica, vale, cerrar; CambiarEstadoSolicitudCambioAction,
- * que también le avisa al cliente) y registrar el cambio
- * de una venta de mostrador, que la app no muestra. Los cambios de pedidos
- * se piden desde el detalle del pedido o desde la app.
+ * Flujo unificado en Cambios: busca ventas por folio VD o teléfono del cliente
+ * y pedidos por folio. Si una venta no tiene cliente, permite alta rápida o
+ * asignación dentro del mismo flujo. Conserva el historial de cambios anteriores.
  */
 new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class extends Component {
+    use AltaRapidaDeCliente;
+    use WithFileUploads;
     use WithPagination;
 
     public string $estado = '';
 
-    /** TG-355 (G32): espacio activo, Pedidos o Mostrador. Cada uno conserva su búsqueda. */
+    /** Conservado por compatibilidad. */
     public string $espacio = 'pedidos';
 
     public string $folioPedido = '';
@@ -56,6 +60,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
     public ?int $ventaId = null;
     public ?int $cambioLineaId = null;
     public string $cambioMotivo = '';
+    public string $altaClienteDirectoId = '';
 
     public string $mensaje = '';
     public string $errorMsg = '';
@@ -72,7 +77,7 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
 
     public function cambiarEspacio(string $espacio): void
     {
-        abort_unless(in_array($espacio, ['pedidos', 'mostrador'], true), 422);
+        abort_unless(in_array($espacio, ['pedidos', 'mostrador', 'unificado'], true), 422);
         $this->espacio = $espacio;
         $this->resolviendoId = null;
         $this->estadoDestino = '';
@@ -81,10 +86,44 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
 
     public function updatedEspacio(): void
     {
-        if (! in_array($this->espacio, ['pedidos', 'mostrador'], true)) {
+        if (! in_array($this->espacio, ['pedidos', 'mostrador', 'unificado'], true)) {
             $this->espacio = 'pedidos';
         }
         $this->resetPage();
+    }
+
+    protected function asignarClienteDirecto(int $id): void
+    {
+        if ($this->ventaId) {
+            $venta = VentaDirecta::query()->find($this->ventaId);
+            if ($venta && ! $venta->cliente_directo_id) {
+                $venta->update(['cliente_directo_id' => $id]);
+                unset($this->venta);
+            }
+        }
+    }
+
+    public function updatedAltaClienteDirectoId(string $id): void
+    {
+        if (is_numeric($id) && (int) $id > 0) {
+            $this->asignarClienteDirecto((int) $id);
+            $this->avisoCliente = 'Cliente asignado a la venta.';
+        }
+    }
+
+    public function getClientesProperty()
+    {
+        return ClienteDirecto::query()
+            ->where('estado', 'activo')
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'telefono']);
+    }
+
+    public function getClientesFiltradosProperty()
+    {
+        return $this->clientes
+            ->filter(fn (ClienteDirecto $c) => \App\Support\BusquedaDeCliente::coincide($c->nombre, $c->telefono, $this->busquedaCliente))
+            ->values();
     }
 
     public function getSolicitudesProperty()
@@ -92,9 +131,6 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         return SolicitudCambio::query()
             ->with(['pedidoDetalle.pedido', 'ventaDetalle.ventaDirecta', 'clienteDirecto', 'revendedorAfiliacion.revendedor'])
             ->when($this->estado !== '', fn ($q) => $q->where('estado', $this->estado))
-            ->when($this->espacio === 'mostrador',
-                fn ($q) => $q->whereNotNull('venta_detalle_id'),
-                fn ($q) => $q->whereNotNull('pedido_detalle_id'))
             ->orderByDesc('id')
             ->paginate(25);
     }
@@ -250,22 +286,53 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         $this->errorMsg = '';
         $this->ventaId = null;
         $this->cambioLineaId = null;
+        unset($this->venta);
 
-        if (trim($this->folioVenta) === '') {
+        $termino = trim($this->folioVenta);
+        if ($termino === '') {
             $this->errorMsg = 'Escribe el folio de la venta que quieres cambiar.';
 
             return;
         }
 
-        $venta = VentaDirecta::query()->where('folio', trim($this->folioVenta))->first();
-
-        if (! $venta) {
-            $this->errorMsg = 'No existe una venta con el folio '.trim($this->folioVenta).'.';
+        // 1. Buscar primero por folio exacto de la venta (ej. VD-...)
+        $venta = VentaDirecta::query()->where('folio', $termino)->first();
+        if ($venta) {
+            $this->ventaId = (int) $venta->id;
 
             return;
         }
 
-        $this->ventaId = (int) $venta->id;
+        // 2. Si no coincide con folio de venta, verificar si es teléfono de cliente
+        $tel = TelefonoCliente::normalizar($termino);
+        if ($tel !== null) {
+            $cliente = ClienteDirecto::query()->where('telefono', $tel)->first();
+            if ($cliente) {
+                $ventaCliente = VentaDirecta::query()
+                    ->where('cliente_directo_id', $cliente->id)
+                    ->where('estado', '!=', 'anulada')
+                    ->orderByDesc('fecha_venta')
+                    ->orderByDesc('id')
+                    ->first();
+
+                if ($ventaCliente) {
+                    $this->ventaId = (int) $ventaCliente->id;
+
+                    return;
+                }
+
+                $this->errorMsg = 'Ese cliente no tiene ventas registradas.';
+
+                return;
+            }
+
+            $this->errorMsg = 'No se encontró ningún cliente con ese teléfono.';
+
+            return;
+        }
+
+        // 3. Si no es folio ni teléfono válido
+        $this->errorMsg = 'No existe una venta con el folio '.$termino.'.';
     }
 
     public function getVentaProperty(): ?VentaDirecta
@@ -361,15 +428,9 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         <x-panel.alerta tipo="error">{{ $errorMsg }}</x-panel.alerta>
     @endif
 
-    <div class="flex gap-2" role="tablist" aria-label="Origen del cambio">
-        @foreach (['pedidos' => 'Pedidos', 'mostrador' => 'Mostrador'] as $clave => $etiqueta)
-            <button type="button" role="tab" wire:click="cambiarEspacio('{{ $clave }}')"
-                aria-selected="{{ $espacio === $clave ? 'true' : 'false' }}" data-espacio="{{ $clave }}"
-                class="fp-btn rounded-xl {{ $espacio === $clave ? 'fp-btn-primario' : 'fp-btn-fantasma' }}">{{ $etiqueta }}</button>
-        @endforeach
-    </div>
-
-    <div class="fp-tarjeta p-4 fp-formulario fp-aparecer" data-espacio-panel="pedidos" @if ($espacio !== 'pedidos') hidden @endif>
+    {{-- Flujo unificado: Pedidos y Mostrador juntos sin pestañas separadas --}}
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div class="fp-tarjeta p-4 fp-formulario fp-aparecer" data-espacio-panel="pedidos">
         <p class="text-sm font-medium text-slate-800">Buscar pedido por folio</p>
         <form wire:submit="buscarPedido" class="mt-3 flex gap-2">
             <x-ui.buscador wire:model="folioPedido" placeholder="Folio completo del pedido (PED-…)"
@@ -457,58 +518,73 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
         @endif
     </div>
 
-    <div class="fp-tarjeta p-4 fp-formulario fp-aparecer" data-espacio-panel="mostrador" @if ($espacio !== 'mostrador') hidden @endif>
-        <p class="text-sm font-medium text-slate-800">Cambio de una venta de mostrador</p>
-        <p class="text-xs text-slate-500">Los cambios de pedidos se piden desde el detalle del pedido o desde la app del cliente.</p>
-        <form wire:submit="buscarVenta" class="mt-3 flex gap-2">
-            <x-ui.buscador wire:model="folioVenta" placeholder="Buscar por folio de la venta (VD-…)" etiqueta="Buscar venta por folio" class="w-full sm:w-80" />
-            <button type="submit" class="fp-btn fp-btn-primario rounded-xl">Buscar</button>
-        </form>
+        <div class="fp-tarjeta p-4 fp-formulario fp-aparecer" data-espacio-panel="mostrador" data-espacio="mostrador">
+            <p class="text-sm font-medium text-slate-800">Cambio de una venta de mostrador</p>
+            <p class="text-xs text-slate-500">Los cambios de pedidos se piden desde el detalle del pedido o desde la app del cliente.</p>
+            <form wire:submit="buscarVenta" class="mt-3 flex gap-2">
+                <x-ui.buscador wire:model="folioVenta" placeholder="Buscar por folio de la venta (VD-…) o teléfono del cliente" etiqueta="Buscar venta por folio o teléfono" class="w-full sm:w-80" />
+                <button type="submit" class="fp-btn fp-btn-primario rounded-xl">Buscar</button>
+            </form>
 
-        @if ($this->venta)
-            <div class="mt-4">
-                <p class="text-sm text-slate-700">
-                    Venta {{ $this->venta->folio }} · {{ $this->venta->fecha_venta?->format('d/m/Y') }} ·
-                    {{ $this->venta->clienteDirecto?->nombre ?? 'Sin cliente' }}
-                </p>
-                <table class="fp-tabla mt-2 min-w-full text-sm">
-                    <tbody class="divide-y divide-slate-100">
-                        @foreach ($this->venta->detalle as $l)
-                            @php($cambio = $this->cambiosVenta[$l->id] ?? null)
-                            <tr wire:key="vd-{{ $l->id }}">
-                                <td class="py-2">
-                                    <div class="flex items-center gap-2">
-                                        <x-ui.imagen-ampliable :url="$this->fotosVenta[$l->producto_campana_id] ?? null" :alt="$l->producto_nombre" />
-                                        <span>{{ $l->producto_nombre }} <span class="text-xs text-slate-500">{{ $l->talla }} · {{ $l->color }} ×{{ $l->cantidad }}</span></span>
-                                    </div>
-                                </td>
-                                <td class="py-2 text-right">
-                                    @if ($cambio && $cambio['solicitud'])
-                                        <span class="text-xs text-slate-600">Solicitud {{ str_replace('_', ' ', $cambio['solicitud']['estado']) }}</span>
-                                    @elseif ($cambio && $cambio['puede_solicitar'])
-                                        @if ($cambioLineaId === $l->id)
-                                            <div class="ml-auto max-w-sm space-y-2 text-left">
-                                                <textarea wire:model="cambioMotivo" rows="2" maxlength="300" placeholder="Motivo del cambio" class="w-full rounded-lg text-sm"></textarea>
-                                                <button type="button" wire:click="solicitarCambio" class="fp-btn fp-btn-primario fp-btn-sm">Enviar solicitud</button>
-                                                <button type="button" wire:click="$set('cambioLineaId', null)" class="fp-btn fp-btn-fantasma fp-btn-sm">Cancelar</button>
-                                            </div>
+            @if ($this->venta)
+                <div class="mt-4">
+                    <p class="text-sm text-slate-700">
+                        Venta {{ $this->venta->folio }} · {{ $this->venta->fecha_venta?->format('d/m/Y') }} ·
+                        <span class="font-medium">{{ $this->venta->clienteDirecto?->nombre ?? 'Sin cliente' }}</span>
+                    </p>
+
+                    @if (! $this->venta->cliente_directo_id)
+                        <div class="mt-3 p-3 rounded-xl border border-amber-200 bg-amber-50/60" data-alta-cliente-venta>
+                            <p class="text-xs font-semibold text-amber-900 mb-1">Esta venta se registró sin cliente</p>
+                            <p class="text-xs text-amber-800 mb-2">Para tramitar un cambio, la venta debe estar a nombre de un cliente. Puedes registrarlo con alta rápida o seleccionarlo si ya existe.</p>
+                            @include('cliente.selector-alta', [
+                                'seleccion' => 'altaClienteDirectoId',
+                                'opciones' => $this->clientesFiltrados,
+                                'vacio' => '— Seleccionar cliente existente —',
+                                'etiqueta' => 'Asignar cliente a la venta',
+                            ])
+                        </div>
+                    @endif
+
+                    <table class="fp-tabla mt-2 min-w-full text-sm">
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach ($this->venta->detalle as $l)
+                                @php($cambio = $this->cambiosVenta[$l->id] ?? null)
+                                <tr wire:key="vd-{{ $l->id }}">
+                                    <td class="py-2">
+                                        <div class="flex items-center gap-2">
+                                            <x-ui.imagen-ampliable :url="$this->fotosVenta[$l->producto_campana_id] ?? null" :alt="$l->producto_nombre" />
+                                            <span>{{ $l->producto_nombre }} <span class="text-xs text-slate-500">{{ $l->talla }} · {{ $l->color }} ×{{ $l->cantidad }}</span></span>
+                                        </div>
+                                    </td>
+                                    <td class="py-2 text-right">
+                                        @if ($cambio && $cambio['solicitud'])
+                                            <span class="text-xs text-slate-600">Solicitud {{ str_replace('_', ' ', $cambio['solicitud']['estado']) }}</span>
+                                        @elseif ($cambio && $cambio['puede_solicitar'])
+                                            @if ($cambioLineaId === $l->id)
+                                                <div class="ml-auto max-w-sm space-y-2 text-left">
+                                                    <textarea wire:model="cambioMotivo" rows="2" maxlength="300" placeholder="Motivo del cambio" class="w-full rounded-lg text-sm"></textarea>
+                                                    <button type="button" wire:click="solicitarCambio" class="fp-btn fp-btn-primario fp-btn-sm">Enviar solicitud</button>
+                                                    <button type="button" wire:click="$set('cambioLineaId', null)" class="fp-btn fp-btn-fantasma fp-btn-sm">Cancelar</button>
+                                                </div>
+                                            @else
+                                                <button type="button" wire:click="abrirCambio({{ $l->id }})" class="fp-enlace text-sm font-medium">Solicitar cambio</button>
+                                                <span class="block text-xs text-slate-500">Hasta {{ \Illuminate\Support\Carbon::parse($cambio['fecha_limite'])->format('d/m/Y') }}</span>
+                                            @endif
                                         @else
-                                            <button type="button" wire:click="abrirCambio({{ $l->id }})" class="fp-enlace text-sm font-medium">Solicitar cambio</button>
-                                            <span class="block text-xs text-slate-500">Hasta {{ \Illuminate\Support\Carbon::parse($cambio['fecha_limite'])->format('d/m/Y') }}</span>
+                                            <span class="text-xs text-slate-500">Fuera de plazo</span>
                                         @endif
-                                    @else
-                                        <span class="text-xs text-slate-500">Fuera de plazo</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
     </div>
 
-    <p class="text-sm font-medium text-slate-800">Solicitudes de {{ $espacio === 'mostrador' ? 'mostrador' : 'pedidos' }}</p>
+    <p class="text-sm font-medium text-slate-800">Solicitudes de cambio</p>
 
     <div class="flex items-center gap-3">
         <label for="index-estado" class="text-sm text-slate-600">Estado</label>

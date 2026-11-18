@@ -158,17 +158,17 @@ class TG355CambiosPedidosMostradorTest extends TestCase
         $venta = $this->venta();
         $pedido = $this->pedido('entregado', 'PED-TG355-0004');
         $pantalla = Livewire::test('cambios.index');
-        $this->assertSame([$sp->id], $pantalla->instance()->solicitudes->pluck('id')->all());
-        $pantalla->assertSee('Motivo pedido TG355')->assertDontSee('Motivo mostrador TG355')
+        // TG-407: flujo unificado conserva todo el historial de pedidos y mostrador
+        $ids = $pantalla->instance()->solicitudes->pluck('id')->all();
+        $this->assertContains($sp->id, $ids);
+        $this->assertContains($sv->id, $ids);
+        $pantalla->assertSee('Motivo pedido TG355')->assertSee('Motivo mostrador TG355')
             ->set('folioPedido', $pedido->folio)->call('buscarPedido')
             ->call('cambiarEspacio', 'mostrador')->assertSet('espacio', 'mostrador')
-            ->assertSee('Motivo mostrador TG355')->assertDontSee('Motivo pedido TG355')
             ->set('folioVenta', $venta->folio)->call('buscarVenta')->assertSet('ventaId', $venta->id)
             ->assertSet('pedidoEncontradoId', $pedido->id);
-        $this->assertSame([$sv->id], $pantalla->instance()->solicitudes->pluck('id')->all());
         $pantalla->call('cambiarEspacio', 'pedidos')->assertSet('pedidoEncontradoId', $pedido->id)
             ->assertSet('ventaId', $venta->id)->assertSet('folioVenta', $venta->folio);
-        $this->assertSame([$sp->id], $pantalla->instance()->solicitudes->pluck('id')->all());
     }
 
     public function test_espacio_invalido_se_rechaza_o_vuelve_a_pedidos(): void
@@ -207,7 +207,7 @@ class TG355CambiosPedidosMostradorTest extends TestCase
             ->set('folioVenta', $venta->folio)->call('buscarVenta')->assertSet('ventaId', $venta->id)
             ->assertSee('Cambio de una venta de mostrador')->assertSee('Venta '.$venta->folio)->html();
         $this->assertStringContainsString('data-espacio="mostrador"', $html);
-        $this->get(route('cambios.index'))->assertOk()->assertSee('Pedidos')->assertSee('Mostrador')
+        $this->get(route('cambios.index'))->assertOk()
             ->assertSee('Cambio de una venta de mostrador');
     }
 }
