@@ -624,12 +624,12 @@ html.fp-js [data-revelar]:not(.revelado) {
     /* Estado vacío con icono que flota. */
     .fp-vacio-icono { animation: fp-flotar 3s ease-in-out infinite; }
 
-    /* Pestañas: contenedor tipo segmento. */
-    .fp-pestanas { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; border-radius: var(--radius-xl); border: 1px solid color-mix(in oklab, var(--color-slate-200) 80%, transparent); background-color: #fff; padding: 0.25rem; box-shadow: 0 1px 2px 0 rgb(17 30 56 / 0.05); }
-    .fp-pestana { border-radius: var(--radius-lg); padding: 0.375rem 0.875rem; font-size: 0.875rem; font-weight: 500; color: var(--color-fp-text-muted); transition: background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .15s ease; cursor: pointer; }
+    /* Pestañas: contenedor tipo segmento. El radio sale de los tokens del sistema. */
+    .fp-pestanas { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; border-radius: var(--radius-fp-contenedor); border: 1px solid color-mix(in oklab, var(--color-slate-200) 80%, transparent); background-color: #fff; padding: 0.25rem; box-shadow: 0 1px 2px 0 rgb(17 30 56 / 0.05); }
+    .fp-pestana { border-radius: var(--radius-fp-control); padding: 0.375rem 0.875rem; font-size: 0.875rem; font-weight: 500; color: var(--color-fp-text-muted); transition: background-color .2s ease, color .2s ease, box-shadow .2s ease, transform .15s ease; cursor: pointer; }
     .fp-pestana:hover { background-color: var(--color-fp-page); color: var(--color-fp-sidebar); }
     .fp-pestana:active { transform: scale(.97); }
-    .fp-pestana[aria-selected='true'], .fp-pestana.fp-pestana-activa { background-color: var(--color-fp-primary); color: #fff; box-shadow: 0 4px 10px -4px color-mix(in oklab, var(--color-fp-primary) 60%, transparent); }
+    .fp-pestana[aria-selected='true'], .fp-pestana.fp-pestana-activa { background-color: var(--color-fp-primary); color: #fff; font-weight: 600; box-shadow: 0 4px 10px -4px color-mix(in oklab, var(--color-fp-primary) 60%, transparent); }
     .fp-pestana:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-fp-primary) 35%, transparent); }
 }
 
@@ -812,6 +812,18 @@ form[data-loading] button[type=submit]:not(:has([wire\:loading]))::before {
 @media (prefers-reduced-motion: reduce) {
     :is(button, .fp-btn, .fp-accion)[data-loading]::before, form[data-loading] button[type=submit]::before { animation-duration: 2.5s !important; }
     .fp-esqueleto, .fp-acceso-capa::before, .fp-acceso-capa::after, .fp-toast, .fp-toast-tiempo { animation: none !important; }
+}
+
+/* Compras y Tienda: la pestaña activa no depende solo del color. La raya
+   usa el blanco sobre el azul de la marca. */
+.fp-pestanas-seccion .fp-pestana[aria-selected='true'],
+.fp-pestanas-seccion .fp-pestana.fp-pestana-activa {
+    background-color: var(--color-fp-primary);
+    color: #fff;
+    font-weight: 600;
+    box-shadow:
+        inset 0 -3px 0 color-mix(in oklab, #fff 78%, var(--color-fp-primary)),
+        0 4px 10px -4px color-mix(in oklab, var(--color-fp-primary) 60%, transparent);
 }
 
 /* Pestañas: en celular se desplazan de lado en vez de partirse en renglones. */

@@ -469,20 +469,18 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
     <x-panel.encabezado titulo="Venta local"
         subtitulo="Cobro de contado con lo que hay en existencia, y el historial de esas ventas." class="mb-6" />
 
-    <div class="fp-pestanas mb-6 flex flex-wrap gap-1" role="tablist" aria-label="Venta local">
+    <div class="fp-pestanas fp-pestanas-seccion mb-6" role="tablist" aria-label="Venta local">
         <button type="button" role="tab" wire:click="$set('pestana', 'cobrar')"
             aria-selected="{{ $pestana === 'cobrar' ? 'true' : 'false' }}" data-pestana-venta="cobrar"
             @class([
-                'fp-pestana rounded-lg px-3.5 py-2 text-sm font-medium transition',
-                'bg-fp-primary text-white shadow-sm' => $pestana === 'cobrar',
-                'text-slate-600 hover:bg-slate-50' => $pestana !== 'cobrar',
+                'fp-pestana',
+                'fp-pestana-activa' => $pestana === 'cobrar',
             ])>Cobrar</button>
         <button type="button" role="tab" wire:click="$set('pestana', 'historial')"
             aria-selected="{{ $pestana === 'historial' ? 'true' : 'false' }}" data-pestana-venta="historial"
             @class([
-                'fp-pestana rounded-lg px-3.5 py-2 text-sm font-medium transition',
-                'bg-fp-primary text-white shadow-sm' => $pestana === 'historial',
-                'text-slate-600 hover:bg-slate-50' => $pestana !== 'historial',
+                'fp-pestana',
+                'fp-pestana-activa' => $pestana === 'historial',
             ])>Historial</button>
     </div>
 

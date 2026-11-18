@@ -677,21 +677,19 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     <x-panel.encabezado titulo="Stock local"
         subtitulo="Existencias, entradas y ajustes de la sucursal, y el conteo físico." class="mb-6" />
 
-    <div class="fp-pestanas mb-6 flex flex-wrap gap-1" role="tablist" aria-label="Stock local">
+    <div class="fp-pestanas fp-pestanas-seccion mb-6" role="tablist" aria-label="Stock local">
         <button type="button" role="tab" wire:click="$set('pestana', 'existencias')"
             aria-selected="{{ $pestana === 'existencias' ? 'true' : 'false' }}" data-pestana-stock="existencias"
             @class([
-                'fp-pestana rounded-lg px-3.5 py-2 text-sm font-medium transition',
-                'bg-fp-primary text-white shadow-sm' => $pestana === 'existencias',
-                'text-slate-600 hover:bg-slate-50' => $pestana !== 'existencias',
+                'fp-pestana',
+                'fp-pestana-activa' => $pestana === 'existencias',
             ])>Existencias</button>
         @if ($this->puedeContar)
             <button type="button" role="tab" wire:click="$set('pestana', 'conteo')"
                 aria-selected="{{ $pestana === 'conteo' ? 'true' : 'false' }}" data-pestana-stock="conteo"
                 @class([
-                    'fp-pestana rounded-lg px-3.5 py-2 text-sm font-medium transition',
-                    'bg-fp-primary text-white shadow-sm' => $pestana === 'conteo',
-                    'text-slate-600 hover:bg-slate-50' => $pestana !== 'conteo',
+                    'fp-pestana',
+                    'fp-pestana-activa' => $pestana === 'conteo',
                 ])>Conteo</button>
         @endif
     </div>
