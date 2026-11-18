@@ -13,23 +13,23 @@
     $hrefVenta = route('punto-venta.index', $activa === 'venta' ? $conservar : []);
 @endphp
 
-<div class="fp-pestanas mb-6 flex flex-wrap gap-1" role="tablist" aria-label="Tienda" data-pestanas-tienda>
+<div class="fp-pestanas fp-pestanas-seccion mb-6" role="tablist" aria-label="Tienda" data-pestanas-tienda>
     <a href="{{ $hrefStock }}" wire:navigate role="tab"
         id="tab-tienda-stock"
         aria-selected="{{ $activa === 'stock' ? 'true' : 'false' }}"
+        @if ($activa === 'stock') aria-current="page" @endif
         data-pestana-tienda="stock"
         @class([
-            'fp-pestana rounded-lg px-3.5 py-2 text-sm font-medium transition',
-            'bg-fp-primary text-white shadow-sm' => $activa === 'stock',
-            'text-slate-600 hover:bg-slate-50' => $activa !== 'stock',
+            'fp-pestana',
+            'fp-pestana-activa' => $activa === 'stock',
         ])>Stock</a>
     <a href="{{ $hrefVenta }}" wire:navigate role="tab"
         id="tab-tienda-venta"
         aria-selected="{{ $activa === 'venta' ? 'true' : 'false' }}"
+        @if ($activa === 'venta') aria-current="page" @endif
         data-pestana-tienda="venta"
         @class([
-            'fp-pestana rounded-lg px-3.5 py-2 text-sm font-medium transition',
-            'bg-fp-primary text-white shadow-sm' => $activa === 'venta',
-            'text-slate-600 hover:bg-slate-50' => $activa !== 'venta',
+            'fp-pestana',
+            'fp-pestana-activa' => $activa === 'venta',
         ])>Venta</a>
 </div>
