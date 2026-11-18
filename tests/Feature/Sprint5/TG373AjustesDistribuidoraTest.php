@@ -232,11 +232,39 @@ class TG373AjustesDistribuidoraTest extends TestCase
             ->where('id', '!=', Tenant::id())
             ->value('id');
 
-        $otraSucursalId = Sucursal::query()
+        $otraSucursalId = Sucursal::withoutGlobalScopes()
             ->where('distribuidora_id', $otraDistribuidoraId)
             ->value('id');
 
+        if (! $otraSucursalId && $otraDistribuidoraId) {
+            $otraSucursalId = Sucursal::withoutGlobalScopes()->create([
+                'distribuidora_id' => $otraDistribuidoraId,
+                'nombre' => 'Sucursal Otra',
+                'es_principal' => true,
+            ])->id;
+        }
+
         if ($otraDistribuidoraId && $otraSucursalId) {
+            $staffOtra = DistribuidoraStaff::withoutGlobalScopes()->where('distribuidora_id', $otraDistribuidoraId)->value('id');
+            if (! $staffOtra) {
+                $staffOtra = DistribuidoraStaff::withoutGlobalScopes()->create([
+                    'distribuidora_id' => $otraDistribuidoraId,
+                    'usuario_id' => $this->usuario(self::OTRA_ADMIN)->id,
+                    'cargo' => 'Admin',
+                    'activo' => true,
+                ])->id;
+            }
+
+            $clienteOtra = ClienteDirecto::withoutGlobalScopes()->where('distribuidora_id', $otraDistribuidoraId)->value('id');
+            if (! $clienteOtra) {
+                $clienteOtra = ClienteDirecto::withoutGlobalScopes()->create([
+                    'distribuidora_id' => $otraDistribuidoraId,
+                    'nombre' => 'Cliente Otra Distribuidora',
+                    'telefono' => '5500998877',
+                    'estado' => 'activo',
+                ])->id;
+            }
+
             VentaDirecta::create([
                 'distribuidora_id' => $otraDistribuidoraId,
                 'sucursal_id' => $otraSucursalId,
@@ -245,10 +273,12 @@ class TG373AjustesDistribuidoraTest extends TestCase
                 'total' => 9999,
                 'estado' => 'completada',
                 'fecha_venta' => now(),
+                'registrada_por_staff_id' => $staffOtra,
             ]);
 
             SolicitudCambio::create([
                 'distribuidora_id' => $otraDistribuidoraId,
+                'cliente_directo_id' => $clienteOtra,
                 'estado' => 'solicitada',
                 'fecha_solicitud' => now(),
                 'fecha_entrega_original' => now()->subDay(),
@@ -258,6 +288,19 @@ class TG373AjustesDistribuidoraTest extends TestCase
                 'fecha_limite_gestion_fabrica' => now()->addDays(20),
                 'motivo' => 'Cambio ajeno TG373',
             ]);
+
+            // Stock bajo en la otra distribuidora (no debe contarse en el inicio del tenant actual)
+            $varianteOtra = Variante::first();
+            if ($varianteOtra) {
+                StockLocal::withoutGlobalScopes()->create([
+                    'distribuidora_id' => $otraDistribuidoraId,
+                    'sucursal_id' => $otraSucursalId,
+                    'variante_id' => $varianteOtra->id,
+                    'cantidad_disponible' => 0,
+                    'cantidad_comprometida' => 0,
+                    'stock_minimo' => 50,
+                ]);
+            }
         }
 
         $pantalla = Livewire::test('dashboard.index');
@@ -285,5 +328,93 @@ class TG373AjustesDistribuidoraTest extends TestCase
 
         // Comprobamos que el total de ventas de hoy no incluya los 9999 de la otra distribuidora
         $this->assertLessThan(9000.0, $resumen['ventas_hoy_total']);
+
+        // Comprobamos que stock_bajo no cuenta el stock de la otra distribuidora
+        if ($otraDistribuidoraId) {
+            $minimoGeneral = (int) (ConfiguracionDistribuidora::query()->value('stock_minimo_general') ?? 0);
+            $stockBajoPropio = StockLocal::query()
+                ->where('distribuidora_id', Tenant::id())
+                ->whereRaw('cantidad_disponible < (CASE WHEN stock_minimo > 0 THEN stock_minimo ELSE ? END)', [$minimoGeneral])
+                ->count();
+            $this->assertSame($stockBajoPropio, $resumen['stock_bajo']);
+
+            $stockBajoTotal = StockLocal::withoutGlobalScopes()
+                ->whereRaw('cantidad_disponible < (CASE WHEN stock_minimo > 0 THEN stock_minimo ELSE ? END)', [$minimoGeneral])
+                ->count();
+            $this->assertLessThan($stockBajoTotal, $resumen['stock_bajo']);
+        }
+    }
+
+    public function test_lista_vales_muestra_insignias_con_color_y_texto_capitalizado(): void
+    {
+        $this->comoPanel(self::ADMIN);
+        $cliente = ClienteDirecto::query()->firstOrFail();
+        $staffId = DistribuidoraStaff::value('id');
+
+        Vale::create([
+            'distribuidora_id' => Tenant::id(),
+            'cliente_directo_id' => $cliente->id,
+            'folio' => 'VAL-COL-01',
+            'monto_original' => 100,
+            'saldo_actual' => 100,
+            'fecha_emision' => now(),
+            'fecha_vencimiento' => now()->addDays(30),
+            'estado' => 'activo',
+            'creado_por_staff_id' => $staffId,
+        ]);
+
+        Vale::create([
+            'distribuidora_id' => Tenant::id(),
+            'cliente_directo_id' => $cliente->id,
+            'folio' => 'VAL-COL-02',
+            'monto_original' => 100,
+            'saldo_actual' => 0,
+            'fecha_emision' => now()->subDays(10),
+            'fecha_vencimiento' => now()->addDays(20),
+            'estado' => 'agotado',
+            'creado_por_staff_id' => $staffId,
+        ]);
+
+        Vale::create([
+            'distribuidora_id' => Tenant::id(),
+            'cliente_directo_id' => $cliente->id,
+            'folio' => 'VAL-COL-03',
+            'monto_original' => 100,
+            'saldo_actual' => 50,
+            'fecha_emision' => now()->subDays(40),
+            'fecha_vencimiento' => now()->subDays(10),
+            'estado' => 'vencido',
+            'creado_por_staff_id' => $staffId,
+        ]);
+
+        Vale::create([
+            'distribuidora_id' => Tenant::id(),
+            'cliente_directo_id' => $cliente->id,
+            'folio' => 'VAL-COL-04',
+            'monto_original' => 100,
+            'saldo_actual' => 50,
+            'fecha_emision' => now()->subDays(5),
+            'fecha_vencimiento' => now()->addDays(25),
+            'estado' => 'bloqueado',
+            'creado_por_staff_id' => $staffId,
+        ]);
+
+        $html = Livewire::test('vales.index')->html();
+
+        // 1. Activo con success
+        $this->assertStringContainsString('Activo', $html);
+        $this->assertStringContainsString('fp-badge-success', $html);
+
+        // 2. Agotado con neutral
+        $this->assertStringContainsString('Agotado', $html);
+        $this->assertStringContainsString('fp-badge-neutral', $html);
+
+        // 3. Vencido con warning
+        $this->assertStringContainsString('Vencido', $html);
+        $this->assertStringContainsString('fp-badge-warning', $html);
+
+        // 4. Bloqueado con danger
+        $this->assertStringContainsString('Bloqueado', $html);
+        $this->assertStringContainsString('fp-badge-danger', $html);
     }
 }

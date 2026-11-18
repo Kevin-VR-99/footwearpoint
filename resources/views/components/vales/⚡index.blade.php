@@ -354,7 +354,16 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
                                 @endif
                             </td>
                             <td class="px-4 py-3">
-                                <x-ui.insignia-estado :estado="$vale->estado" />
+                                @php
+                                    [$varianteVale, $textoVale] = match ($vale->estado) {
+                                        'activo' => ['success', 'Activo'],
+                                        'agotado' => ['neutral', 'Agotado'],
+                                        'vencido' => ['warning', 'Vencido'],
+                                        'bloqueado' => ['danger', 'Bloqueado'],
+                                        default => ['neutral', str_replace('_', ' ', (string) $vale->estado)],
+                                    };
+                                @endphp
+                                <x-ui.insignia-estado :variante="$varianteVale" :texto="$textoVale" />
                             </td>
                         </tr>
                     @empty

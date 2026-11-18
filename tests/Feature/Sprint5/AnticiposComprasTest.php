@@ -115,6 +115,28 @@ class AnticiposComprasTest extends TestCase
             ->assertSee('No se encontraron pedidos con anticipo pendiente');
     }
 
+    public function test_buscador_escapa_caracteres_especiales_like(): void
+    {
+        $this->comoPanel(self::ADMIN);
+
+        $cliente = ClienteDirecto::create([
+            'distribuidora_id' => \App\Support\Tenant::id(),
+            'nombre' => 'Cliente_Especial%Prueba',
+            'telefono' => '5500112233',
+            'estado' => 'activo',
+        ]);
+
+        $this->crearPedidoConCliente($cliente->id, 'FOL_100%ESP', 60);
+
+        Livewire::test('compras.anticipos')
+            ->set('busqueda', 'FOL_100%ESP')
+            ->assertSee('FOL_100%ESP')
+            ->set('busqueda', 'Especial%Prueba')
+            ->assertSee('Cliente_Especial%Prueba')
+            ->set('busqueda', 'FOL_999')
+            ->assertSee('No se encontraron pedidos con anticipo pendiente');
+    }
+
     private function crearPedidoConCliente(int $clienteId, string $folio, float $anticipo): int
     {
         $pedido = Pedido::create([
