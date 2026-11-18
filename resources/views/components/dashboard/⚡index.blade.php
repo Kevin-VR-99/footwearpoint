@@ -1,8 +1,13 @@
 <?php
 
+use App\Exceptions\OperacionInvalidaException;
+use App\Models\ConfiguracionDistribuidora;
 use App\Models\Notificacion;
 use App\Models\Pedido;
+use App\Models\SolicitudCambio;
 use App\Models\Vale;
+use App\Models\VentaDirecta;
+use App\Services\Stock\StockService;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -29,16 +34,40 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
             ->groupBy('estado')
             ->pluck('total', 'estado');
 
+        $ventasHoy = VentaDirecta::query()
+            ->where('estado', 'completada')
+            ->whereDate('fecha_venta', today());
+
+        $ventasHoyCantidad = (int) (clone $ventasHoy)->count();
+        $ventasHoyTotal = (float) (clone $ventasHoy)->sum('total');
+
+        $cambiosPorResolver = (int) SolicitudCambio::query()
+            ->whereIn('estado', ['solicitada', 'autorizada'])
+            ->count();
+
+        $minimoGeneral = (int) (ConfiguracionDistribuidora::query()->value('stock_minimo_general') ?? 0);
+        try {
+            $stockBajo = (int) app(StockService::class)->consultar()
+                ->whereRaw('cantidad_disponible < (CASE WHEN stock_minimo > 0 THEN stock_minimo ELSE ? END)', [$minimoGeneral])
+                ->count();
+        } catch (OperacionInvalidaException) {
+            $stockBajo = 0;
+        }
+
         return [
-            'pedidos_total'     => (int) Pedido::query()->count(),
-            'pedidos_borrador'  => (int) ($pedidosPorEstado['borrador'] ?? 0),
-            'pedidos_colocados' => (int) ($pedidosPorEstado['colocado'] ?? 0),
-            'vales_activos'     => (int) Vale::query()->where('estado', 'activo')->count(),
-            'vales_saldo'       => (float) Vale::query()->where('estado', 'activo')->sum('saldo_actual'),
-            'notif_sin_leer'    => (int) Notificacion::query()
+            'pedidos_total'        => (int) Pedido::query()->count(),
+            'pedidos_borrador'     => (int) ($pedidosPorEstado['borrador'] ?? 0),
+            'pedidos_colocados'    => (int) ($pedidosPorEstado['colocado'] ?? 0),
+            'vales_activos'        => (int) Vale::query()->where('estado', 'activo')->count(),
+            'vales_saldo'          => (float) Vale::query()->where('estado', 'activo')->sum('saldo_actual'),
+            'notif_sin_leer'       => (int) Notificacion::query()
                 ->where('usuario_id', Auth::id())
                 ->whereNull('leida_at')
                 ->count(),
+            'ventas_hoy_cantidad'  => $ventasHoyCantidad,
+            'ventas_hoy_total'     => $ventasHoyTotal,
+            'cambios_por_resolver' => $cambiosPorResolver,
+            'stock_bajo'           => $stockBajo,
         ];
     }
 
@@ -97,9 +126,6 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
                     </svg>
                 </span>
             </div>
-            <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-slate-100">
-                <div class="h-full w-3/4 rounded-full bg-fp-primary"></div>
-            </div>
         </div>
 
         <div class="fp-tarjeta-interactiva p-4">
@@ -150,8 +176,68 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
         </div>
     </div>
 
+    {{-- Indicadores con enlace --}}
+    <div class="fp-escalonado grid gap-4 sm:grid-cols-3">
+        <a href="{{ route('punto-venta.index', ['pestana' => 'historial']) }}"
+           wire:navigate
+           class="group fp-tarjeta-interactiva relative overflow-hidden p-4 transition hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-xs font-medium text-fp-text-muted">Ventas de hoy</p>
+                    <p class="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-fp-sidebar">{{ $this->resumen['ventas_hoy_cantidad'] }}</p>
+                </div>
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition group-hover:bg-emerald-600 group-hover:text-white">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                </span>
+            </div>
+            <p class="mt-3 text-[11px] font-semibold text-emerald-600">
+                Total ${{ number_format($this->resumen['ventas_hoy_total'], 2) }}
+            </p>
+        </a>
+
+        <a href="{{ route('cambios.index') }}"
+           wire:navigate
+           class="group fp-tarjeta-interactiva relative overflow-hidden p-4 transition hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-xs font-medium text-fp-text-muted">Cambios por resolver</p>
+                    <p class="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-fp-sidebar">{{ $this->resumen['cambios_por_resolver'] }}</p>
+                </div>
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 transition group-hover:bg-amber-600 group-hover:text-white">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                </span>
+            </div>
+            <p class="mt-3 text-[11px] text-fp-text-muted">
+                Solicitadas o autorizadas
+            </p>
+        </a>
+
+        <a href="{{ route('stock.index') }}"
+           wire:navigate
+           class="group fp-tarjeta-interactiva relative overflow-hidden p-4 transition hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-xs font-medium text-fp-text-muted">Stock bajo</p>
+                    <p class="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-fp-sidebar">{{ $this->resumen['stock_bajo'] }}</p>
+                </div>
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition group-hover:bg-rose-600 group-hover:text-white">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
+                </span>
+            </div>
+            <p class="mt-3 text-[11px] text-fp-text-muted">
+                Bajo el mínimo configurado
+            </p>
+        </a>
+    </div>
+
     {{-- Acciones --}}
-    <div class="fp-escalonado grid gap-4 sm:grid-cols-2">
+    <div class="fp-escalonado grid gap-4 sm:grid-cols-3">
         <a href="{{ route('pedidos.create') }}"
            wire:navigate
            class="group relative overflow-hidden rounded-2xl bg-fp-primary p-5 text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-fp-accent hover:shadow-lg hover:shadow-fp-primary/25 motion-reduce:transform-none">
@@ -165,6 +251,24 @@ new #[Layout('layouts.panel')] #[Title('Inicio — FootwearPoint')] class extend
                 <span class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 transition group-hover:bg-white/25">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                </span>
+            </div>
+        </a>
+
+        <a href="{{ route('punto-venta.index') }}"
+           wire:navigate
+           class="group fp-tarjeta-interactiva relative overflow-hidden p-5">
+            <div class="absolute inset-y-0 left-0 w-1 bg-emerald-500"></div>
+            <div class="relative flex items-start justify-between gap-3 pl-2">
+                <div>
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-600">Ventas</p>
+                    <p class="mt-1 text-lg font-semibold text-fp-sidebar">Nueva venta</p>
+                    <p class="mt-1 text-sm text-fp-text-muted">Punto de venta y mostrador</p>
+                </div>
+                <span class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 transition group-hover:bg-emerald-600 group-hover:text-white">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                     </svg>
                 </span>
             </div>

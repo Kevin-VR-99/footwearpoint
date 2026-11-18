@@ -39,6 +39,7 @@ class PermisoModuloService
     public const CLIENTES_VER = 'clientes.ver';
     public const CLIENTES_IMPORTAR = 'clientes.importar';
     public const CAMBIOS_RESOLVER = 'cambios.resolver';
+    public const VALES_EMITIR = 'vales.emitir';
 
     /** permiso => [etiqueta, prendido por omisión] */
     public const PERMISOS_FINOS = [
@@ -49,6 +50,7 @@ class PermisoModuloService
         self::INVENTARIO_CONTEO => ['Inventario físico (conteos)', true],
         self::CLIENTES_VER      => ['Ver historial de clientes', true],
         self::CAMBIOS_RESOLVER  => ['Autorizar y resolver cambios', true],
+        self::VALES_EMITIR      => ['Emitir vales manualmente', true],
         self::VENTAS_CANCELAR   => ['Cancelar ventas de mostrador', false],
         self::CLIENTES_IMPORTAR => ['Importar clientes', false],
     ];
@@ -58,8 +60,7 @@ class PermisoModuloService
         self::CERRAR_CICLO         => 'Cerrar ciclo',
         self::SOLICITAR_FABRICA    => 'Solicitar a fábrica',
         self::REPORTES_FINANCIEROS => 'Reportes financieros',
-        self::CONFIGURACION        => 'Configuración',
-        self::USUARIOS             => 'Usuarios',
+        self::CONFIGURACION        => 'Mínimos de stock y anticipos',
     ];
 
     /**

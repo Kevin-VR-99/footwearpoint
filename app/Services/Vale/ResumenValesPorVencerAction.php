@@ -46,6 +46,7 @@ class ResumenValesPorVencerAction
             ->with(['clienteDirecto', 'revendedorAfiliacion.revendedor'])
             ->porVencer($dias)
             ->orderBy('fecha_vencimiento')
+            ->orderBy('id')
             ->get()
             ->groupBy('distribuidora_id');
 
