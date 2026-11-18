@@ -19,6 +19,7 @@ class ConfirmarCambioContactoMail extends Mailable
         public Usuario $usuario,
         public CambioContactoPendiente $cambio,
         public string $url,
+        public bool $porAdministrador = false,
     ) {
     }
 
@@ -40,6 +41,7 @@ class ConfirmarCambioContactoMail extends Mailable
                 'tipo'    => $this->cambio->tipo,
                 'valor'   => $this->cambio->valor_nuevo,
                 'url'     => $this->url,
+                'porAdministrador' => $this->porAdministrador,
                 'minutos' => \App\Services\Perfil\CambioContactoAction::MINUTOS,
             ],
         );

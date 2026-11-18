@@ -81,6 +81,16 @@ class ProvisionarRolesDistribuidoraAction
         $this->asignar($usuario, 'admin_general', 0);
     }
 
+    /** TG-337: quita un rol solo de ese equipo; los demás no se tocan. */
+    public function quitar(Usuario $usuario, string $rol, int $equipo): void
+    {
+        $this->enEquipo($equipo, function () use ($usuario, $rol, $equipo) {
+            $usuario->unsetRelation('roles');
+            $usuario->removeRole($this->rolEnEquipo($rol, $equipo));
+            $usuario->unsetRelation('roles');
+        });
+    }
+
     private function asignar(Usuario $usuario, string $rol, int $equipo): void
     {
         $this->enEquipo($equipo, function () use ($usuario, $rol, $equipo) {

@@ -8,7 +8,9 @@
 <body style="font-family: Arial, Helvetica, sans-serif; color: #1f2937; font-size: 14px; line-height: 1.5;">
     <p>Hola{{ $nombre ? ' ' . $nombre : '' }}:</p>
 
-    @if ($tipo === 'email')
+    @if ($porAdministrador ?? false)
+        <p>Un administrador de FootwearPoint pidió usar <strong>{{ $valor }}</strong> como tu correo de acceso. Confírmalo para que el cambio se aplique:</p>
+    @elseif ($tipo === 'email')
         <p>Pediste usar <strong>{{ $valor }}</strong> como tu correo de FootwearPoint. Confírmalo para que el cambio se aplique:</p>
     @else
         <p>Pediste cambiar tu teléfono de FootwearPoint a <strong>{{ $valor }}</strong>. Confírmalo para que el cambio se aplique:</p>
@@ -20,7 +22,7 @@
                   padding: 12px 20px; border-radius: 8px; font-weight: bold;">Confirmar el cambio</a>
     </p>
 
-    <p>El enlace vence en {{ $minutos }} minutos. Si no lo pediste tú, ignora este correo: sin confirmarlo no cambia nada.</p>
+    <p>El enlace vence en {{ $minutos }} minutos. Si no lo reconoces, ignora este correo: sin confirmarlo no cambia nada.</p>
 
     <p style="color: #6b7280; font-size: 12px;">Si el botón no funciona, copia y pega esta dirección en tu
         navegador:<br>{{ $url }}</p>
