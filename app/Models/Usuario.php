@@ -30,6 +30,8 @@ class Usuario extends Authenticatable implements CanResetPassword, MustVerifyEma
         'password',
         'telefono',
         'foto_url',
+        // TG-336: solo personal de distribuidora (aviso de privacidad).
+        'direccion',
         'estado',
         // TG-193: contraseña temporal que hay que cambiar al entrar.
         'debe_cambiar_password',
@@ -38,6 +40,7 @@ class Usuario extends Authenticatable implements CanResetPassword, MustVerifyEma
     protected $hidden = [
         'password',
         'remember_token',
+        'direccion',
     ];
 
     protected $casts = [
