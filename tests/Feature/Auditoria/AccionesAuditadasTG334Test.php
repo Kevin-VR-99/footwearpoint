@@ -200,8 +200,8 @@ class AccionesAuditadasTG334Test extends TestCase
         app(RechazarDistribuidoraAction::class)->ejecutar($distribuidora, 'Datos incompletos');
 
         $registro = $this->assertRegistro('distribuidora.rechazada', $admin, null);
-        $this->assertSame(['estado' => 'pendiente', 'motivo_rechazo' => null], $registro->datos_previos);
-        $this->assertSame(['estado' => 'rechazada', 'motivo_rechazo' => 'Datos incompletos'], $registro->datos_nuevos);
+        $this->assertEquals(['estado' => 'pendiente', 'motivo_rechazo' => null], $registro->datos_previos);
+        $this->assertEquals(['estado' => 'rechazada', 'motivo_rechazo' => 'Datos incompletos'], $registro->datos_nuevos);
     }
 
     public function test_suspender_y_reactivar_a_mano(): void
@@ -214,11 +214,11 @@ class AccionesAuditadasTG334Test extends TestCase
 
         $suspension = $this->assertRegistro('distribuidora.suspendida', $admin, null);
         $this->assertSame('activa', $suspension->datos_previos['estado']);
-        $this->assertSame(['estado' => 'suspendida', 'motivo_suspension' => Distribuidora::MOTIVO_MANUAL], $suspension->datos_nuevos);
+        $this->assertEquals(['estado' => 'suspendida', 'motivo_suspension' => Distribuidora::MOTIVO_MANUAL], $suspension->datos_nuevos);
 
         $reactivacion = $this->assertRegistro('distribuidora.reactivada', $admin, null);
-        $this->assertSame(['estado' => 'suspendida', 'motivo_suspension' => Distribuidora::MOTIVO_MANUAL], $reactivacion->datos_previos);
-        $this->assertSame(['estado' => 'activa', 'motivo_suspension' => null], $reactivacion->datos_nuevos);
+        $this->assertEquals(['estado' => 'suspendida', 'motivo_suspension' => Distribuidora::MOTIVO_MANUAL], $reactivacion->datos_previos);
+        $this->assertEquals(['estado' => 'activa', 'motivo_suspension' => null], $reactivacion->datos_nuevos);
         $this->assertSame($segunda->id, $reactivacion->entidad_id);
     }
 
@@ -345,8 +345,8 @@ class AccionesAuditadasTG334Test extends TestCase
         $this->assertSame('Mayorista TG-334', $alta->datos_nuevos['nombre']);
 
         $cambio = $this->assertRegistro('cliente_mayorista.actualizado', $admin, Tenant::id());
-        $this->assertSame(['nombre' => 'Mayorista TG-334', 'notas' => null], $cambio->datos_previos);
-        $this->assertSame(['nombre' => 'Mayorista TG-334 bis', 'notas' => 'Paga los viernes'], $cambio->datos_nuevos);
+        $this->assertEquals(['nombre' => 'Mayorista TG-334', 'notas' => null], $cambio->datos_previos);
+        $this->assertEquals(['nombre' => 'Mayorista TG-334 bis', 'notas' => 'Paga los viernes'], $cambio->datos_nuevos);
     }
 
     public function test_configuracion_general_solo_lo_que_cambio(): void
