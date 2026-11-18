@@ -17,6 +17,7 @@ class AvisoCambioCorreoMail extends Mailable
     public function __construct(
         public Usuario $usuario,
         public string $correoNuevo,
+        public bool $porAdministrador = false,
     ) {
     }
 
@@ -32,6 +33,7 @@ class AvisoCambioCorreoMail extends Mailable
             with: [
                 'nombre' => $this->usuario->nombreVisible(),
                 'nuevo'  => $this->correoNuevo,
+                'porAdministrador' => $this->porAdministrador,
             ],
         );
     }

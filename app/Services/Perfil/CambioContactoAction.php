@@ -10,6 +10,7 @@ use App\Models\Revendedor;
 use App\Models\Usuario;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Correo\IntentarEnviarCorreoAction;
+use App\Support\PersonalPlataforma;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
@@ -26,6 +27,9 @@ use Illuminate\Validation\ValidationException;
  * - Teléfono: el enlace va a su correo actual.
  *
  * Pedir otro cambio del mismo tipo anula el anterior.
+ *
+ * TG-337: el admin general usa el mismo camino para cambiar el correo del
+ * personal. Tampoco se aplica hasta que lo confirman desde el correo nuevo.
  */
 class CambioContactoAction
 {
@@ -44,8 +48,26 @@ class CambioContactoAction
         $this->exigirRevendedor($usuario);
         $email = mb_strtolower(trim($email));
 
+        $this->pedirCorreo($usuario, $email, false);
+
+        return 'Te mandamos un enlace a '.$email.'. Ábrelo en la próxima hora para confirmar el cambio; mientras tanto sigues entrando con tu correo actual.';
+    }
+
+    /** TG-337: lo pide el admin general para una persona del personal. */
+    public function solicitarCorreoDePersonal(Usuario $usuario, string $email): string
+    {
+        PersonalPlataforma::exigirPersonal($usuario);
+        $email = mb_strtolower(trim($email));
+
+        $this->pedirCorreo($usuario, $email, true);
+
+        return 'Le mandamos un enlace a '.$email.'. El correo cambia cuando lo confirme; mientras tanto sigue entrando con el actual.';
+    }
+
+    private function pedirCorreo(Usuario $usuario, string $email, bool $porAdministrador): void
+    {
         if ($email === mb_strtolower((string) $usuario->email)) {
-            throw ValidationException::withMessages(['email' => ['Ese ya es tu correo.']]);
+            throw ValidationException::withMessages(['email' => [$porAdministrador ? 'Ese ya es su correo.' : 'Ese ya es tu correo.']]);
         }
 
         if (Usuario::withoutGlobalScopes()->where('email', $email)->exists()) {
@@ -56,7 +78,7 @@ class CambioContactoAction
         $url = $this->enlace($cambio);
 
         $fallo = $this->correo->ejecutar(
-            fn () => Mail::to($email)->send(new ConfirmarCambioContactoMail($usuario, $cambio, $url)),
+            fn () => Mail::to($email)->send(new ConfirmarCambioContactoMail($usuario, $cambio, $url, $porAdministrador)),
             'cambio_correo',
             ['usuario_id' => $usuario->id, 'tipo' => 'email'],
         );
@@ -69,12 +91,10 @@ class CambioContactoAction
 
         // El aviso al correo viejo es informativo: si falla, el cambio sigue.
         $this->correo->ejecutar(
-            fn () => Mail::to((string) $usuario->email)->send(new AvisoCambioCorreoMail($usuario, $email)),
+            fn () => Mail::to((string) $usuario->email)->send(new AvisoCambioCorreoMail($usuario, $email, $porAdministrador)),
             'aviso_cambio_correo',
             ['usuario_id' => $usuario->id],
         );
-
-        return 'Te mandamos un enlace a '.$email.'. Ábrelo en la próxima hora para confirmar el cambio; mientras tanto sigues entrando con tu correo actual.';
     }
 
     public function solicitarTelefono(Usuario $usuario, string $telefono): string
@@ -148,6 +168,18 @@ class CambioContactoAction
             }
 
             $cambio->forceFill(['confirmado_en' => now()])->save();
+
+            if ($cambio->tipo === 'email' && PersonalPlataforma::esPersonal((int) $usuario->id)) {
+                $this->auditoria->sinDistribuidora(
+                    'personal.correo_cambiado',
+                    'usuario',
+                    (int) $usuario->id,
+                    ['email' => $cambio->valor_anterior],
+                    ['email' => $cambio->valor_nuevo],
+                );
+
+                return 'listo';
+            }
 
             $this->auditoria->ejecutar(
                 $cambio->tipo === 'email' ? 'perfil.correo_cambiado' : 'perfil.telefono_cambiado',

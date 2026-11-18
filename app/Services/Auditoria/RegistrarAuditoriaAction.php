@@ -52,6 +52,30 @@ class RegistrarAuditoriaAction
         ]);
     }
 
+    /**
+     * TG-337: para lo que es de la plataforma, aunque quien abre el enlace
+     * tenga sesión en una distribuidora. Sin eventos, porque BelongsToTenant
+     * completaría la distribuidora al crear.
+     */
+    public function sinDistribuidora(
+        string $accion,
+        string $entidadTipo,
+        ?int $entidadId = null,
+        ?array $datosPrevios = null,
+        ?array $datosNuevos = null
+    ): Auditoria {
+        return Auditoria::withoutEvents(fn () => Auditoria::create([
+            'usuario_id'       => Auth::id(),
+            'distribuidora_id' => null,
+            'accion'           => $accion,
+            'entidad_tipo'     => $entidadTipo,
+            'entidad_id'       => $entidadId,
+            'datos_previos'    => self::limpiar($datosPrevios),
+            'datos_nuevos'     => self::limpiar($datosNuevos),
+            'ip_origen'        => request()?->ip(),
+        ]));
+    }
+
     /** Quita lo prohibido y enmascara la CLABE, también dentro de arreglos. */
     public static function limpiar(?array $datos): ?array
     {

@@ -2,6 +2,7 @@
 
 use App\Models\CambioContactoPendiente;
 use App\Services\Perfil\CambioContactoAction;
+use App\Support\PersonalPlataforma;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -20,6 +21,9 @@ new #[Layout('layouts.guest')] #[Title('Confirmar cambio — FootwearPoint')] cl
 
     public string $mensaje = '';
 
+    /** TG-337: el personal entra por el panel, no por la app. */
+    public bool $esPersonal = false;
+
     public function mount(int $cambio): void
     {
         $registro = CambioContactoPendiente::find($cambio);
@@ -31,8 +35,20 @@ new #[Layout('layouts.guest')] #[Title('Confirmar cambio — FootwearPoint')] cl
         }
 
         $this->tipo = $registro->tipo;
+        $this->esPersonal = PersonalPlataforma::esPersonal((int) $registro->usuario_id);
         $this->resultado = app(CambioContactoAction::class)->confirmar($registro);
         $que = $this->tipo === 'email' ? 'correo' : 'teléfono';
+
+        if ($this->esPersonal) {
+            $this->mensaje = match ($this->resultado) {
+                'listo'     => 'Listo, tu correo cambió a '.$registro->valor_nuevo.'. Desde ahora entras al panel con él.',
+                'ya_estaba' => 'Este cambio ya estaba confirmado. No tienes que hacer nada más.',
+                'ocupado'   => 'Ese correo ya lo usa otra cuenta, así que no se aplicó el cambio. Avísale a tu administrador.',
+                default     => 'Este enlace ya venció. Pídele a tu administrador que solicite el cambio otra vez.',
+            };
+
+            return;
+        }
 
         $this->mensaje = match ($this->resultado) {
             'listo'     => $this->tipo === 'email'
@@ -63,7 +79,11 @@ new #[Layout('layouts.guest')] #[Title('Confirmar cambio — FootwearPoint')] cl
 
     <p class="mt-3 text-sm text-slate-600" role="status">{{ $mensaje }}</p>
 
-    <x-app-movil.botones destino="perfil" />
+    @if ($esPersonal)
+        <p class="mt-6"><a href="{{ route('login') }}" class="fp-btn fp-btn-primario">Ir al panel</a></p>
+    @else
+        <x-app-movil.botones destino="perfil" />
 
-    <p class="mt-4 text-xs text-slate-500">Si ya tienes la app, se abre en tu perfil. Si no, te llevamos a descargarla.</p>
+        <p class="mt-4 text-xs text-slate-500">Si ya tienes la app, se abre en tu perfil. Si no, te llevamos a descargarla.</p>
+    @endif
 </div>

@@ -72,6 +72,9 @@ final class EtiquetasAuditoria
         // Personal (TG-336)
         'personal.creado'                 => 'Personal dado de alta',
         'personal.actualizado'            => 'Datos del personal modificados',
+        'personal.correo_solicitado'      => 'Cambio de correo del personal solicitado',
+        'personal.correo_cambiado'        => 'Correo del personal cambiado',
+        'personal.rol_cambiado'           => 'Rol del personal cambiado',
         // Seguridad
         'password.enlace_restablecimiento' => 'Enlace para restablecer contraseña enviado',
         'password.temporal_generada'      => 'Contraseña temporal generada',

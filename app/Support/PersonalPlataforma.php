@@ -48,6 +48,33 @@ final class PersonalPlataforma
             ->exists();
     }
 
+    public static function esPersonal(int $usuarioId): bool
+    {
+        return self::asignaciones()->where('model_has_roles.model_id', $usuarioId)->exists();
+    }
+
+    /** Un cliente no se modifica desde aquí: para esta pantalla no existe. */
+    public static function exigirPersonal(Usuario $usuario): void
+    {
+        abort_unless(self::esPersonal((int) $usuario->id), 404);
+    }
+
+    /**
+     * Los admin general, bloqueados hasta terminar la transacción: dos cambios
+     * al mismo tiempo no pueden dejar a la plataforma sin ninguno.
+     *
+     * @return list<int>
+     */
+    public static function adminsGeneralesBloqueados(): array
+    {
+        return self::asignaciones()
+            ->where('roles.name', self::ADMIN_GENERAL)
+            ->lockForUpdate()
+            ->pluck('model_has_roles.model_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
     /** La dirección solo se guarda para el personal de una distribuidora. */
     public static function tieneRolDeDistribuidora(int $usuarioId): bool
     {
@@ -100,7 +127,7 @@ final class PersonalPlataforma
      * Los roles de personal de varias cuentas, en una sola consulta.
      *
      * @param  list<int>  $usuarioIds
-     * @return array<int, list<array{rol: string, etiqueta: string, distribuidora: ?string, activo: bool}>>
+     * @return array<int, list<array{rol: string, etiqueta: string, equipo: int, distribuidora: ?string, activo: bool}>>
      */
     public static function rolesDe(array $usuarioIds): array
     {
@@ -118,6 +145,7 @@ final class PersonalPlataforma
             ->orderBy('roles.name')
             ->get([
                 'model_has_roles.model_id',
+                'model_has_roles.team_id',
                 'roles.name',
                 'distribuidoras.nombre_comercial',
                 'distribuidoras.razon_social',
@@ -130,6 +158,7 @@ final class PersonalPlataforma
             $roles[(int) $fila->model_id][] = [
                 'rol' => $fila->name,
                 'etiqueta' => self::ROLES[$fila->name],
+                'equipo' => (int) $fila->team_id,
                 'distribuidora' => $fila->nombre_comercial ?: $fila->razon_social,
                 // Dado de baja en esa distribuidora, aunque su cuenta siga activa.
                 'activo' => $fila->estado_staff !== 'inactivo',
