@@ -70,47 +70,59 @@ new #[Layout('layouts.panel')] #[Title('Anticipos — FootwearPoint')] class ext
     public function getPendientesProperty(): array
     {
         $termino = trim($this->busqueda);
+        $terminoEscapado = addcslashes($termino, '%_\\');
 
-        $pedidos = Pedido::query()
+        $query = Pedido::query()
             ->with('clienteDirecto:id,nombre')
             ->where('tipo', 'cliente_directo')
             ->whereNotIn('estado', array_merge(
                 PedidosPorRevendedorAction::ESTADOS_EXCLUIDOS_EXTRA,
                 RegistrarPagoPedidoAction::ESTADOS_CERRADOS,
             ))
-            ->when($termino !== '', function ($q) use ($termino) {
-                $q->where(function ($sub) use ($termino) {
-                    $sub->where('folio', 'like', "%{$termino}%")
-                        ->orWhereHas('clienteDirecto', fn ($cq) => $cq->where('nombre', 'like', "%{$termino}%"));
+            ->when($termino !== '', function ($q) use ($terminoEscapado) {
+                $q->where(function ($sub) use ($terminoEscapado) {
+                    $sub->where('folio', 'like', "%{$terminoEscapado}%")
+                        ->orWhereHas('clienteDirecto', fn ($cq) => $cq->where('nombre', 'like', "%{$terminoEscapado}%"));
                 });
             })
-            ->orderByDesc('id')
-            ->get(['id', 'folio', 'estado', 'cliente_directo_id']);
+            ->orderByDesc('id');
 
-        $ids = $pedidos->pluck('id')->all();
         $pagos = app(PagosDePedidos::class);
-        $pagado = $pagos->pagadoPorPedido($ids);
-        $requerido = $pagos->anticipoRequeridoPorPedido($ids);
         $filas = [];
+        $hayMas = false;
 
-        foreach ($pedidos as $pedido) {
-            $req = (float) ($requerido[$pedido->id] ?? 0);
-            $pag = (float) ($pagado[$pedido->id] ?? 0);
-            $pendiente = round(max(0, $req - min($req, $pag)), 2);
-            if ($pendiente <= 0) {
-                continue;
+        $query->chunk(100, function ($pedidos) use (&$filas, &$hayMas, $pagos) {
+            $ids = $pedidos->pluck('id')->all();
+            $pagado = $pagos->pagadoPorPedido($ids);
+            $requerido = $pagos->anticipoRequeridoPorPedido($ids);
+
+            foreach ($pedidos as $pedido) {
+                $req = (float) ($requerido[$pedido->id] ?? 0);
+                $pag = (float) ($pagado[$pedido->id] ?? 0);
+                $pendiente = round(max(0, $req - min($req, $pag)), 2);
+                if ($pendiente <= 0) {
+                    continue;
+                }
+
+                $filas[] = [
+                    'id' => (int) $pedido->id,
+                    'folio' => (string) $pedido->folio,
+                    'cliente' => (string) ($pedido->clienteDirecto?->nombre ?? 'Cliente'),
+                    'estado' => (string) $pedido->estado,
+                    'anticipo' => $pendiente,
+                ];
+
+                if (count($filas) > 100) {
+                    $hayMas = true;
+
+                    return false;
+                }
             }
 
-            $filas[] = [
-                'id' => (int) $pedido->id,
-                'folio' => (string) $pedido->folio,
-                'cliente' => (string) ($pedido->clienteDirecto?->nombre ?? 'Cliente'),
-                'estado' => (string) $pedido->estado,
-                'anticipo' => $pendiente,
-            ];
-        }
+            return true;
+        });
 
-        $this->hayMasDeCien = count($filas) > 100;
+        $this->hayMasDeCien = $hayMas;
 
         return array_slice($filas, 0, 100);
     }
