@@ -447,7 +447,7 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
                                 <p class="mt-1">Perderá el acceso a la administración de FootwearPoint y solo trabajará en la distribuidora que elijas.</p>
                             @else
                                 <p class="font-semibold">Tendrá acceso total a FootwearPoint.</p>
-                                <p class="mt-1">Su acceso en la distribuidora quedará inactivo y dejará de trabajar ahí. Su historial se conserva.</p>
+                                <p class="mt-1">Su acceso en la distribuidora quedará inactivo y dejará de trabajar ahí. Su historial se conserva y su dirección se borrará.</p>
                             @endif
                             <label class="mt-3 flex items-start gap-2 font-medium">
                                 <input type="checkbox" wire:model="confirmar_consecuencias" class="mt-0.5">

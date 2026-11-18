@@ -490,6 +490,48 @@ class CorreoRolPasswordPersonalTest extends TestCase
         $this->get(route('admin.usuarios'))->assertOk();
     }
 
+    public function test_al_pasar_a_admin_general_se_borra_la_direccion_sin_dejarla_en_la_auditoria(): void
+    {
+        $direccion = 'Calle Privada 337';
+        $empleado = $this->empleado();
+        $empleado->forceFill(['direccion' => $direccion])->save();
+
+        $this->ficha($empleado)->call('abrirCambio', 'rol')
+            ->set('rol_nuevo', 'admin_general')
+            ->assertSee('su dirección se borrará');
+
+        $this->aAdminGeneral($empleado, $this->asignacionEmpleado())->assertHasNoErrors();
+
+        $this->assertNull($empleado->fresh()->direccion);
+
+        $registro = Auditoria::withoutGlobalScopes()->where('accion', 'personal.rol_cambiado')->sole();
+        $this->assertTrue($registro->datos_nuevos['direccion_borrada']);
+        $this->assertStringNotContainsString($direccion, json_encode(
+            Auditoria::withoutGlobalScopes()->where('entidad_id', $empleado->id)->get()->map->only(['datos_previos', 'datos_nuevos']),
+            JSON_UNESCAPED_UNICODE
+        ));
+    }
+
+    public function test_si_el_cambio_a_admin_general_se_bloquea_la_direccion_se_queda(): void
+    {
+        $admin = $this->adminDistribuidora();
+        $admin->forceFill(['direccion' => 'Calle Privada 337'])->save();
+
+        $this->aAdminGeneral($admin, $this->asignacionAdmin())->assertHasErrors(['rol_nuevo']);
+
+        $this->assertSame('Calle Privada 337', $admin->fresh()->direccion);
+    }
+
+    public function test_sin_direccion_la_auditoria_no_anota_que_se_borro(): void
+    {
+        $this->aAdminGeneral($this->empleado(), $this->asignacionEmpleado())->assertHasNoErrors();
+
+        $this->assertArrayNotHasKey(
+            'direccion_borrada',
+            Auditoria::withoutGlobalScopes()->where('accion', 'personal.rol_cambiado')->sole()->datos_nuevos
+        );
+    }
+
     public function test_no_pasa_a_admin_general_con_otra_asignacion(): void
     {
         $empleado = $this->empleado();

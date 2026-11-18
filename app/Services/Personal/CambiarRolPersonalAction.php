@@ -183,7 +183,17 @@ class CambiarRolPersonalAction
             $fila->forceFill(['estado' => 'inactivo'])->save();
         }
 
-        return $this->resumen($actual['rol'], $distribuidora, PersonalPlataforma::ADMIN_GENERAL, null);
+        $cambio = $this->resumen($actual['rol'], $distribuidora, PersonalPlataforma::ADMIN_GENERAL, null);
+
+        // El aviso de privacidad no declara la dirección del admin general. En
+        // la auditoría queda solo que se borró, nunca el valor.
+        if (Usuario::query()->whereKey($persona->id)->whereNotNull('direccion')->exists()) {
+            $cambio['despues']['direccion_borrada'] = true;
+        }
+
+        $persona->forceFill(['direccion' => null])->save();
+
+        return $cambio;
     }
 
     /** @return array{rol: string, equipo: int} */
