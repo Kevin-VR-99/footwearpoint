@@ -30,6 +30,8 @@ class CobroInicialPendiente
         'distribuidora.pago-inicial',
         // TG-323: aceptar los documentos legales va antes que el pago.
         'legales.aceptar',
+        // TG-336: cambiar la contraseña temporal, también.
+        'password.cambiar',
         'logout',
         'login',
         'mercado-pago.webhook',

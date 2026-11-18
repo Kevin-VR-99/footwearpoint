@@ -178,6 +178,10 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
     Route::livewire('/legales', 'auth.aceptar-legales')
         ->name('legales.aceptar');
 
+    // TG-336: quien entra con contraseña temporal la cambia aquí.
+    Route::livewire('/cambiar-contrasena', 'auth.cambiar-password')
+        ->name('password.cambiar');
+
     // Solo admin_distribuidora
     Route::livewire('/empleados/registrar', 'auth.register-empleado')
         ->name('empleados.registrar')

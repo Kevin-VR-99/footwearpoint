@@ -1,25 +1,40 @@
 <?php
 
+use App\Services\Personal\ActualizarPersonalAction;
 use App\Support\PersonalPlataforma;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /*
-| TG-335 (K37) - Ficha de solo lectura de una persona del personal.
+| TG-335 (K37) - Ficha de una persona del personal. TG-336 (K38) - Edición de
+| nombre, teléfono, dirección y foto.
 |
 | Un cliente no tiene ficha aquí: su id responde 404.
 */
 new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class extends Component
 {
+    use WithFileUploads;
     use WithPagination;
 
     #[Locked]
     public int $usuarioId;
+
+    public bool $editando = false;
+
+    public string $nombre = '';
+
+    public string $telefono = '';
+
+    public string $direccion = '';
+
+    public $foto = null;
 
     /** En cada petición, y sin cambiar el equipo de permisos. */
     public function boot(): void
@@ -31,6 +46,53 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
     {
         $this->usuarioId = $usuario;
         abort_if($this->persona === null, 404);
+
+        if (request()->boolean('editar')) {
+            $this->abrirEdicion();
+        }
+    }
+
+    public function abrirEdicion(): void
+    {
+        $persona = $this->personaObligatoria();
+
+        $this->nombre = (string) $persona->nombre;
+        $this->telefono = (string) $persona->telefono;
+        $this->direccion = (string) $persona->direccion;
+        $this->foto = null;
+        $this->resetValidation();
+        $this->editando = true;
+    }
+
+    public function cancelarEdicion(): void
+    {
+        $this->editando = false;
+        $this->foto = null;
+        $this->resetValidation();
+    }
+
+    public function quitarFoto(): void
+    {
+        $this->foto = null;
+        $this->resetValidation('foto');
+    }
+
+    public function guardarEdicion(ActualizarPersonalAction $accion): void
+    {
+        $accion->ejecutar(
+            $this->personaObligatoria(),
+            $this->only(['nombre', 'telefono', 'direccion']),
+            $this->foto instanceof UploadedFile ? $this->foto : null,
+        );
+
+        $this->cancelarEdicion();
+        unset($this->persona, $this->movimientos);
+        $this->dispatch('guardado', mensaje: 'Datos actualizados.');
+    }
+
+    private function personaObligatoria()
+    {
+        return $this->persona ?? abort(404);
     }
 
     #[Computed]
@@ -43,6 +105,13 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
     public function roles(): array
     {
         return PersonalPlataforma::rolesDe([$this->usuarioId])[$this->usuarioId] ?? [];
+    }
+
+    /** El aviso de privacidad solo declara la dirección del personal de distribuidoras. */
+    #[Computed]
+    public function conDireccion(): bool
+    {
+        return PersonalPlataforma::tieneRolDeDistribuidora($this->usuarioId);
     }
 
     #[Computed]
@@ -61,15 +130,19 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
 
 <div class="space-y-6">
     @php($persona = $this->persona)
-    @php($nombre = $persona->nombre ?: 'Sin nombre')
+    @php($nombrePersona = $persona->nombre ?: 'Sin nombre')
 
-    <x-panel.encabezado :volver="route('admin.usuarios')" volver-texto="← Usuarios" :titulo="$nombre"
-        subtitulo="Ficha de solo lectura." />
+    <x-panel.encabezado :volver="route('admin.usuarios')" volver-texto="← Usuarios" :titulo="$nombrePersona"
+        subtitulo="Datos, roles y movimientos.">
+        <x-slot:acciones>
+            <x-panel.boton variante="secundario" wire:click="abrirEdicion" data-editar-personal>Editar</x-panel.boton>
+        </x-slot:acciones>
+    </x-panel.encabezado>
 
     <div class="grid gap-6 lg:grid-cols-2">
         <x-panel.seccion titulo="Datos">
             <div class="flex flex-col gap-4 p-4 sm:flex-row sm:p-5">
-                <x-ui.avatar :url="$persona->foto_url" :nombre="$nombre" tamano="h-20 w-20 text-xl" />
+                <x-ui.avatar :url="$persona->foto_url" :nombre="$nombrePersona" tamano="h-20 w-20 text-xl" />
                 <dl class="grid min-w-0 flex-1 grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                     <div class="min-w-0">
                         <dt class="text-xs text-fp-text-muted">Correo</dt>
@@ -80,6 +153,12 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
                         <dt class="text-xs text-fp-text-muted">Teléfono</dt>
                         <dd class="text-slate-800">{{ $persona->telefono ?: '—' }}</dd>
                     </div>
+                    @if ($this->conDireccion)
+                        <div class="min-w-0 sm:col-span-2" data-direccion>
+                            <dt class="text-xs text-fp-text-muted">Dirección</dt>
+                            <dd class="break-words text-slate-800">{{ $persona->direccion ?: '—' }}</dd>
+                        </div>
+                    @endif
                     <div>
                         <dt class="text-xs text-fp-text-muted">Estado</dt>
                         <dd class="mt-0.5"><x-personas.estado :estado="$persona->estado" /></dd>
@@ -152,4 +231,35 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
             @endif
         </div>
     </x-panel.seccion>
+
+    @if ($editando)
+        <x-panel.modal titulo="Editar usuario" subtitulo="El correo, el rol y la contraseña no se cambian aquí."
+            cerrar="cancelarEdicion" formulario="guardarEdicion" ancho="max-w-xl" class="fp-formulario" data-modal="editar-personal">
+            <div class="space-y-4">
+                <x-personas.foto modelo="foto" :archivo="$foto" :actual="$persona->foto_url" :nombre="$nombre" quitar="quitarFoto" id="ficha-foto" datos="ficha" />
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-ui.campo etiqueta="Nombre" para="ficha-nombre" error="nombre" requerido>
+                        <x-ui.entrada id="ficha-nombre" wire:model="nombre" autofocus required />
+                    </x-ui.campo>
+                    <x-ui.campo etiqueta="Teléfono" para="ficha-telefono" error="telefono">
+                        <x-ui.entrada tipo="tel" id="ficha-telefono" wire:model="telefono" />
+                    </x-ui.campo>
+                    @if ($this->conDireccion)
+                        <x-ui.campo etiqueta="Dirección" para="ficha-direccion" error="direccion" class="sm:col-span-2">
+                            <x-ui.entrada id="ficha-direccion" wire:model="direccion" maxlength="300" />
+                        </x-ui.campo>
+                    @endif
+                </div>
+            </div>
+
+            <x-slot:pie>
+                <button type="button" wire:click="cancelarEdicion" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled" wire:target="guardarEdicion,foto">
+                    <span wire:loading.remove wire:target="guardarEdicion">Guardar</span>
+                    <span wire:loading wire:target="guardarEdicion">Guardando…</span>
+                </button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
 </div>

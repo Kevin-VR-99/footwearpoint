@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Auditoria;
+use App\Models\Distribuidora;
 use App\Models\Usuario;
 use App\Services\Auditoria\RegistrarSesionAction;
 use Illuminate\Database\Eloquent\Builder;
@@ -37,7 +38,7 @@ final class PersonalPlataforma
     ];
 
     /** Lista cerrada: la contraseña y el token nunca salen de la base. */
-    private const COLUMNAS = ['id', 'nombre', 'email', 'telefono', 'foto_url', 'estado', 'email_verified_at', 'created_at'];
+    private const COLUMNAS = ['id', 'nombre', 'email', 'telefono', 'direccion', 'foto_url', 'estado', 'email_verified_at', 'created_at'];
 
     public static function esAdminGeneral(Usuario $usuario): bool
     {
@@ -45,6 +46,24 @@ final class PersonalPlataforma
             ->where('model_has_roles.model_id', $usuario->getKey())
             ->where('roles.name', self::ADMIN_GENERAL)
             ->exists();
+    }
+
+    /** La dirección solo se guarda para el personal de una distribuidora. */
+    public static function tieneRolDeDistribuidora(int $usuarioId): bool
+    {
+        return self::asignaciones()
+            ->where('model_has_roles.model_id', $usuarioId)
+            ->whereIn('roles.name', self::ROLES_DE_DISTRIBUIDORA)
+            ->exists();
+    }
+
+    /** A las que se les puede dar de alta personal: quien entra debe poder operar. */
+    public static function distribuidorasActivas()
+    {
+        return Distribuidora::query()
+            ->where('estado', 'activa')
+            ->orderBy('nombre_comercial')
+            ->get(['id', 'nombre_comercial', 'razon_social']);
     }
 
     /** El listado: rol y distribuidora se cumplen en la misma asignación. */
