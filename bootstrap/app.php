@@ -67,6 +67,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', \App\Http\Middleware\LegalesVigentes::class);
         $middleware->appendToGroup('api', \App\Http\Middleware\LegalesVigentes::class);
 
+        // TG-336: en el panel, la contraseña temporal se cambia antes de seguir.
+        $middleware->appendToGroup('web', \App\Http\Middleware\PanelDebeCambiarPassword::class);
+
         // TG-406 (A43): deja constancia de que alguien uso la plataforma hoy.
         // El canal sale del grupo, no de adivinar el navegador: por 'api'
         // entra la app movil y por 'web' el panel. Va al final del grupo para
