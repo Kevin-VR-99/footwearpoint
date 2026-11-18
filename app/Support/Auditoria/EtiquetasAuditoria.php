@@ -69,6 +69,9 @@ final class EtiquetasAuditoria
         'sesion.cierre_panel'             => 'Cierre de sesión (panel)',
         'sesion.inicio_app'               => 'Inicio de sesión (app)',
         'sesion.cierre_app'               => 'Cierre de sesión (app)',
+        // Personal (TG-336)
+        'personal.creado'                 => 'Personal dado de alta',
+        'personal.actualizado'            => 'Datos del personal modificados',
         // Seguridad
         'password.enlace_restablecimiento' => 'Enlace para restablecer contraseña enviado',
         'password.temporal_generada'      => 'Contraseña temporal generada',
@@ -131,6 +134,7 @@ final class EtiquetasAuditoria
         'importacion_catalogo' => 'Catálogo',
         'password'             => 'Seguridad',
         'sesion'               => 'Sesiones',
+        'personal'             => 'Personal',
         'linea_extra'          => 'Configuración',
         'distribuidora'        => 'Configuración',
         'configuracion'        => 'Configuración',
