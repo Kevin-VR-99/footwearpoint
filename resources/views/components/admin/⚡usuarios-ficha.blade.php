@@ -1,6 +1,10 @@
 <?php
 
+use App\Services\Perfil\CambioContactoAction;
 use App\Services\Personal\ActualizarPersonalAction;
+use App\Services\Personal\CambiarCorreoPersonalAction;
+use App\Services\Personal\CambiarRolPersonalAction;
+use App\Services\Personal\RestablecerAccesoPersonalAction;
 use App\Support\PersonalPlataforma;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +18,8 @@ use Livewire\WithPagination;
 
 /*
 | TG-335 (K37) - Ficha de una persona del personal. TG-336 (K38) - Edición de
-| nombre, teléfono, dirección y foto.
+| nombre, teléfono, dirección y foto. TG-337 (K39) - Correo, rol y contraseña,
+| con la contraseña del admin general.
 |
 | Un cliente no tiene ficha aquí: su id responde 404.
 */
@@ -35,6 +40,26 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
     public string $direccion = '';
 
     public $foto = null;
+
+    /** El cambio abierto: correo, rol o password. */
+    public string $cambio = '';
+
+    public string $correo_nuevo = '';
+
+    public string $asignacion = '';
+
+    public string $rol_nuevo = '';
+
+    public string $distribuidora_nueva = '';
+
+    public bool $confirmar_consecuencias = false;
+
+    public string $modo_password = RestablecerAccesoPersonalAction::TEMPORAL;
+
+    public string $password_confirmacion = '';
+
+    /** Protegida: solo existe en la respuesta que la genera. */
+    protected ?string $passwordTemporal = null;
 
     /** En cada petición, y sin cambiar el equipo de permisos. */
     public function boot(): void
@@ -90,6 +115,103 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
         $this->dispatch('guardado', mensaje: 'Datos actualizados.');
     }
 
+    public function abrirCambio(string $tipo): void
+    {
+        abort_unless(in_array($tipo, ['correo', 'rol', 'password'], true), 404);
+
+        $this->limpiarCambio();
+        $this->asignacion = isset($this->roles[0]) ? $this->roles[0]['rol'].'|'.$this->roles[0]['equipo'] : '';
+        $this->rol_nuevo = (string) array_key_first($this->opcionesRol());
+        $this->cambio = $tipo;
+    }
+
+    public function cerrarCambio(): void
+    {
+        $this->limpiarCambio();
+    }
+
+    public function updated(string $propiedad): void
+    {
+        if ($propiedad === 'asignacion') {
+            $this->rol_nuevo = (string) array_key_first($this->opcionesRol());
+            $this->distribuidora_nueva = '';
+        }
+
+        if (in_array($propiedad, ['asignacion', 'rol_nuevo'], true)) {
+            $this->confirmar_consecuencias = false;
+            $this->resetValidation(['rol_nuevo', 'distribuidora_nueva', 'confirmar_consecuencias']);
+        }
+    }
+
+    public function guardarCambio(): void
+    {
+        $admin = Auth::user();
+        $persona = $this->personaObligatoria();
+
+        try {
+            $mensaje = match ($this->cambio) {
+                'correo' => app(CambiarCorreoPersonalAction::class)
+                    ->ejecutar($admin, $persona, $this->correo_nuevo, $this->password_confirmacion),
+                'rol' => app(CambiarRolPersonalAction::class)
+                    ->ejecutar($admin, $persona, $this->only(['asignacion', 'rol_nuevo', 'distribuidora_nueva', 'confirmar_consecuencias', 'password_confirmacion'])),
+                'password' => $this->restablecerAcceso($admin, $persona),
+                default => abort(404),
+            };
+        } finally {
+            $this->password_confirmacion = '';
+        }
+
+        $this->limpiarCambio();
+        unset($this->persona, $this->roles, $this->conDireccion, $this->movimientos, $this->correoPendiente);
+        $this->dispatch('guardado', mensaje: $mensaje);
+    }
+
+    private function restablecerAcceso($admin, $persona): string
+    {
+        $resultado = app(RestablecerAccesoPersonalAction::class)
+            ->ejecutar($admin, $persona, $this->modo_password, $this->password_confirmacion);
+
+        $this->passwordTemporal = $resultado['password_temporal'];
+
+        return $resultado['mensaje'];
+    }
+
+    private function limpiarCambio(): void
+    {
+        $this->reset('cambio', 'correo_nuevo', 'asignacion', 'rol_nuevo', 'distribuidora_nueva', 'confirmar_consecuencias', 'modo_password', 'password_confirmacion');
+        $this->resetValidation();
+    }
+
+    /** Al volver a dibujar, la contraseña temporal ya no está. */
+    public function cerrarPasswordTemporal(): void
+    {
+    }
+
+    public function passwordTemporalVisible(): ?string
+    {
+        return $this->passwordTemporal;
+    }
+
+    public function rolOrigen(): string
+    {
+        return explode('|', $this->asignacion)[0];
+    }
+
+    /** @return array<string, string> Los roles a los que puede pasar esa asignación. */
+    public function opcionesRol(): array
+    {
+        $opciones = array_diff_key(PersonalPlataforma::ROLES, [$this->rolOrigen() => true]);
+
+        // El cambio más delicado nunca queda elegido de entrada.
+        return array_diff_key($opciones, [PersonalPlataforma::ADMIN_GENERAL => true])
+            + array_intersect_key($opciones, [PersonalPlataforma::ADMIN_GENERAL => true]);
+    }
+
+    public function esConversion(): bool
+    {
+        return $this->rol_nuevo !== '' && in_array(PersonalPlataforma::ADMIN_GENERAL, [$this->rolOrigen(), $this->rol_nuevo], true);
+    }
+
     private function personaObligatoria()
     {
         return $this->persona ?? abort(404);
@@ -115,6 +237,18 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
     }
 
     #[Computed]
+    public function correoPendiente(): ?string
+    {
+        return app(CambioContactoAction::class)->pendientesDe($this->personaObligatoria())['email'] ?? null;
+    }
+
+    #[Computed]
+    public function distribuidorasActivas()
+    {
+        return PersonalPlataforma::distribuidorasActivas();
+    }
+
+    #[Computed]
     public function ultimoInicio()
     {
         return PersonalPlataforma::ultimoInicio($this->usuarioId);
@@ -136,6 +270,9 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
         subtitulo="Datos, roles y movimientos.">
         <x-slot:acciones>
             <x-panel.boton variante="secundario" wire:click="abrirEdicion" data-editar-personal>Editar</x-panel.boton>
+            <x-panel.boton variante="secundario" wire:click="abrirCambio('correo')" data-cambiar="correo">Cambiar correo</x-panel.boton>
+            <x-panel.boton variante="secundario" wire:click="abrirCambio('rol')" data-cambiar="rol">Cambiar rol</x-panel.boton>
+            <x-panel.boton variante="secundario" wire:click="abrirCambio('password')" data-cambiar="password">Restablecer contraseña</x-panel.boton>
         </x-slot:acciones>
     </x-panel.encabezado>
 
@@ -148,6 +285,9 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
                         <dt class="text-xs text-fp-text-muted">Correo</dt>
                         <dd class="break-words text-slate-800">{{ $persona->email }}</dd>
                         <x-ui.estado-correo :usuario="$persona" />
+                        @if ($this->correoPendiente)
+                            <p class="mt-1 break-words text-xs text-fp-text-muted" data-correo-pendiente>Por confirmar: {{ $this->correoPendiente }}</p>
+                        @endif
                     </div>
                     <div>
                         <dt class="text-xs text-fp-text-muted">Teléfono</dt>
@@ -259,6 +399,100 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
                     <span wire:loading.remove wire:target="guardarEdicion">Guardar</span>
                     <span wire:loading wire:target="guardarEdicion">Guardando…</span>
                 </button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
+
+    @if ($cambio !== '')
+        @php($titulos = ['correo' => 'Cambiar correo', 'rol' => 'Cambiar rol', 'password' => 'Restablecer contraseña'])
+        <x-panel.modal :titulo="$titulos[$cambio]" :subtitulo="$nombrePersona" cerrar="cerrarCambio" formulario="guardarCambio"
+            ancho="max-w-xl" class="fp-formulario" data-modal="cambio-{{ $cambio }}">
+            <div class="space-y-4">
+                @if ($cambio === 'correo')
+                    <p class="text-sm text-slate-600">Correo actual: <span class="font-medium text-slate-800 break-words">{{ $persona->email }}</span></p>
+                    <x-ui.campo etiqueta="Correo nuevo" para="cambio-correo" error="email"
+                        ayuda="Cambia cuando la persona lo confirme desde ese correo. Al actual le llega un aviso." requerido>
+                        <x-ui.entrada tipo="email" id="cambio-correo" wire:model="correo_nuevo" autofocus required />
+                    </x-ui.campo>
+                @elseif ($cambio === 'rol')
+                    <x-ui.campo etiqueta="Asignación" para="cambio-asignacion" error="asignacion" requerido>
+                        <x-ui.selector id="cambio-asignacion" wire:model.live="asignacion">
+                            @foreach ($this->roles as $rol)
+                                <option value="{{ $rol['rol'] }}|{{ $rol['equipo'] }}">{{ $rol['etiqueta'] }}{{ $rol['distribuidora'] ? ' · '.$rol['distribuidora'] : '' }}</option>
+                            @endforeach
+                        </x-ui.selector>
+                    </x-ui.campo>
+                    <x-ui.campo etiqueta="Rol nuevo" para="cambio-rol" error="rol_nuevo" requerido>
+                        <x-ui.selector id="cambio-rol" wire:model.live="rol_nuevo">
+                            @foreach ($this->opcionesRol() as $valor => $etiqueta)
+                                <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                            @endforeach
+                        </x-ui.selector>
+                    </x-ui.campo>
+
+                    @if ($this->rolOrigen() === \App\Support\PersonalPlataforma::ADMIN_GENERAL)
+                        <x-ui.campo etiqueta="Distribuidora" para="cambio-distribuidora" error="distribuidora_nueva" requerido>
+                            <x-ui.selector id="cambio-distribuidora" wire:model="distribuidora_nueva" vacio="Elige una distribuidora" required>
+                                @foreach ($this->distribuidorasActivas as $distribuidora)
+                                    <option value="{{ $distribuidora->id }}">{{ $distribuidora->nombre_comercial ?: $distribuidora->razon_social }}</option>
+                                @endforeach
+                            </x-ui.selector>
+                        </x-ui.campo>
+                    @endif
+
+                    @if ($this->esConversion())
+                        <x-panel.alerta tipo="peligro" data-advertencia-rol>
+                            @if ($this->rolOrigen() === \App\Support\PersonalPlataforma::ADMIN_GENERAL)
+                                <p class="font-semibold">Dejará de ser admin general.</p>
+                                <p class="mt-1">Perderá el acceso a la administración de FootwearPoint y solo trabajará en la distribuidora que elijas.</p>
+                            @else
+                                <p class="font-semibold">Tendrá acceso total a FootwearPoint.</p>
+                                <p class="mt-1">Su acceso en la distribuidora quedará inactivo y dejará de trabajar ahí. Su historial se conserva.</p>
+                            @endif
+                            <label class="mt-3 flex items-start gap-2 font-medium">
+                                <input type="checkbox" wire:model="confirmar_consecuencias" class="mt-0.5">
+                                <span>Entiendo las consecuencias de este cambio.</span>
+                            </label>
+                        </x-panel.alerta>
+                        @error('confirmar_consecuencias') <p class="fp-campo-error" role="alert">{{ $message }}</p> @enderror
+                    @endif
+                @else
+                    <fieldset class="space-y-2">
+                        <legend class="fp-campo-etiqueta">¿Cómo va a entrar?</legend>
+                        <label class="flex items-start gap-2 text-sm text-slate-700">
+                            <input type="radio" wire:model="modo_password" value="temporal" class="mt-0.5">
+                            <span>Contraseña temporal. La verás una sola vez, la anterior deja de servir y deberá cambiarla al entrar.</span>
+                        </label>
+                        <label class="flex items-start gap-2 text-sm text-slate-700">
+                            <input type="radio" wire:model="modo_password" value="enlace" class="mt-0.5">
+                            <span>Enlace por correo para que defina una nueva. Vence en 60 minutos.</span>
+                        </label>
+                        @error('modo_password') <p class="fp-campo-error" role="alert">{{ $message }}</p> @enderror
+                    </fieldset>
+                @endif
+
+                <x-ui.campo etiqueta="Tu contraseña" para="cambio-confirmacion" error="password_confirmacion"
+                    ayuda="Para confirmar que eres tú." requerido>
+                    <x-ui.entrada tipo="password" id="cambio-confirmacion" wire:model="password_confirmacion" autocomplete="current-password" required />
+                </x-ui.campo>
+            </div>
+
+            <x-slot:pie>
+                <button type="button" wire:click="cerrarCambio" class="fp-btn fp-btn-secundario">Cancelar</button>
+                <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled" wire:target="guardarCambio">
+                    <span wire:loading.remove wire:target="guardarCambio">Confirmar</span>
+                    <span wire:loading wire:target="guardarCambio">Guardando…</span>
+                </button>
+            </x-slot:pie>
+        </x-panel.modal>
+    @endif
+
+    @if ($temporal = $this->passwordTemporalVisible())
+        <x-panel.modal titulo="Contraseña temporal" subtitulo="Cópiala ahora: no se volverá a mostrar." data-modal="password-temporal">
+            <p class="text-sm text-slate-600">Para <span class="font-medium text-slate-800">{{ $persona->email }}</span>. Deberá cambiarla la próxima vez que entre.</p>
+            <code class="mt-3 block select-all break-all rounded-lg bg-fp-page px-4 py-3 text-center text-lg font-semibold tracking-wide text-fp-sidebar" data-password-temporal>{{ $temporal }}</code>
+            <x-slot:pie>
+                <button type="button" wire:click="cerrarPasswordTemporal" class="fp-btn fp-btn-primario">Ya la guardé</button>
             </x-slot:pie>
         </x-panel.modal>
     @endif
