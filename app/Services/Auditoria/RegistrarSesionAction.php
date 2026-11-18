@@ -35,6 +35,8 @@ class RegistrarSesionAction
 
     public const CIERRE_APP = 'sesion.cierre_app';
 
+    public const INICIOS = [self::INICIO_PANEL, self::INICIO_RECORDADO, self::INICIO_APP];
+
     private const DEL_PANEL = [self::INICIO_PANEL, self::INICIO_RECORDADO, self::CIERRE_PANEL];
 
     public function ejecutar(Usuario $usuario, string $accion): Auditoria

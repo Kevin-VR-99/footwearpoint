@@ -4,6 +4,7 @@
     $color = match ($estado) {
         'activo' => 'bg-fp-badge-success-bg text-fp-badge-success-fg',
         'suspendido' => 'bg-fp-badge-warning-bg text-fp-badge-warning-fg',
+        'bloqueado' => 'bg-fp-badge-danger-bg text-fp-badge-danger-fg',
         default => 'bg-fp-badge-neutral-bg text-fp-badge-neutral-fg',
     };
 @endphp
