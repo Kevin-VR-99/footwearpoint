@@ -285,4 +285,114 @@ class TG407CambiosUnificadosTest extends TestCase
             ->assertSee('Pedido '.$pedido->folio)
             ->assertSee('Venta '.$venta->folio);
     }
+
+    public function test_asignar_cliente_de_otra_distribuidora_no_modifica_la_venta_y_muestra_error(): void
+    {
+        $ventaSinCliente = $this->venta('VD-TG407-OTRA-DIST', null);
+        $this->assertNull($ventaSinCliente->cliente_directo_id);
+
+        $otraDistribuidoraId = \App\Models\Distribuidora::query()
+            ->where('id', '!=', Tenant::id())
+            ->value('id');
+
+        $this->assertNotNull($otraDistribuidoraId);
+
+        $clienteAjeno = ClienteDirecto::create([
+            'distribuidora_id' => $otraDistribuidoraId,
+            'nombre' => 'Cliente Otra Distribuidora TG407',
+            'telefono' => '3311223344',
+            'estado' => 'activo',
+        ]);
+
+        $pantalla = Livewire::test('cambios.index')
+            ->set('busqueda', $ventaSinCliente->folio)
+            ->call('buscar')
+            ->assertSet('ventaId', $ventaSinCliente->id);
+
+        $pantalla->set('altaClienteDirectoId', (string) $clienteAjeno->id)
+            ->assertSet('errorMsg', 'El cliente seleccionado no es válido.');
+
+        $ventaSinCliente->refresh();
+        $this->assertNull($ventaSinCliente->cliente_directo_id);
+    }
+
+    public function test_asignar_cliente_a_venta_anulada_se_rechaza(): void
+    {
+        $cliente = ClienteDirecto::query()->firstOrFail();
+        $ventaAnulada = $this->venta('VD-TG407-ANULADA', null);
+        $ventaAnulada->update(['estado' => 'anulada']);
+
+        // 1. Al buscar por folio la venta anulada desde el buscador unificado se rechaza con mensaje claro
+        Livewire::test('cambios.index')
+            ->set('busqueda', $ventaAnulada->folio)
+            ->call('buscar')
+            ->assertSet('ventaId', null)
+            ->assertSet('errorBusqueda', 'Esa venta está anulada y no admite cambios.');
+
+        // 2. Si se intenta asignar cliente a una venta anulada, se rechaza y no se modifica
+        $pantalla = Livewire::test('cambios.index')
+            ->call('seleccionarVenta', $ventaAnulada->id);
+
+        $pantalla->set('altaClienteDirectoId', (string) $cliente->id)
+            ->assertSet('errorMsg', 'No se puede asignar un cliente a una venta anulada.');
+
+        $ventaAnulada->refresh();
+        $this->assertNull($ventaAnulada->cliente_directo_id);
+    }
+
+    public function test_buscador_unificado_ped_vd_telefono_y_validacion(): void
+    {
+        $cliente = ClienteDirecto::query()->whereNotNull('telefono')->firstOrFail();
+        $pedido = $this->pedido('PED-TG407-BUSQ');
+        $venta1 = $this->venta('VD-TG407-BUSQ1', $cliente->id);
+        $venta2 = $this->venta('VD-TG407-BUSQ2', $cliente->id);
+
+        $pantalla = Livewire::test('cambios.index');
+
+        // Texto inválido (ni PED- ni VD- ni teléfono de 10 dígitos)
+        $pantalla->set('busqueda', 'texto-no-valido')
+            ->call('buscar')
+            ->assertSet('pedidoEncontradoId', null)
+            ->assertSet('ventaId', null)
+            ->assertSet('errorBusqueda', 'Escribe un folio (PED-/VD-) o un teléfono de 10 dígitos.');
+
+        // Folio de pedido PED-...
+        $pantalla->set('busqueda', $pedido->folio)
+            ->call('buscar')
+            ->assertSet('pedidoEncontradoId', $pedido->id)
+            ->assertSet('errorBusqueda', '')
+            ->assertSee('Pedido '.$pedido->folio);
+
+        // Folio de venta VD-...
+        $pantalla->set('busqueda', $venta1->folio)
+            ->call('buscar')
+            ->assertSet('ventaId', $venta1->id)
+            ->assertSet('errorBusqueda', '')
+            ->assertSee('Venta '.$venta1->folio);
+
+        // Venta anulada por folio VD-...
+        $ventaAnulada = $this->venta('VD-TG407-BUSQ-ANULADA', $cliente->id);
+        $ventaAnulada->update(['estado' => 'anulada']);
+
+        $pantalla->set('busqueda', $ventaAnulada->folio)
+            ->call('buscar')
+            ->assertSet('ventaId', null)
+            ->assertSet('errorBusqueda', 'Esa venta está anulada y no admite cambios.');
+
+        // Teléfono de 10 dígitos lista todas las ventas del cliente para elegir
+        $pantalla->set('busqueda', $cliente->telefono)
+            ->call('buscar')
+            ->assertSet('clienteSeleccionadoId', $cliente->id)
+            ->assertSet('errorBusqueda', '')
+            ->assertSee($venta1->folio)
+            ->assertSee($venta2->folio);
+
+        $this->assertContains($venta1->id, $pantalla->instance()->ventasClienteIds);
+        $this->assertContains($venta2->id, $pantalla->instance()->ventasClienteIds);
+
+        // Cambiar la selección a la segunda venta
+        $pantalla->call('seleccionarVenta', $venta2->id)
+            ->assertSet('ventaId', $venta2->id)
+            ->assertSet('folioVenta', $venta2->folio);
+    }
 }
