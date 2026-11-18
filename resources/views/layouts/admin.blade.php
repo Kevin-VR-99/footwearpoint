@@ -49,6 +49,8 @@
             <nav class="flex-1 space-y-1 overflow-y-auto p-3">
                 <x-panel.enlace-lateral :href="route('admin.dashboard')" :activo="request()->routeIs('admin.dashboard')"
                     icono="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6">Distribuidoras</x-panel.enlace-lateral>
+                <x-panel.enlace-lateral :href="route('admin.usuarios')" :activo="request()->routeIs('admin.usuarios', 'admin.usuarios.*')"
+                    icono="M16 8a4 4 0 11-8 0 4 4 0 018 0zM4 21a8 8 0 0116 0">Usuarios</x-panel.enlace-lateral>
                 <x-panel.enlace-lateral :href="route('admin.planes')" :activo="request()->routeIs('admin.planes')"
                     icono="M3 7h18v10H3zM3 11h18">Planes</x-panel.enlace-lateral>
                 <x-panel.enlace-lateral :href="route('admin.catalogo')" :activo="request()->routeIs('admin.catalogo')"
