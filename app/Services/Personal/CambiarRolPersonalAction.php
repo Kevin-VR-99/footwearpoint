@@ -251,10 +251,8 @@ class CambiarRolPersonalAction
 
         $otro = DistribuidoraStaff::withoutGlobalScopes()
             ->where('distribuidora_id', $distribuidora->id)
-            ->where('tipo', 'administrador')
-            ->where('estado', 'activo')
+            ->administradoresActivos()
             ->where('usuario_id', '!=', $persona->id)
-            ->whereIn('usuario_id', Usuario::query()->select('id')->where('estado', 'activo'))
             ->lockForUpdate()
             ->exists();
 

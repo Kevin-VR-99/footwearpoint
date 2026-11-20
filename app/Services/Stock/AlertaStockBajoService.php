@@ -53,8 +53,7 @@ class AlertaStockBajoService
 
         DistribuidoraStaff::withoutGlobalScopes()
             ->where('distribuidora_id', $stock->distribuidora_id)
-            ->where('tipo', 'administrador')
-            ->where('estado', 'activo')
+            ->administradoresActivos()
             ->whereNotNull('usuario_id')
             ->pluck('usuario_id')
             ->unique()

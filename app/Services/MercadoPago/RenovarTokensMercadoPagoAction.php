@@ -137,8 +137,7 @@ class RenovarTokensMercadoPagoAction
         Tenant::forzar($distribuidoraId, function () use ($distribuidoraId, $configuracion, $titulo, $mensaje, $conCorreo) {
             $administradores = DistribuidoraStaff::with('usuario')
                 ->where('distribuidora_id', $distribuidoraId)
-                ->where('tipo', 'administrador')
-                ->where('estado', 'activo')
+                ->administradoresActivos()
                 ->whereNotNull('usuario_id')
                 ->get();
 

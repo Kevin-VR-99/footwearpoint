@@ -321,7 +321,10 @@ Route::middleware(['auth', 'tenant.team', 'solo.personal'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'tenant.team', 'role:admin_general'])->group(function () {
+// TG-338: 'solo.personal' saca también a un admin general desactivado con la
+// sesión abierta (y en cada acción de Livewire, porque es persistente). Va
+// después del rol para que los demás sigan recibiendo 403.
+Route::middleware(['auth', 'tenant.team', 'role:admin_general', 'solo.personal'])->group(function () {
     Route::livewire('/admin', 'admin.distribuidoras-index')
         ->name('admin.dashboard');
 

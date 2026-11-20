@@ -93,8 +93,7 @@ class NotificarCambioEstadoDistribuidoraAction
         // dentro del contexto de esa distribuidora.
         $administradores = Tenant::forzar($distribuidora->id, fn () => DistribuidoraStaff::with('usuario')
             ->where('distribuidora_id', $distribuidora->id)
-            ->where('tipo', 'administrador')
-            ->where('estado', 'activo')
+            ->administradoresActivos()
             ->orderBy('id')
             ->get());
 

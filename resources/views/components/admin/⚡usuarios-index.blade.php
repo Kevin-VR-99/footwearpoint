@@ -203,6 +203,10 @@ new #[Layout('layouts.admin')] #[Title('Usuarios — Admin')] class extends Comp
         </x-slot:acciones>
     </x-panel.encabezado>
 
+    @if (session('aviso_personal'))
+        <x-panel.alerta tipo="exito" class="mb-4" data-aviso-personal>{{ session('aviso_personal') }}</x-panel.alerta>
+    @endif
+
     @if ($avisoAlta !== '')
         <x-panel.alerta tipo="aviso" class="mb-4" data-aviso-alta>{{ $avisoAlta }}</x-panel.alerta>
     @endif

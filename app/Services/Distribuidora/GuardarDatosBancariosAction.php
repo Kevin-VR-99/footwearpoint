@@ -125,8 +125,7 @@ class GuardarDatosBancariosAction
 
         $administradores = DistribuidoraStaff::with('usuario')
             ->where('distribuidora_id', $config->distribuidora_id)
-            ->where('tipo', 'administrador')
-            ->where('estado', 'activo')
+            ->administradoresActivos()
             ->whereNotNull('usuario_id')
             ->get();
 

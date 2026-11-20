@@ -37,6 +37,10 @@ class AccesoPanelWebService
     public const MENSAJE_CUENTA_DESACTIVADA = 'Tu cuenta de personal está desactivada, así que no puedes entrar al panel. '
         .'Comunícate con el administrador de tu distribuidora para que la reactive.';
 
+    /** TG-338 (K40): la cuenta completa está desactivada (usuarios.estado). */
+    public const MENSAJE_CUENTA_INACTIVA = 'Tu cuenta está desactivada, así que no puedes entrar. '
+        .'Si crees que es un error, comunícate con quien administra tu cuenta.';
+
     /** TG-196 (G5): lo que ve el personal de una distribuidora suspendida. */
     public const MENSAJE_DISTRIBUIDORA_SUSPENDIDA = 'Tu distribuidora está suspendida, así que por ahora no puede usar '
         .'FootwearPoint. Tu información se conserva. Comunícate con FootwearPoint para reactivarla.';
@@ -66,6 +70,12 @@ class AccesoPanelWebService
      */
     public function motivoSinAcceso(Usuario $usuario): ?string
     {
+        // TG-338: el login ya lo revisaba, pero una sesión abierta (o la
+        // cookie de recordarme) seguía entrando con la cuenta desactivada.
+        if ($usuario->estado !== 'activo') {
+            return self::MENSAJE_CUENTA_INACTIVA;
+        }
+
         $staff = $this->staffActivo($usuario);
 
         if ($staff === null) {

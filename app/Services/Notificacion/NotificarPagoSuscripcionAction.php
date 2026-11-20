@@ -50,8 +50,7 @@ class NotificarPagoSuscripcionAction
 
             DistribuidoraStaff::query()
                 ->where('distribuidora_id', $pago->distribuidora_id)
-                ->where('tipo', 'administrador')
-                ->where('estado', 'activo')
+                ->administradoresActivos()
                 ->whereNotNull('usuario_id')
                 ->pluck('usuario_id')
                 ->each(fn ($usuarioId) => Notificacion::create([
@@ -106,8 +105,7 @@ class NotificarPagoSuscripcionAction
     {
         $administradores = DistribuidoraStaff::with('usuario')
             ->where('distribuidora_id', $distribuidora->id)
-            ->where('tipo', 'administrador')
-            ->where('estado', 'activo')
+            ->administradoresActivos()
             ->orderBy('id')
             ->get();
 

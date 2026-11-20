@@ -4,7 +4,10 @@ use App\Services\Perfil\CambioContactoAction;
 use App\Services\Personal\ActualizarPersonalAction;
 use App\Services\Personal\CambiarCorreoPersonalAction;
 use App\Services\Personal\CambiarRolPersonalAction;
+use App\Services\Personal\BorrarPersonalAction;
+use App\Services\Personal\DesactivarPersonalAction;
 use App\Services\Personal\RestablecerAccesoPersonalAction;
+use App\Services\Personal\SalvaguardasPersonal;
 use App\Support\PersonalPlataforma;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +22,8 @@ use Livewire\WithPagination;
 /*
 | TG-335 (K37) - Ficha de una persona del personal. TG-336 (K38) - Edición de
 | nombre, teléfono, dirección y foto. TG-337 (K39) - Correo, rol y contraseña,
-| con la contraseña del admin general.
+| con la contraseña del admin general. TG-338 (K40) - Desactivar, reactivar y
+| borrar.
 |
 | Un cliente no tiene ficha aquí: su id responde 404.
 */
@@ -117,7 +121,7 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
 
     public function abrirCambio(string $tipo): void
     {
-        abort_unless(in_array($tipo, ['correo', 'rol', 'password'], true), 404);
+        abort_unless(in_array($tipo, ['correo', 'rol', 'password', 'desactivar', 'reactivar', 'borrar'], true), 404);
 
         $this->limpiarCambio();
         $this->asignacion = isset($this->roles[0]) ? $this->roles[0]['rol'].'|'.$this->roles[0]['equipo'] : '';
@@ -148,6 +152,12 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
         $admin = Auth::user();
         $persona = $this->personaObligatoria();
 
+        if ($this->cambio === 'borrar') {
+            $this->borrarCuenta($admin, $persona);
+
+            return;
+        }
+
         try {
             $mensaje = match ($this->cambio) {
                 'correo' => app(CambiarCorreoPersonalAction::class)
@@ -155,6 +165,8 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
                 'rol' => app(CambiarRolPersonalAction::class)
                     ->ejecutar($admin, $persona, $this->only(['asignacion', 'rol_nuevo', 'distribuidora_nueva', 'confirmar_consecuencias', 'password_confirmacion'])),
                 'password' => $this->restablecerAcceso($admin, $persona),
+                'desactivar' => app(DesactivarPersonalAction::class)->desactivar($admin, $persona, $this->password_confirmacion),
+                'reactivar' => app(DesactivarPersonalAction::class)->reactivar($admin, $persona, $this->password_confirmacion),
                 default => abort(404),
             };
         } finally {
@@ -164,6 +176,25 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
         $this->limpiarCambio();
         unset($this->persona, $this->roles, $this->conDireccion, $this->movimientos, $this->correoPendiente);
         $this->dispatch('guardado', mensaje: $mensaje);
+    }
+
+    /** La ficha ya no existe: regresa al listado con el aviso. */
+    private function borrarCuenta($admin, $persona): void
+    {
+        try {
+            $mensaje = app(BorrarPersonalAction::class)->ejecutar($admin, $persona, $this->password_confirmacion);
+        } finally {
+            $this->password_confirmacion = '';
+        }
+
+        session()->flash('aviso_personal', $mensaje);
+        $this->redirect(route('admin.usuarios'));
+    }
+
+    /** @return list<string> */
+    public function asignacionesTexto(): array
+    {
+        return app(SalvaguardasPersonal::class)->asignaciones($this->personaObligatoria());
     }
 
     private function restablecerAcceso($admin, $persona): string
@@ -273,6 +304,12 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
             <x-panel.boton variante="secundario" wire:click="abrirCambio('correo')" data-cambiar="correo">Cambiar correo</x-panel.boton>
             <x-panel.boton variante="secundario" wire:click="abrirCambio('rol')" data-cambiar="rol">Cambiar rol</x-panel.boton>
             <x-panel.boton variante="secundario" wire:click="abrirCambio('password')" data-cambiar="password">Restablecer contraseña</x-panel.boton>
+            @if ($persona->estado === 'activo')
+                <x-panel.boton variante="peligro" wire:click="abrirCambio('desactivar')" data-cambiar="desactivar">Desactivar</x-panel.boton>
+            @else
+                <x-panel.boton variante="secundario" wire:click="abrirCambio('reactivar')" data-cambiar="reactivar">Reactivar</x-panel.boton>
+            @endif
+            <x-panel.boton variante="peligro" wire:click="abrirCambio('borrar')" data-cambiar="borrar">Borrar</x-panel.boton>
         </x-slot:acciones>
     </x-panel.encabezado>
 
@@ -404,7 +441,8 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
     @endif
 
     @if ($cambio !== '')
-        @php($titulos = ['correo' => 'Cambiar correo', 'rol' => 'Cambiar rol', 'password' => 'Restablecer contraseña'])
+        @php($titulos = ['correo' => 'Cambiar correo', 'rol' => 'Cambiar rol', 'password' => 'Restablecer contraseña',
+            'desactivar' => 'Desactivar cuenta', 'reactivar' => 'Reactivar cuenta', 'borrar' => 'Borrar cuenta'])
         <x-panel.modal :titulo="$titulos[$cambio]" :subtitulo="$nombrePersona" cerrar="cerrarCambio" formulario="guardarCambio"
             ancho="max-w-xl" class="fp-formulario" data-modal="cambio-{{ $cambio }}">
             <div class="space-y-4">
@@ -456,7 +494,7 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
                         </x-panel.alerta>
                         @error('confirmar_consecuencias') <p class="fp-campo-error" role="alert">{{ $message }}</p> @enderror
                     @endif
-                @else
+                @elseif ($cambio === 'password')
                     <fieldset class="space-y-2">
                         <legend class="fp-campo-etiqueta">¿Cómo va a entrar?</legend>
                         <label class="flex items-start gap-2 text-sm text-slate-700">
@@ -469,7 +507,29 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
                         </label>
                         @error('modo_password') <p class="fp-campo-error" role="alert">{{ $message }}</p> @enderror
                     </fieldset>
+                @elseif ($cambio === 'desactivar')
+                    <x-panel.alerta tipo="peligro" data-advertencia-baja>
+                        <p class="font-semibold">Ya no podrá entrar al panel ni a la app.</p>
+                        <p class="mt-1">Se cierran sus sesiones y le llega un aviso por correo. Su historial se conserva y puedes reactivarla después.</p>
+                        @if (count($this->asignacionesTexto()) > 1)
+                            <p class="mt-2">Pierde el acceso en todas sus asignaciones:</p>
+                            <ul class="mt-1 list-disc pl-5">
+                                @foreach ($this->asignacionesTexto() as $texto)
+                                    <li>{{ $texto }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </x-panel.alerta>
+                @elseif ($cambio === 'reactivar')
+                    <p class="text-sm text-slate-600">Podrá volver a entrar con sus asignaciones de siempre. Le llega un aviso por correo.</p>
+                @elseif ($cambio === 'borrar')
+                    <x-panel.alerta tipo="peligro" data-advertencia-borrar>
+                        <p class="font-semibold">La cuenta se borra para siempre.</p>
+                        <p class="mt-1">Solo se puede si nunca tuvo movimientos. Si tiene historial, desactívala en su lugar.</p>
+                    </x-panel.alerta>
                 @endif
+
+                @error('baja') <p class="fp-campo-error" role="alert" data-error-baja>{{ $message }}</p> @enderror
 
                 <x-ui.campo etiqueta="Tu contraseña" para="cambio-confirmacion" error="password_confirmacion"
                     ayuda="Para confirmar que eres tú." requerido>
