@@ -75,6 +75,9 @@ final class EtiquetasAuditoria
         'personal.correo_solicitado'      => 'Cambio de correo del personal solicitado',
         'personal.correo_cambiado'        => 'Correo del personal cambiado',
         'personal.rol_cambiado'           => 'Rol del personal cambiado',
+        'personal.desactivado'            => 'Cuenta de personal desactivada',
+        'personal.reactivado'             => 'Cuenta de personal reactivada',
+        'personal.borrado'                => 'Cuenta de personal borrada',
         // Seguridad
         'password.enlace_restablecimiento' => 'Enlace para restablecer contraseña enviado',
         'password.temporal_generada'      => 'Contraseña temporal generada',
