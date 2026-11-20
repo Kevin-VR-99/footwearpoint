@@ -110,8 +110,10 @@ return [
             'report' => false,
         ],
 
-        // Comprobante de transferencia del cliente. Disco local privado:
-        // no se publica y no usa el bucket de las fotos.
+        // Comprobante de transferencia del cliente, hasta TG-411. Los nuevos
+        // van a COMPROBANTES_DISK (config/comprobantes.php); este disco se
+        // queda solo para las filas viejas que guardaron 'comprobantes'.
+        // En Railway su carpeta se borra en cada despliegue: no se migra.
         'comprobantes' => [
             'driver' => 'local',
             'root' => storage_path('app/private/comprobantes'),
