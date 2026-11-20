@@ -697,7 +697,13 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                                 <x-ui.estado-correo :usuario="$empleado->usuario" />
                             </td>
                             <td class="whitespace-nowrap" data-etiqueta="Teléfono">{{ $empleado->usuario?->telefono ?? '—' }}</td>
-                            <td><x-personas.estado :estado="$empleado->estado" /></td>
+                            <td>
+                                <x-personas.estado :estado="$empleado->estado" />
+                                {{-- TG-338: la baja de la cuenta completa no cambia esta fila. --}}
+                                @if ($empleado->usuario && $empleado->usuario->estado !== 'activo')
+                                    <x-panel.insignia variante="peligro" class="mt-1" data-cuenta-desactivada>Cuenta desactivada</x-panel.insignia>
+                                @endif
+                            </td>
                             <td class="fp-celda-acciones">
                                 <div class="fp-acciones-persona">
                                     <x-personas.accion icono="lapiz" etiqueta="Editar" :persona="$nombreEmpleado"

@@ -31,7 +31,11 @@ class SoloPersonalPanel
     {
     }
 
-    public function handle(Request $request, Closure $next): Response
+    /**
+     * Devuelve mixed por lo mismo que LegalesVigentes: en las páginas de
+     * Livewire, redirect() devuelve el Redirector de Livewire.
+     */
+    public function handle(Request $request, Closure $next): mixed
     {
         $usuario = Auth::user();
         $motivo = $usuario ? $this->acceso->motivoSinAcceso($usuario) : null;
