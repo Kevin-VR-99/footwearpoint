@@ -25,6 +25,19 @@ class DistribuidoraStaff extends Model
         'permisos_finos' => 'array',
     ];
 
+    /**
+     * TG-338 (K40): administradores que de verdad pueden actuar. Desactivar es
+     * la cuenta completa (usuarios.estado) y no toca esta fila, así que mirar
+     * solo distribuidora_staff.estado seguiría avisándole a una cuenta apagada.
+     */
+    public function scopeAdministradoresActivos($consulta)
+    {
+        return $consulta
+            ->where('distribuidora_staff.tipo', 'administrador')
+            ->where('distribuidora_staff.estado', 'activo')
+            ->whereIn('distribuidora_staff.usuario_id', Usuario::query()->select('id')->where('estado', 'activo'));
+    }
+
     public function distribuidora()
     {
         return $this->belongsTo(Distribuidora::class, 'distribuidora_id');

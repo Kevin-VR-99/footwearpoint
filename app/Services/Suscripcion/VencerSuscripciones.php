@@ -233,8 +233,7 @@ class VencerSuscripciones
     {
         $administradores = DistribuidoraStaff::with('usuario')
             ->where('distribuidora_id', $distribuidora->id)
-            ->where('tipo', 'administrador')
-            ->where('estado', 'activo')
+            ->administradoresActivos()
             ->orderBy('id')
             ->get();
 

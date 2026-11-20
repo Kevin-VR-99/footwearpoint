@@ -41,8 +41,7 @@ class ActualizarAdminDistribuidoraAction
     {
         $staff = Tenant::forzar((int) $distribuidora->id, fn () => DistribuidoraStaff::query()
             ->where('distribuidora_id', $distribuidora->id)
-            ->where('tipo', 'administrador')
-            ->where('estado', 'activo')
+            ->administradoresActivos()
             ->orderBy('id')
             ->first());
 
