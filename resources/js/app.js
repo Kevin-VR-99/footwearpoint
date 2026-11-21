@@ -1,6 +1,7 @@
 import './bootstrap';
 import iniciarConsentimiento from './consentimiento';
 import iniciarMapaConPermiso from './mapa-con-permiso';
+import './editor-recorte';
 
 // TG-401 (A38): va de primero. Quien cargue un tercero necesita poder
 // preguntar por window.fpConsentimiento desde que arranca.

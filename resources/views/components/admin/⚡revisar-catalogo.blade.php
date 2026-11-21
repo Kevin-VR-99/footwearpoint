@@ -13,7 +13,10 @@ use App\Models\Marca;
 use App\Services\Ia\AprobarProductosImportadosAction;
 use App\Services\Ia\ColoresDelCatalogo;
 use App\Services\Ia\CorregirProductoImportadoAction;
+use App\Services\Ia\PaginaDelCatalogo;
 use App\Services\Ia\ProponerRecortesDeFotosAction;
+use App\Services\Ia\RecortarFotoDelCatalogo;
+use Illuminate\Http\File;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
@@ -473,6 +476,158 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
     }
 
     /** Siempre dentro de ESTA importación: un id de otra no se encuentra. */
+    // --- TG-377 (A17): corregir el recorte a mano --------------------------
+
+    /**
+     * Qué foto se está recortando y con qué recuadro.
+     *
+     * El recuadro va en fracciones de 0 a 1 de la página, igual que lo
+     * devuelve la IA, para que no dependa de a qué tamaño se vea la imagen en
+     * la pantalla de cada quien.
+     */
+    #[Locked]
+    public ?int $recortandoDe = null;
+
+    #[Locked]
+    public ?int $recortePagina = null;
+
+    /** @var array{x: float, y: float, ancho: float, alto: float} */
+    public array $recorteCaja = ['x' => 0.0, 'y' => 0.0, 'ancho' => 0.0, 'alto' => 0.0];
+
+    /**
+     * Abre el editor con el recuadro que produjo la foto que se está viendo.
+     *
+     * No con el crudo de la IA: con el que de verdad se usó, aire incluido.
+     * Si no, el recuadro saldría más apretado que la foto de al lado.
+     */
+    public function ajustarRecorte(int $id, RecortarFotoDelCatalogo $recortador): void
+    {
+        $fila = $this->fila($id);
+        $datos = $fila->datos_extraidos ?? [];
+        $pagina = (int) ($datos['pagina'] ?? 0);
+
+        if ($pagina < 1) {
+            $this->mensaje = 'Ese producto no dice de qué página salió, así que no se puede recortar a mano.';
+            $this->esError = true;
+
+            return;
+        }
+
+        $caja = $recortador->cajaFinal($datos);
+
+        // Sin recuadro de la IA se empieza por el centro de la página: es
+        // mejor que no dejar entrar, porque justo esos son los que hay que
+        // arreglar a mano.
+        [$x, $y, $ancho, $alto] = $caja ?? [0.3, 0.3, 0.4, 0.4];
+
+        $this->recortandoDe = $id;
+        $this->recortePagina = $pagina;
+        $this->recorteCaja = ['x' => $x, 'y' => $y, 'ancho' => $ancho, 'alto' => $alto];
+    }
+
+    public function cerrarRecorte(): void
+    {
+        $this->recortandoDe = null;
+        $this->recortePagina = null;
+    }
+
+    /**
+     * Recorta con el recuadro que dejó la persona y lo guarda.
+     *
+     * Queda confirmada de una vez: alguien la encuadró a mano, no hay nada
+     * más que revisar. Es la misma regla que al subir una foto.
+     */
+    public function guardarRecorte(PaginaDelCatalogo $paginas, RecortarFotoDelCatalogo $recortador): void
+    {
+        $fila = $this->fila($this->recortandoDe);
+        $caja = $this->cajaDeLaPantalla();
+
+        if ($caja === null) {
+            $this->mensaje = 'Ese recuadro es demasiado chico. Encuadra el zapato y vuelve a guardar.';
+            $this->esError = true;
+
+            return;
+        }
+
+        $pagina = $paginas->enDiscoLocal($fila->importacion, (int) $this->recortePagina);
+
+        if ($pagina === null) {
+            $this->mensaje = 'No se pudo dibujar esa página del catálogo. Inténtalo otra vez.';
+            $this->esError = true;
+
+            return;
+        }
+
+        try {
+            // Margen 0: el recuadro ya es el que la persona quiere, no hay que
+            // agregarle aire por encima.
+            $recorte = $recortador->recortar($pagina, $caja, 0.0);
+        } finally {
+            @unlink($pagina);
+        }
+
+        if ($recorte === null) {
+            $this->mensaje = 'No se pudo recortar con ese recuadro. Inténtalo otra vez.';
+            $this->esError = true;
+
+            return;
+        }
+
+        // El bucket puede fallar por fuera de nosotros (credenciales, red). Si
+        // se deja escapar la excepción, el editor se queda mudo: no se guarda
+        // y tampoco se dice por qué, que es la peor de las dos cosas.
+        try {
+            $ruta = Storage::disk('s3')->putFile(ProponerRecortesDeFotosAction::CARPETA, new File($recorte));
+        } catch (\Throwable $e) {
+            report($e);
+            $ruta = false;
+        } finally {
+            @unlink($recorte);
+        }
+
+        if ($ruta === false) {
+            $this->mensaje = 'No se pudo guardar la foto. Inténtalo otra vez.';
+            $this->esError = true;
+
+            return;
+        }
+
+        $fila->update([
+            'foto_propuesta_url' => Storage::disk('s3')->url($ruta),
+            'foto_estado'        => 'confirmada',
+        ]);
+
+        // «foto» deja de ser dudoso: una persona acaba de encuadrarla.
+        $dudosos = array_values(array_diff($fila->campos_dudosos ?? [], ['foto']));
+        $fila->update(['campos_dudosos' => $dudosos]);
+
+        $this->cerrarRecorte();
+        $this->mensaje = 'Recorte guardado. Entrará al catálogo cuando apruebes el producto.';
+        $this->esError = false;
+    }
+
+    /**
+     * El recuadro de la pantalla, en el formato que entiende el recortador.
+     *
+     * Los números llegan del navegador, así que se revisan aquí: se acomodan
+     * dentro de la página y se rechaza lo que no da ni para una miniatura.
+     *
+     * @return array<string, float>|null
+     */
+    private function cajaDeLaPantalla(): ?array
+    {
+        $x = max(0.0, min(1.0, (float) ($this->recorteCaja['x'] ?? 0)));
+        $y = max(0.0, min(1.0, (float) ($this->recorteCaja['y'] ?? 0)));
+        $ancho = min((float) ($this->recorteCaja['ancho'] ?? 0), 1.0 - $x);
+        $alto = min((float) ($this->recorteCaja['alto'] ?? 0), 1.0 - $y);
+
+        if ($ancho < 0.02 || $alto < 0.02) {
+            return null;
+        }
+
+        return ['foto_x' => $x, 'foto_y' => $y, 'foto_ancho' => $ancho, 'foto_alto' => $alto];
+    }
+
     private function fila(?int $id): ProductoImportadoStaging
     {
         return ProductoImportadoStaging::where('importacion_id', $this->importacionId)
@@ -815,6 +970,13 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                                     class="fp-accion w-full">Usar esta</button>
                             @endif
 
+                            {{-- TG-377 (A17): encuadrar a mano sobre la página del
+                                 catálogo. Va antes de "Subir otra" porque casi
+                                 siempre la foto buena está en la página: lo que
+                                 falla es dónde se cortó, no que no exista. --}}
+                            <button type="button" wire:click="ajustarRecorte({{ $producto->id }})"
+                                class="fp-accion w-full">Ajustar recorte</button>
+
                             <button type="button" wire:click="pedirFoto({{ $producto->id }})"
                                 class="fp-accion w-full">{{ $producto->foto_propuesta_url ? 'Subir otra' : 'Subir foto' }}</button>
 
@@ -839,6 +1001,61 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                     @endif
                 </td>
             </tr>
+
+            {{-- TG-377 (A17): encuadrar el recorte sobre la página del catálogo.
+
+                 La página se pide a una ruta privada que la vuelve a dibujar
+                 (al importar se borra el temporal). El recuadro se mueve con
+                 Alpine en fracciones de la página, no en pixeles, para que
+                 dé igual a qué tamaño se esté viendo. --}}
+            @if ($recortandoDe === $producto->id)
+                <tr>
+                    <td colspan="9" class="bg-fp-page px-4 py-4">
+                        <div x-data="editorDeRecorte({ x: {{ $recorteCaja['x'] }}, y: {{ $recorteCaja['y'] }}, ancho: {{ $recorteCaja['ancho'] }}, alto: {{ $recorteCaja['alto'] }} })"
+                             x-on:pointermove.window="mover($event)" x-on:pointerup.window="soltar()"
+                             data-editor-recorte>
+                            <p class="mb-2 text-sm text-slate-700">
+                                Arrastra el recuadro para moverlo, o jala una esquina para estirarlo.
+                                Lo que quede dentro es la foto del producto.
+                            </p>
+
+                            <div class="relative mx-auto max-w-3xl touch-none select-none overflow-hidden rounded-lg border border-slate-200 bg-white"
+                                 x-ref="lienzo">
+                                <img src="{{ route('admin.catalogos.pagina', ['importacion' => $importacionId, 'pagina' => $recortePagina]) }}"
+                                     alt="Página {{ $recortePagina }} del catálogo"
+                                     class="block w-full select-none" draggable="false">
+
+                                <div class="absolute cursor-move border-2 border-fp-primary bg-fp-primary/10"
+                                     :style="estilo" x-on:pointerdown.prevent="empezar($event, 'mover')">
+                                    @foreach (['nw' => 'top-0 left-0 -translate-x-1/2 -translate-y-1/2 cursor-nwse-resize',
+                                               'ne' => 'top-0 right-0 translate-x-1/2 -translate-y-1/2 cursor-nesw-resize',
+                                               'sw' => 'bottom-0 left-0 -translate-x-1/2 translate-y-1/2 cursor-nesw-resize',
+                                               'se' => 'bottom-0 right-0 translate-x-1/2 translate-y-1/2 cursor-nwse-resize'] as $esquina => $clases)
+                                        <span class="absolute h-4 w-4 rounded-full border-2 border-white bg-fp-primary shadow {{ $clases }}"
+                                              x-on:pointerdown.prevent.stop="empezar($event, '{{ $esquina }}')"
+                                              data-esquina="{{ $esquina }}"></span>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <div class="mt-3 flex flex-wrap items-center gap-2">
+                                {{-- Para afinar sin pulso fino, y para quien use solo teclado. --}}
+                                <button type="button" x-on:click="aire(0.05)" class="fp-btn fp-btn-sm fp-btn-secundario">Más aire</button>
+                                <button type="button" x-on:click="aire(-0.05)" class="fp-btn fp-btn-sm fp-btn-secundario">Menos aire</button>
+
+                                <span class="flex-1"></span>
+
+                                <button type="button" x-on:click="guardar()" class="fp-btn fp-btn-sm fp-btn-primario"
+                                        wire:loading.attr="disabled" wire:target="guardarRecorte">
+                                    <span wire:loading.remove wire:target="guardarRecorte">Guardar recorte</span>
+                                    <span wire:loading wire:target="guardarRecorte">Recortando…</span>
+                                </button>
+                                <button type="button" wire:click="cerrarRecorte" class="fp-btn fp-btn-sm fp-btn-secundario">Cancelar</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            @endif
 
             @if ($subiendoFotoDe === $producto->id)
                 <tr>

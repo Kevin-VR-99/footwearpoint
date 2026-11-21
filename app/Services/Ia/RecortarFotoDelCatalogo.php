@@ -26,15 +26,35 @@ class RecortarFotoDelCatalogo
     private const MINIMO = 0.06;
 
     /**
+     * TG-377 (A17) — Aire alrededor del recuadro que propone la IA.
+     *
+     * El prompt le pide el recuadro «pegado a su contorno» y, ante la duda,
+     * que recorte DE MENOS. Esa instrucción existe para que no entre el
+     * letrero del precio que suele ir al lado, y funciona: el problema es que
+     * lo paga el borde del zapato, que sale cortado.
+     *
+     * En vez de pelearse con el prompt (que cuesta volver a leer el catálogo
+     * entero), se le devuelve el aire aquí: 8% del tamaño del propio recuadro
+     * por cada lado. Proporcional y no fijo, para que a un zapato chico le
+     * toque poco aire y a uno grande más.
+     *
+     * Por qué 8 y no más: el letrero vive pegado a la foto, así que cada
+     * punto de más acerca el recorte al texto. Ocho basta para descruzar un
+     * contorno sin alcanzar el letrero; se midió antes de dejarlo (ver el
+     * comando catalogo:medir-recortes).
+     */
+    private const MARGEN = 0.08;
+
+    /**
      * Devuelve la ruta del PNG recortado, o null si el recuadro no sirve.
      *
      * Quien llama se encarga de borrar el archivo.
      *
      * @param  array<string, mixed>  $datos  lo que leyó la IA de ese producto
      */
-    public function recortar(string $rutaPagina, array $datos): ?string
+    public function recortar(string $rutaPagina, array $datos, ?float $margen = null): ?string
     {
-        $caja = $this->caja($datos);
+        $caja = $this->cajaFinal($datos, $margen);
 
         if ($caja === null) {
             return null;
@@ -91,7 +111,40 @@ class RecortarFotoDelCatalogo
     }
 
     /**
-     * El recuadro, ya comprobado, o null.
+     * El recuadro con su aire, sin salirse de la página.
+     *
+     * Va DESPUÉS de los rechazos a propósito: un recuadro demasiado chico se
+     * descarta por lo que la IA dijo, no por lo que mida después de inflarlo.
+     * Si no fuera así, el aire rescataría recuadros que apuntan a un logo.
+     *
+     * @return array{0: float, 1: float, 2: float, 3: float}
+     */
+    private function conAire(float $x, float $y, float $ancho, float $alto, float $margen): array
+    {
+        if ($margen <= 0.0) {
+            return [$x, $y, $ancho, $alto];
+        }
+
+        $aireX = $ancho * $margen;
+        $aireY = $alto * $margen;
+
+        // Los bordes de la página mandan: si el zapato ya estaba pegado al
+        // borde, por ese lado no hay aire que darle.
+        $derecha = min(1.0, $x + $ancho + $aireX);
+        $abajo = min(1.0, $y + $alto + $aireY);
+        $x = max(0.0, $x - $aireX);
+        $y = max(0.0, $y - $aireY);
+
+        return [$x, $y, $derecha - $x, $abajo - $y];
+    }
+
+    /**
+     * El recuadro final, ya comprobado y con su aire, o null.
+     *
+     * Es público porque el editor de recortes (TG-377) tiene que arrancar
+     * EXACTAMENTE del mismo recuadro que produjo la foto que se está viendo.
+     * Si arrancara del crudo de la IA, el recuadro saldría más apretado que
+     * la foto de al lado y nadie entendería por qué.
      *
      * Se revisa de verdad y no por desconfianza teórica: son cuatro números
      * que llegan de un modelo, y un recuadro que se sale de la página o que
@@ -100,7 +153,7 @@ class RecortarFotoDelCatalogo
      * @param  array<string, mixed>  $datos
      * @return array{0: float, 1: float, 2: float, 3: float}|null
      */
-    private function caja(array $datos): ?array
+    public function cajaFinal(array $datos, ?float $margen = null): ?array
     {
         $valores = [];
 
@@ -139,6 +192,6 @@ class RecortarFotoDelCatalogo
             return null;
         }
 
-        return [$x, $y, $ancho, $alto];
+        return $this->conAire($x, $y, $ancho, $alto, $margen ?? self::MARGEN);
     }
 }
