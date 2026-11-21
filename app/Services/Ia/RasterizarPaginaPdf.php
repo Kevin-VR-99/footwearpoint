@@ -33,10 +33,24 @@ class RasterizarPaginaPdf
     public function disponible(): bool
     {
         if ($this->hayBinario === null) {
-            // pdftoppm -v escribe la versión en la salida de error y devuelve
-            // 0 en unas versiones y 99 en otras; lo que importa es que el
-            // binario exista y conteste.
-            $this->hayBinario = Process::timeout(10)->run(['pdftoppm', '-v'])->exitCode() !== null;
+            // TG-377 (A17): se busca el banner de versión, no un código de
+            // salida. pdftoppm -v devuelve 0 en unas versiones y 99 en otras,
+            // así que por código no se puede distinguir.
+            //
+            // Antes esto era exitCode() !== null, y daba TRUE en una máquina
+            // SIN poppler: un binario que no existe también contesta, con
+            // código 1. Por eso el aviso «sin pdftoppm» nunca salía en local
+            // y no había forma de entender por qué no se proponían fotos.
+            //
+            // No basta con buscar «pdftoppm» a secas: en Windows el error por
+            // comando desconocido también trae esa palabra. El banner real
+            // dice «pdftoppm version 24.02.0», y eso solo lo escribe él.
+            $prueba = Process::timeout(10)->run(['pdftoppm', '-v']);
+
+            $this->hayBinario = (bool) preg_match(
+                '/pdftoppm\s+version/i',
+                $prueba->output().' '.$prueba->errorOutput()
+            );
         }
 
         return $this->hayBinario;
