@@ -139,18 +139,24 @@
         su horario y sus productos. Esos son datos del negocio que la distribuidora decide publicar.
     </p>
     <p>
-        La tienda muestra un <strong>mapa de Google Maps</strong> con la ubicación de la distribuidora. Al cargar
-        el mapa, tu navegador se conecta directamente con Google, que recibe tu dirección IP y puede usar sus
-        propias cookies conforme a su aviso de privacidad. FootwearPoint no recibe datos tuyos a través del mapa.
-        Los botones para ver la ruta o abrir el mapa te llevan al sitio de Google.
+        La tienda puede mostrar un <strong>mapa de Google Maps</strong> con la ubicación de la distribuidora.
+        <strong>El mapa no se carga solo:</strong> en su lugar aparece un aviso con un botón, y hasta que tú lo
+        presionas tu navegador no se conecta con Google. Si lo permites, Google recibe tu dirección IP y puede
+        usar sus propias cookies conforme a su aviso de privacidad. FootwearPoint no recibe datos tuyos a través
+        del mapa. Los botones para ver la ruta o abrir el mapa son enlaces: solo abren el sitio de Google si tú
+        los tocas. Puedes cambiar tu decisión cuando quieras desde «Preferencias de cookies», al pie de la página.
     </p>
 
     <h2 id="aviso-cookies" class="fp-legal-titulo">{{ $titulo('aviso-cookies') }}</h2>
     <p>
         El sitio web usa solo <strong>cookies técnicas</strong>, necesarias para funcionar: la de tu sesión, la de
-        protección contra falsificación de peticiones (CSRF) y, en el panel de las distribuidoras, una para
-        recordar tu inicio de sesión. <strong>No usamos cookies de analítica, de publicidad ni de rastreo.</strong>
-        Si borras las cookies desde tu navegador, tendrás que volver a iniciar sesión.
+        protección contra falsificación de peticiones (CSRF), en el panel de las distribuidoras una para
+        recordar tu inicio de sesión, y una más que guarda <strong>si permites o no el contenido de terceros</strong>,
+        para no volver a preguntártelo cada vez. Esa última dura seis meses y puedes cambiarla desde
+        «Preferencias de cookies», al pie de la página.
+        <strong>No usamos cookies de analítica, de publicidad ni de rastreo.</strong>
+        Si borras las cookies desde tu navegador, tendrás que volver a iniciar sesión y se te volverá a preguntar
+        por el contenido de terceros.
     </p>
     <p>
         El sitio guarda en tu navegador una copia de los archivos que no cambian (como el logotipo) y de la
@@ -164,11 +170,17 @@
         datos por cuenta nuestra (encargados), y que algunas veces lo hacen fuera de México:
     </p>
     <ul class="list-disc pl-5 space-y-1">
-        <li><strong>Railway:</strong> servidores y base de datos de la plataforma, donde también se guardan los comprobantes de transferencia.</li>
-        <li><strong>Cloudflare R2:</strong> almacenamiento de fotos, logotipos, catálogos, exportaciones y respaldos.</li>
+        <li><strong>Railway:</strong> servidores y base de datos de la plataforma.</li>
+        <li><strong>Cloudflare R2:</strong> almacenamiento de fotos, logotipos, catálogos, exportaciones, respaldos y comprobantes de transferencia.</li>
         <li><strong>Google:</strong> envío de correos del sistema (Gmail) y de notificaciones push (Firebase Cloud Messaging), que recibe el identificador de tu celular y el texto del aviso.</li>
         <li><strong>Anthropic:</strong> lectura con inteligencia artificial de los catálogos de fábrica para importar productos. Solo recibe el catálogo y las fotos de los productos, no datos de personas.</li>
     </ul>
+    <p>
+        <strong>El mapa de Google Maps no entra en esa lista.</strong> Google no trata esos datos por cuenta
+        nuestra: cuando permites el mapa, tu navegador se conecta directamente con Google y es Google quien
+        recibe tu dirección IP. Nosotros no intervenimos en esa conexión ni recibimos nada de ella. Por eso el
+        mapa solo se carga si tú lo permites, y puedes retirar ese permiso desde «Preferencias de cookies».
+    </p>
     <p>
         Además, para cobrar, el monto y la referencia del pago se comunican a <strong>Mercado Pago</strong>, que
         trata los datos que tú escribes en su sitio conforme a su propio aviso de privacidad. Esa comunicación, y
@@ -212,7 +224,8 @@
     </p>
     <p>
         Sin escribirnos, puedes apagar las notificaciones push desde los ajustes de tu celular (los avisos
-        seguirán en la bandeja de la app) y borrar las cookies desde tu navegador.
+        seguirán en la bandeja de la app), cambiar tu permiso para el contenido de terceros desde
+        «Preferencias de cookies», al pie de la página, y borrar las cookies desde tu navegador.
     </p>
 
     <h2 id="aviso-seguridad" class="fp-legal-titulo">{{ $titulo('aviso-seguridad') }}</h2>

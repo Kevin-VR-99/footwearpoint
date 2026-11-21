@@ -24,9 +24,11 @@ return [
     'documentos' => [
         'aviso_privacidad' => [
             'nombre' => 'Aviso de privacidad',
-            // TG-322 (K23): aviso alineado al sistema y a la LFPDPPP vigente.
-            'version' => '1.3',
-            'fecha_actualizacion' => '12 de noviembre de 2026',
+            // TG-402 (A39): el mapa de Google solo con permiso, la cookie del
+            // consentimiento, y los comprobantes de transferencia ahora en R2
+            // (TG-411). Antes, TG-322 (K23): aviso alineado al sistema.
+            'version' => '1.4',
+            'fecha_actualizacion' => '21 de noviembre de 2026',
             'ruta' => 'aviso-privacidad',
             'vista' => 'components/legales/aviso-privacidad.blade.php',
         ],
