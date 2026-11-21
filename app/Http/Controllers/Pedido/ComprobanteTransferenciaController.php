@@ -43,6 +43,8 @@ class ComprobanteTransferenciaController extends Controller
         $pedido = $this->pedido($id);
         $comprobante = ComprobanteTransferencia::query()->where('pedido_id', $pedido->id)->first();
 
+        // TG-411: se lee del disco que guardó la fila (R2 privado o el local
+        // viejo) y lo sirve el servidor; nunca se manda una URL del bucket.
         abort_if($comprobante === null || ! Storage::disk($comprobante->disco)->exists($comprobante->ruta), 404);
 
         return Storage::disk($comprobante->disco)->download($comprobante->ruta, $comprobante->nombre_original, [

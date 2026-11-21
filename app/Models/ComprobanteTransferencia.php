@@ -11,8 +11,6 @@ class ComprobanteTransferencia extends Model
 
     protected $table = 'comprobantes_transferencia';
 
-    public const DISCO = 'comprobantes';
-
     /** Tipos que puede subir el cliente. El tope es 5 MB. */
     public const MIMES = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
 
@@ -28,6 +26,18 @@ class ComprobanteTransferencia extends Model
         'tamano',
         'subido_por_usuario_id',
     ];
+
+    /** TG-411: disco de los comprobantes nuevos (COMPROBANTES_DISK). */
+    public static function disco(): string
+    {
+        return (string) config('comprobantes.disco', 'local');
+    }
+
+    /** comprobantes/{distribuidora}/{pedido}/{nombre}, igual en local y en R2. */
+    public static function rutaPara(Pedido $pedido, string $nombre): string
+    {
+        return config('comprobantes.prefijo', 'comprobantes').'/'.$pedido->distribuidora_id.'/'.$pedido->id.'/'.$nombre;
+    }
 
     public function pedido()
     {

@@ -122,7 +122,7 @@ class TransferenciaYOpenpayTest extends TestCase
 
     public function test_el_comprobante_no_cuenta_como_pago_y_solo_lo_ven_la_distribuidora_y_su_cliente(): void
     {
-        Storage::fake(ComprobanteTransferencia::DISCO);
+        Storage::fake(ComprobanteTransferencia::disco());
         $pedidoId = $this->pedidoDeMaria();
         $this->guardarCuenta();
 

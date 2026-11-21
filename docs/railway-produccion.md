@@ -2,7 +2,9 @@
 
 Proyecto **Footwear-Point**, entorno **production**. Aquí solo hay nombres de variables, nunca valores.
 Servicios: `footwearpoint` (web), `footwearpoint-worker` (cola), `footwearpoint-avisos-vales`,
-`footwearpoint-vencer-recoleccion`, `footwearpoint-respaldo` (crons) y `MySQL`.
+`footwearpoint-vencer-recoleccion`, `footwearpoint-respaldo`, `footwearpoint-limpiar-actividad`,
+`footwearpoint-limpiar-tokens`, `footwearpoint-vencer-suscripcion` (crons) y `MySQL`.
+Los crons y los discos privados están juntos en la sección K.
 
 Sigue el orden: las tablas `sessions` y `cache` tienen que existir **antes** de cambiar los drivers.
 
@@ -158,14 +160,44 @@ Verificación: `curl -I https://footwearpoint.app/build/assets/app-XXXX.css` tra
   archivo vive 24 h (`EXPORTACIONES_HORAS_VIGENCIA`). Solo lo baja quien lo pidió, en su distribuidora.
 - Cron opcional `footwearpoint-limpiar-exportaciones`: start command `php artisan exportaciones:limpiar`,
   schedule `15 11 * * *` (5:15 CDMX), restart policy Never.
-
-## J. Vencimiento de la mensualidad (no creado)
-
-El comando `php artisan suscripciones:vencer` **no tiene servicio** en Railway.
-Por omisión solo avisa y no suspende. El alta del cron y el paso a modo
-suspender están en `docs/vencimiento-suscripcion.md`. No se crea hasta que
-los términos que describen la gracia y la suspensión estén publicados.
 - Migración nueva: `2026_10_21_130000_crea_exportaciones` (la corre el pre-deploy).
+
+## J. Vencimiento de la mensualidad
+
+El servicio `footwearpoint-vencer-suscripcion` ya existe (sección K) y corre
+`php artisan suscripciones:vencer` sin `--suspender`: solo avisa y no suspende.
+El paso a modo suspender está en `docs/vencimiento-suscripcion.md`.
+
+## K. Discos privados y crons (TG-411, nov-2026)
+
+**Discos privados en R2.** El disco local del servicio web se borra en cada deploy y no tiene volumen.
+Lo que tiene que durar va al bucket **privado** de R2 que ya usan web y worker (disco `catalogos`), cada
+cosa bajo su propio prefijo. Sin la variable se usa `local`, que sirve para desarrollo y pruebas.
+
+| Variable | Servicios | Valor en Railway | Prefijo en el bucket |
+|---|---|---|---|
+| `EXPORTACIONES_DISK` | web y worker | `catalogos` | `exportaciones/{distribuidora_id}/` |
+| `COMPROBANTES_DISK` | web | `catalogos` | `comprobantes/{distribuidora_id}/{pedido_id}/` |
+
+- `COMPROBANTES_DISK`: los comprobantes de transferencia que sube el cliente. Nunca tienen URL pública: el
+  servidor los lee del bucket y solo los entrega al cliente del pedido y a su distribuidora. La subida la
+  hace la web (la API de la app vive ahí), así que el worker no la necesita.
+- Cada comprobante guarda su disco. Los subidos antes de poner la variable apuntan a `comprobantes`
+  (local) y ya se perdieron en algún deploy: no se migran. Si el cliente lo vuelve a subir, queda en R2.
+- Se pone **después** del merge de TG-411 y basta con un redeploy de la web.
+
+**Crons.** Cada comando es su propio servicio: duplicado de `footwearpoint-vencer-recoleccion`, con las
+mismas variables `APP_*` y `DB_*` (y `MAIL_*` si manda correos) y restart policy **Never**. El horario de
+Railway está en **UTC**; la Ciudad de México va en UTC-6 todo el año.
+
+| Servicio | Start command | Schedule (UTC) | Ciudad de México |
+|---|---|---|---|
+| `footwearpoint-limpiar-actividad` | `php artisan actividad:limpiar` | `0 10 * * *` | 4:00 |
+| `footwearpoint-limpiar-tokens` | `php artisan sanctum:prune-expired --hours=24` | `30 10 * * *` | 4:30 |
+| `footwearpoint-vencer-suscripcion` | `php artisan suscripciones:vencer` | `20 14 * * *` | 8:20 |
+
+- `footwearpoint-limpiar-tokens` es el de la sección E; `footwearpoint-vencer-suscripcion`, el de la J.
+- Ninguno está en `routes/console.php`.
 
 ---
 
