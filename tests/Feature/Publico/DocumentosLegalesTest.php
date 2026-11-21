@@ -61,8 +61,10 @@ class DocumentosLegalesTest extends TestCase
         $this->get(route('aviso-privacidad'))
             ->assertOk()
             ->assertSee('Aviso de privacidad')
-            ->assertSee('Versión 1.3')
-            ->assertSee('12 de noviembre de 2026')
+            // TG-402 (A39): sube con cada versión del aviso, igual que se hizo
+            // con los términos en TG-339.
+            ->assertSee('Versión 1.4')
+            ->assertSee('21 de noviembre de 2026')
             ->assertSee(self::DEL_AVISO);
     }
 

@@ -17,6 +17,8 @@ return [
         '1.2' => 'fa2b43f430df846ed7b257d439f6480b354b9b09dcfecab57f6b184f07eb4227',
         // TG-322 (K23)
         '1.3' => '5d8abcc0bf722e6b80cac0a0200fe854180b5ad48ec56f97fb6f834f51524e93',
+        // TG-402 (A39)
+        '1.4' => '3ec42dac0784d81439a07ab11b871a2b5721e3e39b21eac5900e87147228f0f5',
     ],
     'terminos_condiciones' => [
         '1.2' => '36ad8976a1ff26755057701b7d97eb529737138fe6828267c5d9aad68ea339e0',
