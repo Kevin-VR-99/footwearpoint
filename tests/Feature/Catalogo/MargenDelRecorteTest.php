@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Catalogo;
 
-use App\Services\Ia\MedirRecorte;
 use App\Services\Ia\RecortarFotoDelCatalogo;
 use Tests\TestCase;
 
@@ -14,9 +13,11 @@ use Tests\TestCase;
  * puede comprobar el comportamiento sin poppler (que en local no está) y sin
  * gastar un centavo de API.
  *
- * La medida es la misma que usa el comando catalogo:medir-recortes: si la
- * silueta toca el borde del recorte, el zapato está cortado. Es objetiva y no
- * depende de que a alguien «le parezca» que se ve mejor.
+ * La medida de aquí (si la silueta toca el borde, el zapato quedó cortado)
+ * solo vale sobre esta página de mentiras, que tiene un fondo blanco parejo.
+ * Sobre los catálogos de verdad no sirve, y por eso no vive en app/: ver el
+ * comentario de pixelesEnElBorde() más abajo. Para juzgar recortes reales
+ * está catalogo:contacto-recortes, que saca las imágenes para mirarlas.
  */
 class MargenDelRecorteTest extends TestCase
 {
@@ -102,15 +103,42 @@ class MargenDelRecorteTest extends TestCase
     }
 
     /**
-     * La medida, tal cual la usa el comando catalogo:medir-recortes.
+     * Cuántos píxeles del marco no son el fondo blanco de esta página.
      *
-     * Se llama a la MISMA clase a propósito: si la prueba midiera por su
-     * cuenta, podría quedarse en verde mientras lo que corre de verdad mide
-     * otra cosa.
+     * VIVE AQUÍ Y NO EN app/ A PROPÓSITO. Esta cuenta solo es de fiar sobre la
+     * página de mentiras que dibuja esta prueba, que tiene un fondo blanco
+     * parejo. Hubo una versión en producción y mintió: las páginas de verdad
+     * traen dos fondos (una mitad gris, otra blanca) y la frontera entre
+     * ellos se contaba como si fuera el zapato. Sacarla de app/ evita que
+     * alguien la vuelva a usar creyendo que mide recortes reales.
+     *
+     * Para juzgar recortes de verdad está catalogo:contacto-recortes, que
+     * saca las imágenes para mirarlas.
      */
     private function pixelesEnElBorde(string $png): int
     {
-        return app(MedirRecorte::class)->siluetaEnElBorde($png, [255, 255, 255]);
+        $imagen = imagecreatefrompng($png);
+        $ancho = imagesx($imagen);
+        $alto = imagesy($imagen);
+        $cuantos = 0;
+
+        $noEsFondo = function (int $x, int $y) use ($imagen): bool {
+            $c = imagecolorsforindex($imagen, imagecolorat($imagen, $x, $y));
+
+            return ($c['red'] + $c['green'] + $c['blue']) / 3 < 200;
+        };
+
+        for ($x = 0; $x < $ancho; $x++) {
+            $cuantos += (int) $noEsFondo($x, 0) + (int) $noEsFondo($x, $alto - 1);
+        }
+
+        for ($y = 1; $y < $alto - 1; $y++) {
+            $cuantos += (int) $noEsFondo(0, $y) + (int) $noEsFondo($ancho - 1, $y);
+        }
+
+        imagedestroy($imagen);
+
+        return $cuantos;
     }
 
     // --- Lo que la tarjeta viene a arreglar ---------------------------------
@@ -191,7 +219,7 @@ class MargenDelRecorteTest extends TestCase
         // Por arriba y por la izquierda no hay aire que dar; por los otros dos
         // lados sí. De ahí que crezca, pero menos del doble del margen.
         $this->assertGreaterThan(0.20 * self::ANCHO, $ancho);
-        $this->assertLessThanOrEqual((int) ceil(0.20 * (1 + 0.08) * self::ANCHO), $ancho);
+        $this->assertLessThanOrEqual((int) ceil(0.20 * (1 + 0.03) * self::ANCHO), $ancho);
         $this->assertGreaterThan(0.20 * self::ALTO, $alto);
     }
 

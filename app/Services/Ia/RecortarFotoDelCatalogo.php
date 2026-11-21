@@ -26,24 +26,35 @@ class RecortarFotoDelCatalogo
     private const MINIMO = 0.06;
 
     /**
-     * TG-377 (A17) — Aire alrededor del recuadro que propone la IA.
+     * TG-377 (A17) — Un poco de aire alrededor del recuadro de la IA.
      *
-     * El prompt le pide el recuadro «pegado a su contorno» y, ante la duda,
-     * que recorte DE MENOS. Esa instrucción existe para que no entre el
-     * letrero del precio que suele ir al lado, y funciona: el problema es que
-     * lo paga el borde del zapato, que sale cortado.
+     * EL 3% ES UN COMPROMISO, NO UN ÓPTIMO, y conviene saber por qué antes de
+     * subirlo o bajarlo.
      *
-     * En vez de pelearse con el prompt (que cuesta volver a leer el catálogo
-     * entero), se le devuelve el aire aquí: 8% del tamaño del propio recuadro
-     * por cada lado. Proporcional y no fijo, para que a un zapato chico le
-     * toque poco aire y a uno grande más.
+     * El prompt le pide a la IA el recuadro «pegado al contorno» y que, ante
+     * la duda, recorte DE MENOS. En algunos productos eso corta el zapato: le
+     * come la punta o la suela. Ese fue el reclamo que abrió esta tarjeta.
      *
-     * Por qué 8 y no más: el letrero vive pegado a la foto, así que cada
-     * punto de más acerca el recorte al texto. Ocho basta para descruzar un
-     * contorno sin alcanzar el letrero; se midió antes de dejarlo (ver el
-     * comando catalogo:medir-recortes).
+     * Pero al mirar los recortes de producción (catalogo:contacto-recortes)
+     * salió que los recuadros de la IA NO fallan todos para el mismo lado:
+     *
+     *   - En unos viene apretado y corta el zapato. Ahí hacen falta 10% o 15%
+     *     de aire para que quepa entero.
+     *   - En otros ya viene pasado y el letrero del precio está DENTRO desde
+     *     el margen 0. Ahí cada punto de aire mete más letrero y más logos.
+     *
+     * O sea que ningún margen global arregla los dos: el que salva al primero
+     * arruina al segundo. Por eso se queda chico — ayuda algo al apretado sin
+     * empeorar de más al pasado — y el arreglo de verdad es corregir a mano
+     * desde «Ajustar recorte», que es producto por producto.
+     *
+     * OJO si alguien quiere «medirlo bien»: hubo una versión de esta tarjeta
+     * que lo midió con un porcentaje (cuánto del marco no era del color del
+     * fondo) y mintió dos veces, porque estas páginas traen dos fondos y la
+     * frontera entre ellos se contaba como si fuera el zapato. La medición
+     * que sirve son las hojas de contacto, mirándolas.
      */
-    private const MARGEN = 0.08;
+    private const MARGEN = 0.03;
 
     /**
      * Devuelve la ruta del PNG recortado, o null si el recuadro no sirve.

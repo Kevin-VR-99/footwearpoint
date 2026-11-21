@@ -118,10 +118,10 @@ class AjustarRecorteAManoTest extends TestCase
             ->call('ajustarRecorte', $producto->id)
             ->assertSet('recortandoDe', $producto->id)
             ->assertSet('recortePagina', 3)
-            // 0.20 de ancho con 8% de aire por lado = 0.232, y la x baja 0.016.
+            // 0.20 de ancho con 3% de aire por lado = 0.212, y la x baja 0.006.
             // Con tolerancia: son decimales, y el ultimo bit no significa nada.
-            ->assertSet('recorteCaja.ancho', fn ($v) => abs($v - 0.232) < 0.0001)
-            ->assertSet('recorteCaja.x', fn ($v) => abs($v - 0.284) < 0.0001);
+            ->assertSet('recorteCaja.ancho', fn ($v) => abs($v - 0.212) < 0.0001)
+            ->assertSet('recorteCaja.x', fn ($v) => abs($v - 0.294) < 0.0001);
     }
 
     /** Sin recuadro de la IA se puede encuadrar igual: justo esos hay que arreglar. */
