@@ -537,6 +537,10 @@ html.fp-js [data-revelar]:not(.revelado) {
    prefers-reduced-motion.
    ===================================================================== */
 @keyframes fp-barra { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+/* TG-395 (A35): las columnas de las series crecen desde abajo. La de
+   fp-barra crece a lo ancho, que en una columna vertical se ve como un
+   barrido de izquierda a derecha y no como algo que sube. */
+@keyframes fp-columna { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 @keyframes fp-pulso { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.8); } }
 @keyframes fp-flotar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 
@@ -548,6 +552,7 @@ html.fp-js [data-revelar]:not(.revelado) {
     .fp-metrica-icono { transition: transform .3s cubic-bezier(.22, .8, .36, 1), background-color .25s ease; }
     .fp-metrica:hover .fp-metrica-icono { transform: scale(1.1) rotate(-4deg); }
     .fp-metrica-barra { transform-origin: left; animation: fp-barra .25s cubic-bezier(.22, .8, .36, 1) backwards; }
+    .fp-serie-columna { transform-origin: bottom; animation: fp-columna .3s cubic-bezier(.22, .8, .36, 1) backwards; }
 
     /* Acciones de texto en filas de tabla (Editar, Activar, Eliminar…). */
     .fp-accion {
@@ -634,7 +639,7 @@ html.fp-js [data-revelar]:not(.revelado) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .fp-metrica-barra, .fp-formulario::before, .fp-modal, .fp-insignia-viva .fp-insignia-punto, .fp-vacio-icono,
+    .fp-metrica-barra, .fp-serie-columna, .fp-formulario::before, .fp-modal, .fp-insignia-viva .fp-insignia-punto, .fp-vacio-icono,
     .fp-logo-entrada, .fp-datos-cascada > * { animation: none !important; }
     .fp-metrica-icono, .fp-accion, .fp-insignia, .fp-pestana, .fp-formulario, .fp-campo > label { transition: none !important; }
     /* A19: el buscador sigue abriendo, pero de golpe en vez de deslizando. */

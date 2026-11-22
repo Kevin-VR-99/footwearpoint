@@ -3,7 +3,9 @@
 use App\Models\Distribuidora;
 use App\Services\Actividad\ConsolidarActividad;
 use App\Services\Metricas\IndicadoresDeMetricas;
+use App\Services\Metricas\SeriesDeMetricas;
 use App\Models\PlanSuscripcion;
+use App\Support\Dinero;
 use App\Support\MensajeError;
 use App\Support\Tenant;
 use Illuminate\Support\Carbon;
@@ -154,6 +156,53 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
         return IndicadoresDeMetricas::definiciones();
     }
 
+    /**
+     * TG-395 (A35) — Las mismas cifras repartidas en el tiempo.
+     *
+     * Devuelve null si la consulta se cae, y la pantalla lo dice con un boton
+     * para reintentar. Es lo que pide la tarjeta, y tiene razon de ser: las
+     * series agrupan en la base de datos y una sola consulta en mal estado
+     * dejaria la pantalla entera en blanco, incluidos los indicadores, que si
+     * funcionan.
+     */
+    public function getSeriesProperty(): ?array
+    {
+        try {
+            return app(SeriesDeMetricas::class)->calcular(
+                $this->rango['desde'],
+                $this->rango['hasta'],
+                $this->distribuidoraElegida?->id,
+                $this->planElegido?->id,
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
+        }
+    }
+
+    /**
+     * Volver a pedir las series.
+     *
+     * No hace falta limpiar nada: las propiedades calculadas se vuelven a
+     * evaluar en cada peticion, asi que basta con que haya una.
+     */
+    public function reintentarSeries(): void
+    {
+        $this->autorizar();
+    }
+
+    /**
+     * Pesos con la moneda escrita, que es lo que pide la tarjeta.
+     *
+     * Atajo para la plantilla, que no hereda los use de aqui arriba. Lo que
+     * escribe el importe es Dinero, el mismo que usan las graficas.
+     */
+    public function pesos(float $monto): string
+    {
+        return Dinero::mxn($monto);
+    }
+
     public function getDistribuidorasProperty()
     {
         return Distribuidora::withoutGlobalScopes()
@@ -239,7 +288,7 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
     <div class="fp-escalonado grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-indicadores-metricas>
         <x-panel.tarjeta class="p-5" data-indicador="usuarios-activos">
             <p class="text-sm font-medium text-slate-700">Usuarios activos</p>
-            <p class="mt-1 text-3xl font-bold text-fp-sidebar tabular-nums">{{ number_format($n['usuarios_activos']) }}</p>
+            <p class="mt-1 whitespace-nowrap text-xl font-bold text-fp-sidebar tabular-nums sm:text-2xl 2xl:text-3xl">{{ number_format($n['usuarios_activos']) }}</p>
             <p class="mt-2 text-xs text-fp-text-muted">{{ $d['usuarios_activos'] }}</p>
             @if ($n['periodo_recortado'])
                 {{-- El detalle solo se guarda 90 dias (A43). Decirlo evita que
@@ -253,13 +302,13 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
 
         <x-panel.tarjeta class="p-5" data-indicador="ingresos-suscripcion">
             <p class="text-sm font-medium text-slate-700">Ingresos de suscripción</p>
-            <p class="mt-1 text-3xl font-bold text-fp-sidebar tabular-nums">${{ number_format($n['ingresos_suscripcion'], 2) }}</p>
+            <p class="mt-1 whitespace-nowrap text-xl font-bold text-fp-sidebar tabular-nums sm:text-2xl 2xl:text-3xl">{{ $this->pesos($n['ingresos_suscripcion']) }}</p>
             <p class="mt-2 text-xs text-fp-text-muted">{{ $d['ingresos_suscripcion'] }}</p>
         </x-panel.tarjeta>
 
         <x-panel.tarjeta class="p-5" data-indicador="ventas-tienda">
             <p class="text-sm font-medium text-slate-700">Ventas de las tiendas</p>
-            <p class="mt-1 text-3xl font-bold text-fp-sidebar tabular-nums">${{ number_format($n['ventas_tienda'], 2) }}</p>
+            <p class="mt-1 whitespace-nowrap text-xl font-bold text-fp-sidebar tabular-nums sm:text-2xl 2xl:text-3xl">{{ $this->pesos($n['ventas_tienda']) }}</p>
             <p class="mt-2 text-xs text-fp-text-muted">{{ $d['ventas_tienda'] }}</p>
         </x-panel.tarjeta>
 
@@ -282,8 +331,64 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
         son de cada distribuidora. Son dinero distinto y por eso nunca se suman.
     </x-panel.alerta>
 
-    <x-panel.tarjeta class="p-8 text-center" data-metricas-pendientes>
-        <p class="text-sm font-medium text-slate-700">Las gráficas llegan en la siguiente entrega.</p>
-        <p class="mt-1 text-sm text-fp-text-muted">Los indicadores ya están; faltan las series y sus tablas.</p>
-    </x-panel.tarjeta>
+    {{-- TG-395 (A35). Las series usan EL MISMO rango y los MISMOS filtros que
+         los indicadores de arriba, por eso cada total de aqui coincide con su
+         tarjeta: las consultas salen del mismo sitio (ConsultasDeMetricas). --}}
+    @if ($this->series === null)
+        {{-- Estado de error con reintento, lo pide la tarjeta. Los indicadores
+             de arriba siguen en pie: solo se cayeron las series. --}}
+        <x-panel.tarjeta class="p-6 text-center" data-series-error>
+            <p class="text-sm font-medium text-slate-700">No se pudieron armar las gráficas.</p>
+            <p class="mx-auto mt-1 max-w-prose text-sm text-fp-text-muted">
+                Los indicadores de arriba sí están. Si vuelve a pasar, avísale a soporte: quedó registrado.
+            </p>
+            <button type="button" wire:click="reintentarSeries" class="fp-btn fp-btn-primario mt-4">
+                Reintentar
+            </button>
+        </x-panel.tarjeta>
+    @else
+        @php($s = $this->series)
+
+        <div class="space-y-2">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-fp-text-muted">
+                Cómo se movió en el tiempo
+            </h2>
+            <p class="text-xs text-fp-text-muted" data-agrupacion-series>
+                Un tramo por {{ $s['agrupacion'] }}, {{ $s['tramos'] }} en total.
+                El último va en curso porque el periodo termina hoy.
+                Cada gráfica trae su tabla con los valores exactos.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 xl:grid-cols-3" data-series-metricas>
+            {{-- La nota de los usuarios no es un detalle: sin ella, cualquiera
+                 suma las barras, no le cuadra con el indicador de arriba y
+                 piensa que la pantalla miente. --}}
+            <x-ui.serie titulo="Usuarios activos" columna="Usuarios" tono="primario"
+                :puntos="$s['series']['usuarios_activos']['puntos']"
+                :total="$s['series']['usuarios_activos']['total']"
+                :tendencia="$s['series']['usuarios_activos']['tendencia']"
+                :agrupacion="$s['agrupacion']"
+                :descripcion="$d['usuarios_activos']"
+                nota="Las barras no se suman: quien entró en dos tramos es una sola persona en el total."
+                vacio="Nadie entró al panel ni a la app en este periodo." />
+
+            <x-ui.serie titulo="Ingresos de suscripción" columna="Ingresos" tono="exito" formato="dinero"
+                :puntos="$s['series']['ingresos_suscripcion']['puntos']"
+                :total="$s['series']['ingresos_suscripcion']['total']"
+                :tendencia="$s['series']['ingresos_suscripcion']['tendencia']"
+                :agrupacion="$s['agrupacion']"
+                :descripcion="$d['ingresos_suscripcion']"
+                vacio="No se aplicó ningún pago de suscripción en este periodo." />
+
+            <x-ui.serie titulo="Ventas de las tiendas" columna="Ventas" tono="oscuro" formato="dinero"
+                :puntos="$s['series']['ventas_tienda']['puntos']"
+                :total="$s['series']['ventas_tienda']['total']"
+                :tendencia="$s['series']['ventas_tienda']['tendencia']"
+                :agrupacion="$s['agrupacion']"
+                :descripcion="$d['ventas_tienda']"
+                nota="El filtro de plan no aplica aquí: el plan es el contrato con FootwearPoint, no con los clientes de la tienda."
+                vacio="Las tiendas no registraron ventas en este periodo." />
+        </div>
+    @endif
 </div>
