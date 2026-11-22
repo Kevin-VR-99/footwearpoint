@@ -2,11 +2,7 @@
 
 namespace App\Services\Metricas;
 
-use App\Models\ActividadDiaria;
-use App\Models\Pago;
-use App\Models\VentaDirecta;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * TG-394 (A34) — Los números de la pantalla de Métricas.
@@ -25,10 +21,18 @@ use Illuminate\Support\Facades\DB;
  * CADA DEFINICIÓN SE ENSEÑA EN PANTALLA (lo pide la tarjeta). Las de aquí
  * abajo son las que se muestran, palabra por palabra, para que nadie tenga
  * que leer este archivo para saber qué está viendo.
+ *
+ * TG-395 (A35): las consultas se mudaron a ConsultasDeMetricas, que es el
+ * único sitio donde viven los filtros. Aquí quedó lo de esta pantalla: sacar
+ * el total de cada una. Las gráficas usan las mismas consultas, y por eso no
+ * pueden dejar de coincidir con estos números.
  */
 class IndicadoresDeMetricas
 {
-    public function __construct(private PlanMasContratado $planMasContratado) {}
+    public function __construct(
+        private PlanMasContratado $planMasContratado,
+        private ConsultasDeMetricas $consultas,
+    ) {}
 
     /**
      * Qué quiere decir cada número, tal cual se enseña.
@@ -84,68 +88,24 @@ class IndicadoresDeMetricas
      */
     private function usuariosActivos(Carbon $desde, Carbon $hasta, ?int $distribuidoraId): array
     {
-        $masViejoQueHay = now(ActividadDiaria::ZONA)
-            ->subDays(ActividadDiaria::DIAS_QUE_SE_GUARDA)
-            ->startOfDay();
-
-        $recortado = $desde->lessThan($masViejoQueHay);
-        $inicio = $recortado ? $masViejoQueHay : $desde;
-
-        $consulta = ActividadDiaria::query()
-            ->whereBetween('fecha', [$inicio->toDateString(), $hasta->toDateString()]);
-
-        if ($distribuidoraId !== null) {
-            $consulta->whereIn('usuario_id', $this->usuariosDe($distribuidoraId));
-        }
+        $recorte = $this->consultas->recortarAlHorizonte($desde);
 
         return [
-            'cuantos' => (int) $consulta->distinct()->count('usuario_id'),
-            'desde' => $recortado ? $inicio->toDateString() : null,
-            'recortado' => $recortado,
+            'cuantos' => (int) $this->consultas
+                ->actividad($desde, $hasta, $distribuidoraId)
+                ->distinct()
+                ->count('usuario_id'),
+            'desde' => $recorte['recortado'] ? $recorte['inicio']->toDateString() : null,
+            'recortado' => $recorte['recortado'],
         ];
-    }
-
-    /**
-     * Quiénes cuentan como gente de una distribuidora.
-     *
-     * Su personal, y los revendedores afiliados a ella. Un revendedor puede
-     * trabajar con varias distribuidoras y entonces cuenta para todas: usa la
-     * plataforma para cada una, así que no sería correcto asignarlo a una
-     * sola ni dejarlo fuera.
-     */
-    private function usuariosDe(int $distribuidoraId): \Illuminate\Database\Query\Builder
-    {
-        $staff = DB::table('distribuidora_staff')
-            ->where('distribuidora_id', $distribuidoraId)
-            ->select('usuario_id');
-
-        return DB::table('revendedores')
-            ->join('revendedor_distribuidora', 'revendedor_distribuidora.revendedor_id', '=', 'revendedores.id')
-            ->where('revendedor_distribuidora.distribuidora_id', $distribuidoraId)
-            ->select('revendedores.usuario_id')
-            ->union($staff);
     }
 
     /** Lo que FootwearPoint cobró por la plataforma. Solo pagos aplicados. */
     private function ingresosDeSuscripcion(Carbon $desde, Carbon $hasta, ?int $distribuidoraId, ?int $planId): float
     {
-        $consulta = Pago::withoutGlobalScopes()
-            ->where('pagos.tipo', 'suscripcion')
-            ->where('pagos.estado', 'aplicado')
-            ->whereBetween('pagos.fecha_pago', [$desde, $hasta]);
-
-        if ($distribuidoraId !== null) {
-            $consulta->where('pagos.distribuidora_id', $distribuidoraId);
-        }
-
-        if ($planId !== null) {
-            $consulta->whereIn(
-                'pagos.suscripcion_id',
-                DB::table('suscripciones')->where('plan_id', $planId)->select('id')
-            );
-        }
-
-        return round((float) $consulta->sum('pagos.monto'), 2);
+        return round((float) $this->consultas
+            ->pagosDeSuscripcion($desde, $hasta, $distribuidoraId, $planId)
+            ->sum('pagos.monto'), 2);
     }
 
     /**
@@ -158,14 +118,8 @@ class IndicadoresDeMetricas
      */
     private function ventasDeTienda(Carbon $desde, Carbon $hasta, ?int $distribuidoraId): float
     {
-        $consulta = VentaDirecta::withoutGlobalScopes()
-            ->whereNull('anulada_at')
-            ->whereBetween('fecha_venta', [$desde, $hasta]);
-
-        if ($distribuidoraId !== null) {
-            $consulta->where('distribuidora_id', $distribuidoraId);
-        }
-
-        return round((float) $consulta->sum('total'), 2);
+        return round((float) $this->consultas
+            ->ventasDeTienda($desde, $hasta, $distribuidoraId)
+            ->sum('total'), 2);
     }
 }
