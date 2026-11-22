@@ -7,11 +7,21 @@
 
 <a href="{{ app(\App\Services\Tienda\EnlaceTienda::class)->producto($distribuidora, (int) $producto['id']) }}"
    class="group h-full fp-tarjeta-interactiva overflow-hidden flex flex-col">
-    <div class="aspect-square bg-slate-100 flex items-center justify-center overflow-hidden">
+    {{-- TG-407: la caja era cuadrada y la foto se agrandaba para llenarla, asi
+         que al cliente le llegaba el zapato partido. Las fotos del catalogo son
+         apaisadas: medidas las 16 de una tienda real, la mediana es 1.30 y doce
+         caen entre 1.04 y 1.44. Con 4/3 y object-contain se ve entera, y la
+         rejilla sigue pareja porque todas las tarjetas usan la misma forma.
+
+         Tampoco se acerca al pasar el cursor. La caja recorta lo que se sale,
+         asi que el acercamiento volvia a cortar el zapato justo al mirarlo de
+         cerca. La tarjeta entera ya se levanta sola (fp-tarjeta-interactiva),
+         que es la senial de que se puede pulsar. --}}
+    <div class="aspect-[4/3] bg-slate-100 flex items-center justify-center overflow-hidden">
         @if ($producto['imagen'])
             <img src="{{ $producto['imagen_miniatura'] ?? $producto['imagen'] }}" alt="{{ $producto['nombre'] }}" loading="lazy" decoding="async"
-                 width="400" height="400"
-                 class="h-full w-full object-cover transition duration-200 group-hover:-translate-y-0.5 group-hover:scale-110 motion-reduce:transform-none">
+                 width="400" height="300"
+                 class="h-full w-full object-contain p-2 transition duration-200 motion-reduce:transform-none">
         @else
             <span class="text-slate-500 text-sm px-4 text-center">{{ $producto['marca'] ?? 'Sin foto' }}</span>
         @endif

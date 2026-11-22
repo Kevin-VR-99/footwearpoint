@@ -9,13 +9,37 @@
 ])
 
 @php
+    /*
+     * TG-407 — La portada ya no recorta.
+     *
+     * Era un cuadrado con object-cover. Las fotos del catalogo son apaisadas:
+     * medidas las 16 de una tienda real, la mediana es 1.30 y doce de ellas
+     * caen entre 1.04 y 1.44. En un cuadrado, object-cover agrandaba la foto
+     * hasta llenarlo y cortaba el resto — de la mas apaisada (2.52) se veia el
+     * 40% del ancho, o sea que el zapato salia partido en la ficha publica y
+     * completo al abrir el modal, que si usa object-contain.
+     *
+     * La caja pasa a 4/3 porque es la forma de las fotos: con contain deja un
+     * 16% de hueco de media, contra el 27% de la cuadrada. No es por gusto del
+     * numero, es la mediana medida.
+     */
     $caja = match ($tamano) {
         'media' => 'h-20 w-20',
-        'portada' => 'aspect-square w-full',
+        'portada' => 'aspect-[4/3] w-full p-2',
         default => 'h-10 w-10',
     };
     $portada = $tamano === 'portada';
-    $ajuste = $portada ? 'object-cover' : 'object-contain';
+    $ajuste = 'object-contain';
+
+    /*
+     * En la portada no hay acercamiento al pasar el cursor.
+     *
+     * La caja recorta lo que se sale (overflow-hidden), asi que un scale
+     * volveria a cortar el zapato justo al mirarlo de cerca, que es lo que
+     * esta tarjeta viene a arreglar. En las miniaturas se queda: ahi la foto
+     * es chica y el gesto ayuda a ver que se puede abrir.
+     */
+    $acercar = $portada ? '' : 'group-hover:scale-110';
     $pixeles = match ($tamano) {
         'media' => 80,
         'portada' => 800,
@@ -37,7 +61,7 @@
         <button type="button" @click="abierto = true" data-ver-imagen-stock
             class="group {{ $caja }} {{ $portada ? 'flex w-full' : 'inline-flex' }} shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-fp-primary/50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40 motion-reduce:transform-none"
             aria-label="Ver la foto de {{ $alt }}" aria-haspopup="dialog">
-            <img src="{{ $url }}" alt="{{ $alt }}" class="h-full w-full {{ $ajuste }} transition duration-300 group-hover:scale-110 motion-reduce:transform-none" loading="lazy" width="{{ $pixeles }}" height="{{ $pixeles }}">
+            <img src="{{ $url }}" alt="{{ $alt }}" class="h-full w-full {{ $ajuste }} transition duration-300 {{ $acercar }} motion-reduce:transform-none" loading="lazy" width="{{ $pixeles }}" height="{{ $pixeles }}">
         </button>
 
         <template x-teleport="body">
