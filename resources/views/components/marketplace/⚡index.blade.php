@@ -77,7 +77,7 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
                 <article wire:key="dist-{{ $d->id }}" class="group fp-tarjeta-interactiva overflow-hidden flex flex-col">
                     <{{ $urlTienda ? 'a' : 'div' }} @if ($urlTienda) href="{{ $urlTienda }}" aria-label="Ver la tienda de {{ $d->nombre_comercial }}" @endif
                         class="flex h-40 items-center justify-center bg-fp-page">
-                        <span class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-white shadow-md ring-1 ring-slate-200 transition duration-300 group-hover:scale-105 group-hover:ring-fp-primary/40 motion-reduce:transform-none">
+                        <span class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-white shadow-md ring-1 ring-slate-200 transition duration-200 group-hover:scale-105 group-hover:ring-fp-primary/40 motion-reduce:transform-none">
                             @if ($d->logotipo_url)
                                 <img src="{{ $d->logotipo_url }}"
                                      alt="Logo {{ $d->nombre_comercial }}" loading="lazy" decoding="async" width="112" height="112"

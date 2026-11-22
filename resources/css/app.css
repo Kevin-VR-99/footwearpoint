@@ -930,3 +930,75 @@ form[data-loading] button[type=submit]:not(:has([wire\:loading]))::before {
     .fp-accion-persona, .fp-accion-menu, .fp-menu-entra, .fp-menu-sale { transition: none !important; }
     .fp-accion-persona:hover:not(:disabled), .fp-accion-persona:active:not(:disabled), .fp-menu-oculto { transform: none !important; }
 }
+
+/* =====================================================================
+   TG-392 (A32) — Transiciones cortas, movimiento reducido de verdad, y
+   los iconos de «¿Hablamos?» con el color de su red.
+   ===================================================================== */
+
+/* RED DE SEGURIDAD DE MOVIMIENTO REDUCIDO.
+
+   Ya había bloques de prefers-reduced-motion, pero todos apagan clases
+   fp-* concretas. Las pantallas públicas usan además utilidades sueltas de
+   Tailwind (transition duration-300, hover:-translate-y-1), y esas no las
+   apagaba nadie: quien pedía movimiento reducido lo seguía teniendo.
+
+   Esto las cubre todas de una vez. No se pone transform: none porque
+   translate también se usa para colocar cosas (centrar, esquinas) y
+   apagarlo romperia el diseño; lo que se apaga es el TIEMPO, así que el
+   cambio ocurre pero sin recorrido visible, que es lo que molesta. Los
+   transform de hover concretos ya los apagan los bloques de arriba. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* LOS ICONOS DE LAS REDES.
+
+   Antes los cuatro se ponían blancos al pasar encima: el mismo gesto para
+   Instagram que para el correo. Ahora cada uno toma el color de su marca,
+   que es lo que la gente reconoce sin leer.
+
+   Y ANTES NO TENÍAN FOCO. Solo hover, así que quien navega con teclado no
+   recibía ninguna señal al llegar a ellos. Aquí :focus-visible hace lo
+   mismo que :hover, más un aro: en A21 se arregló esto en el panel y estos
+   se habían quedado fuera.
+
+   El tamaño (44px) no se toca: ya era un objetivo táctil correcto. El
+   crecimiento es scale y no margen, para que no empuje a los vecinos. */
+@layer components {
+    .fp-red {
+        transition: background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+
+    .fp-red:hover,
+    .fp-red:focus-visible {
+        color: #fff;
+        transform: scale(1.08);
+        box-shadow: 0 6px 16px -6px rgb(0 0 0 / .45);
+    }
+
+    .fp-red:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgb(255 255 255 / .85), 0 6px 16px -6px rgb(0 0 0 / .45);
+    }
+
+    /* Los colores oficiales de cada marca. El símbolo va en blanco encima:
+       los tres pasan el 3:1 que pide la norma para elementos gráficos
+       (Instagram 4.4, YouTube 4.0, Facebook 3.1). */
+    .fp-red-instagram:hover, .fp-red-instagram:focus-visible { background-color: #E1306C; }
+    .fp-red-facebook:hover,  .fp-red-facebook:focus-visible  { background-color: #1877F2; }
+    .fp-red-youtube:hover,   .fp-red-youtube:focus-visible   { background-color: #FF0000; }
+
+    /* El correo no es una red con color propio: usa el de la casa. */
+    .fp-red-correo:hover, .fp-red-correo:focus-visible { background-color: var(--color-fp-primary); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fp-red { transition: none !important; }
+    .fp-red:hover, .fp-red:focus-visible { transform: none !important; }
+}
