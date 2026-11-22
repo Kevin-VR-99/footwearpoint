@@ -26,15 +26,46 @@ class RecortarFotoDelCatalogo
     private const MINIMO = 0.06;
 
     /**
+     * TG-377 (A17) — Un poco de aire alrededor del recuadro de la IA.
+     *
+     * EL 3% ES UN COMPROMISO, NO UN ÓPTIMO, y conviene saber por qué antes de
+     * subirlo o bajarlo.
+     *
+     * El prompt le pide a la IA el recuadro «pegado al contorno» y que, ante
+     * la duda, recorte DE MENOS. En algunos productos eso corta el zapato: le
+     * come la punta o la suela. Ese fue el reclamo que abrió esta tarjeta.
+     *
+     * Pero al mirar los recortes de producción (catalogo:contacto-recortes)
+     * salió que los recuadros de la IA NO fallan todos para el mismo lado:
+     *
+     *   - En unos viene apretado y corta el zapato. Ahí hacen falta 10% o 15%
+     *     de aire para que quepa entero.
+     *   - En otros ya viene pasado y el letrero del precio está DENTRO desde
+     *     el margen 0. Ahí cada punto de aire mete más letrero y más logos.
+     *
+     * O sea que ningún margen global arregla los dos: el que salva al primero
+     * arruina al segundo. Por eso se queda chico — ayuda algo al apretado sin
+     * empeorar de más al pasado — y el arreglo de verdad es corregir a mano
+     * desde «Ajustar recorte», que es producto por producto.
+     *
+     * OJO si alguien quiere «medirlo bien»: hubo una versión de esta tarjeta
+     * que lo midió con un porcentaje (cuánto del marco no era del color del
+     * fondo) y mintió dos veces, porque estas páginas traen dos fondos y la
+     * frontera entre ellos se contaba como si fuera el zapato. La medición
+     * que sirve son las hojas de contacto, mirándolas.
+     */
+    private const MARGEN = 0.03;
+
+    /**
      * Devuelve la ruta del PNG recortado, o null si el recuadro no sirve.
      *
      * Quien llama se encarga de borrar el archivo.
      *
      * @param  array<string, mixed>  $datos  lo que leyó la IA de ese producto
      */
-    public function recortar(string $rutaPagina, array $datos): ?string
+    public function recortar(string $rutaPagina, array $datos, ?float $margen = null): ?string
     {
-        $caja = $this->caja($datos);
+        $caja = $this->cajaFinal($datos, $margen);
 
         if ($caja === null) {
             return null;
@@ -91,7 +122,40 @@ class RecortarFotoDelCatalogo
     }
 
     /**
-     * El recuadro, ya comprobado, o null.
+     * El recuadro con su aire, sin salirse de la página.
+     *
+     * Va DESPUÉS de los rechazos a propósito: un recuadro demasiado chico se
+     * descarta por lo que la IA dijo, no por lo que mida después de inflarlo.
+     * Si no fuera así, el aire rescataría recuadros que apuntan a un logo.
+     *
+     * @return array{0: float, 1: float, 2: float, 3: float}
+     */
+    private function conAire(float $x, float $y, float $ancho, float $alto, float $margen): array
+    {
+        if ($margen <= 0.0) {
+            return [$x, $y, $ancho, $alto];
+        }
+
+        $aireX = $ancho * $margen;
+        $aireY = $alto * $margen;
+
+        // Los bordes de la página mandan: si el zapato ya estaba pegado al
+        // borde, por ese lado no hay aire que darle.
+        $derecha = min(1.0, $x + $ancho + $aireX);
+        $abajo = min(1.0, $y + $alto + $aireY);
+        $x = max(0.0, $x - $aireX);
+        $y = max(0.0, $y - $aireY);
+
+        return [$x, $y, $derecha - $x, $abajo - $y];
+    }
+
+    /**
+     * El recuadro final, ya comprobado y con su aire, o null.
+     *
+     * Es público porque el editor de recortes (TG-377) tiene que arrancar
+     * EXACTAMENTE del mismo recuadro que produjo la foto que se está viendo.
+     * Si arrancara del crudo de la IA, el recuadro saldría más apretado que
+     * la foto de al lado y nadie entendería por qué.
      *
      * Se revisa de verdad y no por desconfianza teórica: son cuatro números
      * que llegan de un modelo, y un recuadro que se sale de la página o que
@@ -100,7 +164,7 @@ class RecortarFotoDelCatalogo
      * @param  array<string, mixed>  $datos
      * @return array{0: float, 1: float, 2: float, 3: float}|null
      */
-    private function caja(array $datos): ?array
+    public function cajaFinal(array $datos, ?float $margen = null): ?array
     {
         $valores = [];
 
@@ -139,6 +203,6 @@ class RecortarFotoDelCatalogo
             return null;
         }
 
-        return [$x, $y, $ancho, $alto];
+        return $this->conAire($x, $y, $ancho, $alto, $margen ?? self::MARGEN);
     }
 }

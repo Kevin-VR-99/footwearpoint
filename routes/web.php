@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AbrirEnLaAppController;
 use App\Http\Controllers\ArchivoCatalogoImportacionController;
+use App\Http\Controllers\PaginaCatalogoImportacionController;
 use App\Http\Controllers\DescargarApkMovilController;
 use App\Http\Controllers\ComprobanteVentaController;
 use Illuminate\Support\Facades\Auth;
@@ -371,6 +372,14 @@ Route::middleware(['auth', 'tenant.team', 'role:admin_general', 'solo.personal']
     Route::get('/admin/catalogos/{importacion}/archivo', [ArchivoCatalogoImportacionController::class, 'show'])
         ->whereNumber('importacion')
         ->name('admin.catalogos.archivo');
+
+    // TG-377 (A17): la página dibujada, para corregir a mano el recorte de una
+    // foto. Al importar, la página se dibuja y el temporal se borra; aquí se
+    // vuelve a dibujar esa sola página y se deja guardada.
+    Route::get('/admin/catalogos/{importacion}/pagina/{pagina}', [PaginaCatalogoImportacionController::class, 'show'])
+        ->whereNumber('importacion')
+        ->whereNumber('pagina')
+        ->name('admin.catalogos.pagina');
 
     // TG-239 (A9): revisar y corregir lo que propuso la IA, antes de aprobar.
     Route::livewire('/admin/catalogos/{importacion}/revisar', 'admin.revisar-catalogo')
