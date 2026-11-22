@@ -71,11 +71,24 @@ class RedisenoInicioTest extends TestCase
         $this->assertStringContainsString('href="mailto:mvpla.footwearpoint@gmail.com"', $html);
         $this->assertStringContainsString('aria-label="Escríbenos a mvpla.footwearpoint@gmail.com"', $html);
 
-        // Mismo estilo y hover que el icono de YouTube.
+        // Mismo estilo que el icono de YouTube.
+        //
+        // TG-392 (A32): ya no son clases IDENTICAS. Cada icono lleva ademas
+        // la clase de su red, porque al pasar el cursor toma el color de su
+        // marca en vez de ponerse blanco como todos. Lo que se sigue
+        // exigiendo es que la base (forma, tamano, anillo) sea la misma.
         preg_match('/<a [^>]*data-red="youtube"[^>]*class="([^"]+)"/s', $html, $youtube);
         preg_match('/<a [^>]*data-red="correo"[^>]*class="([^"]+)"/s', $html, $correo);
         $this->assertNotEmpty($youtube);
-        $this->assertSame($youtube[1], $correo[1]);
+
+        $sinSuRed = fn (string $clases): array => array_values(array_diff(
+            preg_split('/\s+/', trim($clases)) ?: [],
+            ['fp-red-youtube', 'fp-red-correo']
+        ));
+
+        $this->assertSame($sinSuRed($youtube[1]), $sinSuRed($correo[1]), 'El estilo base de los iconos dejo de ser el mismo.');
+        $this->assertStringContainsString('fp-red-youtube', $youtube[1]);
+        $this->assertStringContainsString('fp-red-correo', $correo[1]);
     }
 
     public function test_el_correo_no_se_repite_como_texto_si_ya_es_icono(): void

@@ -73,17 +73,17 @@ class extends Component
 
             <div class="mt-9 flex flex-wrap justify-center gap-3">
                 @if ($panel)
-                    <a href="{{ $panel['url'] }}" class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-fp-primary to-fp-accent px-6 py-3 font-semibold text-white shadow-lg shadow-fp-primary/30 transition duration-300 hover:-translate-y-0.5 hover:from-fp-accent hover:to-fp-primary hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+                    <a href="{{ $panel['url'] }}" class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-fp-primary to-fp-accent px-6 py-3 font-semibold text-white shadow-lg shadow-fp-primary/30 transition duration-200 hover:-translate-y-0.5 hover:from-fp-accent hover:to-fp-primary hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
                         {{ $panel['texto'] }}
                     </a>
                 @else
-                    <a href="{{ $alta }}" class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-fp-primary to-fp-accent px-6 py-3 font-semibold text-white shadow-lg shadow-fp-primary/30 transition duration-300 hover:-translate-y-0.5 hover:from-fp-accent hover:to-fp-primary hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+                    <a href="{{ $alta }}" class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-fp-primary to-fp-accent px-6 py-3 font-semibold text-white shadow-lg shadow-fp-primary/30 transition duration-200 hover:-translate-y-0.5 hover:from-fp-accent hover:to-fp-primary hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
                         Solicitar mi alta
                     </a>
                 @endif
 
                 <a href="{{ route('marketplace') }}"
-                    class="inline-flex items-center justify-center rounded-xl border border-white/25 bg-white/5 px-6 py-3 font-semibold text-white backdrop-blur transition duration-300 hover:-translate-y-0.5 hover:border-white/50 hover:bg-white hover:text-fp-sidebar">
+                    class="inline-flex items-center justify-center rounded-xl border border-white/25 bg-white/5 px-6 py-3 font-semibold text-white backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:border-white/50 hover:bg-white hover:text-fp-sidebar">
                     Ver marketplace
                 </a>
             </div>
@@ -104,8 +104,8 @@ class extends Component
                 ['Recibes pedidos', 'Tus clientes y tus clientes mayoristas piden desde la app; tu personal captura en mostrador.'],
                 ['Cobras y entregas', 'Cobras el anticipo, haces el pedido a fábrica y entregas en tu sucursal.'],
             ] as $i => [$titulo, $texto])
-                <li class="group fp-tarjeta transition duration-300 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 relative p-6" data-revelar style="--retraso: {{ $i * 100 }}ms">
-                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-fp-badge-info-bg font-bold text-fp-badge-info-fg transition duration-300 group-hover:bg-gradient-to-br group-hover:from-fp-primary group-hover:to-fp-accent group-hover:text-white">
+                <li class="group fp-tarjeta transition duration-200 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 relative p-6" data-revelar style="--retraso: {{ $i * 100 }}ms">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-fp-badge-info-bg font-bold text-fp-badge-info-fg transition duration-200 group-hover:bg-gradient-to-br group-hover:from-fp-primary group-hover:to-fp-accent group-hover:text-white">
                         {{ $i + 1 }}
                     </span>
                     <h4 class="mt-4 font-semibold text-fp-sidebar">{{ $titulo }}</h4>
@@ -131,8 +131,8 @@ class extends Component
                 ['Tus precios son tuyos', 'El precio de mayoreo lo pone cada distribuidora; nadie ve el de las demás.'],
                 ['Pagos en línea', 'Tus clientes pagan su anticipo con Mercado Pago desde la app.'],
             ] as $i => [$titulo, $texto])
-                <article class="group fp-tarjeta transition duration-300 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 p-6" data-revelar style="--retraso: {{ ($i % 3) * 100 }}ms">
-                    <span class="mb-4 block h-1 w-10 rounded-full bg-gradient-to-r from-fp-primary to-fp-accent transition-all duration-300 group-hover:w-16"></span>
+                <article class="group fp-tarjeta transition duration-200 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 p-6" data-revelar style="--retraso: {{ ($i % 3) * 100 }}ms">
+                    <span class="mb-4 block h-1 w-10 rounded-full bg-gradient-to-r from-fp-primary to-fp-accent transition-all duration-200 group-hover:w-16"></span>
                     <h4 class="font-semibold text-fp-sidebar">{{ $titulo }}</h4>
                     <p class="mt-1 text-sm text-slate-600">{{ $texto }}</p>
                 </article>
@@ -219,13 +219,13 @@ class extends Component
         @else
             <div class="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($planes as $plan)
-                    <article class="group fp-tarjeta transition duration-300 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 flex flex-col overflow-hidden" data-revelar style="--retraso: {{ ($loop->index % 3) * 100 }}ms">
+                    <article class="group fp-tarjeta transition duration-200 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 flex flex-col overflow-hidden" data-revelar style="--retraso: {{ ($loop->index % 3) * 100 }}ms">
                         <div class="h-1 bg-gradient-to-r from-fp-primary via-fp-accent to-fp-sidebar"></div>
                         <div class="flex flex-1 flex-col p-6">
                         <h4 class="text-lg font-semibold text-fp-sidebar">{{ $plan->nombre }}</h4>
 
                         <p class="mt-3">
-                            <span class="text-3xl font-bold text-fp-sidebar transition-colors duration-300 group-hover:text-fp-primary">
+                            <span class="text-3xl font-bold text-fp-sidebar transition-colors duration-200 group-hover:text-fp-primary">
                                 ${{ number_format((float) $plan->precio_base_mensual, 2) }}
                             </span>
                             <span class="text-sm text-slate-500">MXN al mes</span>
@@ -281,7 +281,7 @@ class extends Component
                     @isset($redes[$red])
                         <li>
                             <a href="{{ $redes[$red] }}" target="_blank" rel="noopener" aria-label="FootwearPoint en {{ $nombreRed }}" data-red="{{ $red }}"
-                                class="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-fp-sidebar hover:shadow-lg">
+                                class="fp-red fp-red-{{ $red }} flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                     @if ($red === 'instagram')
                                         <path d="M12 2.2c3.2 0 3.6 0 4.8.1 1.2.1 1.8.2 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.4 1.1.4 2.2.1 1.3.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 1.2-.2 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1.1.4-2.2.4-1.3.1-1.6.1-4.8.1s-3.6 0-4.8-.1c-1.2-.1-1.8-.2-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.4-1.1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.8c.1-1.2.2-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1.1-.4 2.2-.4C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.1 0-3.5 0-4.7.1-1.1.1-1.7.2-2.1.4-.5.2-.9.4-1.3.8-.4.4-.6.8-.8 1.3-.2.4-.3 1-.4 2.1C2.6 9.9 2.6 10.3 2.6 12s0 2.1.1 3.3c.1 1.1.2 1.7.4 2.1.2.5.4.9.8 1.3.4.4.8.6 1.3.8.4.2 1 .3 2.1.4 1.2.1 1.6.1 4.7.1s3.5 0 4.7-.1c1.1-.1 1.7-.2 2.1-.4.5-.2.9-.4 1.3-.8.4-.4.6-.8.8-1.3.2-.4.3-1 .4-2.1.1-1.2.1-1.6.1-3.3s0-2.1-.1-3.3c-.1-1.1-.2-1.7-.4-2.1-.2-.5-.4-.9-.8-1.3-.4-.4-.8-.6-1.3-.8-.4-.2-1-.3-2.1-.4C15.5 4 15.1 4 12 4zm0 3.1a4.9 4.9 0 110 9.8 4.9 4.9 0 010-9.8zm0 8a3.1 3.1 0 100-6.2 3.1 3.1 0 000 6.2zm5.1-8.2a1.1 1.1 0 11-2.3 0 1.1 1.1 0 012.3 0z"/>
@@ -299,7 +299,7 @@ class extends Component
                 @isset($redes['correo'])
                     <li>
                         <a href="mailto:{{ $redes['correo'] }}" aria-label="Escríbenos a {{ $redes['correo'] }}" title="{{ $redes['correo'] }}" data-red="correo"
-                            class="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:text-fp-sidebar hover:shadow-lg">
+                            class="fp-red fp-red-correo flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 6.75A1.75 1.75 0 014.75 5h14.5A1.75 1.75 0 0121 6.75v10.5A1.75 1.75 0 0119.25 19H4.75A1.75 1.75 0 013 17.25V6.75z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.5 7l8.5 6 8.5-6" />
@@ -311,7 +311,7 @@ class extends Component
         @endif
 
         @unless ($panel)
-            <a href="{{ $alta }}" class="mt-8 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-fp-primary to-fp-accent px-6 py-3 font-semibold text-white shadow-lg shadow-fp-primary/30 transition duration-300 hover:-translate-y-0.5 hover:from-fp-accent hover:to-fp-primary hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+            <a href="{{ $alta }}" class="mt-8 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-fp-primary to-fp-accent px-6 py-3 font-semibold text-white shadow-lg shadow-fp-primary/30 transition duration-200 hover:-translate-y-0.5 hover:from-fp-accent hover:to-fp-primary hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
                 Solicitar mi alta
             </a>
         @endunless
