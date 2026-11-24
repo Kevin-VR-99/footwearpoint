@@ -102,9 +102,7 @@ new #[Layout('layouts.guest')] #[Title('Recuperar contraseña — FootwearPoint'
 ?>
 
 <div class="fp-acceso-tarjeta p-8">
-    <div class="fp-acceso-logo mb-4 flex justify-center">
-        <img src="{{ asset('brand/logo-full-160.png') }}" alt="Footwear Point" class="h-16 w-auto object-contain">
-    </div>
+    <x-auth.encabezado class="mb-4" />
     <div class="text-center mb-8">
         <h1 class="text-2xl font-bold text-slate-900">Recuperar contraseña</h1>
         <p class="text-sm text-slate-500 mt-1">Te enviaremos un enlace de restablecimiento</p>

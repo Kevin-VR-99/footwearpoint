@@ -160,14 +160,11 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
 ?>
 
 <div class="fp-acceso-tarjeta p-8">
-    <div class="fp-acceso-logo text-center mb-8">
-        <img
-            src="{{ asset('brand/logo-full-160.png') }}"
-            alt="Footwear Point"
-            class="mx-auto h-28 w-auto object-contain"
-        >
-        <h1 class="text-sm font-normal text-slate-500 mt-3">Inicia sesión en tu cuenta</h1>
-    </div>
+    {{-- TG-390 (A30): el logo bajo de h-28 a h-16, que es lo que usan las otras
+         seis pantallas de acceso. Quien carga la marca aqui es el fondo, no el
+         tamano del logo. --}}
+    <x-auth.encabezado class="mb-3" />
+    <h1 class="mb-8 text-center text-sm font-normal text-slate-500">Inicia sesión en tu cuenta</h1>
 
     {{-- TG-184: a quien no es personal se le explica que entre por la app. --}}
     @if (session('aviso_acceso'))

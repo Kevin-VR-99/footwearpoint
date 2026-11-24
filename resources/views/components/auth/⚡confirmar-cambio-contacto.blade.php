@@ -63,9 +63,7 @@ new #[Layout('layouts.guest')] #[Title('Confirmar cambio — FootwearPoint')] cl
 ?>
 
 <div class="fp-acceso-tarjeta p-8 text-center" data-confirmar-cambio="{{ $resultado }}">
-    <div class="fp-acceso-logo mb-4 flex justify-center">
-        <img src="{{ asset('brand/logo-full-160.png') }}" alt="Footwear Point" class="h-16 w-auto object-contain">
-    </div>
+    <x-auth.encabezado class="mb-4" />
     @if ($resultado === 'listo')
         <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-fp-badge-success-bg fp-emerger">
             <span class="text-3xl font-bold text-fp-badge-success-fg" aria-hidden="true">&check;</span>

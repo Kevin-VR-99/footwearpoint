@@ -54,19 +54,34 @@ new #[Layout('layouts.guest')] #[Title('Confirmar correo — FootwearPoint')] cl
 ?>
 
 <div class="fp-acceso-tarjeta p-8 text-center">
-    <div class="fp-acceso-logo mb-4 flex justify-center">
-        <img src="{{ asset('brand/logo-full-160.png') }}" alt="Footwear Point" class="h-16 w-auto object-contain">
-    </div>
-    @if ($resultado === 'listo')
-        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-fp-badge-success-bg fp-emerger">
-            <span class="text-3xl font-bold text-fp-badge-success-fg" aria-hidden="true">&check;</span>
+    <x-auth.encabezado class="mb-4" />
+    {{-- TG-390 (A30) — Los tres estados, con el mismo trato.
+
+         Antes solo el exito traia circulo y color: los otros dos eran un
+         titulo suelto. Quien abre el enlace y le sale "Ya estaba confirmado"
+         no sabia si eso era bueno o un problema, porque la pantalla no se lo
+         decia por ningun otro medio que el texto.
+
+         NO SE AGREGAN ESTADOS. La tarjeta dice "estados existentes" y "sin
+         ampliar funciones": siguen siendo los mismos tres que decide mount().
+
+         El icono va con aria-hidden y el estado se anuncia con role="status":
+         una palomita no se lee en voz alta, y el color tampoco. --}}
+    @php
+        $estados = [
+            'listo' => ['titulo' => 'Correo confirmado', 'icono' => '&check;', 'fondo' => 'bg-fp-badge-success-bg', 'texto' => 'text-fp-badge-success-fg'],
+            'ya_estaba' => ['titulo' => 'Ya estaba confirmado', 'icono' => '&check;', 'fondo' => 'bg-slate-100', 'texto' => 'text-slate-500'],
+            'invalido' => ['titulo' => 'Ese enlace no sirve', 'icono' => '&times;', 'fondo' => 'bg-fp-danger-soft', 'texto' => 'text-fp-danger'],
+        ];
+        $estado = $estados[$resultado] ?? $estados['invalido'];
+    @endphp
+
+    <div role="status" data-estado-confirmacion="{{ $resultado }}">
+        <div class="fp-emerger mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full {{ $estado['fondo'] }}">
+            <span class="text-3xl font-bold {{ $estado['texto'] }}" aria-hidden="true">{!! $estado['icono'] !!}</span>
         </div>
-        <h1 class="text-2xl font-bold text-slate-900">Correo confirmado</h1>
-    @elseif ($resultado === 'ya_estaba')
-        <h1 class="text-2xl font-bold text-slate-900">Ya estaba confirmado</h1>
-    @else
-        <h1 class="text-2xl font-bold text-slate-900">Ese enlace no sirve</h1>
-    @endif
+        <h1 class="text-2xl font-bold text-slate-900">{{ $estado['titulo'] }}</h1>
+    </div>
 
     <p class="mt-3 text-sm text-slate-600">{{ $mensaje }}</p>
 
