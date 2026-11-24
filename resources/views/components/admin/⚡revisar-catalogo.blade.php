@@ -471,8 +471,23 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         );
 
         $this->editandoId = null;
-        $this->mensaje = 'Listo. Abajo está el detalle de lo que entró al catálogo.';
         $this->esError = false;
+
+        // Livewire guarda el valor de los computados durante toda la petición
+        // (SupportLegacyComputedPropertySyntax), y arriba ya se leyó
+        // listosParaAprobar para validar. Sin tirar ese valor, el botón
+        // seguiría diciendo "Aprobar los revisados (30)" cuando ya solo
+        // quedan 17 — y esa cuenta es justo la que el usuario necesita para
+        // saber si falta otra tanda.
+        unset($this->listosParaAprobar);
+
+        // TG-377 — Si se cortó por tiempo, el aviso NO va aquí arriba: va
+        // pegado al resumen, que es donde está el número que lo explica. Un
+        // "Listo" verde encima de "faltan 17" sería justo la pantalla que
+        // estamos arreglando.
+        $this->mensaje = $this->resumenAprobacion['se_corto']
+            ? ''
+            : 'Listo. Abajo está el detalle de lo que entró al catálogo.';
     }
 
     /** Siempre dentro de ESTA importación: un id de otra no se encuentra. */
@@ -829,6 +844,20 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
 
         @if ($resumenAprobacion)
             <div class="mt-4 rounded-xl border border-slate-200 bg-fp-page p-4 text-sm">
+                {{-- TG-377 — Aprobar se corta solo antes de que el servidor
+                     mate la petición, y aquí se dice. Va en ámbar a propósito:
+                     no es un error (lo que entró está bien guardado) ni un
+                     éxito (falta la otra mitad). --}}
+                @if ($resumenAprobacion['se_corto'] ?? false)
+                    <x-panel.alerta tipo="aviso" class="mb-3">
+                        Entraron <strong>{{ $resumenAprobacion['aprobados'] }}</strong> y
+                        faltan <strong>{{ $resumenAprobacion['faltan'] }}</strong>.
+                        El servidor solo deja trabajar 30 segundos seguidos y subir las
+                        fotos de cada producto tarda. Vuelve a presionar
+                        «Aprobar los revisados» para seguir: los que ya entraron no se repiten.
+                    </x-panel.alerta>
+                @endif
+
                 <p class="font-semibold text-fp-sidebar">Lo que entró al catálogo</p>
                 <ul class="mt-2 space-y-1 text-fp-text-muted">
                     <li>Productos aprobados: <strong>{{ $resumenAprobacion['aprobados'] }}</strong></li>

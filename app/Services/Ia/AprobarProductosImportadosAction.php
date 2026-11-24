@@ -56,6 +56,24 @@ use Throwable;
  */
 class AprobarProductosImportadosAction
 {
+    /**
+     * TG-377 — Cuánto del límite de PHP se le deja a lo que viene DESPUÉS
+     * del bucle.
+     *
+     * POR QUÉ EXISTE ESTO. El 24-nov-2026, en producción, aprobar 30
+     * productos murió con «Maximum execution time of 30 seconds exceeded»
+     * dentro de Guzzle: cada producto hace cuatro viajes al bucket (baja el
+     * recorte, sube el original, sube la miniatura, sube la mediana), unos
+     * 2.3 s, y PHP corta la petición a los 30. Entraron 13 y la pantalla
+     * enseñó un 500, aunque esos 13 estaban bien guardados.
+     *
+     * El margen no es capricho: cuando el bucle termina todavía falta
+     * cerrar la auditoría y volver a dibujar la pantalla de revisión, que
+     * es grande. Si se gastara el límite entero aprobando, el corte caería
+     * en el render y volveríamos al mismo 500 con otra cara.
+     */
+    public const MARGEN_SEGUNDOS = 8.0;
+
     public function __construct(
         private GestionarProductoAction $productos,
         private GestionarVarianteAction $variantes,
@@ -70,6 +88,9 @@ class AprobarProductosImportadosAction
      * @param  int  $campanaId        La temporada a la que entran.
      * @param  int  $categoriaPorOmision  Para los que no traigan la suya.
      * @param  int  $marcaPorOmision      Obligatoria: la marca viene vacía muchas veces.
+     * @param  float|null  $presupuestoSegundos  Cuánto puede durar el bucle.
+     *         Null = sacarlo del límite de PHP. Las pruebas lo fijan a mano
+     *         porque en consola ese límite es 0 y nunca cortaría.
      * @return array<string, mixed>  Lo que pasó, para enseñarlo en pantalla.
      */
     public function ejecutar(
@@ -77,6 +98,7 @@ class AprobarProductosImportadosAction
         int $campanaId,
         int $categoriaPorOmision,
         int $marcaPorOmision,
+        ?float $presupuestoSegundos = null,
     ): array {
         $resumen = [
             'aprobados'          => 0,
@@ -88,6 +110,9 @@ class AprobarProductosImportadosAction
             'colores_agregados'  => [],
             'tallas_creadas'     => [],
             'pendientes'         => 0,
+            // Los que ni se alcanzaron a intentar porque se acabó el tiempo.
+            'faltan'             => 0,
+            'se_corto'           => false,
         ];
 
         $filas = $importacion->productosStaging()->where('estado', 'corregido')->get();
@@ -96,13 +121,36 @@ class AprobarProductosImportadosAction
             ->where('estado', 'pendiente')
             ->count();
 
+        // TG-377 — El reloj. Cada producto va en SU PROPIA transacción (ver
+        // abajo), así que parar a la mitad deja la base entera: lo que entró
+        // está commiteado y lo que no, ni se tocó. Lo único que faltaba era
+        // parar a tiempo y decirlo, en vez de que PHP matara la petición.
+        $presupuesto = $presupuestoSegundos ?? $this->presupuestoDeEsteRato();
+        $empezoElBucle = microtime(true);
+        $elMasLento = 0.0;
+        $sinIntentar = $filas->count();
+
         foreach ($filas as $fila) {
+            // Se mide con EL MÁS LENTO que se haya visto, no con el promedio:
+            // si el que sigue resulta ser el peor del lote, todavía cabe. El
+            // primero siempre entra ($elMasLento arranca en 0), para que una
+            // llamada nunca se vaya sin aprobar nada.
+            if ($presupuesto !== null
+                && $elMasLento > 0.0
+                && (microtime(true) - $empezoElBucle) + $elMasLento > $presupuesto) {
+                $resumen['se_corto'] = true;
+                $resumen['faltan'] = $sinIntentar;
+
+                break;
+            }
+
             // Los contadores suben DENTRO de aprobarUno, antes de que la fila
             // pueda fallar. Si falla, la transacción revierte la base pero el
             // contador en memoria no se entera, y el resumen decía "148
             // productos nuevos" cuando solo habían entrado 138. Por eso se
             // guarda cómo estaba y se restaura si no salió.
             $antes = $resumen;
+            $arrancoEste = microtime(true);
 
             try {
                 DB::transaction(function () use ($fila, $campanaId, $categoriaPorOmision, $marcaPorOmision, &$resumen) {
@@ -114,9 +162,17 @@ class AprobarProductosImportadosAction
                 // Uno que falla no detiene a los demás, y se dice cuál y por qué.
                 $resumen['saltados'][] = $this->identificar($fila).': '.$e->getMessage();
             }
+
+            // Cuenta igual si falló: lo que se midió es el rato que se fue.
+            $elMasLento = max($elMasLento, microtime(true) - $arrancoEste);
+            $sinIntentar--;
         }
 
-        if ($resumen['aprobados'] > 0) {
+        // Cortado NO es terminado. Antes bastaba con que entrara uno para
+        // marcar la importación como aprobada; si quedan productos sin
+        // intentar, el catálogo todavía no está completo y decir lo contrario
+        // en la lista sería mentir.
+        if ($resumen['aprobados'] > 0 && ! $resumen['se_corto']) {
             $importacion->update(['estado' => 'aprobado']);
         }
 
@@ -129,10 +185,40 @@ class AprobarProductosImportadosAction
                 'aprobados'  => $resumen['aprobados'],
                 'reusados'   => $resumen['productos_reusados'],
                 'saltados'   => count($resumen['saltados']),
+                // Cuando PHP mataba la petición, esta línea NUNCA corría: 26
+                // productos entraron al catálogo sin que la auditoría del
+                // lote se enterara. Ahora cada tanda deja su rastro.
+                'se_corto'   => $resumen['se_corto'],
+                'faltan'     => $resumen['faltan'],
             ],
         );
 
         return $resumen;
+    }
+
+    /**
+     * Cuántos segundos le quedan al bucle antes de que PHP corte la petición.
+     *
+     * Null quiere decir "no hay de qué cuidarse": en consola y en la cola el
+     * límite es 0 (sin tope), y ahí se aprueba todo de corrido. Es también lo
+     * que pasa en las pruebas, por eso ejecutar() deja fijarlo a mano.
+     */
+    private function presupuestoDeEsteRato(): ?float
+    {
+        $limite = (float) ini_get('max_execution_time');
+
+        if ($limite <= 0.0) {
+            return null;
+        }
+
+        // El reloj de PHP corre desde que entró la petición, no desde que
+        // empezó a aprobar: validar la temporada y cargar la importación ya
+        // gastaron algo, y si no se descuenta el presupuesto sale de más.
+        $yaGastado = isset($_SERVER['REQUEST_TIME_FLOAT'])
+            ? microtime(true) - (float) $_SERVER['REQUEST_TIME_FLOAT']
+            : 0.0;
+
+        return max(0.0, $limite - $yaGastado - self::MARGEN_SEGUNDOS);
     }
 
     /** @param array<string, mixed> $resumen */
