@@ -234,7 +234,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
     /** True si hay alguno trabajando: con eso la pantalla se refresca sola. */
     public function getHayTrabajoProperty(): bool
     {
-        return ImportacionCatalogo::where('estado', 'procesando')->exists();
+        return ImportacionCatalogo::whereIn('estado', ImportacionCatalogo::OCUPADOS)->exists();
     }
 
     /**
@@ -263,8 +263,10 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
     {
         $importacion = ImportacionCatalogo::query()->findOrFail($id);
 
-        if ($importacion->estado === 'procesando') {
-            $this->mensaje = 'Ese catálogo se está leyendo. Espera a que termine para quitarlo.';
+        if ($importacion->estaOcupada()) {
+            $this->mensaje = $importacion->estaAprobando()
+                ? 'Ese catálogo se está aprobando. Espera a que termine para quitarlo.'
+                : 'Ese catálogo se está leyendo. Espera a que termine para quitarlo.';
             $this->esError = true;
             $this->confirmarQuitarId = null;
 
@@ -538,11 +540,12 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                             <td class="px-4 py-3">
                                 <x-panel.insignia :variante="match ($importacion->estado) {
                                         'procesando' => 'info',
+                                        'aprobando' => 'info',
                                         'requiere_revision' => 'warning',
                                         'aprobado' => 'success',
                                         'error', 'rechazado' => 'danger',
                                         default => 'neutral',
-                                    }" :viva="$importacion->estado === 'procesando'" punto>{{ str_replace('_', ' ', $importacion->estado) }}</x-panel.insignia>
+                                    }" :viva="$importacion->estaOcupada()" punto>{{ str_replace('_', ' ', $importacion->estado) }}</x-panel.insignia>
                                 @if ($importacion->mensaje_error)
                                     <p class="mt-1 text-xs text-fp-danger">{{ $importacion->mensaje_error }}</p>
                                 @endif
@@ -572,7 +575,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
                                 <button type="button" data-ver-archivo
                                     x-on:click="$dispatch('abrir-visor', @js(['url' => route('admin.catalogos.archivo', $importacion->id), 'tipo' => $importacion->tipo_archivo, 'nombre' => 'Catálogo #'.$importacion->id]))"
                                     class="fp-accion">Ver archivo</button>
-                                @if ($importacion->estado !== 'procesando')
+                                @if (! $importacion->estaOcupada())
                                     <button type="button" wire:click="pedirQuitar({{ $importacion->id }})"
                                         class="fp-accion fp-accion-peligro">Quitar</button>
                                 @endif
