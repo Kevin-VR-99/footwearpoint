@@ -87,15 +87,18 @@ class SubirCatalogoParaImportarAction
      * productos y producto_campana, y la foto publicada es una copia, no el
      * recorte propuesto. Aquí se van el PDF, las propuestas y esos recortes.
      *
-     * Mientras el estado es "procesando" no se quita: la lectura sigue en la
-     * cola y borrar la fila a la mitad dejaría el trabajo sin dueño.
+     * Mientras hay un worker encima no se quita: el trabajo sigue en la cola
+     * y borrar la fila a la mitad lo dejaría sin dueño. Son dos casos, no uno
+     * (TG-377): leyendo con IA, y metiendo productos al catálogo maestro.
      *
      * @return array{propuestas: int, publicados: int}
      */
     public function eliminar(ImportacionCatalogo $importacion): array
     {
-        if ($importacion->estado === 'procesando') {
-            throw new RuntimeException('Ese catálogo se está leyendo. Espera a que termine para quitarlo.');
+        if ($importacion->estaOcupada()) {
+            throw new RuntimeException($importacion->estaAprobando()
+                ? 'Ese catálogo se está aprobando. Espera a que termine para quitarlo.'
+                : 'Ese catálogo se está leyendo. Espera a que termine para quitarlo.');
         }
 
         $filas = $importacion->productosStaging()->get();

@@ -10,7 +10,7 @@ use App\Services\Catalogo\CampanaDeTemporada;
 use App\Models\CategoriaProducto;
 use App\Models\Color;
 use App\Models\Marca;
-use App\Services\Ia\AprobarProductosImportadosAction;
+use App\Jobs\AprobarCatalogoImportado;
 use App\Services\Ia\ColoresDelCatalogo;
 use App\Services\Ia\CorregirProductoImportadoAction;
 use App\Services\Ia\PaginaDelCatalogo;
@@ -95,6 +95,10 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         // Por omisión, la temporada actual de la línea del catálogo.
         $this->campanaId = $fila->campana_id
             ?? $this->temporadas->first(fn (Campana $c) => $c->temporada?->esActual())?->id;
+
+        // TG-377 — El resumen ya no vive en memoria del componente: lo
+        // escribe el worker en la base. Así recargar la página no lo pierde.
+        $this->resumenAprobacion = $fila->resumen_aprobacion;
 
         foreach (app(ColoresDelCatalogo::class)->distintos($fila) as $comercial => $info) {
             $this->coloresBase[$comercial] = (string) ($info['asignado'] ?? $info['sugerido'] ?? '');
@@ -428,7 +432,7 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         $this->esError = $resueltos === 0;
     }
 
-    public function aprobar(AprobarProductosImportadosAction $accion): void
+    public function aprobar(): void
     {
         $this->validate([
             'campanaId'           => ['required', 'integer', function ($atributo, $valor, $falla) {
@@ -463,31 +467,79 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
             return;
         }
 
-        $this->resumenAprobacion = $accion->ejecutar(
-            $this->importacion,
+        // Dos pestañas abiertas, o dos clics seguidos, no mandan dos veces el
+        // mismo trabajo. Nada se duplicaría (aprobarUno se salta lo que ya
+        // entró), pero el segundo resumen pisaría al primero.
+        if ($this->importacion->estaAprobando()) {
+            $this->mensaje = 'Ya se está aprobando este catálogo. Espera a que termine.';
+            $this->esError = false;
+
+            return;
+        }
+
+        /*
+         * TG-377 — De aquí en adelante trabaja el worker, no esta petición.
+         *
+         * Aprobar 30 productos tarda unos 70 segundos y el servidor web corta
+         * a los 30; en producción eso fue un «Error 500» con la mitad del
+         * catálogo adentro. El estado se pone ANTES de encolar para que la
+         * pantalla ya enseñe el avance aunque el worker tarde en tomarlo.
+         */
+        $this->importacion->update([
+            'estado'             => 'aprobando',
+            'mensaje_error'      => null,
+            'resumen_aprobacion' => null,
+        ]);
+
+        AprobarCatalogoImportado::dispatch(
+            $this->importacionId,
             (int) $this->campanaId,
             (int) $this->categoriaPorOmision,
             (int) $this->marcaPorOmision,
+            (int) Auth::id(),
         );
 
         $this->editandoId = null;
         $this->esError = false;
+        $this->resumenAprobacion = null;
+        $this->mensaje = '';
 
         // Livewire guarda el valor de los computados durante toda la petición
-        // (SupportLegacyComputedPropertySyntax), y arriba ya se leyó
-        // listosParaAprobar para validar. Sin tirar ese valor, el botón
-        // seguiría diciendo "Aprobar los revisados (30)" cuando ya solo
-        // quedan 17 — y esa cuenta es justo la que el usuario necesita para
-        // saber si falta otra tanda.
-        unset($this->listosParaAprobar);
+        // (SupportLegacyComputedPropertySyntax), y arriba ya se leyeron
+        // listosParaAprobar y la importación. Con la cola «sync» (las pruebas)
+        // el trabajo ya corrió aquí mismo, así que esos valores viejos harían
+        // que el botón siguiera diciendo "Aprobar los revisados (30)".
+        unset($this->listosParaAprobar, $this->importacion);
 
-        // TG-377 — Si se cortó por tiempo, el aviso NO va aquí arriba: va
-        // pegado al resumen, que es donde está el número que lo explica. Un
-        // "Listo" verde encima de "faltan 17" sería justo la pantalla que
-        // estamos arreglando.
-        $this->mensaje = $this->resumenAprobacion['se_corto']
+        $this->refrescarAprobacion();
+    }
+
+    /**
+     * Lo que pregunta la pantalla cada pocos segundos mientras el worker
+     * trabaja. Mientras siga en «aprobando» no hay nada que hacer: el solo
+     * hecho de volver a pintar ya actualiza la cuenta de productos.
+     */
+    public function refrescarAprobacion(): void
+    {
+        $fila = $this->importacion;
+
+        if ($fila->estaAprobando()) {
+            return;
+        }
+
+        $this->resumenAprobacion = $fila->resumen_aprobacion;
+
+        if ($this->resumenAprobacion === null) {
+            return;
+        }
+
+        // El corte por tiempo ya casi no debería pasar: en el worker no hay
+        // límite de 30 segundos. Se queda el aviso porque la acción sigue
+        // siendo llamable desde una petición web, y ahí sí lo hay.
+        $this->mensaje = ($this->resumenAprobacion['se_corto'] ?? false)
             ? ''
             : 'Listo. Abajo está el detalle de lo que entró al catálogo.';
+        $this->esError = false;
     }
 
     /** Siempre dentro de ESTA importación: un id de otra no se encuentra. */
@@ -835,12 +887,45 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
             </div>
         </div>
 
-        <div class="mt-4">
-            <x-panel.boton wire:click="aprobar" wire:loading.attr="disabled"
-                wire:confirm="¿Pasar los productos revisados al catálogo maestro?">
-                Aprobar los revisados ({{ $this->listosParaAprobar }})
-            </x-panel.boton>
-        </div>
+        {{-- TG-377 — Mientras el worker trabaja, aquí va el avance en lugar
+             del botón. El poll solo existe mientras hay algo que esperar: una
+             pantalla que se recarga sola para siempre es una pantalla que
+             nadie apaga. --}}
+        @if ($this->importacion->estaAprobando())
+            <div class="mt-4 rounded-xl px-3 py-2 text-sm {{ $this->importacion->aprobacionPareceTrabada() ? 'bg-fp-badge-danger-bg text-fp-badge-danger-fg' : 'bg-fp-badge-info-bg text-fp-badge-info-fg' }}"
+                wire:poll.3s="refrescarAprobacion"
+                role="status"
+                data-avance-aprobacion>
+                <p class="flex items-start gap-2">
+                    <span class="fp-insignia-viva mt-1.5 inline-flex"><span class="fp-insignia-punto" aria-hidden="true"></span></span>
+                    <span>{{ $this->importacion->textoDeAprobacion() }}</span>
+                </p>
+                <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/70"
+                    role="progressbar"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="{{ $this->importacion->porcentajeDeAprobacion() }}"
+                    aria-label="Avance de la aprobación del catálogo {{ $this->importacion->id }}">
+                    <div class="h-full rounded-full bg-fp-badge-info-fg transition-all duration-500"
+                        style="width: {{ $this->importacion->porcentajeDeAprobacion() }}%"></div>
+                </div>
+            </div>
+        @else
+            @if ($this->importacion->mensaje_error)
+                <x-panel.alerta tipo="aviso" class="mt-4">{{ $this->importacion->mensaje_error }}</x-panel.alerta>
+            @endif
+
+            <div class="mt-4">
+                <x-panel.boton wire:click="aprobar" wire:loading.attr="disabled"
+                    wire:confirm="¿Pasar los productos revisados al catálogo maestro?">
+                    Aprobar los revisados ({{ $this->listosParaAprobar }})
+                </x-panel.boton>
+                <p class="mt-2 text-xs text-fp-text-muted">
+                    Entran en segundo plano: subir la foto de cada producto tarda, y puedes
+                    seguir en esta página mientras pasa.
+                </p>
+            </div>
+        @endif
 
         @if ($resumenAprobacion)
             <div class="mt-4 rounded-xl border border-slate-200 bg-fp-page p-4 text-sm">

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -14,6 +15,17 @@ use Illuminate\Database\Eloquent\Model;
 class ImportacionCatalogo extends Model
 {
     protected $table = 'importaciones_catalogo';
+
+    /**
+     * Los estados en los que hay un worker trabajando sobre este catálogo y
+     * nadie más debe meter mano: ni quitarlo, ni mandar otra tanda.
+     *
+     * Es una constante y no una lista suelta en cada pantalla porque antes
+     * solo existía «procesando»; al llegar «aprobando» (TG-377) había que
+     * acordarse de los cuatro sitios que la nombraban, y de esos se olvida
+     * uno siempre.
+     */
+    public const OCUPADOS = ['procesando', 'aprobando'];
 
     protected $fillable = [
         'linea_id',
@@ -33,10 +45,12 @@ class ImportacionCatalogo extends Model
         'iniciada_por_usuario_id',
         'revisada_por_usuario_id',
         'mensaje_error',
+        'resumen_aprobacion',
         'procesamiento_iniciado_at',
     ];
 
     protected $casts = [
+        'resumen_aprobacion' => 'array',
         'procesamiento_iniciado_at' => 'datetime',
         'paginas' => 'integer',
         'paginas_leidas' => 'integer',
@@ -100,6 +114,98 @@ class ImportacionCatalogo extends Model
         $limite = $enLectura ? $peticion + 120 : ($peticion * 2) + 120;
 
         return $this->updated_at->lte(now()->subSeconds($limite));
+    }
+
+    /* ----------------------------------------------------------------
+     * TG-377 — Aprobar, que ahora corre en el worker.
+     * ---------------------------------------------------------------- */
+
+    public function estaAprobando(): bool
+    {
+        return $this->estado === 'aprobando';
+    }
+
+    /** Hay un worker encima: leyendo con IA o metiendo productos al catálogo. */
+    public function estaOcupada(): bool
+    {
+        return in_array($this->estado, self::OCUPADOS, true);
+    }
+
+    /**
+     * Cuántos productos del catálogo ya entraron y cuántos van a entrar.
+     *
+     * Se cuenta de las filas de verdad, no de un contador aparte: el worker
+     * marca cada fila como «aprobado» dentro de su propia transacción, así
+     * que esta cuenta no puede desfasarse de lo que de veras pasó. Un
+     * contador en otra columna sí podría, y mentiría justo cuando el usuario
+     * está mirando.
+     *
+     * @return array{hechos: int, total: int}
+     */
+    public function avanceDeAprobacion(): array
+    {
+        $porEstado = $this->productosStaging()
+            ->selectRaw('estado, COUNT(*) as cuantos')
+            ->whereIn('estado', ['corregido', 'aprobado'])
+            ->groupBy('estado')
+            ->pluck('cuantos', 'estado');
+
+        $hechos = (int) ($porEstado['aprobado'] ?? 0);
+
+        return [
+            'hechos' => $hechos,
+            'total'  => $hechos + (int) ($porEstado['corregido'] ?? 0),
+        ];
+    }
+
+    public function porcentajeDeAprobacion(): int
+    {
+        ['hechos' => $hechos, 'total' => $total] = $this->avanceDeAprobacion();
+
+        return $total < 1 ? 0 : min(100, (int) floor($hechos * 100 / $total));
+    }
+
+    /**
+     * Si el worker está caído o nunca se levantó, esto se queda en
+     * «aprobando» sin que nadie lo mueva. La pantalla lo avisa pasados dos
+     * minutos sin avanzar, pero NO cambia el estado: quien manda ahí es el
+     * worker, igual que en la lectura con IA.
+     *
+     * OJO CON DE DÓNDE SALE LA HORA. No puede ser el updated_at de ESTA fila:
+     * el worker no la toca mientras trabaja, así que un catálogo de 166
+     * productos (unos seis minutos) se declararía trabado a los dos. Lo que
+     * sí se mueve, producto por producto, son las filas de staging; esa es la
+     * señal de que algo está pasando.
+     */
+    public function aprobacionPareceTrabada(): bool
+    {
+        if (! $this->estaAprobando()) {
+            return false;
+        }
+
+        $ultimoMovimiento = $this->productosStaging()->max('updated_at');
+        $referencia = $ultimoMovimiento !== null
+            ? Carbon::parse($ultimoMovimiento)->max($this->updated_at)
+            : $this->updated_at;
+
+        return $referencia !== null && $referencia->lte(now()->subSeconds(120));
+    }
+
+    public function textoDeAprobacion(): string
+    {
+        ['hechos' => $hechos, 'total' => $total] = $this->avanceDeAprobacion();
+
+        if ($this->aprobacionPareceTrabada()) {
+            return "Van {$hechos} de {$total} y lleva rato sin avanzar. "
+                .'Puede que el servidor de tareas esté caído. '
+                .'Lo que ya entró está guardado; avisa al equipo antes de volver a intentar.';
+        }
+
+        if ($total < 1) {
+            return 'Preparando los productos.';
+        }
+
+        return "Van {$hechos} de {$total} productos. Esta página se actualiza sola.";
     }
 
     public function textoDeAvance(): string
