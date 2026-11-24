@@ -53,7 +53,12 @@ new #[Layout('layouts.public')] #[Title('Teléfono — FootwearPoint')] class ex
 };
 ?>
 
-<div class="mx-auto max-w-md px-4 py-10">
+{{-- TG-390 (A30): era la unica pantalla de acceso sin tarjeta ni logo. Se
+     quedaba suelta encima del fondo de marca, sin nada que la contuviera, y
+     no se parecia a ninguna de las otras seis. Solo cambia la envoltura: el
+     formulario y lo que hace son los mismos. --}}
+<div class="fp-acceso-tarjeta p-8">
+    <x-auth.encabezado class="mb-4" />
     <h1 class="text-xl font-semibold text-slate-900">Vuelve a escribir tu teléfono</h1>
     <p class="mt-2 text-sm text-slate-600">El que tenías estaba repetido en tu distribuidora. Hace falta uno de 10 dígitos.</p>
     @if ($errorMsg !== '')
