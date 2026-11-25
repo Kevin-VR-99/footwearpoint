@@ -829,6 +829,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         return ProductoImagen::where('producto_campana_id', $this->fotosDe)
             ->orderByDesc('es_principal')
             ->orderBy('orden')
+            ->orderBy('id')
             ->get();
     }
 
@@ -1110,7 +1111,9 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
             @if ($this->fotosDeLaPublicacion->isEmpty())
                 <p class="text-sm text-slate-500">Todavía no tiene ninguna foto.</p>
             @else
-                <ul class="flex flex-wrap gap-3">
+                <x-ui.galeria :imagenes="$this->fotosDeLaPublicacion" :alt="$fotosDeNombre" modal="grande" />
+
+                <ul class="flex flex-wrap gap-3 border-t border-slate-100 pt-3">
                     @foreach ($this->fotosDeLaPublicacion as $foto)
                         <li class="w-28 space-y-1">
                             {{-- TG-376 A16: object-contain y no cover. La foto

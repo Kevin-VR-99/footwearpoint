@@ -54,14 +54,22 @@ new class extends Component {
     <article class="fp-tarjeta overflow-hidden grid md:grid-cols-2">
         <div class="bg-slate-100">
             @if ($producto['imagen'])
-                <x-ui.imagen-ampliable tamano="portada" :url="$producto['imagen_mediana'] ?? $producto['imagen']" :alt="$producto['nombre']" />
-                @if (count($producto['imagenes']) > 1)
-                    <div class="grid grid-cols-4 gap-2 p-3">
-                        @foreach (array_slice($producto['miniaturas'] ?? $producto['imagenes'], 1) as $url)
-                            <x-ui.imagen-ampliable :url="$url" :alt="$producto['nombre']" />
-                        @endforeach
-                    </div>
-                @endif
+                @php
+                    $galeriaTienda = collect($producto['imagenes'])
+                        ->map(fn ($url, $indice) => [
+                            'url' => $url,
+                            'miniatura' => $producto['miniaturas'][$indice] ?? $url,
+                            'mediana' => $producto['medianas'][$indice] ?? $url,
+                        ])
+                        ->all();
+                @endphp
+                <x-ui.galeria :imagenes="$galeriaTienda" :alt="$producto['nombre']" clases-miniaturas="px-3 pb-3">
+                    <x-slot:portada>
+                        <x-ui.imagen-ampliable tamano="portada" :url="$producto['imagen_mediana'] ?? $producto['imagen']" :alt="$producto['nombre']"
+                            :url-dinamica="count($galeriaTienda) > 1 ? 'actual().portada' : null"
+                            :alt-dinamico="count($galeriaTienda) > 1 ? 'actual().alt' : null" />
+                    </x-slot:portada>
+                </x-ui.galeria>
             @else
                 <div class="aspect-square flex items-center justify-center text-slate-500">
                     {{ $producto['marca'] ?? 'Sin foto' }}

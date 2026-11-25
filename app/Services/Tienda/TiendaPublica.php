@@ -288,6 +288,7 @@ class TiendaPublica
             'imagen_mediana'   => $principal?->urlMediana(),
             'imagen_srcset'    => $principal?->srcset(),
             'miniaturas'       => $fotos->map(fn ($i) => $i->urlMiniatura())->all(),
+            'medianas'         => $fotos->map(fn ($i) => $i->urlMediana())->all(),
             'colores'     => $tallas->pluck('color')->filter()->unique()->values()->all(),
             'tallas'      => $tallas->all(),
             'hay_bajo_pedido' => $tallas->contains('bajo_pedido', true),

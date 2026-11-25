@@ -6,6 +6,8 @@
     'alt' => 'Producto',
     'tamano' => 'chica',
     'modal' => 'chico',
+    'urlDinamica' => null,
+    'altDinamico' => null,
 ])
 
 @php
@@ -61,7 +63,7 @@
         <button type="button" @click="abierto = true" data-ver-imagen-stock
             class="group {{ $caja }} {{ $portada ? 'flex w-full' : 'inline-flex' }} shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-fp-primary/50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40 motion-reduce:transform-none"
             aria-label="Ver la foto de {{ $alt }}" aria-haspopup="dialog">
-            <img src="{{ $url }}" alt="{{ $alt }}" class="h-full w-full {{ $ajuste }} transition duration-300 {{ $acercar }} motion-reduce:transform-none" loading="lazy" width="{{ $pixeles }}" height="{{ $pixeles }}">
+            <img src="{{ $url }}" @if ($urlDinamica) :src="{{ $urlDinamica }}" @endif alt="{{ $alt }}" @if ($altDinamico) :alt="{{ $altDinamico }}" @endif class="h-full w-full {{ $ajuste }} transition duration-300 {{ $acercar }} motion-reduce:transform-none" loading="lazy" width="{{ $pixeles }}" height="{{ $pixeles }}">
         </button>
 
         <template x-teleport="body">
@@ -85,9 +87,9 @@
                          zapato se quedaba chico en medio. Sin el cuadro usa
                          todo el ancho; el max-h evita que una foto muy alta se
                          salga de la pantalla. --}}
-                    <img src="{{ $url }}" alt="{{ $alt }}" loading="lazy"
+                    <img src="{{ $url }}" @if ($urlDinamica) :src="{{ $urlDinamica }}" @endif alt="{{ $alt }}" @if ($altDinamico) :alt="{{ $altDinamico }}" @endif loading="lazy"
                         class="w-full rounded-xl bg-fp-page object-contain {{ $modal === 'grande' ? 'max-h-[75vh]' : 'aspect-square' }}">
-                    <p class="mt-2 truncate px-1 text-center text-sm font-medium text-fp-sidebar">{{ $alt }}</p>
+                    <p class="mt-2 truncate px-1 text-center text-sm font-medium text-fp-sidebar" @if ($altDinamico) x-text="{{ $altDinamico }}" @endif>{{ $alt }}</p>
                 </div>
             </div>
         </template>

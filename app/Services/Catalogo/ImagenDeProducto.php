@@ -39,6 +39,52 @@ class ImagenDeProducto
     }
 
     /**
+     * Todas las fotos de cada publicación, ordenadas para la galería:
+     * primero la principal, luego por orden y al final por id.
+     *
+     * @param  iterable<int|string|null>  $productoCampanaIds
+     * @return array<int, array<int, array{id: int, url: string, miniatura: string, mediana: string, es_principal: bool}>>
+     */
+    public function todasPorProductoCampana(iterable $productoCampanaIds): array
+    {
+        $ids = $this->ids($productoCampanaIds);
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $filas = ProductoImagen::query()
+            ->whereIn('producto_campana_id', $ids)
+            ->orderByDesc('es_principal')
+            ->orderBy('orden')
+            ->orderBy('id')
+            ->get(['id', 'producto_campana_id', 'url', 'url_miniatura', 'url_mediana', 'es_principal']);
+
+        $mapa = [];
+
+        foreach ($filas as $fila) {
+            $url = trim((string) $fila->url);
+            $miniatura = trim((string) $fila->url_miniatura);
+            $mediana = trim((string) $fila->url_mediana);
+
+            if ($url === '' && $miniatura === '' && $mediana === '') {
+                continue;
+            }
+
+            $pcId = (int) $fila->producto_campana_id;
+            $mapa[$pcId][] = [
+                'id' => (int) $fila->id,
+                'url' => $url !== '' ? $url : ($mediana !== '' ? $mediana : $miniatura),
+                'miniatura' => $fila->urlMiniatura(),
+                'mediana' => $fila->urlMediana(),
+                'es_principal' => (bool) $fila->es_principal,
+            ];
+        }
+
+        return $mapa;
+    }
+
+    /**
      * Una foto por modelo, para existencias: el stock es de la talla, no de la temporada.
      *
      * @param  iterable<int|string|null>  $productoIds

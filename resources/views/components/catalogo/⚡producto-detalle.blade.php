@@ -38,12 +38,23 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
     {
         $publicaciones = app(CatalogoVisible::class)->consulta()
             ->where('producto_id', $this->productoId)
-            ->with(['campana.linea', 'imagenes', 'disponibilidadPorVariante.variante.talla', 'disponibilidadPorVariante.variante.color'])
+            ->with([
+                'campana.linea',
+                'imagenes' => fn ($q) => $q->orderByDesc('es_principal')->orderBy('orden')->orderBy('id'),
+                'disponibilidadPorVariante.variante.talla',
+                'disponibilidadPorVariante.variante.color',
+            ])
             ->get();
 
         app(PrecioEfectivo::class)->precargar($publicaciones);
 
         return $publicaciones;
+    }
+
+    /** @return array<int, array<int, array{id: int, url: string, miniatura: string, mediana: string, es_principal: bool}>> */
+    public function getGaleriasProperty(): array
+    {
+        return app(ImagenDeProducto::class)->todasPorProductoCampana($this->publicaciones->pluck('id'));
     }
 
     /**
@@ -157,15 +168,11 @@ new #[Layout('layouts.panel')] #[Title('Producto — FootwearPoint')] class exte
                 </div>
             </div>
 
-            @if ($pc->imagenes->isNotEmpty())
-                <div class="flex flex-wrap gap-3 border-b border-slate-100 px-6 py-4">
-                    @foreach ($pc->imagenes->sortByDesc('es_principal') as $imagen)
-                        <span @class(['rounded-lg ring-2 ring-fp-primary' => $imagen->es_principal])>
-                            <x-ui.imagen-ampliable tamano="media" :url="$imagen->urlMiniatura()" :alt="$this->producto->nombre" />
-                        </span>
-                    @endforeach
+            <div class="border-b border-slate-100 px-6 py-4">
+                <div class="max-w-md">
+                    <x-ui.galeria :imagenes="$this->galerias[$pc->id] ?? []" :alt="$this->producto->nombre" />
                 </div>
-            @endif
+            </div>
 
             <div class="px-6 py-4">
                 <p class="mb-2 text-sm font-semibold text-slate-900">Tallas y disponibilidad</p>
