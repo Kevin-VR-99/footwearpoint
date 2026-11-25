@@ -102,7 +102,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         $publicaciones = app(CatalogoVisible::class)->consulta()
             ->whereIn('producto_id', $variantes->pluck('producto_id')->unique()->all())
             // TG-114: la línea sale de la campaña donde está publicado (TG-209).
-            ->with('campana.linea:id,nombre')
+            ->with('campana.linea:id,nombre,logotipo_url')
             ->get()
             ->groupBy('producto_id');
 
@@ -136,6 +136,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                     'imagen' => $fotos[$publicacion->id] ?? '',
                     'codigo_catalogo' => (string) $publicacion->codigo_catalogo,
                     'linea' => (string) ($publicacion->campana?->linea?->nombre ?? ''),
+                    'linea_logotipo' => $publicacion->campana?->linea?->logotipo_url,
                     'nombre' => (string) ($variante->producto?->nombre ?? ''),
                     'talla' => $textoTalla,
                     'color' => $textoColor,
@@ -585,7 +586,15 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                                     <div class="text-xs text-slate-500">{{ $fila['codigo_catalogo'] }}</div>
                                 </td>
                                 <td class="px-4 py-3 text-slate-700">
-                                    {{ $fila['linea'] !== '' ? $fila['linea'] : '—' }}
+                                    @if ($fila['linea'] !== '')
+                                        {{-- TG-386 A26: logo o inicial de la línea junto a su nombre. --}}
+                                        <span class="flex items-center gap-2">
+                                            <x-ui.avatar-linea :nombre="$fila['linea']" :url="$fila['linea_logotipo'] ?? null" tamano="sm" data-logo-linea="venta" />
+                                            <span>{{ $fila['linea'] }}</span>
+                                        </span>
+                                    @else
+                                        —
+                                    @endif
                                 </td>
                                 <td class="px-4 py-3 font-medium text-slate-900">
                                     {{ $fila['talla'] !== '' ? $fila['talla'] : '—' }}

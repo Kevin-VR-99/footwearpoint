@@ -313,7 +313,7 @@ Sin parámetros. Regresa los productos **publicados** de las campañas **activas
         "modelo": "MOD-01",
         "nombre": "Botín casual",
         "marca":     { "id": 1, "nombre": "Flexi" },
-        "linea":     { "id": 2, "nombre": "Dama" },
+        "linea":     { "id": 2, "nombre": "Dama", "logotipo_url": null },
         "categoria": { "id": 3, "nombre": "Botines" }
       },
       "codigo_catalogo": "CAT-001",
@@ -353,6 +353,8 @@ Una variante que ni siquiera tiene disponibilidad registrada en esa temporada se
 - `precio_mayorista` es el de **esta** distribuidora: sale de su descuento general o del precio propio que le haya puesto a ese producto. Dos distribuidoras pueden mandar números distintos para el mismo producto.
 
 **`linea` sale de la temporada, no del producto** (Sprint 4). El mismo producto puede estar en temporadas de líneas distintas; la línea que llega es la de la temporada en la que se está vendiendo. Para la app no cambia nada: el campo está donde siempre.
+
+**`linea.logotipo_url`** (TG-386): la URL del logo de la línea que sube el admin general, o `null` si no tiene. Sin logo, la app enseña la inicial de la línea.
 
 ---
 

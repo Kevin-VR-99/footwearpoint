@@ -90,8 +90,12 @@ new class extends Component {
                     @endif
                 </p>
                 @if ($producto['linea'] || $producto['temporada'])
-                    <p class="text-sm text-slate-500">
-                        {{ collect([$producto['linea'], $producto['temporada']])->filter()->implode(' · ') }}
+                    <p class="mt-1 flex items-center gap-2 text-sm text-slate-500">
+                        {{-- TG-386 A26: logo o inicial de la línea; sin línea no se pinta nada. --}}
+                        @if ($producto['linea'])
+                            <x-ui.avatar-linea :nombre="$producto['linea']" :url="$producto['linea_logotipo'] ?? null" tamano="sm" data-logo-linea="ficha" />
+                        @endif
+                        <span>{{ collect([$producto['linea'], $producto['temporada']])->filter()->implode(' · ') }}</span>
                     </p>
                 @endif
             </div>

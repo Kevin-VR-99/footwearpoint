@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' show ChoiceChip, Size;
+import 'package:flutter/material.dart' show ChoiceChip, Image, Size;
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:footwearpoint/main.dart';
 import 'package:footwearpoint/services/api_service.dart';
+import 'package:footwearpoint/widgets/avatar_linea.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -139,6 +140,19 @@ void main() {
       tester.getTopLeft(find.text('Andrea')).dy,
       lessThan(tester.getTopLeft(find.text('Impuls')).dy),
     );
+  });
+
+  testWidgets('TG-386: cada línea lleva su logo o su inicial', (tester) async {
+    final catalogo = _catalogo();
+    ((catalogo.first['producto'] as Map<String, dynamic>)['linea'] as Map<String, dynamic>)['logotipo_url'] =
+        'https://cdn.ejemplo.test/impuls.png';
+    await abrirCatalogo(tester, () async => _json({'data': catalogo}, 200));
+
+    expect(find.byType(FpAvatarLinea), findsNWidgets(2));
+    final impuls = tester.widget<Image>(find.byType(Image));
+    expect(impuls.semanticLabel, 'Logotipo de Impuls');
+    // Andrea no tiene logo: su inicial.
+    expect(find.text('A'), findsOneWidget);
   });
 
   testWidgets('línea -> productos -> detalle con tallas por color y su disponibilidad', (tester) async {

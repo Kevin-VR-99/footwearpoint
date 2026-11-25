@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../services/catalogo_service.dart';
 import 'login_screen.dart';
 import 'productos_linea_screen.dart';
+import '../widgets/avatar_linea.dart';
 import '../widgets/fila_producto.dart';
 import '../tema/fp_colores.dart';
 import '../widgets/fp_componentes.dart';
@@ -313,7 +314,10 @@ class _TarjetaLinea extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 5),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: const FpIconoCuadro(icono: Icons.style_outlined),
+        // TG-386 A26: el logo o la inicial de la línea; "Sin línea" sigue con su ícono.
+        leading: linea.id == null
+            ? const FpIconoCuadro(icono: Icons.style_outlined)
+            : FpAvatarLinea(nombre: linea.nombre, logotipoUrl: linea.logotipoUrl),
         title: Text(
           linea.nombre,
           style: const TextStyle(color: FpColores.sidebar, fontWeight: FontWeight.w600),

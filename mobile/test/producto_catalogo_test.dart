@@ -162,4 +162,50 @@ void main() {
     expect(formatoPrecio(1600.5), r'$1,600.50');
     expect(formatoPrecio(1234567), r'$1,234,567.00');
   });
+
+  group('logo de la línea (TG-386)', () {
+    test('lee logotipo_url de la línea', () {
+      final producto = ProductoCatalogo.desdeJson(
+        productoJson(linea: const {'id': 2, 'nombre': 'Dama', 'logotipo_url': 'https://cdn.ejemplo.test/dama.png'}),
+      );
+
+      expect(producto.linea!.logotipoUrl, 'https://cdn.ejemplo.test/dama.png');
+    });
+
+    test('sin logotipo_url queda en null (servidor viejo o línea sin logo)', () {
+      expect(ProductoCatalogo.desdeJson(productoJson()).linea!.logotipoUrl, isNull);
+      expect(
+        ProductoCatalogo.desdeJson(
+          productoJson(linea: const {'id': 2, 'nombre': 'Dama', 'logotipo_url': null}),
+        ).linea!.logotipoUrl,
+        isNull,
+      );
+    });
+
+    test('el carrito guardado conserva el logo y no inventa la llave si no hay', () {
+      final conLogo = ProductoCatalogo.desdeJson(
+        productoJson(linea: const {'id': 2, 'nombre': 'Dama', 'logotipo_url': 'https://cdn.ejemplo.test/dama.png'}),
+      );
+      final releido = ProductoCatalogo.desdeJson(conLogo.aJson());
+      expect(releido.linea!.logotipoUrl, 'https://cdn.ejemplo.test/dama.png');
+
+      final sinLogo = ProductoCatalogo.desdeJson(productoJson()).aJson();
+      expect((sinLogo['producto'] as Map)['linea'], {'id': 2, 'nombre': 'Dama'});
+    });
+
+    test('agrupar pasa el logo a su línea y "Sin línea" no lleva', () {
+      final lineas = LineaCatalogo.agrupar([
+        ProductoCatalogo.desdeJson(productoJson(
+          id: 1,
+          linea: const {'id': 2, 'nombre': 'Dama', 'logotipo_url': 'https://cdn.ejemplo.test/dama.png'},
+        )),
+        ProductoCatalogo.desdeJson(productoJson(id: 2, linea: const {'id': 5, 'nombre': 'Caballero'})),
+        ProductoCatalogo.desdeJson(productoJson(id: 3, linea: null)),
+      ]);
+
+      expect(lineas.firstWhere((l) => l.id == 2).logotipoUrl, 'https://cdn.ejemplo.test/dama.png');
+      expect(lineas.firstWhere((l) => l.id == 5).logotipoUrl, isNull);
+      expect(lineas.firstWhere((l) => l.id == null).logotipoUrl, isNull);
+    });
+  });
 }

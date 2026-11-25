@@ -38,18 +38,29 @@ enum Disponibilidad {
 
 /// Marca, línea o categoría: el backend las manda igual, { id, nombre }.
 class Referencia {
-  const Referencia({required this.id, required this.nombre});
+  const Referencia({required this.id, required this.nombre, this.logotipoUrl});
 
   final int id;
   final String nombre;
 
+  /// Solo la línea lo manda (TG-386); null si no tiene logo.
+  final String? logotipoUrl;
+
   static Referencia? desdeJson(Object? json) {
     if (json is! Map<String, dynamic>) return null;
 
-    return Referencia(id: json['id'] as int, nombre: json['nombre'] as String);
+    return Referencia(
+      id: json['id'] as int,
+      nombre: json['nombre'] as String,
+      logotipoUrl: json['logotipo_url'] as String?,
+    );
   }
 
-  Map<String, dynamic> aJson() => {'id': id, 'nombre': nombre};
+  Map<String, dynamic> aJson() => {
+    'id': id,
+    'nombre': nombre,
+    if (logotipoUrl != null) 'logotipo_url': logotipoUrl,
+  };
 }
 
 class ImagenCatalogo {
@@ -284,12 +295,15 @@ class ProductoCatalogo {
 
 /// Una línea con sus productos, para la primera pantalla del catálogo.
 class LineaCatalogo {
-  const LineaCatalogo({required this.nombre, required this.productos, this.id});
+  const LineaCatalogo({required this.nombre, required this.productos, this.id, this.logotipoUrl});
 
   /// Null para el grupo "Sin línea".
   final int? id;
   final String nombre;
   final List<ProductoCatalogo> productos;
+
+  /// El logo de la línea (TG-386). Null si no tiene: se enseña la inicial.
+  final String? logotipoUrl;
 
   static const nombreSinLinea = 'Sin línea';
 
@@ -298,18 +312,26 @@ class LineaCatalogo {
   static List<LineaCatalogo> agrupar(List<ProductoCatalogo> productos) {
     final porId = <int?, List<ProductoCatalogo>>{};
     final nombres = <int?, String>{};
+    final logos = <int?, String>{};
 
     for (final producto in productos) {
       final id = producto.linea?.id;
       porId.putIfAbsent(id, () => []).add(producto);
       nombres[id] = producto.linea?.nombre ?? nombreSinLinea;
+      final logo = producto.linea?.logotipoUrl;
+      if (logo != null && logo.trim().isNotEmpty) logos[id] = logo;
     }
 
     final lineas = porId.entries.map((grupo) {
       final ordenados = [...grupo.value]
         ..sort((a, b) => a.nombre.toLowerCase().compareTo(b.nombre.toLowerCase()));
 
-      return LineaCatalogo(id: grupo.key, nombre: nombres[grupo.key]!, productos: ordenados);
+      return LineaCatalogo(
+        id: grupo.key,
+        nombre: nombres[grupo.key]!,
+        productos: ordenados,
+        logotipoUrl: logos[grupo.key],
+      );
     }).toList();
 
     lineas.sort((a, b) {
