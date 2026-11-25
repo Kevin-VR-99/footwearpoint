@@ -244,7 +244,11 @@ new class extends Component {
                 </button>
                 @foreach ($lineas as $linea)
                     <button type="button" wire:click="filtrarLinea({{ $linea['id'] }})"
-                        class="fp-chip px-3.5 py-1.5 rounded-full text-sm font-medium shadow-sm transition {{ $lineaId === $linea['id'] ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+                        class="fp-chip inline-flex items-center gap-2 py-1 pl-1 pr-3.5 rounded-full text-sm font-medium shadow-sm transition {{ $lineaId === $linea['id'] ? 'bg-fp-sidebar text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50' }}">
+                        {{-- TG-386 A26: fondo blanco para que el logo o la inicial se lean también en el chip elegido. --}}
+                        <span class="rounded-lg bg-white">
+                            <x-ui.avatar-linea :nombre="$linea['nombre']" :url="$linea['logotipo'] ?? null" tamano="sm" data-logo-linea="tienda" />
+                        </span>
                         {{ $linea['nombre'] }}
                     </button>
                 @endforeach

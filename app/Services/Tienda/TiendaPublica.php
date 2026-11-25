@@ -277,6 +277,7 @@ class TiendaPublica
             'marca'       => $producto->producto?->marca?->nombre,
             'categoria'   => $producto->producto?->categoria?->nombre,
             'linea'       => $producto->campana?->linea?->nombre,
+            'linea_logotipo' => $producto->campana?->linea?->logotipo_url,
             'temporada'   => $producto->campana?->nombre,
             'codigo'      => $producto->codigo_catalogo,
             'precio'      => $precio,

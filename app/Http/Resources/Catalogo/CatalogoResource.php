@@ -59,6 +59,8 @@ class CatalogoResource extends JsonResource
                 'linea'    => $linea ? [
                     'id'     => $linea->id,
                     'nombre' => $linea->nombre,
+                    // TG-386 A26: la app pinta el logo o, si es null, la inicial.
+                    'logotipo_url' => $linea->logotipo_url,
                 ] : null,
                 'categoria' => $this->producto->categoria ? [
                     'id'     => $this->producto->categoria->id,

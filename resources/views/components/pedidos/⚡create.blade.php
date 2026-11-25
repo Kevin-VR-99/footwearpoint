@@ -589,12 +589,18 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
 
             <div class="fp-campo">
                 <label for="create-linea-id" class="block text-sm text-slate-600 mb-1">Línea</label>
+                <div class="flex items-center gap-2">
+                    {{-- TG-386 A26: el logo (o la inicial) de la línea elegida, como la foto junto al producto. --}}
+                    @if ($linea_id !== '' && ($lineaElegida = $this->lineas->firstWhere('id', (int) $linea_id)))
+                        <x-ui.avatar-linea :linea="$lineaElegida" data-logo-linea="pedido" />
+                    @endif
                 <select id="create-linea-id" wire:model.live="linea_id" class="w-full rounded-lg text-sm">
                     <option value="">— Selecciona una línea —</option>
                     @foreach ($this->lineas as $linea)
                         <option value="{{ $linea->id }}">{{ $linea->nombre }}</option>
                     @endforeach
                 </select>
+                </div>
                 @if ($this->lineas->isEmpty())
                     <x-panel.alerta tipo="aviso" class="mt-2 text-xs">
                         @if (! $this->tieneLineasAsociadas)
