@@ -13,6 +13,7 @@ use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 use Tests\Concerns\CreaAdminGeneral;
 use Tests\TestCase;
 
@@ -181,7 +182,8 @@ class IndicadoresDeMetricasTest extends TestCase
     {
         $this->comoAdminGeneral();
 
-        $html = $this->get('/admin/metricas')->assertOk()->getContent();
+        $this->get('/admin/metricas')->assertOk();
+        $html = Livewire::test('admin.metricas')->call('cargar')->html();
 
         foreach (IndicadoresDeMetricas::definiciones() as $clave => $texto) {
             // El primer trozo basta: el texto completo lleva comillas y
@@ -207,7 +209,8 @@ class IndicadoresDeMetricasTest extends TestCase
     {
         $this->comoAdminGeneral();
 
-        $html = $this->get('/admin/metricas')->assertOk()->getContent();
+        $this->get('/admin/metricas')->assertOk();
+        $html = Livewire::test('admin.metricas')->call('cargar')->html();
 
         foreach (['usuarios-activos', 'ingresos-suscripcion', 'ventas-tienda', 'plan-mas-contratado'] as $cual) {
             $this->assertStringContainsString('data-indicador="'.$cual.'"', $html);

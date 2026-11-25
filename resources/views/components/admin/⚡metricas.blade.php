@@ -46,6 +46,9 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
 
     public string $errorMsg = '';
 
+    /** TG-396 (A36): difiere las consultas al primer ciclo Livewire para enseñar skeleton. */
+    public bool $cargando = true;
+
     /** Los periodos que se ofrecen, en días. */
     public const PERIODOS = [
         '7' => 'Últimos 7 días',
@@ -55,6 +58,27 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
     ];
 
     public function mount(): void
+    {
+        $this->autorizar();
+    }
+
+    public function cargar(): void
+    {
+        $this->autorizar();
+        $this->cargando = false;
+    }
+
+    public function updatedDias(): void
+    {
+        $this->autorizar();
+    }
+
+    public function updatedDistribuidora(): void
+    {
+        $this->autorizar();
+    }
+
+    public function updatedPlan(): void
     {
         $this->autorizar();
     }
@@ -216,7 +240,7 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
     }
 }; ?>
 
-<div class="space-y-6">
+<div class="space-y-6" wire:init="cargar">
     <x-panel.encabezado eyebrow="Admin general" titulo="Métricas" nivel="h1"
         subtitulo="Actividad y uso de la plataforma. Los datos se cuentan en hora de Ciudad de México." />
 
@@ -280,49 +304,65 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
         </p>
     </x-panel.tarjeta>
 
-    @php($n = $this->indicadores)
     @php($d = $this->definiciones)
 
-    {{-- TG-394 (A34). Cada tarjeta lleva su definicion debajo: sin eso, dos
-         personas leen el mismo numero y entienden cosas distintas. --}}
-    <div class="fp-escalonado grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-indicadores-metricas>
-        <x-panel.tarjeta class="p-5" data-indicador="usuarios-activos">
-            <p class="text-sm font-medium text-slate-700">Usuarios activos</p>
-            <p class="mt-1 whitespace-nowrap text-xl font-bold text-fp-sidebar tabular-nums sm:text-2xl 2xl:text-3xl">{{ number_format($n['usuarios_activos']) }}</p>
-            <p class="mt-2 text-xs text-fp-text-muted">{{ $d['usuarios_activos'] }}</p>
-            @if ($n['periodo_recortado'])
-                {{-- El detalle solo se guarda 90 dias (A43). Decirlo evita que
-                     este numero se lea como si cubriera todo el periodo. --}}
-                <p class="mt-2 text-xs font-medium text-fp-badge-warning-fg" data-periodo-recortado>
-                    Solo desde el {{ \Illuminate\Support\Carbon::parse($n['usuarios_desde'])->locale('es')->translatedFormat('d \d\e F') }}:
-                    el detalle de actividad se guarda {{ \App\Models\ActividadDiaria::DIAS_QUE_SE_GUARDA }} días.
+    @if ($cargando)
+        <x-admin.metricas-esqueleto tipo="indicadores" />
+    @else
+        @php($n = $this->indicadores)
+
+        <div wire:loading wire:target="dias,distribuidora,plan,limpiarFiltros" class="w-full">
+            <x-admin.metricas-esqueleto tipo="indicadores" />
+        </div>
+
+        {{-- TG-394 (A34). Cada tarjeta lleva su definicion debajo: sin eso, dos
+             personas leen el mismo numero y entienden cosas distintas. --}}
+        <div wire:loading.remove wire:target="dias,distribuidora,plan,limpiarFiltros"
+            class="fp-escalonado grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" data-indicadores-metricas>
+            <x-panel.tarjeta class="p-5" data-indicador="usuarios-activos">
+                <p class="text-sm font-medium text-slate-700">Usuarios activos</p>
+                <p class="mt-1 whitespace-nowrap text-xl font-bold text-fp-sidebar tabular-nums sm:text-2xl 2xl:text-3xl">
+                    <x-ui.cifra :valor="(float) $n['usuarios_activos']" formato="numero" :texto="number_format($n['usuarios_activos'])" />
                 </p>
-            @endif
-        </x-panel.tarjeta>
+                <p class="mt-2 text-xs text-fp-text-muted">{{ $d['usuarios_activos'] }}</p>
+                @if ($n['periodo_recortado'])
+                    {{-- El detalle solo se guarda 90 dias (A43). Decirlo evita que
+                         este numero se lea como si cubriera todo el periodo. --}}
+                    <p class="mt-2 text-xs font-medium text-fp-badge-warning-fg" data-periodo-recortado>
+                        Solo desde el {{ \Illuminate\Support\Carbon::parse($n['usuarios_desde'])->locale('es')->translatedFormat('d \d\e F') }}:
+                        el detalle de actividad se guarda {{ \App\Models\ActividadDiaria::DIAS_QUE_SE_GUARDA }} días.
+                    </p>
+                @endif
+            </x-panel.tarjeta>
 
-        <x-panel.tarjeta class="p-5" data-indicador="ingresos-suscripcion">
-            <p class="text-sm font-medium text-slate-700">Ingresos de suscripción</p>
-            <p class="mt-1 whitespace-nowrap text-xl font-bold text-fp-sidebar tabular-nums sm:text-2xl 2xl:text-3xl">{{ $this->pesos($n['ingresos_suscripcion']) }}</p>
-            <p class="mt-2 text-xs text-fp-text-muted">{{ $d['ingresos_suscripcion'] }}</p>
-        </x-panel.tarjeta>
+            <x-panel.tarjeta class="p-5" data-indicador="ingresos-suscripcion">
+                <p class="text-sm font-medium text-slate-700">Ingresos de suscripción</p>
+                <p class="mt-1 whitespace-nowrap text-xl font-bold text-fp-sidebar tabular-nums sm:text-2xl 2xl:text-3xl">
+                    <x-ui.cifra :valor="(float) $n['ingresos_suscripcion']" formato="dinero" :texto="$this->pesos($n['ingresos_suscripcion'])" />
+                </p>
+                <p class="mt-2 text-xs text-fp-text-muted">{{ $d['ingresos_suscripcion'] }}</p>
+            </x-panel.tarjeta>
 
-        <x-panel.tarjeta class="p-5" data-indicador="ventas-tienda">
-            <p class="text-sm font-medium text-slate-700">Ventas de las tiendas</p>
-            <p class="mt-1 whitespace-nowrap text-xl font-bold text-fp-sidebar tabular-nums sm:text-2xl 2xl:text-3xl">{{ $this->pesos($n['ventas_tienda']) }}</p>
-            <p class="mt-2 text-xs text-fp-text-muted">{{ $d['ventas_tienda'] }}</p>
-        </x-panel.tarjeta>
+            <x-panel.tarjeta class="p-5" data-indicador="ventas-tienda">
+                <p class="text-sm font-medium text-slate-700">Ventas de las tiendas</p>
+                <p class="mt-1 whitespace-nowrap text-xl font-bold text-fp-sidebar tabular-nums sm:text-2xl 2xl:text-3xl">
+                    <x-ui.cifra :valor="(float) $n['ventas_tienda']" formato="dinero" :texto="$this->pesos($n['ventas_tienda'])" />
+                </p>
+                <p class="mt-2 text-xs text-fp-text-muted">{{ $d['ventas_tienda'] }}</p>
+            </x-panel.tarjeta>
 
-        <x-panel.tarjeta class="p-5" data-indicador="plan-mas-contratado">
-            <p class="text-sm font-medium text-slate-700">Plan más contratado</p>
-            <p class="mt-1 text-2xl font-bold text-fp-sidebar">{{ $n['plan_mas_contratado'] ?: '—' }}</p>
-            <p class="text-xs text-fp-text-muted">
-                {{ $n['plan_mas_contratado_cuantas'] > 0
-                    ? $n['plan_mas_contratado_cuantas'].' '.\Illuminate\Support\Str::plural('distribuidora', $n['plan_mas_contratado_cuantas'])
-                    : 'Sin suscripciones activas' }}
-            </p>
-            <p class="mt-2 text-xs text-fp-text-muted">{{ $d['plan_mas_contratado'] }}</p>
-        </x-panel.tarjeta>
-    </div>
+            <x-panel.tarjeta class="p-5" data-indicador="plan-mas-contratado">
+                <p class="text-sm font-medium text-slate-700">Plan más contratado</p>
+                <p class="mt-1 text-2xl font-bold text-fp-sidebar">{{ $n['plan_mas_contratado'] ?: '—' }}</p>
+                <p class="text-xs text-fp-text-muted">
+                    {{ $n['plan_mas_contratado_cuantas'] > 0
+                        ? $n['plan_mas_contratado_cuantas'].' '.\Illuminate\Support\Str::plural('distribuidora', $n['plan_mas_contratado_cuantas'])
+                        : 'Sin suscripciones activas' }}
+                </p>
+                <p class="mt-2 text-xs text-fp-text-muted">{{ $d['plan_mas_contratado'] }}</p>
+            </x-panel.tarjeta>
+        </div>
+    @endif
 
     {{-- Lo dice la tarjeta y vale la pena que se lea: son dos bolsillos
          distintos y sumarlos daria un numero que no significa nada. --}}
@@ -334,61 +374,71 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
     {{-- TG-395 (A35). Las series usan EL MISMO rango y los MISMOS filtros que
          los indicadores de arriba, por eso cada total de aqui coincide con su
          tarjeta: las consultas salen del mismo sitio (ConsultasDeMetricas). --}}
-    @if ($this->series === null)
-        {{-- Estado de error con reintento, lo pide la tarjeta. Los indicadores
-             de arriba siguen en pie: solo se cayeron las series. --}}
-        <x-panel.tarjeta class="p-6 text-center" data-series-error>
-            <p class="text-sm font-medium text-slate-700">No se pudieron armar las gráficas.</p>
-            <p class="mx-auto mt-1 max-w-prose text-sm text-fp-text-muted">
-                Los indicadores de arriba sí están. Si vuelve a pasar, avísale a soporte: quedó registrado.
-            </p>
-            <button type="button" wire:click="reintentarSeries" class="fp-btn fp-btn-primario mt-4">
-                Reintentar
-            </button>
-        </x-panel.tarjeta>
+    @if ($cargando)
+        <x-admin.metricas-esqueleto tipo="series" />
     @else
         @php($s = $this->series)
 
-        <div class="space-y-2">
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-fp-text-muted">
-                Cómo se movió en el tiempo
-            </h2>
-            <p class="text-xs text-fp-text-muted" data-agrupacion-series>
-                Un tramo por {{ $s['agrupacion'] }}, {{ $s['tramos'] }} en total.
-                El último va en curso porque el periodo termina hoy.
-                Cada gráfica trae su tabla con los valores exactos.
-            </p>
+        <div wire:loading wire:target="dias,distribuidora,plan,limpiarFiltros,reintentarSeries" class="w-full">
+            <x-admin.metricas-esqueleto tipo="series" />
         </div>
 
-        <div class="grid grid-cols-1 gap-4 xl:grid-cols-3" data-series-metricas>
-            {{-- La nota de los usuarios no es un detalle: sin ella, cualquiera
-                 suma las barras, no le cuadra con el indicador de arriba y
-                 piensa que la pantalla miente. --}}
-            <x-ui.serie titulo="Usuarios activos" columna="Usuarios" tono="primario"
-                :puntos="$s['series']['usuarios_activos']['puntos']"
-                :total="$s['series']['usuarios_activos']['total']"
-                :tendencia="$s['series']['usuarios_activos']['tendencia']"
-                :agrupacion="$s['agrupacion']"
-                :descripcion="$d['usuarios_activos']"
-                nota="Las barras no se suman: quien entró en dos tramos es una sola persona en el total."
-                vacio="Nadie entró al panel ni a la app en este periodo." />
+        <div wire:loading.remove wire:target="dias,distribuidora,plan,limpiarFiltros,reintentarSeries" class="space-y-4">
+            @if ($s === null)
+                {{-- Estado de error con reintento, lo pide la tarjeta. Los indicadores
+                     de arriba siguen en pie: solo se cayeron las series. --}}
+                <x-panel.tarjeta class="p-6 text-center" data-series-error>
+                    <p class="text-sm font-medium text-slate-700">No se pudieron armar las gráficas.</p>
+                    <p class="mx-auto mt-1 max-w-prose text-sm text-fp-text-muted">
+                        Los indicadores de arriba sí están. Si vuelve a pasar, avísale a soporte: quedó registrado.
+                    </p>
+                    <button type="button" wire:click="reintentarSeries" class="fp-btn fp-btn-primario mt-4">
+                        Reintentar
+                    </button>
+                </x-panel.tarjeta>
+            @else
+                <div class="space-y-2">
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-fp-text-muted">
+                        Cómo se movió en el tiempo
+                    </h2>
+                    <p class="text-xs text-fp-text-muted" data-agrupacion-series>
+                        Un tramo por {{ $s['agrupacion'] }}, {{ $s['tramos'] }} en total.
+                        El último va en curso porque el periodo termina hoy.
+                        Cada gráfica trae su tabla con los valores exactos.
+                    </p>
+                </div>
 
-            <x-ui.serie titulo="Ingresos de suscripción" columna="Ingresos" tono="exito" formato="dinero"
-                :puntos="$s['series']['ingresos_suscripcion']['puntos']"
-                :total="$s['series']['ingresos_suscripcion']['total']"
-                :tendencia="$s['series']['ingresos_suscripcion']['tendencia']"
-                :agrupacion="$s['agrupacion']"
-                :descripcion="$d['ingresos_suscripcion']"
-                vacio="No se aplicó ningún pago de suscripción en este periodo." />
+                <div class="fp-datos-cascada grid grid-cols-1 gap-4 xl:grid-cols-3" data-series-metricas>
+                    {{-- La nota de los usuarios no es un detalle: sin ella, cualquiera
+                         suma las barras, no le cuadra con el indicador de arriba y
+                         piensa que la pantalla miente. --}}
+                    <x-ui.serie titulo="Usuarios activos" columna="Usuarios" tono="primario"
+                        :puntos="$s['series']['usuarios_activos']['puntos']"
+                        :total="$s['series']['usuarios_activos']['total']"
+                        :tendencia="$s['series']['usuarios_activos']['tendencia']"
+                        :agrupacion="$s['agrupacion']"
+                        :descripcion="$d['usuarios_activos']"
+                        nota="Las barras no se suman: quien entró en dos tramos es una sola persona en el total."
+                        vacio="Nadie entró al panel ni a la app en este periodo." />
 
-            <x-ui.serie titulo="Ventas de las tiendas" columna="Ventas" tono="oscuro" formato="dinero"
-                :puntos="$s['series']['ventas_tienda']['puntos']"
-                :total="$s['series']['ventas_tienda']['total']"
-                :tendencia="$s['series']['ventas_tienda']['tendencia']"
-                :agrupacion="$s['agrupacion']"
-                :descripcion="$d['ventas_tienda']"
-                nota="El filtro de plan no aplica aquí: el plan es el contrato con FootwearPoint, no con los clientes de la tienda."
-                vacio="Las tiendas no registraron ventas en este periodo." />
+                    <x-ui.serie titulo="Ingresos de suscripción" columna="Ingresos" tono="exito" formato="dinero"
+                        :puntos="$s['series']['ingresos_suscripcion']['puntos']"
+                        :total="$s['series']['ingresos_suscripcion']['total']"
+                        :tendencia="$s['series']['ingresos_suscripcion']['tendencia']"
+                        :agrupacion="$s['agrupacion']"
+                        :descripcion="$d['ingresos_suscripcion']"
+                        vacio="No se aplicó ningún pago de suscripción en este periodo." />
+
+                    <x-ui.serie titulo="Ventas de las tiendas" columna="Ventas" tono="oscuro" formato="dinero"
+                        :puntos="$s['series']['ventas_tienda']['puntos']"
+                        :total="$s['series']['ventas_tienda']['total']"
+                        :tendencia="$s['series']['ventas_tienda']['tendencia']"
+                        :agrupacion="$s['agrupacion']"
+                        :descripcion="$d['ventas_tienda']"
+                        nota="El filtro de plan no aplica aquí: el plan es el contrato con FootwearPoint, no con los clientes de la tienda."
+                        vacio="Las tiendas no registraron ventas en este periodo." />
+                </div>
+            @endif
         </div>
     @endif
 </div>

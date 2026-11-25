@@ -71,14 +71,16 @@
         .'Los valores exactos están en la tabla que sigue.';
 @endphp
 
-<x-panel.tarjeta class="p-5" data-serie="{{ $clave }}">
+<x-panel.tarjeta class="p-5 fp-aparecer" data-serie="{{ $clave }}">
     <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div class="min-w-0">
             <h3 class="text-sm font-semibold text-slate-700">{{ $titulo }}</h3>
             @if ($total !== null)
                 {{-- Sin partirse: «$45,357.00 MXN» en dos renglones se lee
                      como dos cifras distintas. --}}
-                <p class="mt-1 whitespace-nowrap text-xl font-bold tabular-nums text-fp-sidebar sm:text-2xl">{{ $texto($total) }}</p>
+                <p class="mt-1 whitespace-nowrap text-xl font-bold tabular-nums text-fp-sidebar sm:text-2xl">
+                    <x-ui.cifra :valor="(float) $total" :formato="$formato" :texto="$texto($total)" />
+                </p>
             @endif
         </div>
 

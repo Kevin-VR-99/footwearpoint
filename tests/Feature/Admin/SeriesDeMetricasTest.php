@@ -142,7 +142,8 @@ class SeriesDeMetricasTest extends TestCase
     {
         $this->comoAdminGeneral();
 
-        $html = $this->get('/admin/metricas')->assertOk()->getContent();
+        $this->get('/admin/metricas')->assertOk();
+        $html = Livewire::test('admin.metricas')->call('cargar')->html();
 
         foreach (['usuarios-activos', 'ingresos-de-suscripcion', 'ventas-de-las-tiendas'] as $cual) {
             $this->assertStringContainsString('data-serie="'.$cual.'"', $html, "Falta la gráfica de {$cual}.");
@@ -158,7 +159,7 @@ class SeriesDeMetricasTest extends TestCase
         $this->comoAdminGeneral();
         $this->pago(400, 3);
 
-        $html = $this->get('/admin/metricas')->assertOk()->getContent();
+        $html = Livewire::test('admin.metricas')->call('cargar')->html();
         $tramos = $this->series()['tramos'];
 
         $tabla = $this->trozo($html, 'data-tabla-serie="ingresos-de-suscripcion"', '</table>');
@@ -172,7 +173,8 @@ class SeriesDeMetricasTest extends TestCase
         $this->comoAdminGeneral();
         $this->pago(1500, 2);
 
-        $this->get('/admin/metricas')
+        Livewire::test('admin.metricas')
+            ->call('cargar')
             ->assertOk()
             ->assertSee('role="img"', false)
             ->assertSee('El tramo más alto es', false)
@@ -433,7 +435,8 @@ class SeriesDeMetricasTest extends TestCase
     {
         $this->comoAdminGeneral();
 
-        $this->get('/admin/metricas?dias=90')
+        Livewire::test('admin.metricas', ['dias' => '90'])
+            ->call('cargar')
             ->assertOk()
             ->assertSee('data-sin-comparacion', false)
             ->assertSee('no alcanza para comparar con el periodo anterior', false);
@@ -446,7 +449,7 @@ class SeriesDeMetricasTest extends TestCase
         $this->pago(200, 2);   // dentro de los últimos 30
         $this->pago(100, 40);  // en los 30 anteriores, que es con lo que compara
 
-        $html = $this->get('/admin/metricas')->assertOk()->getContent();
+        $html = Livewire::test('admin.metricas')->call('cargar')->html();
 
         $this->assertStringContainsString('data-tendencia="sube"', $html);
         $this->assertMatchesRegularExpression('/data-tendencia="sube"[^>]*>.*?Sube/s', $html, 'La tendencia se quedó en puro color.');
@@ -459,7 +462,8 @@ class SeriesDeMetricasTest extends TestCase
     {
         $this->comoAdminGeneral();
 
-        $this->get('/admin/metricas')
+        Livewire::test('admin.metricas')
+            ->call('cargar')
             ->assertOk()
             ->assertSee('No se aplicó ningún pago de suscripción en este periodo', false);
     }
@@ -469,7 +473,8 @@ class SeriesDeMetricasTest extends TestCase
         $this->comoAdminGeneral();
         $this->pago(500, 3);
 
-        $this->get('/admin/metricas')
+        Livewire::test('admin.metricas')
+            ->call('cargar')
             ->assertOk()
             ->assertDontSee('No se aplicó ningún pago de suscripción en este periodo', false);
     }
@@ -486,7 +491,8 @@ class SeriesDeMetricasTest extends TestCase
         $this->comoAdminGeneral();
         $this->instance(SeriesDeMetricas::class, new SeriesQueTruena(app(ConsultasDeMetricas::class), 99));
 
-        $this->get('/admin/metricas')
+        Livewire::test('admin.metricas')
+            ->call('cargar')
             ->assertOk()
             ->assertSee('No se pudieron armar las gráficas')
             ->assertSee('Reintentar')
@@ -503,6 +509,7 @@ class SeriesDeMetricasTest extends TestCase
         $this->instance(SeriesDeMetricas::class, new SeriesQueTruena(app(ConsultasDeMetricas::class), 1));
 
         Livewire::test('admin.metricas')
+            ->call('cargar')
             ->assertSee('No se pudieron armar las gráficas')
             ->call('reintentarSeries')
             ->assertDontSee('No se pudieron armar las gráficas')
@@ -522,7 +529,7 @@ class SeriesDeMetricasTest extends TestCase
         $this->comoAdminGeneral();
         $this->pago(1500.5, 2);
 
-        $html = $this->get('/admin/metricas')->assertOk()->getContent();
+        $html = Livewire::test('admin.metricas')->call('cargar')->html();
 
         $this->assertStringContainsString(
             '$1,500.50 MXN',
@@ -550,7 +557,7 @@ class SeriesDeMetricasTest extends TestCase
         $this->comoAdminGeneral();
 
         $tarjeta = $this->trozo(
-            $this->get('/admin/metricas')->assertOk()->getContent(),
+            Livewire::test('admin.metricas')->call('cargar')->html(),
             'data-serie="usuarios-activos"',
             'data-serie="ingresos-de-suscripcion"'
         );
