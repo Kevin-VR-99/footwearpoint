@@ -2,7 +2,9 @@
 
 use App\Models\Distribuidora;
 use App\Services\Actividad\ConsolidarActividad;
+use App\Services\Metricas\CacheDeMetricas;
 use App\Services\Metricas\IndicadoresDeMetricas;
+use App\Services\Metricas\PendientesDeMetricas;
 use App\Services\Metricas\SeriesDeMetricas;
 use App\Models\PlanSuscripcion;
 use App\Support\Dinero;
@@ -163,15 +165,48 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
         return app(ConsolidarActividad::class)->motivoDeAlerta();
     }
 
-    /** TG-394 (A34) — Los numeros, con los filtros ya aplicados. */
-    public function getIndicadoresProperty(): array
+    /**
+     * TG-397 (A37) — Cuándo se calculó cada parte que se está enseñando.
+     *
+     * No es público a propósito: lo llena cacheado() en esta misma petición y
+     * no viaja al navegador.
+     *
+     * @var array<string, string>
+     */
+    protected array $calculadas = [];
+
+    /**
+     * TG-397 (A37) — Lo calcula una vez y lo guarda unos minutos.
+     *
+     * La llave lleva el periodo y los filtros (CacheDeMetricas). Si $calcular
+     * truena, la excepción sale tal cual: las series la atrapan y ofrecen
+     * reintentar, y nada roto se queda guardado.
+     */
+    private function cacheado(string $que, \Closure $calcular): array
     {
-        return app(IndicadoresDeMetricas::class)->calcular(
+        $resultado = app(CacheDeMetricas::class)->recordar(
+            $que,
             $this->rango['desde'],
             $this->rango['hasta'],
             $this->distribuidoraElegida?->id,
             $this->planElegido?->id,
+            $calcular,
         );
+
+        $this->calculadas[$que] = $resultado['calculado_at'];
+
+        return $resultado['datos'];
+    }
+
+    /** TG-394 (A34) — Los numeros, con los filtros ya aplicados. */
+    public function getIndicadoresProperty(): array
+    {
+        return $this->cacheado('indicadores', fn () => app(IndicadoresDeMetricas::class)->calcular(
+            $this->rango['desde'],
+            $this->rango['hasta'],
+            $this->distribuidoraElegida?->id,
+            $this->planElegido?->id,
+        ));
     }
 
     /** Que quiere decir cada numero. Se enseña en pantalla, lo pide A34. */
@@ -192,12 +227,12 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
     public function getSeriesProperty(): ?array
     {
         try {
-            return app(SeriesDeMetricas::class)->calcular(
+            return $this->cacheado('series', fn () => app(SeriesDeMetricas::class)->calcular(
                 $this->rango['desde'],
                 $this->rango['hasta'],
                 $this->distribuidoraElegida?->id,
                 $this->planElegido?->id,
-            );
+            ));
         } catch (\Throwable $e) {
             report($e);
 
@@ -214,6 +249,49 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
     public function reintentarSeries(): void
     {
         $this->autorizar();
+    }
+
+    /**
+     * TG-397 (A37) — Recalcular sin esperar a que caduque lo guardado.
+     *
+     * Solo borra lo de la vista que se está viendo (mismo periodo y filtros);
+     * el render que sigue lo vuelve a calcular.
+     */
+    public function actualizar(): void
+    {
+        $this->autorizar();
+
+        app(CacheDeMetricas::class)->olvidar(
+            ['indicadores', 'series'],
+            $this->rango['desde'],
+            $this->rango['hasta'],
+            $this->distribuidoraElegida?->id,
+            $this->planElegido?->id,
+        );
+    }
+
+    /**
+     * TG-397 (A37) — La hora (CDMX) del cálculo más viejo que se enseña.
+     *
+     * El más viejo y no el más nuevo: si los indicadores vienen de hace
+     * cuatro minutos y las series de ahora, lo honesto es decir «hace cuatro
+     * minutos». Se pide al final de la plantilla, cuando ya se calculó todo.
+     */
+    public function getUltimoCalculoProperty(): ?string
+    {
+        if ($this->calculadas === []) {
+            return null;
+        }
+
+        return Carbon::parse(min($this->calculadas))
+            ->setTimezone('America/Mexico_City')
+            ->format('H:i');
+    }
+
+    /** TG-397 (A37) — Lo que todavía no se mide (fase 2), tal cual se enseña. */
+    public function getPendientesProperty(): array
+    {
+        return PendientesDeMetricas::lista();
     }
 
     /**
@@ -441,4 +519,44 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
             @endif
         </div>
     @endif
+
+    {{-- TG-397 (A37). Las cifras se guardan unos minutos para no repetir las
+         consultas en cada visita; decirlo evita que un numero guardado se lea
+         como si fuera de este instante. --}}
+    @if (! $cargando && $this->ultimoCalculo)
+        <div class="flex flex-wrap items-center gap-3 text-xs text-fp-text-muted" data-ultimo-calculo>
+            <p>
+                Cifras calculadas a las {{ $this->ultimoCalculo }} (hora de Ciudad de México).
+                Se guardan {{ intdiv(\App\Services\Metricas\CacheDeMetricas::SEGUNDOS, 60) }} minutos para no repetir las consultas en cada visita.
+            </p>
+            <button type="button" wire:click="actualizar" wire:loading.attr="disabled" wire:target="actualizar"
+                class="fp-btn fp-btn-fantasma" data-actualizar-metricas>
+                <span wire:loading.remove wire:target="actualizar">Actualizar ahora</span>
+                <span wire:loading wire:target="actualizar">Actualizando…</span>
+            </button>
+        </div>
+    @endif
+
+    {{-- TG-397 (A37). Lo que no se puede medir se dice, no se rellena. La
+         misma lista vive en docs/metricas-fase2.md. Solo texto fijo: nada de
+         llaves, tokens ni datos del servidor. --}}
+    <x-panel.tarjeta class="p-5" data-pendientes-metricas>
+        <details>
+            <summary class="cursor-pointer text-sm font-semibold text-slate-700">
+                Lo que todavía no se mide (fase 2)
+            </summary>
+            <p class="mt-2 max-w-prose text-xs text-fp-text-muted">
+                Estas métricas no aparecen arriba porque hoy no hay de dónde sacarlas sin inventar el número.
+            </p>
+            <ul class="mt-3 space-y-3 text-sm">
+                @foreach ($this->pendientes as $p)
+                    <li data-pendiente="{{ $p['clave'] }}">
+                        <p class="font-medium text-slate-700">{{ $p['titulo'] }}</p>
+                        <p class="text-xs text-fp-text-muted">{{ $p['motivo'] }}</p>
+                        <p class="text-xs text-fp-text-muted"><span class="font-medium">Qué haría falta:</span> {{ $p['falta'] }}</p>
+                    </li>
+                @endforeach
+            </ul>
+        </details>
+    </x-panel.tarjeta>
 </div>

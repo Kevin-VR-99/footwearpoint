@@ -125,13 +125,17 @@ class SeriesDeMetricas
             ? intdiv((int) $desde->copy()->startOfDay()->diffInDays($recorte['inicio']), $paso)
             : 0;
 
+        // TG-397 (A37): el total se pide UNA vez y la tendencia lo reutiliza.
+        // Antes se contaba dos veces la misma gente del mismo periodo.
+        $total = (float) $this->consultas
+            ->actividad($desde, $hasta, $distribuidoraId)
+            ->distinct()
+            ->count('usuario_id');
+
         return [
             'puntos' => $this->puntos($desde, $hasta, $paso, $tramos, $valores, $primerTramoConDato),
-            'total' => (float) $this->consultas
-                ->actividad($desde, $hasta, $distribuidoraId)
-                ->distinct()
-                ->count('usuario_id'),
-            'tendencia' => $this->tendenciaDeUsuarios($desde, $hasta, $distribuidoraId, $recorte['recortado']),
+            'total' => $total,
+            'tendencia' => $this->tendenciaDeUsuarios($total, $desde, $hasta, $distribuidoraId, $recorte['recortado']),
         ];
     }
 
@@ -159,10 +163,14 @@ class SeriesDeMetricas
             $paso,
         );
 
+        // TG-397 (A37): el total del periodo se pide una sola vez; antes se
+        // repetía la misma consulta para la tendencia.
+        $actual = $total($desde, $hasta);
+
         return [
             'puntos' => $this->puntos($desde, $hasta, $paso, $tramos, $valores),
-            'total' => $total($desde, $hasta),
-            'tendencia' => $this->tendencia($total($desde, $hasta), $total($anterior['desde'], $anterior['hasta'])),
+            'total' => $actual,
+            'tendencia' => $this->tendencia($actual, $total($anterior['desde'], $anterior['hasta'])),
         ];
     }
 
@@ -182,10 +190,14 @@ class SeriesDeMetricas
             $paso,
         );
 
+        // TG-397 (A37): el total del periodo se pide una sola vez; antes se
+        // repetía la misma consulta para la tendencia.
+        $actual = $total($desde, $hasta);
+
         return [
             'puntos' => $this->puntos($desde, $hasta, $paso, $tramos, $valores),
-            'total' => $total($desde, $hasta),
-            'tendencia' => $this->tendencia($total($desde, $hasta), $total($anterior['desde'], $anterior['hasta'])),
+            'total' => $actual,
+            'tendencia' => $this->tendencia($actual, $total($anterior['desde'], $anterior['hasta'])),
         ];
     }
 
@@ -324,7 +336,7 @@ class SeriesDeMetricas
      * existe: enseñar una flecha ahí sería compararse contra una tabla vacía y
      * cualquier periodo saldría «subiendo».
      */
-    private function tendenciaDeUsuarios(Carbon $desde, Carbon $hasta, ?int $distribuidoraId, bool $recortado): array
+    private function tendenciaDeUsuarios(float $actual, Carbon $desde, Carbon $hasta, ?int $distribuidoraId, bool $recortado): array
     {
         $anterior = $this->periodoAnterior($desde, $hasta);
         $horizonte = $this->consultas->horizonteDeActividad();
@@ -335,7 +347,7 @@ class SeriesDeMetricas
         }
 
         return $this->tendencia(
-            (float) $this->consultas->actividad($desde, $hasta, $distribuidoraId)->distinct()->count('usuario_id'),
+            $actual,
             (float) $this->consultas->actividad($anterior['desde'], $anterior['hasta'], $distribuidoraId)->distinct()->count('usuario_id'),
         );
     }
