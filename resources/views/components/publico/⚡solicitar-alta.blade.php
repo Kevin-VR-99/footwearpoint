@@ -83,6 +83,14 @@ class extends Component
     public function mount(): void
     {
         $this->iniciado_en = now()->timestamp;
+
+        // TG-391 (A31): el botón "Contratar" de cada plan en el inicio llega
+        // con ?plan=. Solo se marca si es un plan activo; lo demás se ignora.
+        // Es una preselección: al enviar se valida igual que siempre.
+        $plan = (string) request()->query('plan', '');
+        if (ctype_digit($plan) && PlanSuscripcion::query()->whereKey((int) $plan)->where('activo', true)->exists()) {
+            $this->plan_id = $plan;
+        }
     }
 
     public function getPlanesProperty()
