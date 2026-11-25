@@ -5,7 +5,7 @@
     x-on:keydown.escape.window="abierto = false" data-visor-archivo>
     <template x-teleport="body">
         <div x-show="abierto" x-cloak x-transition.opacity.duration.150ms
-            class="fixed inset-0 z-50 flex items-center justify-center bg-fp-sidebar/70 p-4 backdrop-blur-sm"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-fp-sidebar/80 p-4"
             x-on:click.self="abierto = false" role="dialog" aria-modal="true" :aria-label="nombre">
             <div x-show="abierto" x-transition.scale.95.duration.150ms
                 class="flex h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-fp-sidebar/40 ring-1 ring-fp-primary/20">

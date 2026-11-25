@@ -39,7 +39,7 @@
         })();
     </script>
     <header
-        class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
+        class="sticky top-0 z-30 border-b border-slate-200/80 fp-vidrio shadow-sm">
         <div class="h-0.5 w-full bg-gradient-to-r from-fp-primary via-fp-sidebar to-fp-danger"></div>
         <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 sm:px-5">
             <a href="{{ route('marketplace') }}" class="group flex min-w-0 items-center gap-2.5 rounded-xl py-1 pr-2.5 pl-1 transition hover:bg-fp-page">

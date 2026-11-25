@@ -39,7 +39,7 @@
         x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
         x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
-        class="absolute right-0 z-40 mt-2 w-60 origin-top-right overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-lg ring-1 ring-black/5"
+        class="absolute right-0 z-40 mt-2 w-60 origin-top-right overflow-hidden rounded-2xl border border-slate-200/90 fp-vidrio shadow-lg ring-1 ring-black/5"
         role="menu">
         <div class="border-b border-slate-100 bg-gradient-to-r from-fp-sidebar to-fp-accent px-3.5 py-3">
             <p class="truncate text-sm font-semibold text-white">{{ $nombreUsuario }}</p>

@@ -57,7 +57,7 @@ new class extends Component
     </button>
 
     <div x-show="abierto" x-cloak x-transition.opacity.scale.origin.top.right
-        class="absolute right-0 z-40 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-lg ring-1 ring-black/5"
+        class="absolute right-0 z-40 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200/90 fp-vidrio shadow-lg ring-1 ring-black/5"
         role="dialog" aria-label="Notificaciones">
         <div class="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-fp-sidebar to-fp-accent px-4 py-3">
             <p class="text-sm font-semibold text-white">Notificaciones</p>

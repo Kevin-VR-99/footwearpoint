@@ -93,7 +93,7 @@ class extends Component
                 @endif
 
                 <a href="{{ route('marketplace') }}"
-                    class="inline-flex items-center justify-center rounded-xl border border-white/25 bg-white/5 px-6 py-3 font-semibold text-white backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:border-white/50 hover:bg-white hover:text-fp-sidebar">
+                    class="inline-flex items-center justify-center rounded-xl border border-white/25 fp-vidrio-oscuro px-6 py-3 font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:border-white/50 hover:bg-white hover:text-fp-sidebar">
                     Ver marketplace
                 </a>
             </div>

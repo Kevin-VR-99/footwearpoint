@@ -606,7 +606,9 @@ html.fp-js [data-revelar]:not(.revelado) {
     .fp-campo:focus-within > label, .fp-campo:focus-within > .fp-etiqueta { color: var(--color-fp-primary); }
 
     /* Modal (x-panel.modal). */
-    .fp-modal-fondo { background-color: color-mix(in oklab, var(--color-fp-sidebar) 55%, transparent); backdrop-filter: blur(3px); }
+    /* TG-389 (A29): el fondo del modal es un velo sólido, sin blur. Los modales
+       salen en Pedidos, Stock, Venta y pagos, donde la tarjeta prohíbe el glass. */
+    .fp-modal-fondo { background-color: color-mix(in oklab, var(--color-fp-sidebar) 65%, transparent); }
     .fp-modal {
         border-radius: var(--radius-2xl);
         border: 1px solid color-mix(in oklab, var(--color-slate-200) 80%, transparent);
@@ -1032,4 +1034,56 @@ form[data-loading] button[type=submit]:not(:has([wire\:loading]))::before {
 @media (prefers-reduced-motion: reduce) {
     .fp-red { transition: none !important; }
     .fp-red:hover, .fp-red:focus-visible { transform: none !important; }
+}
+
+/* TG-389 (A29) — Liquid glass solo como acento, con fondo sólido de respaldo.
+   ----------------------------------------------------------------
+   El glass vive SOLO en dos clases y solo se usa en acentos: la barra
+   superior (panel, admin, público, tienda), los menús desplegables (usuario y
+   campana) y el botón secundario del encabezado del inicio. Datos, formas,
+   tablas, precios, modales y todo Pedidos/Stock/Venta/pagos van sólidos.
+
+   Cada clase arranca con su fondo sólido; el translúcido con blur solo entra
+   si el navegador soporta backdrop-filter (@supports). Quien pide menos
+   transparencia (prefers-reduced-transparency) o usa colores forzados vuelve
+   al sólido. El texto encima siempre se lee contra el fondo sólido o casi
+   sólido (blanco al 92% con blur: aun con el azul oscuro de la marca detrás, el gris tenue fp-text-muted queda arriba de 4.5:1), así que el contraste AA no depende del
+   contenido que pase por detrás. */
+@layer components {
+    /* Sobre claro: barras y desplegables. */
+    .fp-vidrio { background-color: #fff; }
+
+    /* Sobre oscuro: detalle del encabezado del inicio. El respaldo es un
+       blanco muy tenue sobre el degradado oscuro, igual de legible. */
+    .fp-vidrio-oscuro { background-color: rgb(255 255 255 / .1); }
+
+    @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+        .fp-vidrio {
+            background-color: rgb(255 255 255 / .92);
+            -webkit-backdrop-filter: blur(12px) saturate(1.4);
+            backdrop-filter: blur(12px) saturate(1.4);
+        }
+        .fp-vidrio-oscuro {
+            background-color: rgb(255 255 255 / .06);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+        }
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .fp-vidrio, .fp-vidrio-oscuro {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+    }
+    .fp-vidrio { background-color: #fff !important; }
+    .fp-vidrio-oscuro { background-color: rgb(255 255 255 / .1) !important; }
+}
+
+@media (forced-colors: active) {
+    .fp-vidrio, .fp-vidrio-oscuro {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        background-color: Canvas !important;
+    }
 }

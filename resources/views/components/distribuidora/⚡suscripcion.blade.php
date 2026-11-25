@@ -493,7 +493,7 @@ new class extends Component {
     </div>
 
     @if ($confirmarLineaExtra)
-        <div class="fp-desvanecer fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="titulo-linea-extra" wire:click.self="cancelarLineaExtra">
+        <div class="fp-desvanecer fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4" role="dialog" aria-modal="true" aria-labelledby="titulo-linea-extra" wire:click.self="cancelarLineaExtra">
             <div class="fp-emerger w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
                 <h2 id="titulo-linea-extra" class="text-lg font-semibold text-slate-900">Solicitar línea extra</h2>
                 <p class="mt-2 text-sm text-slate-600">

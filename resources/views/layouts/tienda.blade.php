@@ -25,7 +25,7 @@
 <body class="flex min-h-screen flex-col bg-fp-page text-slate-800 antialiased">
     <x-ui.saltar-al-contenido />
     <header
-        class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
+        class="sticky top-0 z-30 border-b border-slate-200/80 fp-vidrio shadow-sm">
         <div class="h-0.5 w-full bg-gradient-to-r from-fp-primary via-fp-sidebar to-fp-danger"></div>
         <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5 sm:px-5">
             @isset($distribuidora)
