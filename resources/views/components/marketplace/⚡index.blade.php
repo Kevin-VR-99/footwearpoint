@@ -130,8 +130,8 @@ new #[Layout('layouts.public')] #[Title('Marketplace — FootwearPoint')] class 
     </div>
 
     {{-- La barra pública mide 4.125rem (franja + fila del logo). El buscador se queda debajo al hacer scroll.
-         Fondo casi sólido: aquí se lee y se escribe (A29, glass solo de acento). --}}
-    <form class="sticky top-[4.125rem] z-20 -mx-4 mb-6 grid grid-cols-1 gap-3 border-b border-slate-200/80 bg-fp-page/95 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-fp-page/80 sm:-mx-5 sm:grid-cols-2 sm:px-5 fp-aparecer"
+         Fondo sólido: aquí se lee y se escribe (TG-389 A29, glass solo de acento). --}}
+    <form class="sticky top-[4.125rem] z-20 -mx-4 mb-6 grid grid-cols-1 gap-3 border-b border-slate-200/80 bg-fp-page px-4 py-3 shadow-sm sm:-mx-5 sm:grid-cols-2 sm:px-5 fp-aparecer"
         role="search" wire:submit.prevent>
         <div class="sm:col-span-2">
             <p id="etiqueta-buscar-distribuidora" class="mb-1 text-sm font-medium text-slate-700">Buscar distribuidora</p>

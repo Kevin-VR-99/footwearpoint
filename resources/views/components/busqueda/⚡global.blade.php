@@ -60,7 +60,7 @@ new class extends Component {
         <template x-teleport="body">
             <div x-show="abierto" x-cloak class="fixed inset-0 z-[70] flex items-start justify-center px-4 pt-[10vh]"
                 role="dialog" aria-modal="true" aria-labelledby="busqueda-global-titulo" @keydown.escape.window="cerrar()">
-                <div x-show="abierto" x-transition.opacity.duration.150ms class="fp-modal-fondo absolute inset-0 backdrop-blur-sm" @click="cerrar()" aria-hidden="true"></div>
+                <div x-show="abierto" x-transition.opacity.duration.150ms class="fp-modal-fondo absolute inset-0" @click="cerrar()" aria-hidden="true"></div>
 
                 <div x-show="abierto"
                     x-transition:enter="transition ease-out duration-200 motion-reduce:transition-none"
