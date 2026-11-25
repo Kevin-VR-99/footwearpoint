@@ -6,6 +6,9 @@ use App\Models\CategoriaDirectorio;
 use App\Models\Distribuidora;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Query\Builder as Consulta;
+use Illuminate\Support\Collection as Lista;
+use Illuminate\Support\Facades\DB;
 
 /**
  * TG-197 (G16) — Lo que se ve en el directorio público (marketplace).
@@ -23,8 +26,12 @@ class DirectorioPublico
      *
      * La categoría sigue disponible para la API. El marketplace público
      * filtra por nombre y por lugar (la dirección pública), no por categoría.
+     *
+     * TG-391 (A31): y por línea del catálogo (Cklass, Impuls...), la que el
+     * visitante busca de verdad. Cuenta solo la que la distribuidora tiene
+     * activa y que sigue activa en el catálogo maestro.
      */
-    public function distribuidoras(?int $categoriaId = null, ?string $nombre = null, ?string $lugar = null, ?string $termino = null): Collection
+    public function distribuidoras(?int $categoriaId = null, ?string $nombre = null, ?string $lugar = null, ?string $termino = null, ?int $lineaId = null): Collection
     {
         $nombre = $this->texto($nombre);
         $lugar = $this->texto($lugar);
@@ -60,9 +67,89 @@ class DirectorioPublico
                             ->where('sucursales.direccion', 'like', $like)));
                 }
             })
+            ->when($lineaId !== null, fn (Builder $q) => $q->whereExists(
+                fn (Consulta $s) => $this->lineasVigentes($s->selectRaw('1'))
+                    ->whereColumn('distribuidora_linea.distribuidora_id', 'distribuidoras.id')
+                    ->where('distribuidora_linea.linea_id', $lineaId)
+            ))
             ->with(['categoriasDirectorio' => fn ($c) => $c->activas()->orderBy('nombre')])
             ->orderBy('nombre_comercial')
             ->get();
+    }
+
+    /**
+     * TG-391 (A31) — Las líneas que vende al menos una distribuidora visible,
+     * por nombre, con cuántas la venden. Son los filtros del marketplace.
+     *
+     * Va con el constructor de consultas y no con DistribuidoraLinea a
+     * propósito: ese modelo lleva el scope de tenant, y con sesión de una
+     * distribuidora filtraría por la suya y el directorio público saldría
+     * distinto según quién lo abre.
+     *
+     * @return Lista<int, object{id: int, nombre: string, logotipo_url: ?string, total: int}>
+     */
+    public function lineas(): Lista
+    {
+        return $this->lineasVigentes(DB::table('distribuidora_linea'))
+            ->join('distribuidoras', 'distribuidoras.id', '=', 'distribuidora_linea.distribuidora_id')
+            ->where('distribuidoras.estado', 'activa')
+            ->where('distribuidoras.marketplace_visible', true)
+            ->groupBy('lineas.id', 'lineas.nombre', 'lineas.logotipo_url')
+            ->orderBy('lineas.nombre')
+            ->get([
+                'lineas.id',
+                'lineas.nombre',
+                'lineas.logotipo_url',
+                DB::raw('COUNT(DISTINCT distribuidora_linea.distribuidora_id) as total'),
+            ])
+            ->map(fn ($l) => (object) [
+                'id'           => (int) $l->id,
+                'nombre'       => (string) $l->nombre,
+                'logotipo_url' => $l->logotipo_url,
+                'total'        => (int) $l->total,
+            ]);
+    }
+
+    /**
+     * TG-391 (A31) — Las líneas vigentes de cada distribuidora, en una sola
+     * consulta para toda la página (sin N+1). Mismo motivo que lineas() para
+     * no usar el modelo con scope de tenant.
+     *
+     * @param  iterable<int>  $distribuidoraIds
+     * @return array<int, list<object{id: int, nombre: string, logotipo_url: ?string}>>
+     */
+    public function lineasPorDistribuidora(iterable $distribuidoraIds): array
+    {
+        $ids = collect($distribuidoraIds)->map(fn ($id) => (int) $id)->filter()->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        return $this->lineasVigentes(DB::table('distribuidora_linea'))
+            ->whereIn('distribuidora_linea.distribuidora_id', $ids->all())
+            ->orderBy('lineas.nombre')
+            ->get(['distribuidora_linea.distribuidora_id', 'lineas.id', 'lineas.nombre', 'lineas.logotipo_url'])
+            ->groupBy('distribuidora_id')
+            ->map(fn (Lista $filas) => $filas->map(fn ($l) => (object) [
+                'id'           => (int) $l->id,
+                'nombre'       => (string) $l->nombre,
+                'logotipo_url' => $l->logotipo_url,
+            ])->values()->all())
+            ->all();
+    }
+
+    /** distribuidora_linea activa y con su línea activa en el catálogo maestro. */
+    private function lineasVigentes(Consulta $consulta): Consulta
+    {
+        if ($consulta->from === null) {
+            $consulta->from('distribuidora_linea');
+        }
+
+        return $consulta
+            ->join('lineas', 'lineas.id', '=', 'distribuidora_linea.linea_id')
+            ->where('distribuidora_linea.activa', true)
+            ->where('lineas.activa', true);
     }
 
     private function texto(?string $valor): ?string

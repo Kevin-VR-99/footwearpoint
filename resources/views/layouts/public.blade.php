@@ -57,6 +57,20 @@
 
             <div class="flex-1"></div>
 
+            {{-- TG-391 (A31): atajos del encabezado público. En el celular no
+                 caben junto al botón; ahí los lleva el propio inicio. --}}
+            <nav aria-label="Páginas públicas" class="hidden items-center gap-1 sm:flex" data-nav-publica>
+                @foreach ([
+                    ['Marketplace', route('marketplace'), request()->routeIs('marketplace')],
+                    ['Planes', route('inicio').'#planes', false],
+                ] as [$textoNav, $urlNav, $actualNav])
+                    <a href="{{ $urlNav }}" @if ($actualNav) aria-current="page" @endif
+                        class="rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40 {{ $actualNav ? 'bg-fp-page text-fp-sidebar' : 'text-slate-600 hover:bg-fp-page hover:text-fp-sidebar' }}">
+                        {{ $textoNav }}
+                    </a>
+                @endforeach
+            </nav>
+
             @auth
                 {{-- TG-219: la misma regla la usa la página pública de inicio. --}}
                 @php

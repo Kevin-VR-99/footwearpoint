@@ -33,12 +33,22 @@ class extends Component
         // boton apunta solo; mientras tanto baja a la seccion de contacto.
         $alta = Route::has('alta.solicitar') ? route('alta.solicitar') : '#contacto';
 
+        $planes = PlanSuscripcion::query()
+            ->where('activo', true)
+            ->orderBy('precio_base_mensual')
+            ->get();
+
         return $this->view([
-            'planes' => PlanSuscripcion::query()
-                ->where('activo', true)
-                ->orderBy('precio_base_mensual')
-                ->get(),
+            'planes' => $planes,
             'alta' => $alta,
+            // TG-391 (A31): el "desde" del encabezado sale del plan más barato
+            // que esté activo, nunca de un número escrito aquí.
+            'planDesde' => $planes->first(),
+            // Cada plan abre el formulario de alta con ese plan ya marcado.
+            // Solo preselecciona: el formulario valida y guarda igual que siempre.
+            'altaConPlan' => fn (PlanSuscripcion $plan) => Route::has('alta.solicitar')
+                ? route('alta.solicitar', ['plan' => $plan->id])
+                : $alta,
             'panel' => Auth::check() ? PanelDelUsuario::para(Auth::user()) : null,
             'contacto' => array_filter([
                 // TG-234: si el correo ya sale como icono de sobre, no se repite como texto.
@@ -87,11 +97,31 @@ class extends Component
                     Ver marketplace
                 </a>
             </div>
+
+            {{-- TG-391 (A31): jerarquía del encabezado. Debajo de las dos
+                 acciones, el precio de entrada y los atajos a cada sección. --}}
+            @if ($planDesde)
+                <p class="mt-6 text-sm text-white/75" data-plan-desde>
+                    Planes desde
+                    <a href="#planes" class="font-semibold text-white underline decoration-white/40 underline-offset-4 transition-colors duration-200 hover:decoration-white">
+                        ${{ number_format((float) $planDesde->precio_base_mensual, 2) }} MXN al mes
+                    </a>
+                </p>
+            @endif
+
+            <nav aria-label="Secciones de la página" class="mt-8 border-t border-white/10 pt-6">
+                <ul class="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-medium text-white/70">
+                    <li><a href="#como-funciona" class="rounded transition-colors duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">Cómo funciona</a></li>
+                    <li><a href="#beneficios" class="rounded transition-colors duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">Beneficios</a></li>
+                    <li><a href="#planes" class="rounded transition-colors duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">Planes y precios</a></li>
+                    <li><a href="#comparar-planes" class="rounded transition-colors duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60">Comparar planes</a></li>
+                </ul>
+            </nav>
         </div>
     </section>
 
     {{-- Cómo funciona --}}
-    <section>
+    <section id="como-funciona" class="scroll-mt-24">
         <div class="text-center" data-revelar>
             <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-fp-primary">Paso a paso</p>
             <h3 class="mt-1 text-2xl font-bold text-fp-sidebar sm:text-3xl">Cómo funciona</h3>
@@ -116,7 +146,7 @@ class extends Component
     </section>
 
     {{-- Beneficios --}}
-    <section>
+    <section id="beneficios" class="scroll-mt-24">
         <div class="text-center" data-revelar>
             <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-fp-primary">Beneficios</p>
             <h3 class="mt-1 text-2xl font-bold text-fp-sidebar sm:text-3xl">Qué ganas</h3>
@@ -204,11 +234,23 @@ class extends Component
         </section>
     @endif
 
-    <section id="planes">
+    {{--
+        TG-391 (A31) — Planes claros y comparativa.
+
+        Montos y flujo de alta intactos: todo sale de planes_suscripcion (los
+        activos, del más barato al más caro) y cada botón solo abre
+        /solicitar-alta con ese plan marcado. La suscripción se sigue abriendo
+        al aprobar el alta, como siempre.
+
+        Fondo sólido en precios y tabla (A29: glass solo de acento, nunca
+        donde se lee un monto).
+    --}}
+    <section id="planes" class="scroll-mt-24">
         <div class="text-center" data-revelar>
-            <h3 class="text-2xl font-bold text-fp-sidebar sm:text-3xl">Planes</h3>
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-fp-primary">Planes</p>
+            <h3 class="mt-1 text-2xl font-bold text-fp-sidebar sm:text-3xl">Elige tu plan</h3>
             <p class="mt-2 text-sm text-fp-text-muted">
-                Precios en pesos mexicanos, por mes.
+                Precios en pesos mexicanos, por mes. Todos incluyen tu tienda en línea y tu lugar en el marketplace.
             </p>
         </div>
 
@@ -219,7 +261,7 @@ class extends Component
         @else
             <div class="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($planes as $plan)
-                    <article class="group fp-tarjeta transition duration-200 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 flex flex-col overflow-hidden" data-revelar style="--retraso: {{ ($loop->index % 3) * 100 }}ms">
+                    <article class="group fp-tarjeta transition duration-200 hover:-translate-y-1 hover:border-fp-primary/30 hover:shadow-xl hover:shadow-fp-sidebar/10 flex flex-col overflow-hidden" data-revelar data-plan="{{ $plan->id }}" style="--retraso: {{ ($loop->index % 3) * 100 }}ms">
                         <div class="h-1 bg-gradient-to-r from-fp-primary via-fp-accent to-fp-sidebar"></div>
                         <div class="flex flex-1 flex-col p-6">
                         <h4 class="text-lg font-semibold text-fp-sidebar">{{ $plan->nombre }}</h4>
@@ -235,14 +277,90 @@ class extends Component
                             <p class="mt-3 text-sm text-slate-600">{{ $plan->descripcion }}</p>
                         @endif
 
-                        <ul class="mt-4 space-y-1.5 text-sm text-slate-600">
-                            <li>{{ $plan->lineas_incluidas }} línea{{ $plan->lineas_incluidas == 1 ? '' : 's' }} incluida{{ $plan->lineas_incluidas == 1 ? '' : 's' }}</li>
-                            <li>Línea extra: ${{ number_format((float) $plan->precio_linea_extra, 2) }} MXN al mes</li>
+                        <ul class="mt-4 space-y-2 text-sm text-slate-600">
+                            <li class="flex gap-2">
+                                <svg class="mt-0.5 h-4 w-4 shrink-0 text-fp-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                                <span>{{ $plan->lineas_incluidas }} línea{{ $plan->lineas_incluidas == 1 ? '' : 's' }} incluida{{ $plan->lineas_incluidas == 1 ? '' : 's' }}</span>
+                            </li>
+                            <li class="flex gap-2">
+                                <svg class="mt-0.5 h-4 w-4 shrink-0 text-fp-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                                <span>Línea extra: ${{ number_format((float) $plan->precio_linea_extra, 2) }} MXN al mes</span>
+                            </li>
+                            <li class="flex gap-2">
+                                <svg class="mt-0.5 h-4 w-4 shrink-0 text-fp-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                                <span>Tienda en línea y marketplace</span>
+                            </li>
                         </ul>
+
+                        {{-- Con sesión no se ofrece contratar: quien ya tiene cuenta va a su panel desde el encabezado. --}}
+                        @unless ($panel)
+                            <div class="mt-auto pt-6">
+                                <a href="{{ $altaConPlan($plan) }}" data-contratar-plan="{{ $plan->id }}"
+                                    aria-label="Contratar el plan {{ $plan->nombre }}"
+                                    class="fp-btn fp-btn-oscuro w-full rounded-xl py-2.5">
+                                    Contratar {{ $plan->nombre }}
+                                </a>
+                            </div>
+                        @endunless
                         </div>
                     </article>
                 @endforeach
             </div>
+
+            {{-- Comparativa: los mismos datos, lado a lado. En el celular la
+                 tabla se desliza de lado y la primera columna se queda fija. --}}
+            @if ($planes->count() > 1)
+                <div id="comparar-planes" class="mt-12 scroll-mt-24" data-revelar data-comparativa-planes>
+                    <h4 class="text-center text-lg font-semibold text-fp-sidebar">Compara los planes</h4>
+                    <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+                        <table class="fp-tabla w-full min-w-[32rem] text-sm">
+                            <caption class="sr-only">Comparativa de planes de FootwearPoint, precios en pesos mexicanos por mes</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="sticky left-0 z-10 bg-fp-page px-4 py-3 text-left font-semibold text-slate-600">Qué incluye</th>
+                                    @foreach ($planes as $plan)
+                                        <th scope="col" class="px-4 py-3 text-center font-semibold text-fp-sidebar">{{ $plan->nombre }}</th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr>
+                                    <th scope="row" class="sticky left-0 bg-white px-4 py-3 text-left font-medium text-slate-700">Precio al mes</th>
+                                    @foreach ($planes as $plan)
+                                        <td class="px-4 py-3 text-center font-semibold text-fp-sidebar">${{ number_format((float) $plan->precio_base_mensual, 2) }}</td>
+                                    @endforeach
+                                </tr>
+                                <tr>
+                                    <th scope="row" class="sticky left-0 bg-white px-4 py-3 text-left font-medium text-slate-700">Líneas incluidas</th>
+                                    @foreach ($planes as $plan)
+                                        <td class="px-4 py-3 text-center">{{ $plan->lineas_incluidas }}</td>
+                                    @endforeach
+                                </tr>
+                                <tr>
+                                    <th scope="row" class="sticky left-0 bg-white px-4 py-3 text-left font-medium text-slate-700">Cada línea extra, al mes</th>
+                                    @foreach ($planes as $plan)
+                                        <td class="px-4 py-3 text-center">${{ number_format((float) $plan->precio_linea_extra, 2) }}</td>
+                                    @endforeach
+                                </tr>
+                                @foreach (['Tienda en línea y lugar en el marketplace', 'Pedidos, anticipos e inventario por sucursal', 'App para tus clientes'] as $incluido)
+                                    <tr>
+                                        <th scope="row" class="sticky left-0 bg-white px-4 py-3 text-left font-medium text-slate-700">{{ $incluido }}</th>
+                                        @foreach ($planes as $plan)
+                                            <td class="px-4 py-3 text-center text-fp-primary">
+                                                <svg class="mx-auto h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                                                <span class="sr-only">Incluido</span>
+                                            </td>
+                                        @endforeach
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="mt-3 text-center text-xs text-fp-text-muted">
+                        Eliges tu plan al pedir tu alta; la suscripción empieza cuando la aprobamos.
+                    </p>
+                </div>
+            @endif
         @endif
     </section>
 
