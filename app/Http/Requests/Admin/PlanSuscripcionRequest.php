@@ -27,6 +27,10 @@ class PlanSuscripcionRequest extends FormRequest
             'precio_base_mensual'  => ['required', 'numeric', 'min:0'],
             'lineas_incluidas'     => ['required', 'integer', 'min:0'],
             'precio_linea_extra'   => ['required', 'numeric', 'min:0'],
+            // Opcionales en la API para no romper a quien ya la usa: sin
+            // ellos se queda lo que tenga el plan (o 25 y $10 al crearlo).
+            'revendedores_incluidos'  => ['sometimes', 'integer', 'min:0'],
+            'precio_revendedor_extra' => ['sometimes', 'numeric', 'min:0'],
             'activo'               => ['sometimes', 'boolean'],
         ];
     }

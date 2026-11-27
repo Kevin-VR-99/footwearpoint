@@ -29,6 +29,10 @@ class GuardarRevendedorRequest extends FormRequest
             'notas'          => ['nullable', 'string', 'max:2000'],
             'estado'         => ['sometimes', Rule::in(['activo', 'suspendido', 'inactivo'])],
 
+            // Límite de revendedores del plan: para pasarse hay que aceptar
+            // el cargo del revendedor extra (si no, responde 409 con el costo).
+            'acepta_cargo_extra' => ['sometimes', 'boolean'],
+
             // E3-07 (TG-133): cuenta de acceso a la app, opcional. Se puede
             // mandar al crear o después, en el PATCH. Los dos van juntos.
             'acceso_email'    => ['nullable', 'required_with:acceso_password', 'email', new CorreoConDominioReal(), 'max:190'],

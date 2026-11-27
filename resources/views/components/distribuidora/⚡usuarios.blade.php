@@ -20,6 +20,8 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use App\Services\Distribuidora\CodigoInternoRevendedor;
+use App\Services\Distribuidora\CupoRevendedoresDistribuidora;
+use App\Exceptions\CargoRevendedorExtraException;
 use App\Services\Distribuidora\EliminarPersonaAction;
 use App\Services\Perfil\FotoPerfil;
 use App\Support\MensajeError;
@@ -78,6 +80,14 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
     #[Locked]
     public ?string $revendedor_foto_actual = null;
     public $revendedor_foto = null;
+
+    /**
+     * Límite de revendedores del plan: si el que se guarda ya no cabe, aquí
+     * va el aviso con el costo del extra, y la casilla para aceptarlo.
+     */
+    #[Locked]
+    public ?string $avisoCargoRevendedor = null;
+    public bool $aceptaCargoRevendedor = false;
 
     #[\Livewire\Attributes\Url(except: '')]
     public string $buscar = '';
@@ -423,8 +433,26 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         $this->revendedor_codigo_interno = app(CodigoInternoRevendedor::class)->siguiente((int) Tenant::id());
         $this->revendedor_estado = 'activo';
         $this->limpiarAccesoRevendedor();
+        $this->avisarSiElSiguienteEsExtra();
         $this->resetErrorBag();
         $this->mostrandoFormularioRevendedor = true;
+    }
+
+    /** Conteo de revendedores contra lo que incluye el plan (null sin suscripción activa). */
+    public function getCupoRevendedoresProperty(): ?array
+    {
+        return Tenant::id() === null ? null : app(CupoRevendedoresDistribuidora::class)->resumen((int) Tenant::id());
+    }
+
+    /** Al abrir el alta ya se avisa, antes de que llenen el formulario. */
+    private function avisarSiElSiguienteEsExtra(): void
+    {
+        $cupo = app(CupoRevendedoresDistribuidora::class);
+        $suscripcion = Tenant::id() === null ? null : $cupo->suscripcionActiva((int) Tenant::id());
+
+        if ($suscripcion !== null && $cupo->elSiguienteSeriaExtra((int) Tenant::id())) {
+            $this->avisoCargoRevendedor = $cupo->mensajeDeCargoExtra($suscripcion);
+        }
     }
 
     public function abrirFormularioEditarRevendedor(int $id): void
@@ -598,8 +626,8 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         try {
             $afiliacion = DB::transaction(function () use ($accion, $payload, $datos, $darAcceso, $passwordTemporal) {
                 $afiliacion = $this->revendedorEditandoId
-                    ? $accion->actualizar(RevendedorDistribuidora::findOrFail($this->revendedorEditandoId), $payload)
-                    : $accion->afiliar($payload);
+                    ? $accion->actualizar(RevendedorDistribuidora::findOrFail($this->revendedorEditandoId), $payload, $this->aceptaCargoRevendedor)
+                    : $accion->afiliar($payload, $this->aceptaCargoRevendedor);
 
                 if ($darAcceso) {
                     $cuenta = app(ActivarCuentaAccesoAction::class)->paraRevendedor(
@@ -623,6 +651,12 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
             foreach ($e->errors() as $campo => $mensajes) {
                 $this->addError('revendedor_' . $campo, $mensajes[0]);
             }
+
+            return;
+        } catch (CargoRevendedorExtraException $e) {
+            // Ya no cabe en su plan: se muestra el costo y se pide aceptarlo.
+            $this->avisoCargoRevendedor = $e->getMessage();
+            $this->addError('revendedor_cargo', 'Para guardarlo, marca que aceptas el cargo del revendedor extra.');
 
             return;
         }
@@ -652,6 +686,8 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
         $this->accesoEditadoAMano = false;
         $this->revendedor_foto_actual = null;
         $this->revendedor_foto = null;
+        $this->avisoCargoRevendedor = null;
+        $this->aceptaCargoRevendedor = false;
     }
 
 };
@@ -842,6 +878,39 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     {{ $avisoEnlace }}
                 </div>
             @endif
+            {{-- Límite de revendedores del plan: cuántos lleva y lo que cuestan los de más. --}}
+            @if ($cupo = $this->cupoRevendedores)
+                <div class="mb-4 rounded-lg border border-slate-200 bg-fp-page px-4 py-3 text-sm text-slate-700" data-cupo-revendedores>
+                    <p>
+                        @if ($cupo['activos'] <= $cupo['incluidos'])
+                            <span class="font-semibold text-fp-sidebar">{{ $cupo['activos'] }} de {{ $cupo['incluidos'] }}</span>
+                            clientes mayoristas activos incluidos en tu plan.
+                            @if ($cupo['disponibles'] > 0)
+                                Te quedan {{ $cupo['disponibles'] }}.
+                            @endif
+                        @else
+                            <span class="font-semibold text-fp-sidebar">{{ $cupo['activos'] }}</span> clientes mayoristas activos;
+                            tu plan incluye <span class="font-semibold text-fp-sidebar">{{ $cupo['incluidos'] }}</span>.
+                        @endif
+                    </p>
+                    @if ($cupo['extras_cobrados'] > 0)
+                        <p class="mt-1">
+                            {{ $cupo['extras_cobrados'] }} {{ $cupo['extras_cobrados'] === 1 ? 'revendedor extra' : 'revendedores extra' }}
+                            × ${{ number_format($cupo['precio_extra'], 2) }} MXN se suman a tu mensualidad.
+                        </p>
+                    @endif
+                    @if ($cupo['sin_cargo'] > 0)
+                        <p class="mt-1 text-xs text-fp-text-muted">
+                            {{ $cupo['sin_cargo'] }} ya los tenías antes del límite: se respetan sin costo.
+                        </p>
+                    @endif
+                    @if ($cupo['siguiente_es_extra'])
+                        <p class="mt-1 text-xs text-fp-text-muted">
+                            Cada cliente mayorista nuevo cuesta ${{ number_format($cupo['precio_extra'], 2) }} MXN más al mes.
+                        </p>
+                    @endif
+                </div>
+            @endif
             <table class="fp-tabla-personas">
                 <thead>
                     <tr>
@@ -968,6 +1037,16 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                         @error('revendedor_acceso_email') <span class="text-fp-badge-danger-fg text-xs" role="alert">{{ $message }}</span> @enderror
                     @endif
                 </div>
+                @if ($avisoCargoRevendedor)
+                    <div class="rounded-lg border border-fp-badge-warning-fg/20 bg-fp-badge-warning-bg px-4 py-3 text-sm text-fp-badge-warning-fg" role="alert" data-aviso-cargo-revendedor>
+                        <p>{{ $avisoCargoRevendedor }}</p>
+                        <label class="mt-2 flex items-start gap-2 font-medium">
+                            <input type="checkbox" wire:model="aceptaCargoRevendedor" class="mt-0.5 rounded text-fp-primary" data-acepta-cargo-revendedor>
+                            <span>Acepto el cargo del revendedor extra en mi mensualidad.</span>
+                        </label>
+                        @error('revendedor_cargo') <span class="mt-1 block text-xs text-fp-badge-danger-fg">{{ $message }}</span> @enderror
+                    </div>
+                @endif
                 @if ($revendedorEditandoId)
                     <div class="fp-campo">
                         <label for="usuarios-revendedor-estado" class="block text-sm font-medium text-slate-700 mb-1">Estado</label>

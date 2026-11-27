@@ -19,6 +19,9 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
     public string $precio_base_mensual = '';
     public string $lineas_incluidas = '';
     public string $precio_linea_extra = '150';
+    // Límite de clientes mayoristas (revendedores) y su costo extra.
+    public string $revendedores_incluidos = '25';
+    public string $precio_revendedor_extra = '10';
     public bool $activo = true;
     public bool $mostrarForm = false;
 
@@ -83,6 +86,8 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
         $this->precio_base_mensual = (string) $plan->precio_base_mensual;
         $this->lineas_incluidas = (string) $plan->lineas_incluidas;
         $this->precio_linea_extra = (string) $plan->precio_linea_extra;
+        $this->revendedores_incluidos = (string) $plan->revendedores_incluidos;
+        $this->precio_revendedor_extra = (string) $plan->precio_revendedor_extra;
         $this->activo = (bool) $plan->activo;
         $this->mostrarForm = true;
     }
@@ -95,9 +100,14 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
             'precio_base_mensual' => 'required|numeric|min:0',
             'lineas_incluidas'    => 'required|integer|min:0',
             'precio_linea_extra'  => 'required|numeric|min:0',
+            'revendedores_incluidos'  => 'required|integer|min:0',
+            'precio_revendedor_extra' => 'required|numeric|min:0',
             'activo'              => 'boolean',
         ], [
             'descripcion.max' => 'La descripción no puede tener más de 2000 caracteres.',
+            'revendedores_incluidos.required'  => 'Los revendedores incluidos son obligatorios.',
+            'revendedores_incluidos.integer'   => 'Los revendedores incluidos deben ser un número entero.',
+            'precio_revendedor_extra.required' => 'El precio por revendedor extra es obligatorio.',
         ]);
 
         $data = [
@@ -106,6 +116,8 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
             'precio_base_mensual' => $this->precio_base_mensual,
             'lineas_incluidas'    => $this->lineas_incluidas,
             'precio_linea_extra'  => $this->precio_linea_extra,
+            'revendedores_incluidos'  => (int) $this->revendedores_incluidos,
+            'precio_revendedor_extra' => $this->precio_revendedor_extra,
             'activo'              => $this->activo,
         ];
 
@@ -152,6 +164,8 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
         $this->precio_base_mensual = '';
         $this->lineas_incluidas = '';
         $this->precio_linea_extra = '150';
+        $this->revendedores_incluidos = '25';
+        $this->precio_revendedor_extra = '10';
         $this->activo = true;
         $this->mostrarForm = false;
     }
@@ -160,7 +174,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
 
 <div>
     <x-panel.encabezado titulo="Planes de suscripción" class="mb-6">
-            <p class="mt-1 text-sm text-fp-text-muted">Precios base y línea extra ($150)</p>
+            <p class="mt-1 text-sm text-fp-text-muted">Precio base de cada plan, con sus líneas y revendedores incluidos y lo que cuesta cada extra al mes</p>
         <x-slot:acciones>
         <button wire:click="nuevo"
                 class="fp-btn fp-btn-primario">
@@ -215,6 +229,16 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
                     <input id="planes-index-precio-linea-extra" type="number" step="0.01" wire:model="precio_linea_extra" class="w-full rounded-lg">
                     @error('precio_linea_extra') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                 </div>
+                <div class="fp-campo">
+                    <label for="planes-index-revendedores-incluidos" class="block text-sm font-medium mb-1 text-slate-700">Revendedores incluidos</label>
+                    <input id="planes-index-revendedores-incluidos" type="number" min="0" wire:model="revendedores_incluidos" class="w-full rounded-lg">
+                    @error('revendedores_incluidos') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div class="fp-campo">
+                    <label for="planes-index-precio-revendedor-extra" class="block text-sm font-medium mb-1 text-slate-700">Precio revendedor extra (al mes)</label>
+                    <input id="planes-index-precio-revendedor-extra" type="number" step="0.01" min="0" wire:model="precio_revendedor_extra" class="w-full rounded-lg">
+                    @error('precio_revendedor_extra') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
+                </div>
                 <div class="fp-campo md:col-span-2">
                     <label for="planes-index-descripcion" class="block text-sm font-medium mb-1 text-slate-700">Descripción</label>
                     <textarea id="planes-index-descripcion" wire:model="descripcion" rows="2" maxlength="2000" class="w-full rounded-lg"></textarea>
@@ -244,6 +268,8 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
                     <th class="text-left px-4 py-3 font-medium">Base</th>
                     <th class="text-left px-4 py-3 font-medium">Líneas</th>
                     <th class="text-left px-4 py-3 font-medium">Línea extra</th>
+                    <th class="text-left px-4 py-3 font-medium">Revendedores</th>
+                    <th class="text-left px-4 py-3 font-medium">Revendedor extra</th>
                     <th class="text-left px-4 py-3 font-medium">Estado</th>
                     <th class="text-left px-4 py-3 font-medium">Acciones</th>
                 </tr>
@@ -258,6 +284,8 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
                         <td class="px-4 py-3">${{ number_format($plan->precio_base_mensual, 2) }}</td>
                         <td class="px-4 py-3">{{ $plan->lineas_incluidas }}</td>
                         <td class="px-4 py-3">${{ number_format($plan->precio_linea_extra, 2) }}</td>
+                        <td class="px-4 py-3">{{ $plan->revendedores_incluidos }}</td>
+                        <td class="px-4 py-3">${{ number_format((float) $plan->precio_revendedor_extra, 2) }}</td>
                         <td class="px-4 py-3">
                             <x-panel.insignia :variante="$plan->activo ? 'success' : 'neutral'" punto>{{ $plan->activo ? 'Activo' : 'Inactivo' }}</x-panel.insignia>
                         </td>
@@ -271,7 +299,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
                         </td>
                     </tr>
                 @empty
-                    <x-panel.vacio colspan="6" mensaje="Aún no hay planes. Crea el primero con «Nuevo plan»." />
+                    <x-panel.vacio colspan="8" mensaje="Aún no hay planes. Crea el primero con «Nuevo plan»." />
                 @endforelse
             </tbody>
         </table>

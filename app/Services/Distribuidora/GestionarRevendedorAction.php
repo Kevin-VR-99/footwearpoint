@@ -19,9 +19,15 @@ class GestionarRevendedorAction
      * columna con restricción única que permita esa búsqueda de forma
      * confiable. Confirma con el equipo si prefieren otra solución.
      */
-    public function afiliar(array $datos): RevendedorDistribuidora
+    public function afiliar(array $datos, bool $aceptaCargoExtra = false): RevendedorDistribuidora
     {
-        return DB::transaction(function () use ($datos) {
+        return DB::transaction(function () use ($datos, $aceptaCargoExtra) {
+            // Límite de revendedores del plan: si ya no cabe, avisa el costo
+            // del extra (409) o, si lo aceptó, lo suma a su mensualidad.
+            if (Tenant::id() !== null) {
+                app(CupoRevendedoresDistribuidora::class)->asegurarLugarParaUnoMas((int) Tenant::id(), $aceptaCargoExtra);
+            }
+
             $revendedor = Revendedor::create([
                 'nombre'   => $datos['nombre'],
                 'telefono' => $datos['telefono'] ?? null,
@@ -63,9 +69,14 @@ class GestionarRevendedorAction
      * El correo es distinto: si ya tiene cuenta de la app, su correo es el de
      * acceso y vive en la cuenta (D4).
      */
-    public function actualizar(RevendedorDistribuidora $afiliacion, array $datos): RevendedorDistribuidora
+    public function actualizar(RevendedorDistribuidora $afiliacion, array $datos, bool $aceptaCargoExtra = false): RevendedorDistribuidora
     {
-        return DB::transaction(function () use ($afiliacion, $datos) {
+        return DB::transaction(function () use ($afiliacion, $datos, $aceptaCargoExtra) {
+            // Reactivar a un revendedor también ocupa un lugar del plan.
+            if (($datos['estado'] ?? null) === 'activo' && $afiliacion->estado !== 'activo') {
+                app(CupoRevendedoresDistribuidora::class)->asegurarLugarParaUnoMas((int) $afiliacion->distribuidora_id, $aceptaCargoExtra);
+            }
+
             $datosContacto = array_intersect_key($datos, array_flip(['nombre', 'telefono', 'email']));
             $datosAfiliacion = array_intersect_key($datos, array_flip(['notas', 'estado']));
 
