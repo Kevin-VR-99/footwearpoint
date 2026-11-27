@@ -54,7 +54,8 @@ class extends Component
     public string $admin_password = '';
     public string $admin_password_confirmation = '';
 
-    public bool $acepta_legales = false;
+    public bool $acepta_aviso = false;
+    public bool $acepta_terminos = false;
 
     /** Campo trampa: una persona no lo ve, un robot lo llena. */
     public string $sitio_web = '';
@@ -228,7 +229,8 @@ class extends Component
             'admin_nombre' => ['required', 'string', 'max:150'],
             'admin_email' => ['required', 'email', new CorreoConDominioReal(), 'max:190', Rule::unique('usuarios', 'email')],
             'admin_password' => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'confirmed'],
-            'acepta_legales' => ['accepted'],
+            'acepta_aviso' => ['accepted'],
+            'acepta_terminos' => ['accepted'],
         ];
     }
 
@@ -256,7 +258,8 @@ class extends Component
             'admin_password.required' => 'Elige una contraseña.',
             'admin_password.min' => 'La contraseña debe tener al menos 8 caracteres.',
             'admin_password.confirmed' => 'Las dos contraseñas no coinciden.',
-            'acepta_legales.accepted' => 'Para continuar tienes que aceptar el aviso de privacidad y los términos.',
+            'acepta_aviso.accepted' => 'Para continuar tienes que aceptar el aviso de privacidad.',
+            'acepta_terminos.accepted' => 'Para continuar tienes que aceptar los términos y condiciones.',
         ];
     }
 };
@@ -433,19 +436,28 @@ class extends Component
             </section>
 
             {{-- Legales --}}
-            <div>
+            <div class="space-y-3">
                 <label class="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" wire:model="acepta_legales" required
+                    <input type="checkbox" wire:model="acepta_aviso" required
                         class="mt-1 rounded text-[#111E38] focus:ring-[#111E38]">
                     <span class="text-sm text-slate-700">
                         Acepto el
-                        <a href="{{ route('aviso-privacidad') }}" target="_blank" class="text-[#2563EB] hover:underline">aviso de privacidad</a>
-                        y los
-                        <a href="{{ route('terminos') }}" target="_blank" class="text-[#2563EB] hover:underline">términos y condiciones</a>
-                        (versión 1.0). <span class="fp-campo-requerido" aria-label="obligatorio">*</span>
+                        <a href="{{ route('aviso-privacidad') }}" target="_blank" class="text-[#2563EB] hover:underline">aviso de privacidad</a>.
+                        <span class="fp-campo-requerido" aria-label="obligatorio">*</span>
                     </span>
                 </label>
-                @error('acepta_legales') <p class="fp-campo-error mt-1">{{ $message }}</p> @enderror
+                @error('acepta_aviso') <p class="fp-campo-error mt-1">{{ $message }}</p> @enderror
+
+                <label class="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" wire:model="acepta_terminos" required
+                        class="mt-1 rounded text-[#111E38] focus:ring-[#111E38]">
+                    <span class="text-sm text-slate-700">
+                        Acepto los
+                        <a href="{{ route('terminos') }}" target="_blank" class="text-[#2563EB] hover:underline">términos y condiciones</a>.
+                        <span class="fp-campo-requerido" aria-label="obligatorio">*</span>
+                    </span>
+                </label>
+                @error('acepta_terminos') <p class="fp-campo-error mt-1">{{ $message }}</p> @enderror
             </div>
 
             <button type="submit"

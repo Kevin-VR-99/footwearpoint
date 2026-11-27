@@ -18,6 +18,7 @@ use App\Services\Distribuidora\ReactivarDistribuidoraAction;
 use App\Services\Distribuidora\RechazarDistribuidoraAction;
 use App\Services\Distribuidora\SuspenderDistribuidoraAction;
 use App\Services\Suscripcion\AsignarSuscripcionAction;
+use App\Support\HorarioPublico;
 use App\Support\MensajeError;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
@@ -68,13 +69,15 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public string $nuevo_direccion_publica = '';
     public string $nuevo_descripcion_publica = '';
     public string $nuevo_horario_publico = '';
-    public bool $nuevo_marketplace_visible = true;
-    public bool $nuevo_activar_ya = true; // activa al crear (admin)
+    public array $nuevo_horarios_publicos = [];
+    /** activa_visible | activa_oculta | pendiente */
+    public string $nuevo_estado_inicial = 'activa_visible';
 
     // Administrador de la distribuidora (obligatorio, TG-194)
     public string $admin_nombre = '';
     public string $admin_email = '';
     public string $admin_password = '';
+    public string $admin_password_confirmation = '';
 
     // Revisar los datos antes de aprobar o rechazar (TG-195)
     #[Locked]
@@ -106,6 +109,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public string $editar_direccion_publica = '';
     public string $editar_descripcion_publica = '';
     public string $editar_horario_publico = '';
+    public array $editar_horarios_publicos = [];
     public bool $editarTieneAdmin = false;
     public string $editar_admin_nombre = '';
     public string $editar_admin_email = '';
@@ -139,11 +143,12 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         $this->nuevo_direccion_publica = '';
         $this->nuevo_descripcion_publica = '';
         $this->nuevo_horario_publico = '';
-        $this->nuevo_marketplace_visible = true;
-        $this->nuevo_activar_ya = true;
+        $this->nuevo_horarios_publicos = [];
+        $this->nuevo_estado_inicial = 'activa_visible';
         $this->admin_nombre = '';
         $this->admin_email = '';
         $this->admin_password = '';
+        $this->admin_password_confirmation = '';
         $this->mostrandoFormularioCrear = true;
         $this->mostrarSuscripcion = false;
     }
@@ -151,6 +156,16 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
     public function cancelarCrear(): void
     {
         $this->mostrandoFormularioCrear = false;
+    }
+
+    /** @return array{activar: bool, visible: bool} */
+    private function estadoDesdeSelector(string $selector): array
+    {
+        return match ($selector) {
+            'activa_oculta' => ['activar' => true, 'visible' => false],
+            'pendiente' => ['activar' => false, 'visible' => false],
+            default => ['activar' => true, 'visible' => true],
+        };
     }
 
     public function updatedNuevoNombreComercial($value): void
@@ -187,12 +202,16 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
             'nuevo_direccion_publica' => ['nullable', 'string', 'max:300'],
             'nuevo_descripcion_publica' => ['nullable', 'string', 'max:2000'],
             'nuevo_horario_publico' => ['nullable', 'string', 'max:300'],
+            'nuevo_horarios_publicos' => ['nullable', 'array'],
+            'nuevo_estado_inicial' => ['required', 'in:activa_visible,activa_oculta,pendiente'],
             // TG-194: el administrador de la tienda es obligatorio.
             'admin_nombre' => ['required', 'string', 'max:150'],
             'admin_email' => ['required', 'email', new CorreoConDominioReal(), 'max:190', 'unique:usuarios,email'],
-            'admin_password' => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255'],
+            'admin_password' => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults(), 'max:255', 'confirmed'],
         ], [
             'admin_password.max' => 'La contraseña no puede tener más de 255 caracteres.',
+            'admin_password.confirmed' => 'Las dos contraseñas no coinciden.',
+            'nuevo_estado_inicial.in' => 'Elige si la distribuidora nace activa y visible, activa y oculta, o pendiente.',
             'nuevo_descripcion_publica.max' => 'La descripción no puede tener más de 2000 caracteres.',
             'nuevo_nombre_comercial.required' => 'El nombre comercial es obligatorio.',
             'nuevo_nombre_comercial.max' => 'El nombre comercial no puede pasar de 150 caracteres.',
@@ -220,6 +239,18 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         ]);
 
         try {
+            $horario = HorarioPublico::preparar($this->nuevo_horarios_publicos, $this->nuevo_horario_publico);
+        } catch (ValidationException $e) {
+            $this->mensaje = '';
+            foreach ($e->errors() as $mensajes) {
+                $this->addError('nuevo_horario_publico', $mensajes[0]);
+            }
+            return;
+        }
+
+        try {
+            $estadoInicial = $this->estadoDesdeSelector($this->nuevo_estado_inicial);
+
             app(CrearDistribuidoraAction::class)->ejecutar(
                 [
                     'nombre_comercial' => $this->nuevo_nombre_comercial,
@@ -231,15 +262,16 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                     'direccion_publica' => $this->nuevo_direccion_publica,
                     'telefono_publico' => $this->nuevo_telefono_publico,
                     'email_publico' => $this->nuevo_email_publico,
-                    'horario_publico' => $this->nuevo_horario_publico,
-                    'marketplace_visible' => $this->nuevo_marketplace_visible,
+                    'horario_publico' => $horario['horario_publico'],
+                    'horarios_publicos' => $horario['horarios_publicos'],
+                    'marketplace_visible' => $estadoInicial['visible'],
                 ],
                 [
                     'nombre' => $this->admin_nombre,
                     'email' => $this->admin_email,
                     'password' => $this->admin_password,
                 ],
-                $this->nuevo_activar_ya,
+                $estadoInicial['activar'],
             );
         } catch (ValidationException $e) {
             // TG-224 (G3): los mensajes de validación de la acción ya están
@@ -257,6 +289,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         }
 
         $this->admin_password = '';
+        $this->admin_password_confirmation = '';
         $this->mostrandoFormularioCrear = false;
         $this->mensaje = 'Distribuidora creada correctamente.';
     }
@@ -449,6 +482,7 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         $this->editar_direccion_publica = (string) $distribuidora->direccion_publica;
         $this->editar_descripcion_publica = (string) $distribuidora->descripcion_publica;
         $this->editar_horario_publico = (string) $distribuidora->horario_publico;
+        $this->editar_horarios_publicos = is_array($distribuidora->horarios_publicos) ? $distribuidora->horarios_publicos : [];
 
         $this->editarTieneAdmin = $admin !== null;
         $this->editar_admin_nombre = (string) $admin?->nombre;
@@ -480,6 +514,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
         try {
             $distribuidora = Distribuidora::findOrFail($this->distribuidoraEdicionId);
 
+            $horarioEdicion = HorarioPublico::preparar($this->editar_horarios_publicos, $this->editar_horario_publico);
+
             $distribuidora = app(ActualizarDistribuidoraAction::class)->ejecutar($distribuidora, [
                 'nombre_comercial' => $this->editar_nombre_comercial,
                 'razon_social' => $this->editar_razon_social,
@@ -490,7 +526,8 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                 'telefono_publico' => $this->editar_telefono_publico,
                 'direccion_publica' => $this->editar_direccion_publica,
                 'descripcion_publica' => $this->editar_descripcion_publica,
-                'horario_publico' => $this->editar_horario_publico,
+                'horario_publico' => $horarioEdicion['horario_publico'],
+                'horarios_publicos' => $horarioEdicion['horarios_publicos'],
             ]);
         } catch (ValidationException $e) {
             $this->erroresAlCampo($e, 'editar_', 'editar_nombre_comercial');
@@ -845,23 +882,41 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         wire:model="nuevo_descripcion_publica" rows="2" class="fp-control w-full"></textarea>
                 </x-ui.campo>
 
-                <x-ui.campo etiqueta="Horario público" para="distribuidoras-index-nuevo-horario-publico"
-                    error="nuevo_horario_publico" class="md:col-span-2">
-                    <x-ui.entrada id="distribuidoras-index-nuevo-horario-publico" wire:model="nuevo_horario_publico"
-                        placeholder="Lunes a sábado 9:00–19:00" />
-                </x-ui.campo>
+                <x-ui.horario-publico
+                    wire-grupos="nuevo_horarios_publicos"
+                    wire-texto="nuevo_horario_publico"
+                    :grupos="$nuevo_horarios_publicos"
+                    :texto-libre="$nuevo_horario_publico"
+                    error="nuevo_horario_publico" />
             </div>
 
-            <div class="mt-4 flex flex-wrap gap-4 text-sm">
-                <label class="flex cursor-pointer items-center gap-2">
-                    <input type="checkbox" wire:model="nuevo_activar_ya" class="rounded">
-                    Activar de inmediato (si no, queda pendiente)
+            <fieldset class="mt-4 space-y-3">
+                <legend class="mb-1 text-sm font-semibold text-slate-700">Estado inicial</legend>
+                <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                    <input type="radio" wire:model="nuevo_estado_inicial" value="activa_visible" class="mt-1">
+                    <span>
+                        <span class="block text-sm font-medium text-slate-800">Activa y visible en el marketplace</span>
+                        <span class="block text-xs text-slate-500">Entra al panel desde ya y aparece en el directorio. Se le abre un mes del plan Básico, sin cobrar el primer pago.</span>
+                    </span>
                 </label>
-                <label class="flex cursor-pointer items-center gap-2">
-                    <input type="checkbox" wire:model="nuevo_marketplace_visible" class="rounded">
-                    Visible en marketplace
+                <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                    <input type="radio" wire:model="nuevo_estado_inicial" value="activa_oculta" class="mt-1">
+                    <span>
+                        <span class="block text-sm font-medium text-slate-800">Activa, pero oculta en el marketplace</span>
+                        <span class="block text-xs text-slate-500">Entra al panel y su tienda puede abrirse; no sale en el directorio. También recibe el mes del plan sin cobro inicial.</span>
+                    </span>
                 </label>
-            </div>
+                <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                    <input type="radio" wire:model="nuevo_estado_inicial" value="pendiente" class="mt-1">
+                    <span>
+                        <span class="block text-sm font-medium text-slate-800">Pendiente de aprobación</span>
+                        <span class="block text-xs text-slate-500">Nadie de esa distribuidora entra al panel ni a la app. No aparece en el marketplace ni abre tienda. Al aprobarla tendrá que pagar el plan antes de operar, y habrá que hacerla visible a mano si debe salir en el directorio.</span>
+                    </span>
+                </label>
+                @error('nuevo_estado_inicial')
+                    <p class="fp-campo-error" role="alert">{{ $message }}</p>
+                @enderror
+            </fieldset>
 
             <div class="mt-4 border-t border-slate-200 pt-4">
                 <h4 class="mb-2 text-sm font-semibold text-slate-700">Administrador de la tienda</h4>
@@ -875,10 +930,17 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                         <x-ui.entrada tipo="email" id="distribuidoras-index-admin-email" wire:model="admin_email" />
                     </x-ui.campo>
 
-                    <x-ui.campo etiqueta="Contraseña" para="distribuidoras-index-admin-password" error="admin_password"
-                        requerido ayuda="Mínimo 8, con letras y números.">
-                        <x-ui.entrada tipo="password" id="distribuidoras-index-admin-password" wire:model="admin_password" />
-                    </x-ui.campo>
+                    <x-ui.campo-password
+                        class="md:col-span-3 grid grid-cols-1 gap-fp-bloque md:grid-cols-2"
+                        id="distribuidoras-index-admin-password"
+                        modelo="admin_password"
+                        modelo-confirmacion="admin_password_confirmation"
+                        etiqueta="Contraseña"
+                        etiqueta-confirmacion="Confirmar contraseña"
+                        error="admin_password"
+                        error-confirmacion="admin_password_confirmation"
+                        ayuda="Mínimo 8, con letras y números."
+                        requerido />
                 </div>
             </div>
 
@@ -1126,13 +1188,12 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                             <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div class="fp-campo md:col-span-2">
-                        <label for="editar_horario_publico" class="block text-sm font-medium mb-1 text-slate-700">Horario público</label>
-                        <input id="editar_horario_publico" type="text" wire:model="editar_horario_publico" class="w-full rounded-lg text-sm">
-                        @error('editar_horario_publico')
-                            <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
-                        @enderror
-                    </div>
+                    <x-ui.horario-publico
+                        wire-grupos="editar_horarios_publicos"
+                        wire-texto="editar_horario_publico"
+                        :grupos="$editar_horarios_publicos"
+                        :texto-libre="$editar_horario_publico"
+                        error="editar_horario_publico" />
                 </div>
 
                 <div class="border-t border-slate-100 pt-4">

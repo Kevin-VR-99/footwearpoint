@@ -2,6 +2,13 @@ import './bootstrap';
 import iniciarConsentimiento from './consentimiento';
 import iniciarMapaConPermiso from './mapa-con-permiso';
 import './editor-recorte';
+import fpHorarioPublico from './horario-publico';
+import fpCampoPassword from './campo-password';
+
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('fpHorarioPublico', fpHorarioPublico);
+    window.Alpine.data('fpCampoPassword', fpCampoPassword);
+});
 
 // TG-401 (A38): va de primero. Quien cargue un tercero necesita poder
 // preguntar por window.fpConsentimiento desde que arranca.

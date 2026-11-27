@@ -61,6 +61,8 @@ class AuditoriaIndexLivewireTest extends TestCase
         Livewire::test('auditoria.index')
             ->assertOk()
             ->assertSee('Auditoría')
+            ->assertSee('Registro de operaciones sensibles de la distribuidora.')
+            ->assertDontSee('E17-03')
             ->assertSee('pedido.cambio_estado')
             ->assertSee('pedido');
     }

@@ -132,7 +132,7 @@ class DocumentosLegalesTest extends TestCase
         }
     }
 
-    public function test_aceptar_solo_uno_guarda_solo_ese(): void
+    public function test_con_los_dos_pendientes_no_basta_aceptar_solo_uno(): void
     {
         $empleado = $this->empleado();
         $this->actingAs($empleado);
@@ -140,15 +140,26 @@ class DocumentosLegalesTest extends TestCase
         Livewire::test('auth.aceptar-legales')
             ->set('aviso', true)
             ->call('aceptar')
+            ->assertHasErrors('terminos');
+
+        $this->assertSame(0, AceptacionLegal::where('usuario_id', $empleado->id)->count());
+    }
+
+    public function test_si_solo_falta_un_documento_se_puede_aceptar_ese(): void
+    {
+        $empleado = $this->empleado();
+        \App\Support\DocumentosLegales::registrar($empleado, 'terminos_condiciones', null);
+        $this->actingAs($empleado);
+
+        Livewire::test('auth.aceptar-legales')
+            ->set('aviso', true)
+            ->call('aceptar')
+            ->assertHasNoErrors()
             ->assertSet('mensaje', 'Aceptaste: Aviso de privacidad.');
 
         $this->assertDatabaseHas('aceptaciones_legales', [
             'usuario_id' => $empleado->id,
             'tipo_documento' => 'aviso_privacidad',
-        ]);
-        $this->assertDatabaseMissing('aceptaciones_legales', [
-            'usuario_id' => $empleado->id,
-            'tipo_documento' => 'terminos_condiciones',
         ]);
     }
 
@@ -172,6 +183,7 @@ class DocumentosLegalesTest extends TestCase
         foreach ([1, 2] as $vez) {
             Livewire::test('auth.aceptar-legales')
                 ->set('aviso', true)
+                ->set('terminos', true)
                 ->call('aceptar')
                 ->assertHasNoErrors();
         }

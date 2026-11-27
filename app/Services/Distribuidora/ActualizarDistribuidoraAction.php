@@ -5,6 +5,7 @@ namespace App\Services\Distribuidora;
 use App\Models\Distribuidora;
 use App\Rules\SubdominioValido;
 use App\Services\Auditoria\AuditarCambios;
+use App\Support\HorarioPublico;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -38,7 +39,8 @@ class ActualizarDistribuidoraAction
     /**
      * @param  array  $datos  nombre_comercial, slug y opcionales: razon_social, rfc,
      *                        subdominio, descripcion_publica, direccion_publica,
-     *                        telefono_publico, email_publico, horario_publico.
+     *                        telefono_publico, email_publico, horario_publico,
+     *                        horarios_publicos.
      *
      * @throws ValidationException con los errores por campo (sin prefijo).
      */
@@ -90,6 +92,15 @@ class ActualizarDistribuidoraAction
         ];
         foreach (self::CAMPOS_TEXTO as $campo) {
             $valores[$campo] = $this->textoONull($datos[$campo] ?? null);
+        }
+
+        if (array_key_exists('horarios_publicos', $datos)) {
+            $preparado = HorarioPublico::preparar(
+                is_array($datos['horarios_publicos']) ? $datos['horarios_publicos'] : null,
+                is_string($datos['horario_publico'] ?? null) ? $datos['horario_publico'] : ($valores['horario_publico'] ?? null),
+            );
+            $valores['horarios_publicos'] = $preparado['horarios_publicos'];
+            $valores['horario_publico'] = $preparado['horario_publico'];
         }
 
         // La auditoría queda ligada a la distribuidora editada (el admin

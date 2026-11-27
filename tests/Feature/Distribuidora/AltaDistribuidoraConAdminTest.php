@@ -76,10 +76,11 @@ class AltaDistribuidoraConAdminTest extends TestCase
         $datos = array_merge([
             'nuevo_razon_social' => 'Zapatería Norte S.A. de C.V.',
             'nuevo_rfc'          => '',
-            'nuevo_activar_ya'   => true,
+            'nuevo_estado_inicial' => 'activa_visible',
             'admin_nombre'       => 'Laura Méndez',
             'admin_email'        => 'laura@zapaterianorte.test',
             'admin_password'     => 'clave-segura-1',
+            'admin_password_confirmation' => $cambios['admin_password_confirmation'] ?? ($cambios['admin_password'] ?? 'clave-segura-1'),
         ], $cambios);
 
         foreach ($datos as $campo => $valor) {
@@ -276,7 +277,7 @@ class AltaDistribuidoraConAdminTest extends TestCase
 
     public function test_una_pendiente_ya_tiene_roles_y_al_aprobarla_desde_el_panel_queda_activa(): void
     {
-        $this->crear(['nuevo_activar_ya' => false])->assertHasNoErrors();
+        $this->crear(['nuevo_estado_inicial' => 'pendiente'])->assertHasNoErrors();
 
         $distribuidora = $this->distribuidora();
         $admin = Usuario::where('email', 'laura@zapaterianorte.test')->firstOrFail();

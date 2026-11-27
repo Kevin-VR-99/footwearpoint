@@ -113,7 +113,8 @@ class SinErroresTecnicosTest extends TestCase
             ->set('nuevo_razon_social', 'Zapatería Norte S.A. de C.V.')
             ->set('admin_nombre', 'Laura Méndez')
             ->set('admin_email', 'laura@zapaterianorte.test')
-            ->set('admin_password', 'clave-segura-1');
+            ->set('admin_password', 'clave-segura-1')
+            ->set('admin_password_confirmation', 'clave-segura-1');
     }
 
     /** Pedido de María (revendedora) ya enviado, para abrirlo en el panel. */

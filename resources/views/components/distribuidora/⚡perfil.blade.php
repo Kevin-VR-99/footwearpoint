@@ -2,6 +2,7 @@
 
 use App\Models\Distribuidora;
 use App\Services\Distribuidora\ActualizarPerfilDistribuidoraAction;
+use App\Support\HorarioPublico;
 use App\Services\Distribuidora\CambiarSubdominioAction;
 use App\Services\Tienda\DominioTienda;
 use App\Services\Tienda\EnlaceTienda;
@@ -26,6 +27,7 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
 
     public ?string $email_publico = null;
     public ?string $horario_publico = null;
+    public array $horarios_publicos = [];
     public $logotipo = null;
     public ?string $logotipo_url_actual = null;
 
@@ -43,6 +45,7 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
         $this->uso_telefono = $distribuidora->telefono_es_whatsapp ? 'whatsapp' : 'llamadas';
         $this->email_publico = $distribuidora->email_publico;
         $this->horario_publico = $distribuidora->horario_publico;
+        $this->horarios_publicos = is_array($distribuidora->horarios_publicos) ? $distribuidora->horarios_publicos : [];
         $this->logotipo_url_actual = $distribuidora->logotipo_url;
         $this->subdominio = (string) $distribuidora->subdominio;
         $this->urlTienda = app(EnlaceTienda::class)->url($distribuidora);
@@ -58,6 +61,7 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
             'uso_telefono' => ['required', 'in:llamadas,whatsapp'],
             'email_publico' => ['nullable', 'email', 'max:190'],
             'horario_publico' => ['nullable', 'string', 'max:300'],
+            'horarios_publicos' => ['nullable', 'array'],
             'logotipo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
         ], [
             'descripcion_publica.max' => 'La descripción pública no puede tener más de 2000 caracteres.',
@@ -75,6 +79,16 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
         $datos['telefono_publico'] = $telefono !== '' ? $telefono : null;
         $datos['telefono_es_whatsapp'] = $quiereWhatsApp;
         unset($datos['uso_telefono']);
+
+        try {
+            $horario = HorarioPublico::preparar($this->horarios_publicos, $this->horario_publico);
+        } catch (ValidationException $e) {
+            $this->addError('horario_publico', $e->errors()['horario_publico'][0] ?? 'El horario público no es válido.');
+            return;
+        }
+        $datos['horario_publico'] = $horario['horario_publico'];
+        $datos['horarios_publicos'] = $horario['horarios_publicos'];
+
 
         $distribuidora = Distribuidora::findOrFail(Tenant::id());
         $conLogotipo = $this->logotipo !== null;
@@ -168,10 +182,12 @@ new #[Layout('layouts.panel')] #[Title('Perfil — FootwearPoint')] class extend
                 @error('uso_telefono') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
             </fieldset>
         @endif
-        <div class="fp-campo">
-            <label for="perfil-horario-publico" class="block text-sm font-medium text-slate-700 mb-1">Horario</label>
-            <input id="perfil-horario-publico" type="text" wire:model="horario_publico" placeholder="Lunes a sábado, 9:00 a 19:00" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-        </div>
+        <x-ui.horario-publico
+            wire-grupos="horarios_publicos"
+            wire-texto="horario_publico"
+            :grupos="$horarios_publicos"
+            :texto-libre="(string) $horario_publico"
+            error="horario_publico" />
         <div class="fp-campo">
             <label class="block text-sm font-medium text-slate-700 mb-1">Logotipo</label>
             @if ($logotipo)
