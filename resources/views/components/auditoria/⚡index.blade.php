@@ -37,7 +37,7 @@ new #[Layout('layouts.panel')] #[Title('Auditoría — FootwearPoint')] class ex
 
 <div>
     <x-panel.encabezado eyebrow="Seguridad" titulo="Auditoría"
-        subtitulo="Registro de operaciones sensibles de la distribuidora (E17-03)." class="mb-6">
+        subtitulo="Registro de operaciones sensibles de la distribuidora." class="mb-6">
         <x-slot:acciones>
         <span class="inline-flex items-center gap-1.5 self-start rounded-full border border-fp-danger/20 bg-fp-danger-soft px-2.5 py-1 text-[11px] font-medium text-fp-badge-danger-fg">
             <span class="h-1.5 w-1.5 rounded-full bg-fp-danger"></span>
