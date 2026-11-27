@@ -553,15 +553,16 @@ new #[Layout('layouts.panel')] #[Title('Clientes directos — FootwearPoint')] c
                                 <input id="clientes-cliente-acceso-email" type="email" wire:model="cliente_acceso_email" autocomplete="off" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
                                 @error('cliente_acceso_email') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
                             </div>
-                            <div class="fp-campo">
-                                <label for="clientes-cliente-acceso-password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-                                <input id="clientes-cliente-acceso-password" type="password" wire:model="cliente_acceso_password" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                                @error('cliente_acceso_password') <span class="text-fp-badge-danger-fg text-xs">{{ $message }}</span> @enderror
-                            </div>
-                            <div class="fp-campo">
-                                <label for="clientes-cliente-acceso-password-confirmation" class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-                                <input id="clientes-cliente-acceso-password-confirmation" type="password" wire:model="cliente_acceso_password_confirmation" autocomplete="new-password" class="w-full rounded-lg bg-white text-sm shadow-sm focus:ring-fp-primary">
-                            </div>
+                            <x-ui.campo-password
+                                class="sm:col-span-2 grid gap-4 sm:grid-cols-2"
+                                id="clientes-cliente-acceso-password"
+                                modelo="cliente_acceso_password"
+                                modelo-confirmacion="cliente_acceso_password_confirmation"
+                                etiqueta="Contraseña"
+                                etiqueta-confirmacion="Confirmar contraseña"
+                                error="cliente_acceso_password"
+                                error-confirmacion="cliente_acceso_password_confirmation"
+                            />
                         </div>
                     @endif
                 </div>

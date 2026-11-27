@@ -117,28 +117,17 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
             @enderror
         </div>
 
-        <div class="fp-campo">
-            <label for="reset-password-password" class="block text-sm font-medium text-slate-700 mb-1">Nueva contraseña</label>
-            <input id="reset-password-password"
-                type="password"
-                wire:model="password"
-                class="w-full rounded-lg"
-                placeholder="Mínimo 8 caracteres, letras y números"
-            >
-            @error('password')
-                <p class="text-sm text-fp-danger mt-1">{{ $message }}</p>
-            @enderror
-        </div>
-
-        <div class="fp-campo">
-            <label for="reset-password-password-confirmation" class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-            <input id="reset-password-password-confirmation"
-                type="password"
-                wire:model="password_confirmation"
-                class="w-full rounded-lg"
-                placeholder="Repite la contraseña"
-            >
-        </div>
+        <x-ui.campo-password
+            id="reset-password-password"
+            modelo="password"
+            modelo-confirmacion="password_confirmation"
+            etiqueta="Nueva contraseña"
+            etiqueta-confirmacion="Confirmar contraseña"
+            error="password"
+            error-confirmacion="password_confirmation"
+            ayuda="Mínimo 8 caracteres, con letras y números."
+            requerido
+        />
 
         <button
             type="submit"

@@ -1214,23 +1214,19 @@ new #[Layout('layouts.admin')] #[Title('Distribuidoras — Admin')] class extend
                                     <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
-                            <div class="fp-campo">
-                                <label for="editar_admin_password" class="block text-sm font-medium mb-1 text-slate-700">Nueva contraseña</label>
-                                <input id="editar_admin_password" type="password" wire:model="editar_admin_password" autocomplete="new-password" class="w-full rounded-lg text-sm">
-                                @error('editar_admin_password')
-                                    <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
-                            <div class="fp-campo">
-                                <label for="editar_admin_password_confirmation" class="block text-sm font-medium mb-1 text-slate-700">Confirmar nueva contraseña</label>
-                                <input id="editar_admin_password_confirmation" type="password" wire:model="editar_admin_password_confirmation" autocomplete="new-password" class="w-full rounded-lg text-sm">
-                                @error('editar_admin_password_confirmation')
-                                    <p class="text-xs text-fp-danger mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
+                            <x-ui.campo-password
+                                class="sm:col-span-2 grid gap-4 sm:grid-cols-2"
+                                id="editar_admin_password"
+                                modelo="editar_admin_password"
+                                modelo-confirmacion="editar_admin_password_confirmation"
+                                etiqueta="Nueva contraseña"
+                                etiqueta-confirmacion="Confirmar nueva contraseña"
+                                error="editar_admin_password"
+                                error-confirmacion="editar_admin_password_confirmation"
+                                ayuda="Deja la contraseña vacía para no cambiarla. Si la cambias, mínimo 8 caracteres, con letras y números."
+                            />
                         </div>
-                        <p class="text-xs text-slate-500 mt-2">Deja la contraseña vacía para no cambiarla. Si la cambias, mínimo 8 caracteres, con letras y números.</p>
-                    @else
+                                            @else
                         <x-panel.alerta tipo="aviso" class="mt-3">
                             {{ \App\Services\Distribuidora\ActualizarAdminDistribuidoraAction::MENSAJE_SIN_ADMIN }}
                         </x-panel.alerta>

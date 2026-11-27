@@ -144,18 +144,16 @@ new #[Layout('layouts.guest')] #[Title('Registrar empleado — FootwearPoint')] 
             @error('telefono') <p class="text-sm text-fp-danger mt-1">{{ $message }}</p> @enderror
         </div>
 
-        <div class="fp-campo">
-            <label for="register-empleado-password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-            <input id="register-empleado-password" type="password" wire:model="password"
-                   class="w-full rounded-lg">
-            @error('password') <p class="text-sm text-fp-danger mt-1">{{ $message }}</p> @enderror
-        </div>
-
-        <div class="fp-campo">
-            <label for="register-empleado-password-confirmation" class="block text-sm font-medium text-slate-700 mb-1">Confirmar contraseña</label>
-            <input id="register-empleado-password-confirmation" type="password" wire:model="password_confirmation"
-                   class="w-full rounded-lg">
-        </div>
+        <x-ui.campo-password
+            id="register-empleado-password"
+            modelo="password"
+            modelo-confirmacion="password_confirmation"
+            etiqueta="Contraseña"
+            etiqueta-confirmacion="Confirmar contraseña"
+            error="password"
+            error-confirmacion="password_confirmation"
+            requerido
+        />
 
         <button type="submit"
                 class="fp-btn fp-btn-oscuro w-full py-2.5"

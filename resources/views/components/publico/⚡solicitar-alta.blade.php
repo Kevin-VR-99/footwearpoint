@@ -418,21 +418,18 @@ class extends Component
                     <x-ui.entrada tipo="email" id="admin_email" wire:model="admin_email" required />
                 </x-ui.campo>
 
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <x-ui.campo etiqueta="Contraseña" para="admin_password" error="admin_password" requerido
-                        ayuda="Al menos 8 caracteres.">
-                        <x-ui.entrada tipo="password" id="admin_password" wire:model="admin_password" required minlength="8" />
-                    </x-ui.campo>
-
-                    {{-- Este campo nunca enseñaba su error: el @error faltaba.
-                         Con x-ui.campo ya no depende de que alguien se acuerde
-                         de escribirlo. --}}
-                    <x-ui.campo etiqueta="Repite la contraseña" para="admin_password_confirmation"
-                        error="admin_password_confirmation" requerido>
-                        <x-ui.entrada tipo="password" id="admin_password_confirmation"
-                            wire:model="admin_password_confirmation" required minlength="8" />
-                    </x-ui.campo>
-                </div>
+                <x-ui.campo-password
+                    class="grid grid-cols-1 gap-4 sm:grid-cols-2"
+                    id="admin_password"
+                    modelo="admin_password"
+                    modelo-confirmacion="admin_password_confirmation"
+                    etiqueta="Contraseña"
+                    etiqueta-confirmacion="Repite la contraseña"
+                    error="admin_password"
+                    error-confirmacion="admin_password_confirmation"
+                    ayuda="Al menos 8 caracteres, con letras y números."
+                    requerido
+                />
             </section>
 
             {{-- Legales --}}
