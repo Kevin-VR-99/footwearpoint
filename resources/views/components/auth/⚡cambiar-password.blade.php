@@ -71,17 +71,28 @@ new #[Layout('layouts.guest')] #[Title('Cambiar contraseña — FootwearPoint')]
     </div>
 
     <form wire:submit="guardar" class="space-y-5">
-        <x-ui.campo etiqueta="Contraseña temporal" para="cambiar-actual" error="password_actual" requerido>
-            <x-ui.entrada tipo="password" id="cambiar-actual" wire:model="password_actual" autocomplete="current-password" required />
-        </x-ui.campo>
+        <x-ui.campo-password
+            id="cambiar-actual"
+            modelo="password_actual"
+            etiqueta="Contraseña temporal"
+            error="password_actual"
+            :con-barra="false"
+            autocomplete="current-password"
+            :ayuda="null"
+            requerido
+        />
 
-        <x-ui.campo etiqueta="Contraseña nueva" para="cambiar-nueva" error="password" ayuda="Mínimo 8 caracteres, con letras y números." requerido>
-            <x-ui.entrada tipo="password" id="cambiar-nueva" wire:model="password" autocomplete="new-password" required />
-        </x-ui.campo>
-
-        <x-ui.campo etiqueta="Confirmar contraseña" para="cambiar-confirmacion" requerido>
-            <x-ui.entrada tipo="password" id="cambiar-confirmacion" wire:model="password_confirmation" autocomplete="new-password" required />
-        </x-ui.campo>
+        <x-ui.campo-password
+            id="cambiar-nueva"
+            modelo="password"
+            modelo-confirmacion="password_confirmation"
+            etiqueta="Contraseña nueva"
+            etiqueta-confirmacion="Confirmar contraseña"
+            error="password"
+            error-confirmacion="password_confirmation"
+            ayuda="Mínimo 8 caracteres, con letras y números."
+            requerido
+        />
 
         <button type="submit" class="fp-btn fp-btn-oscuro w-full py-2.5" wire:loading.attr="disabled" wire:target="guardar">
             <span wire:loading.remove wire:target="guardar">Guardar contraseña</span>

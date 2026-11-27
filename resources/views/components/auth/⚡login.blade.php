@@ -184,15 +184,16 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
             @enderror
         </div>
 
-        <div class="fp-campo">
-            <label for="login-password" class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-            <input id="login-password" type="password" wire:model="password"
-                class="w-full rounded-lg"
-                placeholder="••••••••">
-            @error('password')
-                <p class="text-sm text-fp-danger mt-1">{{ $message }}</p>
-            @enderror
-        </div>
+        <x-ui.campo-password
+            id="login-password"
+            modelo="password"
+            etiqueta="Contraseña"
+            error="password"
+            :con-barra="false"
+            autocomplete="current-password"
+            :ayuda="null"
+            requerido
+        />
 
         <div class="flex items-center justify-between">
             <span></span>

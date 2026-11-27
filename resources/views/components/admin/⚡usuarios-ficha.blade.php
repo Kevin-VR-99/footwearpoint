@@ -531,10 +531,16 @@ new #[Layout('layouts.admin')] #[Title('Ficha de usuario — Admin')] class exte
 
                 @error('baja') <p class="fp-campo-error" role="alert" data-error-baja>{{ $message }}</p> @enderror
 
-                <x-ui.campo etiqueta="Tu contraseña" para="cambio-confirmacion" error="password_confirmacion"
-                    ayuda="Para confirmar que eres tú." requerido>
-                    <x-ui.entrada tipo="password" id="cambio-confirmacion" wire:model="password_confirmacion" autocomplete="current-password" required />
-                </x-ui.campo>
+                <x-ui.campo-password
+                    id="cambio-confirmacion"
+                    modelo="password_confirmacion"
+                    etiqueta="Tu contraseña"
+                    error="password_confirmacion"
+                    ayuda="Para confirmar que eres tú."
+                    :con-barra="false"
+                    autocomplete="current-password"
+                    requerido
+                />
             </div>
 
             <x-slot:pie>

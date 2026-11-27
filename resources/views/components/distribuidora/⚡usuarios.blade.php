@@ -821,17 +821,16 @@ new #[Layout('layouts.panel')] #[Title('Usuarios — FootwearPoint')] class exte
                     @endif
 
                     @unless ($empleadoEditandoId)
-                        <x-ui.campo etiqueta="Contraseña" para="usuarios-empleado-password" error="empleado_password">
-                            <x-ui.entrada tipo="password" id="usuarios-empleado-password"
-                                wire:model="empleado_password" autocomplete="new-password" />
-                        </x-ui.campo>
-
-                        {{-- Este nunca enseñaba su error: le faltaba el @error. --}}
-                        <x-ui.campo etiqueta="Confirmar contraseña" para="usuarios-empleado-password-confirmation"
-                            error="empleado_password_confirmation">
-                            <x-ui.entrada tipo="password" id="usuarios-empleado-password-confirmation"
-                                wire:model="empleado_password_confirmation" autocomplete="new-password" />
-                        </x-ui.campo>
+                        <x-ui.campo-password
+                            class="sm:col-span-2 grid gap-4 sm:grid-cols-2"
+                            id="usuarios-empleado-password"
+                            modelo="empleado_password"
+                            modelo-confirmacion="empleado_password_confirmation"
+                            etiqueta="Contraseña"
+                            etiqueta-confirmacion="Confirmar contraseña"
+                            error="empleado_password"
+                            error-confirmacion="empleado_password_confirmation"
+                        />
                     @endunless
                 </div>
             </div>

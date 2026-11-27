@@ -84,13 +84,11 @@ class AppServiceProvider extends ServiceProvider
         \App\Services\Auditoria\SesionesDelPanel::escuchar();
 
         // INC-002: política única de contraseñas para todo alta o cambio.
-        // uncompromised() consulta HaveIBeenPwned; solo en producción para
-        // que pruebas y desarrollo no dependan de la red (la lista offline
-        // de PasswordSegura cubre las más comunes en todos los entornos).
+        // Mínimo 8 caracteres, con letras y números, más PasswordSegura
+        // (comunes, secuencias y datos personales). Have I Been Pwned ya
+        // no bloquea: el formulario avisa y, si no hay red, calla.
         Password::defaults(function () {
-            $regla = Password::min(8)->letters()->numbers()->rules([new PasswordSegura]);
-
-            return $this->app->environment('production') ? $regla->uncompromised() : $regla;
+            return Password::min(8)->letters()->numbers()->rules([new PasswordSegura]);
         });
 
         // Caché de catálogos por distribuidora: se limpia al guardar o borrar.

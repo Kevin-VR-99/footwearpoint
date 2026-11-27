@@ -4,6 +4,7 @@ use App\Http\Controllers\AbrirEnLaAppController;
 use App\Http\Controllers\ArchivoCatalogoImportacionController;
 use App\Http\Controllers\PaginaCatalogoImportacionController;
 use App\Http\Controllers\DescargarApkMovilController;
+use App\Http\Controllers\PasswordFiltracionController;
 use App\Http\Controllers\ComprobanteVentaController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -66,6 +67,10 @@ Route::livewire('/aviso-privacidad', 'publico.aviso-privacidad')
 
 Route::livewire('/terminos', 'publico.terminos')
     ->name('terminos');
+
+Route::post('/aviso-password-filtracion', PasswordFiltracionController::class)
+    ->middleware('throttle:30,1')
+    ->name('password.aviso-filtracion');
 
 // TG-233 (G14): tienda pública de cada distribuidora (solo las activas). Con
 // sesión o sin ella se ve igual: el catálogo y el precio de menudeo de ESA

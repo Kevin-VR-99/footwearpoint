@@ -6,10 +6,10 @@
     'etiquetaConfirmacion' => 'Confirmar contraseña',
     'error' => null,
     'errorConfirmacion' => null,
-    'ayuda' => 'Mínimo 8, con letras y números.',
+    'ayuda' => null,
     'requerido' => false,
     'autocomplete' => 'new-password',
-    'conBarra' => false,
+    'conBarra' => null,
     'avisoFiltracion' => null,
 ])
 
@@ -17,11 +17,19 @@
     $error = $error ?? $modelo;
     $errorConfirmacion = $errorConfirmacion ?? ($modeloConfirmacion ? $modeloConfirmacion : null);
     $idConfirmacion = $id.'-confirmacion';
+    $conBarra = $conBarra ?? ($modeloConfirmacion !== null);
+    $avisoUrl = $conBarra ? route('password.aviso-filtracion') : '';
+    if ($ayuda === null && $autocomplete === 'new-password') {
+        $ayuda = 'Mínimo 8, con letras y números.';
+    }
 @endphp
 
 <div
     {{ $attributes }}
-    x-data="fpCampoPassword({ conBarra: {{ $conBarra ? 'true' : 'false' }} })"
+    x-data="fpCampoPassword({
+        conBarra: {{ $conBarra ? 'true' : 'false' }},
+        avisoUrl: {{ \Illuminate\Support\Js::from($avisoUrl) }},
+    })"
 >
     <x-ui.campo :etiqueta="$etiqueta" :para="$id" :error="$error" :ayuda="$modeloConfirmacion ? null : $ayuda" :requerido="$requerido">
         <div class="relative">
@@ -32,7 +40,7 @@
                 wire:model="{{ $modelo }}"
                 autocomplete="{{ $autocomplete }}"
                 @if ($requerido) required @endif
-                minlength="8"
+                @if ($autocomplete === 'new-password') minlength="8" @endif
                 class="fp-control w-full pr-24"
             >
             <button
@@ -60,6 +68,13 @@
                 <p class="mt-1 text-xs text-slate-600" x-text="textoFuerza()"></p>
             </div>
         @endif
+
+        <p
+            x-show="filtrada"
+            x-cloak
+            class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+            role="status"
+        >Esta contraseña apareció en una filtración de datos. Conviene elegir otra, pero puedes guardarla.</p>
 
         @if ($avisoFiltracion)
             <p class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="status">{{ $avisoFiltracion }}</p>

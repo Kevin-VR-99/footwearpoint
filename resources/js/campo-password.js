@@ -1,7 +1,7 @@
 /**
  * Campo de contraseña con botón de mostrar u ocultar, confirmación
- * opcional y (si se pide) barra de seguridad. Se registra como
- * Alpine.data('fpCampoPassword') desde app.js.
+ * opcional, barra de seguridad y aviso de filtración (sin bloquear).
+ * Se registra como Alpine.data('fpCampoPassword') desde app.js.
  */
 export default function fpCampoPassword(config = {}) {
     return {
@@ -10,6 +10,9 @@ export default function fpCampoPassword(config = {}) {
         conBarra: Boolean(config.conBarra),
         valor: '',
         fuerza: 'vacia',
+        filtrada: false,
+        avisoUrl: config.avisoUrl || '',
+        _reloj: null,
 
         init() {
             const campo = this.$refs.campo;
@@ -19,7 +22,9 @@ export default function fpCampoPassword(config = {}) {
                 campo.addEventListener('input', () => {
                     this.valor = campo.value || '';
                     this.calcularFuerza();
+                    this.programarAviso();
                 });
+                campo.addEventListener('blur', () => this.revisarFiltracion());
             }
         },
 
@@ -43,6 +48,7 @@ export default function fpCampoPassword(config = {}) {
             const v = this.valor || '';
             if (v.length === 0) {
                 this.fuerza = 'vacia';
+                this.filtrada = false;
                 return;
             }
 
@@ -68,6 +74,58 @@ export default function fpCampoPassword(config = {}) {
 
         textoFuerza() {
             return { vacia: '', debil: 'Débil', media: 'Media', fuerte: 'Fuerte' }[this.fuerza] || '';
+        },
+
+        programarAviso() {
+            this.filtrada = false;
+            if (this._reloj) {
+                clearTimeout(this._reloj);
+            }
+            this._reloj = setTimeout(() => this.revisarFiltracion(), 800);
+        },
+
+        async revisarFiltracion() {
+            if (this._reloj) {
+                clearTimeout(this._reloj);
+                this._reloj = null;
+            }
+            const v = this.valor || '';
+            if (!this.avisoUrl || v.length < 8) {
+                this.filtrada = false;
+                return;
+            }
+
+            try {
+                const token = this.csrf();
+                const respuesta = await fetch(this.avisoUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(token ? { 'X-XSRF-TOKEN': token, 'X-CSRF-TOKEN': token } : {}),
+                    },
+                    body: JSON.stringify({ password: v }),
+                });
+                if (!respuesta.ok) {
+                    this.filtrada = false;
+                    return;
+                }
+                const datos = await respuesta.json();
+                this.filtrada = Boolean(datos.aparecio);
+            } catch (error) {
+                this.filtrada = false;
+            }
+        },
+
+        csrf() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            if (meta && meta.content) {
+                return meta.content;
+            }
+            const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]+)/);
+            return match ? decodeURIComponent(match[1]) : '';
         },
     };
 }
