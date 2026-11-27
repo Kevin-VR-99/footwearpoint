@@ -665,9 +665,21 @@ html.fp-js [data-revelar]:not(.revelado) {
 }
 
 /* =====================================================================
-   Pantallas de acceso (login, registro, recuperar y restablecer
-   contraseña, verificar correo): fondo con movimiento sutil, tarjeta y
-   logo que entran con desvanecido, campos y botones que reaccionan.
+   Pantallas de acceso (layouts.guest): login, confirmar correo, recuperar
+   y restablecer contraseña, contraseña temporal y las demás que comparten
+   el layout.
+
+   Rediseño acordado con Gabriel el 7 nov: formulario limpio junto a un
+   panel con los colores de la marca. El azul marino es fp-sidebar /
+   fp-accent y el rojo es fp-danger, el mismo del logo. En escritorio el
+   panel va a un lado y ocupa el alto de la pantalla; en celular se vuelve
+   una cabecera compacta y el formulario queda arriba.
+
+   Movimiento: entradas cortas (200 a 400 ms), sin giros ni 3D, y todo se
+   apaga con prefers-reduced-motion. Solo se animan opacidad y posición:
+   el formulario se puede usar desde el primer momento, ninguna animación
+   retrasa el inicio de sesión. Las burbujas del panel son lo único lento y
+   son decoración (aria-hidden).
    ===================================================================== */
 @keyframes fp-acceso-deriva {
     0% { transform: translate3d(0, 0, 0) scale(1); }
@@ -675,25 +687,34 @@ html.fp-js [data-revelar]:not(.revelado) {
     100% { transform: translate3d(0, 0, 0) scale(1); }
 }
 @keyframes fp-acceso-entrada {
-    from { opacity: 0; transform: translateY(14px) scale(.98); }
+    from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: none; }
 }
-@keyframes fp-acceso-logo {
-    from { opacity: 0; transform: translateY(-10px) scale(.92); }
+@keyframes fp-acceso-cabecera-entrada {
+    from { opacity: 0; transform: translateY(-8px); }
     to { opacity: 1; transform: none; }
 }
-@keyframes fp-acceso-flotar {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
+@keyframes fp-acceso-panel-entrada {
+    from { opacity: 0; transform: translateX(-16px); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes fp-acceso-burbuja {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(var(--fp-dx, 6px), var(--fp-dy, -18px), 0); }
 }
 
 @layer components {
+    /* El fondo detrás del formulario: nunca blanco pelón. Degradado suave con
+       un toque del azul y del rojo de la marca, más las manchas de
+       .fp-acceso-capa y una trama de puntos muy tenue (.fp-acceso-lado). */
     .fp-acceso-fondo {
         position: relative;
         isolation: isolate;
-        overflow: hidden;
-        background: linear-gradient(160deg, var(--color-fp-page) 0%, #fff 45%, var(--color-fp-page) 100%);
+        overflow-x: hidden;
+        background: linear-gradient(160deg, color-mix(in oklab, var(--color-fp-primary) 8%, var(--color-fp-page)) 0%, #fff 45%, color-mix(in oklab, var(--color-fp-danger) 6%, var(--color-fp-page)) 100%);
     }
+    /* Las manchas viven en .fp-acceso-capa (más abajo); estas quedan apagadas
+       con content: none, pero conservan la paleta por si se reutiliza la clase. */
     .fp-acceso-fondo::before, .fp-acceso-fondo::after {
         content: '';
         position: absolute;
@@ -702,73 +723,251 @@ html.fp-js [data-revelar]:not(.revelado) {
         filter: blur(60px);
         opacity: .55;
         pointer-events: none;
-        animation: fp-acceso-deriva 18s ease-in-out infinite;
     }
     .fp-acceso-fondo::before {
-        width: 34rem; height: 34rem; top: -12rem; left: -10rem;
+        width: 34rem; height: 34rem; top: -12rem; right: -10rem;
         background: radial-gradient(circle, color-mix(in oklab, var(--color-fp-primary) 35%, transparent), transparent 70%);
     }
     .fp-acceso-fondo::after {
-        width: 30rem; height: 30rem; bottom: -12rem; right: -8rem;
+        width: 30rem; height: 30rem; bottom: -12rem; left: 30%;
         background: radial-gradient(circle, color-mix(in oklab, var(--color-fp-danger) 22%, transparent), transparent 70%);
-        animation-duration: 22s;
-        animation-direction: reverse;
     }
-    /* TG-390 (A30): la tarjeta va SOLIDA, que es lo que pide la tarjeta de
-       Taiga. Era blanco al 92% con desenfoque de fondo: encima de las manchas
-       de color, el formulario se tenia de lo que tuviera detras y cambiaba de
-       tono segun donde cayera. Sobre blanco opaco el contraste es el mismo
-       siempre, y el desenfoque sobra porque ya no se ve nada a traves. */
+
+    /* --- Composición ------------------------------------------------------ */
+    .fp-acceso-marco {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        min-height: 100dvh;
+    }
+
+    /* Panel de marca. En celular: cabecera compacta. */
+    .fp-acceso-panel {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        color: #fff;
+        padding: 1rem 1.25rem 2.25rem;
+        border-radius: 0 0 1.5rem 1.5rem;
+        background:
+            radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--color-fp-danger) 38%, transparent) 0%, transparent 55%),
+            radial-gradient(90% 80% at 0% 100%, color-mix(in oklab, var(--color-fp-primary) 35%, transparent) 0%, transparent 60%),
+            linear-gradient(155deg, var(--color-fp-sidebar) 0%, var(--color-fp-accent) 100%);
+        animation: fp-acceso-cabecera-entrada .3s cubic-bezier(.22, .8, .36, 1) backwards;
+    }
+    .fp-acceso-panel-contenido {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: .875rem;
+        max-width: 28rem;
+        margin: 0 auto;
+    }
+    /* Liquid glass como acento: la placa del logo usa .fp-vidrio (blanco al
+       92 % con desenfoque; sólido si no hay soporte o se pide menos
+       transparencia). El logo trae azul y rojo y sobre blanco se lee entero. */
+    .fp-acceso-placa-logo {
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        padding: .375rem;
+        border: 1px solid rgb(255 255 255 / .45);
+        border-radius: 1rem;
+        box-shadow: 0 10px 28px -14px rgb(0 0 0 / .55);
+    }
+    .fp-acceso-panel-logo { display: block; height: 3rem; width: auto; }
+    .fp-acceso-frase {
+        font-size: .9375rem;
+        line-height: 1.3;
+        font-weight: 600;
+        color: #fff;
+        text-wrap: balance;
+    }
+    .fp-acceso-subfrase, .fp-acceso-puntos { display: none; }
+
+    /* Formas que flotan despacio, detrás del texto. */
+    .fp-acceso-panel-formas { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+    .fp-acceso-burbuja {
+        position: absolute;
+        border-radius: 9999px;
+        border: 1px solid rgb(255 255 255 / .14);
+        background: radial-gradient(circle at 30% 30%, rgb(255 255 255 / .16), rgb(255 255 255 / .03) 65%);
+        animation: fp-acceso-burbuja 14s ease-in-out infinite;
+    }
+    .fp-acceso-burbuja-1 { width: 7rem; height: 7rem; top: -2.5rem; right: -1.5rem; }
+    .fp-acceso-burbuja-2 {
+        width: 2.5rem; height: 2.5rem; top: 45%; right: 6%;
+        --fp-dx: -4px; --fp-dy: -10px;
+        border-color: color-mix(in oklab, var(--color-fp-danger) 45%, transparent);
+        background: radial-gradient(circle at 30% 30%, color-mix(in oklab, var(--color-fp-danger) 55%, transparent), color-mix(in oklab, var(--color-fp-danger) 12%, transparent) 70%);
+        animation-duration: 11s; animation-delay: -3s;
+    }
+    .fp-acceso-burbuja-3 { width: 1.25rem; height: 1.25rem; bottom: 18%; left: 45%; animation-duration: 9s; animation-delay: -5s; }
+    .fp-acceso-burbuja-4 {
+        width: 10rem; height: 10rem; bottom: -3.5rem; left: -3rem;
+        --fp-dx: 10px; --fp-dy: -12px;
+        animation-duration: 18s;
+    }
+    .fp-acceso-burbuja-5 {
+        width: .625rem; height: .625rem; top: 20%; left: 55%;
+        border: 0; opacity: .75;
+        background: color-mix(in oklab, var(--color-fp-danger) 75%, white);
+        animation-duration: 10s; animation-delay: -2s;
+    }
+    .fp-acceso-anillo { display: none; }
+
+    /* Lado del formulario. En celular la tarjeta monta un poco sobre la
+       cabecera para que el formulario quede arriba, sin hueco en blanco. */
+    .fp-acceso-lado {
+        position: relative;
+        flex: 1;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        margin-top: -1.25rem;
+        padding: 0 1rem 2rem;
+    }
+    .fp-acceso-lado::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background-image: radial-gradient(color-mix(in oklab, var(--color-fp-sidebar) 14%, transparent) 1px, transparent 1.5px);
+        background-size: 22px 22px;
+        -webkit-mask-image: radial-gradient(ellipse at 70% 40%, #000 0%, transparent 70%);
+        mask-image: radial-gradient(ellipse at 70% 40%, #000 0%, transparent 70%);
+    }
+
+    @media (min-width: 1024px) {
+        .fp-acceso-marco {
+            display: grid;
+            grid-template-columns: minmax(22rem, 5fr) 7fr;
+        }
+        .fp-acceso-panel {
+            position: sticky;
+            top: 0;
+            display: flex;
+            height: 100vh;
+            height: 100dvh;
+            padding: 3rem;
+            border-radius: 0 2rem 2rem 0;
+            animation-name: fp-acceso-panel-entrada;
+            animation-duration: .4s;
+        }
+        .fp-acceso-panel-contenido {
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 2rem;
+            width: 100%;
+            max-width: 26rem;
+            margin: 0;
+        }
+        .fp-acceso-placa-logo { padding: .625rem; border-radius: 1.25rem; }
+        .fp-acceso-panel-logo { height: 6rem; }
+        .fp-acceso-frase { font-size: 2rem; line-height: 1.15; font-weight: 700; letter-spacing: -.01em; }
+        .fp-acceso-subfrase { display: block; margin-top: .875rem; font-size: 1rem; line-height: 1.5; color: rgb(255 255 255 / .82); }
+        .fp-acceso-puntos { display: flex; flex-wrap: wrap; gap: .5rem; }
+        .fp-acceso-puntos li {
+            border: 1px solid rgb(255 255 255 / .2);
+            border-radius: 9999px;
+            padding: .375rem .875rem;
+            font-size: .8125rem;
+            font-weight: 500;
+            color: rgb(255 255 255 / .92);
+        }
+        .fp-acceso-burbuja-1 { width: 11rem; height: 11rem; top: -3rem; right: -3rem; }
+        .fp-acceso-burbuja-2 { width: 3.5rem; height: 3.5rem; top: 34%; right: 14%; }
+        .fp-acceso-burbuja-3 { width: 1.5rem; height: 1.5rem; bottom: 26%; left: 70%; }
+        .fp-acceso-burbuja-4 { width: 15rem; height: 15rem; bottom: -5rem; left: -5rem; }
+        .fp-acceso-burbuja-5 { top: 22%; left: 62%; }
+        .fp-acceso-anillo {
+            display: block;
+            position: absolute;
+            width: 24rem; height: 24rem;
+            right: -10rem; bottom: 10%;
+            border-radius: 9999px;
+            border: 1px solid rgb(255 255 255 / .09);
+            box-shadow: inset 0 0 0 2.5rem rgb(255 255 255 / .025);
+        }
+        .fp-acceso-lado { align-items: center; margin-top: 0; padding: 3rem 2rem; }
+    }
+
+    /* --- Tarjeta del formulario --------------------------------------------
+       TG-390 (A30): la tarjeta va SOLIDA. Con desenfoque se teñía de lo que
+       tuviera detrás y el contraste cambiaba según dónde cayera. Sobre blanco
+       opaco el contraste es siempre el mismo. */
     .fp-acceso-tarjeta {
+        position: relative;
         border-radius: var(--radius-2xl);
         border: 1px solid color-mix(in oklab, var(--color-slate-200) 80%, transparent);
         background-color: #fff;
         box-shadow: 0 24px 48px -20px rgb(17 30 56 / .28), 0 2px 6px -2px rgb(17 30 56 / .08);
-        animation: fp-acceso-entrada .55s cubic-bezier(.22, .8, .36, 1) backwards;
-        transition: box-shadow .3s ease;
+        animation: fp-acceso-entrada .35s cubic-bezier(.22, .8, .36, 1) .05s backwards;
+        transition: box-shadow .25s ease;
     }
     .fp-acceso-tarjeta:focus-within { box-shadow: 0 28px 56px -20px rgb(17 30 56 / .32), 0 0 0 1px color-mix(in oklab, var(--color-fp-primary) 25%, transparent); }
-    .fp-acceso-logo { animation: fp-acceso-logo .6s cubic-bezier(.22, .8, .36, 1) .1s both; }
-    .fp-acceso-logo img { animation: fp-acceso-flotar 5s ease-in-out .8s infinite; }
-    /* Los campos y bloques del formulario aparecen escalonados. */
-    .fp-acceso-tarjeta form > * { animation: fp-aparecer .25s cubic-bezier(.22, .8, .36, 1) backwards; }
-    .fp-acceso-tarjeta form > :nth-child(1) { animation-delay: .15s; }
-    .fp-acceso-tarjeta form > :nth-child(2) { animation-delay: .22s; }
-    .fp-acceso-tarjeta form > :nth-child(3) { animation-delay: .29s; }
-    .fp-acceso-tarjeta form > :nth-child(4) { animation-delay: .36s; }
-    .fp-acceso-tarjeta form > :nth-child(n+5) { animation-delay: .43s; }
-    .fp-acceso-tarjeta .fp-campo input { transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
-    .fp-acceso-tarjeta .fp-campo input:focus { transform: translateY(-1px); }
+
+    /* x-auth.encabezado: el trazo de marca arriba de cada tarjeta. El logo
+       ya va en el panel; repetirlo aquí era ruido. */
+    .fp-acceso-acento {
+        display: block;
+        width: 3rem;
+        height: .25rem;
+        margin-inline: auto;
+        border-radius: 9999px;
+        background: linear-gradient(90deg, var(--color-fp-sidebar), var(--color-fp-primary) 55%, var(--color-fp-danger));
+    }
+
+    /* Los bloques del formulario aparecen escalonados, todo dentro de 400 ms. */
+    .fp-acceso-tarjeta form > * { animation: fp-aparecer .22s cubic-bezier(.22, .8, .36, 1) backwards; }
+    .fp-acceso-tarjeta form > :nth-child(1) { animation-delay: .06s; }
+    .fp-acceso-tarjeta form > :nth-child(2) { animation-delay: .1s; }
+    .fp-acceso-tarjeta form > :nth-child(3) { animation-delay: .14s; }
+    .fp-acceso-tarjeta form > :nth-child(n+4) { animation-delay: .18s; }
+
+    /* Foco de los campos: borde, halo y la etiqueta en el azul de la marca. */
+    .fp-acceso-tarjeta label { transition: color .2s ease; }
+    .fp-acceso-tarjeta :where(div:focus-within) > label { color: var(--color-fp-primary); }
+    .fp-acceso-tarjeta :is(.fp-campo input, input.fp-control) { transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+    .fp-acceso-tarjeta :is(.fp-campo input, input.fp-control):focus { transform: translateY(-1px); }
     .fp-acceso-tarjeta input:not([type=checkbox]):focus { border-color: var(--color-fp-primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-fp-primary) 18%, transparent); outline: none; --tw-ring-color: transparent; }
     .fp-acceso-tarjeta input[type=checkbox] { color: var(--color-fp-primary); }
-    /* TG-390 (A30) — El borde de los campos, visible.
-   
-       Medido sobre el blanco de la tarjeta: el slate-300 que traian da 1.48 de
-       contraste, y WCAG 1.4.11 pide 3.0 para el borde de un control. Los campos
-       del login practicamente no tenian borde.
-   
-       VA ACOTADO A ESTAS PANTALLAS A PROPOSITO. El slate-300 sale de una regla
-       global que usan los formularios de todo el panel; cambiarla ahi arreglaria
-       esto y de paso retocaria 22 archivos. La tarjeta dice "login + confirmacion
-       de correo, solo UI". Que el resto del panel tenga el mismo problema es
-       cierto y merece su propia tarjeta, no colarse en esta.
-   
-       EL BOTON SECUNDARIO VA EN LA MISMA REGLA. Su borde daba 1.23, todavia
-       menos que el de los campos. Con los campos ya marcados se quedaba como
-       a medio dibujar justo al lado de ellos.
-   
-       fp-sidebar al 50% y no un gris cualquiera: es color de la marca, que es
-       de lo que va esta tarjeta. */
+
+    /* TG-390 (A30) — El borde de los campos, visible (WCAG 1.4.11 pide 3.0;
+       el slate-300 global daba 1.48). Acotado a estas pantallas a propósito:
+       la regla global la usan los formularios de todo el panel. El botón
+       secundario va en la misma regla. */
     .fp-acceso-tarjeta :where(input:not([type=checkbox]), select, textarea),
     .fp-acceso-tarjeta .fp-btn-secundario {
         border-color: color-mix(in oklab, var(--color-fp-sidebar) 50%, white);
     }
+
+    /* Botón principal: marino de la marca con un degradado suave; responde al
+       pasar el cursor y al pulsarlo. */
+    .fp-acceso-tarjeta .fp-btn-oscuro {
+        background-image: linear-gradient(135deg, var(--color-fp-sidebar) 0%, color-mix(in oklab, var(--color-fp-accent) 75%, var(--color-fp-primary)) 100%);
+        transition: background-color .2s ease, box-shadow .2s ease, transform .15s ease, filter .2s ease;
+    }
+    .fp-acceso-tarjeta .fp-btn-oscuro:hover:not(:disabled) { filter: brightness(1.15); }
+    .fp-acceso-tarjeta .fp-btn-oscuro:active:not(:disabled) { transform: scale(.97); filter: brightness(.95); }
+    /* Mientras entra, el botón se queda deshabilitado pero legible (el .6
+       general de :disabled dejaba el texto blanco por debajo de 4.5:1). */
+    .fp-acceso-tarjeta :is(button[data-loading], form[data-loading] button[type=submit]):disabled { cursor: progress; opacity: .88; }
+
+    /* Cargando al enviar: el texto cambia y aparece este giro. */
+    .fp-acceso-spinner { display: inline-block; animation: fp-girar .7s linear infinite; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .fp-acceso-fondo::before, .fp-acceso-fondo::after, .fp-acceso-tarjeta, .fp-acceso-logo, .fp-acceso-logo img,
+    .fp-acceso-tarjeta, .fp-acceso-panel, .fp-acceso-burbuja,
     .fp-acceso-tarjeta form > * { animation: none !important; }
-    .fp-acceso-tarjeta .fp-campo input:focus { transform: none !important; }
+    .fp-acceso-tarjeta :is(.fp-campo input, input.fp-control):focus,
+    .fp-acceso-tarjeta .fp-btn-oscuro:active:not(:disabled) { transform: none !important; }
+    .fp-acceso-spinner { animation-duration: 2.5s !important; }
 }
 
 /* =====================================================================
@@ -819,7 +1018,8 @@ form[data-loading] button[type=submit]:not(:has([wire\:loading]))::before {
 }
 
 /* Fondo animado de acceso: las manchas viven en una capa fija recortada para
-   que no generen scroll horizontal en celular. */
+   que no generen scroll horizontal en celular. Van del lado del formulario
+   (arriba a la derecha el azul, abajo el rojo), que es donde se ven. */
 .fp-acceso-fondo::before, .fp-acceso-fondo::after { content: none !important; }
 .fp-acceso-capa { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
 .fp-acceso-capa::before, .fp-acceso-capa::after {
@@ -827,12 +1027,12 @@ form[data-loading] button[type=submit]:not(:has([wire\:loading]))::before {
     animation: fp-acceso-deriva 18s ease-in-out infinite;
 }
 .fp-acceso-capa::before {
-    width: min(34rem, 110vw); height: min(34rem, 110vw); top: -12rem; left: -10rem;
+    width: min(34rem, 110vw); height: min(34rem, 110vw); top: -10rem; right: -10rem;
     background: radial-gradient(circle, color-mix(in oklab, var(--color-fp-primary) 35%, transparent), transparent 70%);
 }
 .fp-acceso-capa::after {
-    width: min(30rem, 100vw); height: min(30rem, 100vw); bottom: -12rem; right: -8rem;
-    background: radial-gradient(circle, color-mix(in oklab, var(--color-fp-danger) 22%, transparent), transparent 70%);
+    width: min(30rem, 100vw); height: min(30rem, 100vw); bottom: -12rem; left: max(-8rem, 30vw);
+    background: radial-gradient(circle, color-mix(in oklab, var(--color-fp-danger) 24%, transparent), transparent 70%);
     animation-duration: 22s; animation-direction: reverse;
 }
 

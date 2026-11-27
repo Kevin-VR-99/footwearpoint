@@ -64,7 +64,8 @@ new #[Layout('layouts.guest')] #[Title('Cambiar contraseña — FootwearPoint')]
 };
 ?>
 
-<div class="fp-acceso-tarjeta p-8">
+<div class="fp-acceso-tarjeta p-6 sm:p-8">
+    <x-auth.encabezado class="mb-5" />
     <div class="mb-8 text-center">
         <h1 class="text-2xl font-bold text-slate-900">Cambia tu contraseña</h1>
         <p class="mt-1 text-sm text-slate-600">Entraste con una contraseña temporal. Elige una tuya para continuar.</p>
@@ -96,7 +97,7 @@ new #[Layout('layouts.guest')] #[Title('Cambiar contraseña — FootwearPoint')]
 
         <button type="submit" class="fp-btn fp-btn-oscuro w-full py-2.5" wire:loading.attr="disabled" wire:target="guardar">
             <span wire:loading.remove wire:target="guardar">Guardar contraseña</span>
-            <span wire:loading wire:target="guardar">Guardando…</span>
+            <span wire:loading wire:target="guardar" role="status"><span class="inline-flex items-center gap-2"><svg class="fp-acceso-spinner h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" class="opacity-25"/><path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg> Guardando…</span></span>
         </button>
     </form>
 

@@ -19,13 +19,59 @@
 </head>
 <body class="fp-acceso-fondo min-h-screen text-slate-800 antialiased">
     <div class="fp-acceso-capa" aria-hidden="true"></div>
-    <div class="min-h-screen flex items-center justify-center p-4">
-        {{-- A21: <main> para que haya una region principal, igual que en los
-             demas layouts. Aqui NO va el enlace de salto: esta pantalla es
-             una sola tarjeta y no hay menu que saltarse. --}}
-        <main id="contenido" tabindex="-1" class="fp-contenido w-full max-w-md">
-            {{ $slot }}
-        </main>
+
+    {{-- Rediseño del acceso (acordado con Gabriel el 7 nov): formulario limpio
+         junto a un panel con los colores de la marca. En escritorio el panel va
+         a la izquierda y ocupa el alto de la pantalla; en celular se vuelve una
+         cabecera compacta para que el formulario quede arriba y legible.
+
+         El logo vive AQUI, una sola vez, y no en cada pantalla: antes cada
+         tarjeta traia el suyo y con el panel saldria repetido.
+
+         El panel sale tambien a clientes (confirmar correo, regreso de Mercado
+         Pago): su texto es para todos, sin hablar de revendedores ni mayoreo.
+
+         Todo es CSS del bundle (app.css): ni <style> ni <script> en linea, que
+         la CSP es script-src 'self'. --}}
+    <div class="fp-acceso-marco">
+        <header class="fp-acceso-panel">
+            <div class="fp-acceso-panel-formas" aria-hidden="true">
+                <span class="fp-acceso-burbuja fp-acceso-burbuja-1"></span>
+                <span class="fp-acceso-burbuja fp-acceso-burbuja-2"></span>
+                <span class="fp-acceso-burbuja fp-acceso-burbuja-3"></span>
+                <span class="fp-acceso-burbuja fp-acceso-burbuja-4"></span>
+                <span class="fp-acceso-burbuja fp-acceso-burbuja-5"></span>
+                <span class="fp-acceso-anillo"></span>
+            </div>
+
+            <div class="fp-acceso-panel-contenido">
+                {{-- Liquid glass solo aqui, como acento: la placa del logo. --}}
+                <span class="fp-acceso-placa-logo fp-vidrio">
+                    <img src="{{ asset('brand/logo-full-160.png') }}" alt="Footwear Point"
+                        class="fp-acceso-panel-logo" width="175" height="160">
+                </span>
+
+                <div class="fp-acceso-panel-texto">
+                    <p class="fp-acceso-frase">Calzado, pedidos y entregas en un solo lugar.</p>
+                    <p class="fp-acceso-subfrase">FootwearPoint conecta a la distribuidora con sus tiendas y sus clientes.</p>
+                </div>
+
+                <ul class="fp-acceso-puntos" aria-label="Lo que encuentras en FootwearPoint">
+                    <li class="fp-vidrio-oscuro">Catálogo</li>
+                    <li class="fp-vidrio-oscuro">Pedidos</li>
+                    <li class="fp-vidrio-oscuro">Entregas</li>
+                </ul>
+            </div>
+        </header>
+
+        <div class="fp-acceso-lado">
+            {{-- A21: <main> para que haya una region principal, igual que en los
+                 demas layouts. Aqui NO va el enlace de salto: esta pantalla es
+                 una sola tarjeta y no hay menu que saltarse. --}}
+            <main id="contenido" tabindex="-1" class="fp-contenido w-full max-w-md">
+                {{ $slot }}
+            </main>
+        </div>
     </div>
 
     @livewireScripts

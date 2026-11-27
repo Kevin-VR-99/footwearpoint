@@ -159,12 +159,12 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
 };
 ?>
 
-<div class="fp-acceso-tarjeta p-8">
-    {{-- TG-390 (A30): el logo bajo de h-28 a h-16, que es lo que usan las otras
-         seis pantallas de acceso. Quien carga la marca aqui es el fondo, no el
-         tamano del logo. --}}
-    <x-auth.encabezado class="mb-3" />
-    <h1 class="mb-8 text-center text-sm font-normal text-slate-500">Inicia sesión en tu cuenta</h1>
+<div class="fp-acceso-tarjeta p-6 sm:p-8">
+    {{-- Rediseño 7 nov: el logo va en el panel de marca del layout; aqui solo
+         el trazo de color, el titulo y una linea de ayuda. --}}
+    <x-auth.encabezado class="mb-5" />
+    <h1 class="text-center text-2xl font-bold text-slate-900">Inicia sesión en tu cuenta</h1>
+    <p class="mt-1 mb-7 text-center text-sm text-fp-text-muted">Entra con tu correo y tu contraseña.</p>
 
     {{-- TG-184: a quien no es personal se le explica que entre por la app. --}}
     @if (session('aviso_acceso'))
@@ -178,6 +178,7 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
             <label for="login-email" class="block text-sm font-medium text-slate-700 mb-1">Correo</label>
             <input id="login-email" type="email" wire:model="email"
                 class="w-full rounded-lg"
+                autocomplete="username"
                 placeholder="correo@ejemplo.com" autofocus>
             @error('email')
                 <p class="text-sm text-fp-danger mt-1">{{ $message }}</p>
@@ -204,9 +205,14 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
 
         <button type="submit"
             class="fp-btn fp-btn-oscuro w-full py-2.5"
-            wire:loading.attr="disabled">
-            <span wire:loading.remove>Entrar</span>
-            <span wire:loading>Entrando...</span>
+            wire:loading.attr="disabled" wire:target="login" data-boton-entrar>
+            <span wire:loading.remove wire:target="login">Entrar</span>
+            <span wire:loading wire:target="login" role="status">
+                <span class="inline-flex items-center gap-2">
+                    <svg class="fp-acceso-spinner h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" class="opacity-25"/><path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+                    Entrando…
+                </span>
+            </span>
         </button>
 
         <a href="{{ route('inicio') }}"

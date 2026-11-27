@@ -53,8 +53,8 @@ new #[Layout('layouts.guest')] #[Title('Confirmar correo — FootwearPoint')] cl
 };
 ?>
 
-<div class="fp-acceso-tarjeta p-8 text-center">
-    <x-auth.encabezado class="mb-4" />
+<div class="fp-acceso-tarjeta p-6 sm:p-8 text-center">
+    <x-auth.encabezado class="mb-5" />
     {{-- TG-390 (A30) — Los tres estados, con el mismo trato.
 
          Antes solo el exito traia circulo y color: los otros dos eran un

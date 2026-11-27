@@ -88,11 +88,11 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
 };
 ?>
 
-<div class="fp-acceso-tarjeta p-8">
-    <x-auth.encabezado class="mb-4" />
+<div class="fp-acceso-tarjeta p-6 sm:p-8">
+    <x-auth.encabezado class="mb-5" />
     <div class="text-center mb-8">
         <h1 class="text-2xl font-bold text-slate-900">Nueva contraseña</h1>
-        <p class="text-sm text-slate-500 mt-1">Define tu nueva contraseña de acceso</p>
+        <p class="text-sm text-fp-text-muted mt-1">Define tu nueva contraseña de acceso</p>
     </div>
 
     @if ($restablecida)
@@ -110,6 +110,7 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
                 type="email"
                 wire:model="email"
                 class="w-full rounded-lg"
+                autocomplete="email"
                 placeholder="correo@ejemplo.com"
             >
             @error('email')
@@ -135,7 +136,7 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
             wire:loading.attr="disabled"
         >
             <span wire:loading.remove>Guardar contraseña</span>
-            <span wire:loading>Guardando...</span>
+            <span wire:loading role="status"><span class="inline-flex items-center gap-2"><svg class="fp-acceso-spinner h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" class="opacity-25"/><path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg> Guardando…</span></span>
         </button>
 
         <div class="text-center">
