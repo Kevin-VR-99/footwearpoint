@@ -1,5 +1,8 @@
 gradle-wrapper.jar
 /.gradle
+# TG-377: la salida de Gradle. El /build/ de mobile/.gitignore esta anclado
+# a la raiz de mobile, asi que cubre mobile/build pero NO este.
+/build/
 /captures/
 /gradlew
 /gradlew.bat

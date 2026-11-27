@@ -19,7 +19,12 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "9.1.0" apply false
+    // TG-377 (27-nov-2026): sube de 9.1.0 a 9.1.1 porque Flutter dejo de
+    // aceptar la anterior y el proyecto ya no compilaba:
+    //   "Your project's Android Gradle Plugin version (9.1.0) is lower than
+    //    Flutter's minimum supported version of 9.1.1."
+    // Es un parche de la misma serie 9.1, asi que Gradle 9.3.1 lo admite.
+    id("com.android.application") version "9.1.1" apply false
     id("org.jetbrains.kotlin.android") version "2.4.0" apply false
     // Lee android/app/google-services.json y mete la configuracion de
     // Firebase en la app al compilar (TG-139).

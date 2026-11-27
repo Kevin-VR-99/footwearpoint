@@ -33,6 +33,55 @@ class RegistrarAuditoriaAction
     /** Datos bancarios: solo se guardan los últimos 4 dígitos. */
     public const CAMPOS_ENMASCARADOS = ['clabe'];
 
+    /**
+     * TG-377 — La IP de quien PIDIÓ el trabajo, cuando no hay petición propia.
+     *
+     * POR QUÉ EXISTE. Aprobar un catálogo se fue a la cola, y el worker no
+     * tiene petición: `request()->ip()` ahí devuelve `127.0.0.1`, que parece
+     * un dato real y no lo es. El 27-nov-2026 las 300+ filas de aprobar el
+     * catálogo Impuls quedaron con esa IP falsa, mientras que los inicios de
+     * sesión del mismo día guardaron la de verdad (84.17.44.227). El QUIÉN
+     * estaba bien; el DESDE DÓNDE mentía.
+     *
+     * Son dos variables y no una porque hay que distinguir «nadie la fijó»
+     * de «se fijó, y es nula»: un trabajo encolado desde la consola no tiene
+     * IP de origen, y null es la respuesta honesta, no `127.0.0.1`.
+     */
+    private static bool $hayIpDeQuienPidio = false;
+
+    private static ?string $ipDeQuienPidio = null;
+
+    /**
+     * Corre $hacer anotando que el origen fue esa IP.
+     *
+     * Es de ámbito (y no un "poner/olvidar" suelto) para que el valor no se
+     * pueda quedar pegado: el finally lo restaura aunque $hacer truene.
+     */
+    public static function conIpDeOrigen(?string $ip, callable $hacer): mixed
+    {
+        $habia = self::$hayIpDeQuienPidio;
+        $antes = self::$ipDeQuienPidio;
+
+        self::$hayIpDeQuienPidio = true;
+        self::$ipDeQuienPidio = $ip;
+
+        try {
+            return $hacer();
+        } finally {
+            self::$hayIpDeQuienPidio = $habia;
+            self::$ipDeQuienPidio = $antes;
+        }
+    }
+
+    private static function ipDeOrigen(): ?string
+    {
+        if (self::$hayIpDeQuienPidio) {
+            return self::$ipDeQuienPidio;
+        }
+
+        return request()?->ip();
+    }
+
     public function ejecutar(
         string $accion,
         string $entidadTipo,
@@ -48,7 +97,7 @@ class RegistrarAuditoriaAction
             'entidad_id'       => $entidadId,
             'datos_previos'    => self::limpiar($datosPrevios),
             'datos_nuevos'     => self::limpiar($datosNuevos),
-            'ip_origen'        => request()?->ip(),
+            'ip_origen'        => self::ipDeOrigen(),
         ]);
     }
 
@@ -72,7 +121,7 @@ class RegistrarAuditoriaAction
             'entidad_id'       => $entidadId,
             'datos_previos'    => self::limpiar($datosPrevios),
             'datos_nuevos'     => self::limpiar($datosNuevos),
-            'ip_origen'        => request()?->ip(),
+            'ip_origen'        => self::ipDeOrigen(),
         ]));
     }
 
