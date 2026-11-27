@@ -57,19 +57,42 @@
 
             <div class="flex-1"></div>
 
-            {{-- TG-391 (A31): atajos del encabezado público. En el celular no
-                 caben junto al botón; ahí los lleva el propio inicio. --}}
-            <nav aria-label="Páginas públicas" class="hidden items-center gap-1 sm:flex" data-nav-publica>
-                @foreach ([
+            {{-- TG-391 (A31): atajos del encabezado público. «Home» va primero,
+                 a la izquierda de Marketplace, y lleva al inicio (/). En el
+                 celular no caben junto al botón: ahí van en el menú de abajo. --}}
+            @php
+                $enlacesPublicos = [
+                    ['Home', route('inicio'), request()->routeIs('inicio')],
                     ['Marketplace', route('marketplace'), request()->routeIs('marketplace')],
                     ['Planes', route('inicio').'#planes', false],
-                ] as [$textoNav, $urlNav, $actualNav])
+                ];
+            @endphp
+            <nav aria-label="Páginas públicas" class="hidden items-center gap-1 sm:flex" data-nav-publica>
+                @foreach ($enlacesPublicos as [$textoNav, $urlNav, $actualNav])
                     <a href="{{ $urlNav }}" @if ($actualNav) aria-current="page" @endif
                         class="rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40 {{ $actualNav ? 'bg-fp-page text-fp-sidebar' : 'text-slate-600 hover:bg-fp-page hover:text-fp-sidebar' }}">
                         {{ $textoNav }}
                     </a>
                 @endforeach
             </nav>
+
+            {{-- Menú del celular: <details> abre y cierra sin JavaScript (CSP). --}}
+            <details class="relative sm:hidden" data-nav-publica-movil>
+                <summary class="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full text-slate-600 transition hover:bg-fp-page hover:text-fp-sidebar focus:outline-none focus-visible:ring-2 focus-visible:ring-fp-primary/40 [&::-webkit-details-marker]:hidden"
+                    aria-label="Abrir menú">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16" />
+                    </svg>
+                </summary>
+                <nav aria-label="Páginas públicas" class="absolute right-0 z-40 mt-2 w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                    @foreach ($enlacesPublicos as [$textoNav, $urlNav, $actualNav])
+                        <a href="{{ $urlNav }}" @if ($actualNav) aria-current="page" @endif
+                            class="block rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 {{ $actualNav ? 'bg-fp-page text-fp-sidebar' : 'text-slate-700 hover:bg-fp-page hover:text-fp-sidebar' }}">
+                            {{ $textoNav }}
+                        </a>
+                    @endforeach
+                </nav>
+            </details>
 
             @auth
                 {{-- TG-219: la misma regla la usa la página pública de inicio. --}}
