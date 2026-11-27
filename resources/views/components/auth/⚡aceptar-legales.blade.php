@@ -23,8 +23,25 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
     {
         $this->mensaje = '';
 
-        if (!$this->aviso && !$this->terminos) {
-            $this->addError('aviso', 'Debes aceptar al menos un documento.');
+        $pendientes = $this->pendientes();
+        $requeridos = $pendientes === []
+            ? [DocumentosLegales::AVISO, DocumentosLegales::TERMINOS]
+            : $pendientes;
+
+        $casillaDe = [
+            DocumentosLegales::AVISO => 'aviso',
+            DocumentosLegales::TERMINOS => 'terminos',
+        ];
+
+        $faltan = [];
+        foreach ($requeridos as $tipo) {
+            if (! $this->{$casillaDe[$tipo]}) {
+                $faltan[] = $tipo;
+            }
+        }
+
+        if ($faltan !== []) {
+            $this->addError($casillaDe[$faltan[0]], $this->mensajeDocumentosFaltantes($requeridos));
             return;
         }
 
@@ -48,6 +65,19 @@ new #[Layout('layouts.guest')] #[Title('Documentos legales — FootwearPoint')] 
         if (DocumentosLegales::alCorriente($usuario)) {
             $this->redirect(route('dashboard'), navigate: true);
         }
+    }
+
+
+    /** @param  list<string>  $requeridos */
+    private function mensajeDocumentosFaltantes(array $requeridos): string
+    {
+        if (count($requeridos) === 2) {
+            return 'Debes aceptar el aviso de privacidad y los términos y condiciones.';
+        }
+
+        return $requeridos[0] === DocumentosLegales::AVISO
+            ? 'Debes aceptar el aviso de privacidad.'
+            : 'Debes aceptar los términos y condiciones.';
     }
 
     /** @return list<string> */

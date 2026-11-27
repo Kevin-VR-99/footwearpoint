@@ -75,8 +75,12 @@ void main() {
   }
 
   Future<void> aceptar(WidgetTester tester) async {
-    await tester.tap(find.byType(Checkbox));
-    await tester.pump();
+    final casillas = find.byType(Checkbox);
+    final total = casillas.evaluate().length;
+    for (var i = 0; i < total; i++) {
+      await tester.tap(casillas.at(i));
+      await tester.pump();
+    }
     final boton = find.widgetWithText(FilledButton, 'Aceptar y Continuar');
     await tester.ensureVisible(boton);
     await tester.tap(boton);
@@ -217,6 +221,9 @@ void main() {
 
     expect(find.text('Aviso de privacidad'), findsOneWidget);
     expect(find.text('Términos y condiciones'), findsOneWidget);
+    expect(find.text('He leído y acepto el aviso de privacidad.'), findsOneWidget);
+    expect(find.text('He leído y acepto los términos y condiciones.'), findsOneWidget);
+    expect(find.byType(Checkbox), findsNWidgets(2));
     // Sin URL no hay botón para leer.
     expect(find.widgetWithText(TextButton, 'Leer'), findsNothing);
   });

@@ -172,6 +172,7 @@ class PoliticaPasswordTest extends TestCase
         Livewire::test('admin.distribuidoras-index')
             ->call('abrirFormularioCrear')
             ->set('admin_password', '12345678')
+            ->set('admin_password_confirmation', '12345678')
             ->call('crearDistribuidora')
             ->assertHasErrors('admin_password');
     }

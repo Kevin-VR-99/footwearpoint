@@ -34,7 +34,7 @@ class CrearDistribuidoraAction
      * @param  array  $datos  nombre_comercial, slug y opcionales: razon_social, rfc,
      *                        subdominio, descripcion_publica, direccion_publica,
      *                        telefono_publico, email_publico, horario_publico,
-     *                        marketplace_visible, plan_solicitado_id (TG-220).
+     *                        horarios_publicos, marketplace_visible, plan_solicitado_id (TG-220).
      * @param  array  $administrador  nombre, email, password.
      * @param  bool  $activar  true: queda activa; false: queda pendiente de aprobar.
      */
@@ -67,6 +67,7 @@ class CrearDistribuidoraAction
                 'telefono_publico'    => $this->textoONull($datos['telefono_publico'] ?? null),
                 'email_publico'       => $this->textoONull($datos['email_publico'] ?? null),
                 'horario_publico'     => $this->textoONull($datos['horario_publico'] ?? null),
+                'horarios_publicos'   => $datos['horarios_publicos'] ?? null,
                 // Solo una distribuidora activa puede verse en el marketplace.
                 'marketplace_visible' => ! empty($datos['marketplace_visible']) && $estado === 'activa',
                 'estado'              => $estado,

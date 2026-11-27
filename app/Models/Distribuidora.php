@@ -40,6 +40,7 @@ class Distribuidora extends Model
         'telefono_es_whatsapp',
         'email_publico',
         'horario_publico',
+        'horarios_publicos',
         'marketplace_visible',
         'estado',
         // TG-220: el plan que eligió quien pidió su alta, si lo eligió.
@@ -52,6 +53,7 @@ class Distribuidora extends Model
 
     protected $casts = [
         'marketplace_visible' => 'boolean',
+        'horarios_publicos' => 'array',
         'telefono_es_whatsapp' => 'boolean',
         'fecha_solicitud' => 'datetime',
         'fecha_aprobacion' => 'datetime',

@@ -78,7 +78,8 @@ class SolicitarAltaTest extends TestCase
             'admin_email' => self::EMAIL_ADMIN,
             'admin_password' => 'clave-segura-1',
             'admin_password_confirmation' => 'clave-segura-1',
-            'acepta_legales' => true,
+            'acepta_aviso' => true,
+            'acepta_terminos' => true,
         ], $cambios);
 
         foreach ($valores as $campo => $valor) {
@@ -123,7 +124,7 @@ class SolicitarAltaTest extends TestCase
         $this->travel(30)->seconds();
 
         $componente->call('enviar')
-            ->assertHasErrors(['nombre_comercial', 'plan_id', 'admin_nombre', 'admin_email', 'admin_password', 'acepta_legales'])
+            ->assertHasErrors(['nombre_comercial', 'plan_id', 'admin_nombre', 'admin_email', 'admin_password', 'acepta_aviso', 'acepta_terminos'])
             ->assertSee('No se envió la solicitud')
             ->assertSee('Los campos con')
             ->assertSee('Plan que te gustaría si te aceptamos');
@@ -165,9 +166,15 @@ class SolicitarAltaTest extends TestCase
 
     public function test_sin_aceptar_los_legales_no_se_envia(): void
     {
-        $this->formulario(['acepta_legales' => false])
+        $this->formulario(['acepta_aviso' => false, 'acepta_terminos' => true])
             ->call('enviar')
-            ->assertHasErrors(['acepta_legales']);
+            ->assertHasErrors(['acepta_aviso']);
+
+        $this->assertNull($this->distribuidoraCreada());
+
+        $this->formulario(['acepta_aviso' => true, 'acepta_terminos' => false])
+            ->call('enviar')
+            ->assertHasErrors(['acepta_terminos']);
 
         $this->assertNull($this->distribuidoraCreada());
     }

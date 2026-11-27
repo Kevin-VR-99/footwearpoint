@@ -26,7 +26,7 @@ class AvisoPrivacidadScreen extends StatefulWidget {
 
 class _AvisoPrivacidadScreenState extends State<AvisoPrivacidadScreen> {
   bool _isLoading = false;
-  bool _aceptoTodo = false;
+  final Map<String, bool> _aceptados = {};
 
   List<DocumentoLegal> _documentos(AuthProvider auth) =>
       auth.legalesPendientes.isEmpty ? DocumentoLegal.ambos : auth.legalesPendientes;
@@ -43,8 +43,13 @@ class _AvisoPrivacidadScreenState extends State<AvisoPrivacidadScreen> {
     }
   }
 
+
+  bool _aceptoTodos(List<DocumentoLegal> documentos) =>
+      documentos.every((documento) => _aceptados[documento.tipo] == true);
+
   Future<void> _aceptarYLlenarRegistro() async {
-    if (!_aceptoTodo) return;
+    final documentos = _documentos(context.read<AuthProvider>());
+    if (!_aceptoTodos(documentos)) return;
 
     setState(() {
       _isLoading = true;
@@ -128,41 +133,42 @@ class _AvisoPrivacidadScreenState extends State<AvisoPrivacidadScreen> {
                 const SizedBox(height: 12),
               ],
               const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Row(
-                  children: [
-                    Checkbox(
-                      value: _aceptoTodo,
-                      onChanged: (val) {
-                        setState(() {
-                          _aceptoTodo = val ?? false;
-                        });
-                      },
-                    ),
-                    Expanded(
-                      child: Text(
-                        documentos.length == 1 && documentos.first.tipo == 'aviso_privacidad'
-                            ? 'He leído y acepto el aviso de privacidad.'
-                            : documentos.length == 1
-                            ? 'He leído y acepto los términos y condiciones.'
-                            : 'He leído y acepto el aviso de privacidad y los términos y condiciones.',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              for (final documento in documentos) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: _aceptados[documento.tipo] ?? false,
+                        onChanged: (val) {
+                          setState(() {
+                            _aceptados[documento.tipo] = val ?? false;
+                          });
+                        },
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: Text(
+                          documento.tipo == 'aviso_privacidad'
+                              ? 'He leído y acepto el aviso de privacidad.'
+                              : 'He leído y acepto los términos y condiciones.',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 16),
               SizedBox(
                 height: 50,
                 child: FilledButton(
-                  onPressed: (_aceptoTodo && !_isLoading) ? _aceptarYLlenarRegistro : null,
+                  onPressed: (_aceptoTodos(documentos) && !_isLoading) ? _aceptarYLlenarRegistro : null,
                   style: FilledButton.styleFrom(
                     backgroundColor: FpColores.sidebar,
                     shape: RoundedRectangleBorder(
