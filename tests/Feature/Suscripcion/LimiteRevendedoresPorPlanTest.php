@@ -347,6 +347,9 @@ class LimiteRevendedoresPorPlanTest extends TestCase
         $pro = PlanSuscripcion::where('nombre', 'Pro')->firstOrFail();
 
         Livewire::test('admin.planes-index')
+            // El subtítulo ya no trae cifras fijas: los montos salen de cada plan.
+            ->assertSee('con sus líneas y revendedores incluidos y lo que cuesta cada extra al mes')
+            ->assertDontSee('($150)')
             ->call('editar', $pro->id)
             ->assertSet('revendedores_incluidos', '50')
             ->set('revendedores_incluidos', '60')

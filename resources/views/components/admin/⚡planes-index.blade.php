@@ -174,7 +174,7 @@ new #[Layout('layouts.admin')] #[Title('Planes — Admin')] class extends Compon
 
 <div>
     <x-panel.encabezado titulo="Planes de suscripción" class="mb-6">
-            <p class="mt-1 text-sm text-fp-text-muted">Precios base y línea extra ($150)</p>
+            <p class="mt-1 text-sm text-fp-text-muted">Precio base de cada plan, con sus líneas y revendedores incluidos y lo que cuesta cada extra al mes</p>
         <x-slot:acciones>
         <button wire:click="nuevo"
                 class="fp-btn fp-btn-primario">
