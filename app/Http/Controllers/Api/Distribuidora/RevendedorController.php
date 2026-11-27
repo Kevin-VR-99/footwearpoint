@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class RevendedorController extends Controller
 {
-    private const CAMPOS_ACCESO = ['acceso_email', 'acceso_password'];
+    private const CAMPOS_ACCESO = ['acceso_email', 'acceso_password', 'acepta_cargo_extra'];
 
     public function index(): AnonymousResourceCollection
     {
@@ -41,7 +41,7 @@ class RevendedorController extends Controller
         // repetido), tampoco se crea el revendedor. Así el admin corrige el
         // correo y vuelve a intentar sin dejar un duplicado.
         $afiliacion = DB::transaction(function () use ($datos, $accion, $activarCuenta) {
-            $afiliacion = $accion->afiliar(Arr::except($datos, self::CAMPOS_ACCESO));
+            $afiliacion = $accion->afiliar(Arr::except($datos, self::CAMPOS_ACCESO), (bool) ($datos['acepta_cargo_extra'] ?? false));
             $this->activarCuentaSiSeMando($afiliacion, $datos, $activarCuenta);
 
             return $afiliacion;
@@ -67,7 +67,7 @@ class RevendedorController extends Controller
         $datos = $request->validated();
 
         $afiliacion = DB::transaction(function () use ($datos, $revendedor, $accion, $activarCuenta) {
-            $afiliacion = $accion->actualizar($revendedor, Arr::except($datos, self::CAMPOS_ACCESO));
+            $afiliacion = $accion->actualizar($revendedor, Arr::except($datos, self::CAMPOS_ACCESO), (bool) ($datos['acepta_cargo_extra'] ?? false));
             $this->activarCuentaSiSeMando($afiliacion, $datos, $activarCuenta);
 
             return $afiliacion;

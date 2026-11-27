@@ -42,6 +42,10 @@ class CobroSuscripcion
 
         $extras = $this->extrasQueSeCobran() * (float) $suscripcion->precio_linea_extra_contratado;
 
+        // Más los revendedores extra que aceptó (límite de revendedores del plan).
+        $revendedores = app(CupoRevendedoresDistribuidora::class);
+        $extras += $revendedores->extrasQueSeCobran($suscripcion) * $revendedores->precioExtra($suscripcion);
+
         return round((float) $suscripcion->precio_base_contratado + $extras, 2);
     }
 

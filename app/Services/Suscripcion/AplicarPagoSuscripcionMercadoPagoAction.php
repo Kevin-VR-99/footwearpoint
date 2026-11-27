@@ -158,6 +158,8 @@ class AplicarPagoSuscripcionMercadoPagoAction
                 'fecha_inicio'             => $primerPago ? today()->toDateString() : $suscripcion->fecha_inicio?->toDateString(),
                 'fecha_fin'                => $hasta->toDateString(),
                 'lineas_extra_contratadas' => max(0, app(CupoLineasDistribuidora::class)->activas() - (int) $suscripcion->lineas_incluidas_contratadas),
+                // Los revendedores extra se vuelven a contar con los activos de hoy.
+                'revendedores_extra_contratados' => app(\App\Services\Distribuidora\CupoRevendedoresDistribuidora::class)->extrasParaRenovar($suscripcion),
             ]);
 
             $reactivada = $this->reactivarPorFaltaDePago($suscripcion);

@@ -152,7 +152,10 @@ class CrearPagoSuscripcionMercadoPagoAction
     /**
      * Lo que cuesta el siguiente mes de esta suscripción.
      *
-     * @return array{base: float, lineas_extra: int, precio_linea_extra: float, total: float}
+     * Los revendedores extra se suman igual que las líneas: los que aceptó
+     * pagar y que sigue teniendo activos por encima de su plan.
+     *
+     * @return array{base: float, lineas_extra: int, precio_linea_extra: float, revendedores_extra: int, precio_revendedor_extra: float, total: float}
      */
     public static function monto(Suscripcion $suscripcion): array
     {
@@ -160,11 +163,17 @@ class CrearPagoSuscripcionMercadoPagoAction
         $base = round((float) $suscripcion->precio_base_contratado, 2);
         $precioExtra = round((float) $suscripcion->precio_linea_extra_contratado, 2);
 
+        $cupoRevendedores = app(\App\Services\Distribuidora\CupoRevendedoresDistribuidora::class);
+        $revendedoresExtra = $cupoRevendedores->extrasQueSeCobran($suscripcion);
+        $precioRevendedorExtra = $cupoRevendedores->precioExtra($suscripcion);
+
         return [
-            'base'               => $base,
-            'lineas_extra'       => $extras,
-            'precio_linea_extra' => $precioExtra,
-            'total'              => round($base + $extras * $precioExtra, 2),
+            'base'                    => $base,
+            'lineas_extra'            => $extras,
+            'precio_linea_extra'      => $precioExtra,
+            'revendedores_extra'      => $revendedoresExtra,
+            'precio_revendedor_extra' => $precioRevendedorExtra,
+            'total'                   => round($base + $extras * $precioExtra + $revendedoresExtra * $precioRevendedorExtra, 2),
         ];
     }
 
