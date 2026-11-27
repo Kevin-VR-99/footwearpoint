@@ -159,12 +159,15 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
 };
 ?>
 
-<div class="fp-acceso-tarjeta p-6 sm:p-8">
-    {{-- Rediseño 7 nov: el logo va en el panel de marca del layout; aqui solo
-         el trazo de color, el titulo y una linea de ayuda. --}}
-    <x-auth.encabezado class="mb-5" />
-    <h1 class="text-center text-2xl font-bold text-slate-900">Inicia sesión en tu cuenta</h1>
-    <p class="mt-1 mb-7 text-center text-sm text-fp-text-muted">Entra con tu correo y tu contraseña.</p>
+<div class="fp-acceso-tarjeta p-8 lg:p-10">
+    {{-- TG-390 (A30): el logo bajo de h-28 a h-16, que es lo que usan las otras
+         seis pantallas de acceso. Quien carga la marca aqui es el fondo, no el
+         tamano del logo.
+         Rediseño (Gabriel, 27 nov): en celular se ve como siempre; desde lg
+         el titulo crece y sale la linea de ayuda, sobre la tarjeta de vidrio. --}}
+    <x-auth.encabezado class="mb-3 lg:mb-5" />
+    <h1 class="mb-8 text-center text-sm font-normal text-slate-500 lg:mb-1 lg:text-2xl lg:font-bold">Inicia sesión en tu cuenta</h1>
+    <p class="mb-7 hidden text-center text-sm text-fp-text-muted lg:block">Entra con tu correo y tu contraseña.</p>
 
     {{-- TG-184: a quien no es personal se le explica que entre por la app. --}}
     @if (session('aviso_acceso'))

@@ -101,7 +101,8 @@ class FondoDeMarcaEnAccesoTest extends TestCase
     // --- Formulario sólido y legible ------------------------------------------
 
     /**
-     * La tarjeta va sólida, que es la palabra de la tarjeta de Taiga.
+     * En celular la tarjeta va sólida, que es la palabra de la tarjeta de
+     * Taiga. (En escritorio es vidrio oscuro: RedisenoLoginTest lo cuida.)
      *
      * Era blanco al 92% con desenfoque: encima de las manchas de color el
      * formulario se teñía de lo que tuviera detrás, así que el contraste
@@ -155,12 +156,11 @@ class FondoDeMarcaEnAccesoTest extends TestCase
     // --- Un solo encabezado ---------------------------------------------------
 
     /**
-     * Las siete pantallas de acceso usan el mismo encabezado, y el logo sale
-     * una sola vez.
+     * Las siete pantallas de acceso usan el mismo encabezado.
      *
      * Ya se habían separado solas: el login lo enseñaba a h-28 y las otras seis
-     * a h-16. Con el rediseño del 7 nov el logo se fue al panel de marca del
-     * layout; el encabezado de cada tarjeta es ahora el trazo de color.
+     * a h-16. Nadie lo decidió. En celular el logo sigue en la tarjeta (h-16);
+     * en escritorio sale una vez más, en el panel de marca del layout.
      */
     public function test_todas_las_pantallas_de_acceso_usan_el_mismo_encabezado(): void
     {
@@ -171,17 +171,17 @@ class FondoDeMarcaEnAccesoTest extends TestCase
             $this->assertStringNotContainsString('logo-full-', $vista, "{$pantalla}: volvió a poner su propio logo a mano.");
         }
 
-        // SIN LOS COMENTARIOS: si no, la prueba pasaría por lo que dice un
-        // comentario aunque el código hubiera cambiado.
-        $sinComentarios = fn (string $ruta) => (string) preg_replace('/\{\{--.*?--\}\}/s', '', (string) file_get_contents(base_path($ruta)));
+        // SIN LOS COMENTARIOS: el del componente explica que el login estaba en
+        // h-28 y los demas en h-16. Leyendo el archivo entero, esta prueba
+        // pasaba por el comentario aunque el logo hubiera cambiado de tamano.
+        $encabezado = (string) preg_replace(
+            '/\{\{--.*?--\}\}/s',
+            '',
+            (string) file_get_contents(base_path('resources/views/components/auth/encabezado.blade.php'))
+        );
 
-        $encabezado = $sinComentarios('resources/views/components/auth/encabezado.blade.php');
-        $this->assertStringContainsString('fp-acceso-acento', $encabezado);
-        $this->assertStringContainsString('aria-hidden="true"', $encabezado, 'El trazo es decoración: no se lee en voz alta.');
-        $this->assertStringNotContainsString('logo-full-', $encabezado, 'El logo volvió a la tarjeta y sale dos veces con el panel.');
-
-        $layout = $sinComentarios('resources/views/layouts/guest.blade.php');
-        $this->assertSame(1, substr_count($layout, 'logo-full-'), 'El logo de acceso tiene que salir una sola vez, en el panel.');
+        $this->assertStringContainsString('h-16', $encabezado, 'El logo de acceso cambió de tamaño.');
+        $this->assertStringContainsString('logo-full-160.png', $encabezado, 'En celular el logo tiene que seguir en la tarjeta.');
     }
 
     /**

@@ -12,9 +12,11 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Rediseño del login y de las pantallas de acceso (acordado con Gabriel el
- * 7 nov): formulario limpio junto a un panel con los colores de la marca, que
- * en celular se vuelve una cabecera compacta.
+ * Rediseño del login y de las pantallas de acceso (Gabriel, 7 y 27 nov).
+ *
+ * En celular todo se ve como antes: tarjeta blanca centrada con el logo
+ * dentro y sin panel. En escritorio (lg) sale el panel de marca y el
+ * formulario va en una tarjeta de vidrio oscuro con los colores del panel.
  *
  * Es un cambio de diseño. Lo que estas pruebas cuidan es que con el diseño
  * nuevo nada se haya roto: las pantallas cargan, el formulario y sus enlaces
@@ -48,9 +50,18 @@ class RedisenoLoginTest extends TestCase
         $this->assertStringContainsString('brand/logo-full-160.png', $html, "{$pantalla}: el panel se quedó sin logo.");
         $this->assertStringContainsString('Calzado, pedidos y entregas en un solo lugar.', $html);
         $this->assertStringContainsString('fp-acceso-burbuja', $html);
-        $this->assertStringContainsString('fp-acceso-tarjeta', $html, "{$pantalla}: el formulario ya no va en su tarjeta sólida.");
+        $this->assertStringContainsString('fp-acceso-tarjeta', $html, "{$pantalla}: el formulario ya no va en su tarjeta.");
         $this->assertSame(1, substr_count($html, '<h1'), "{$pantalla}: tiene que haber un solo h1.");
         $this->assertSame(1, substr_count($html, '<main'), "{$pantalla}: falta o sobra la región principal.");
+    }
+
+    /** El logo dentro de la tarjeta, que es el que se ve en celular. */
+    private function assertLogoEnLaTarjeta(string $html, string $pantalla): void
+    {
+        $tarjeta = substr($html, (int) strpos($html, 'fp-acceso-tarjeta'));
+
+        $this->assertStringContainsString('fp-acceso-logo', $tarjeta, "{$pantalla}: en celular se quedó sin logo.");
+        $this->assertStringContainsString('brand/logo-full-160.png', $tarjeta, "{$pantalla}: en celular se quedó sin logo.");
     }
 
     // --- Las vistas cargan -------------------------------------------------
@@ -60,6 +71,7 @@ class RedisenoLoginTest extends TestCase
         $html = $this->get(route('login'))->assertOk()->getContent();
 
         $this->assertPanelDeMarca($html, 'login');
+        $this->assertLogoEnLaTarjeta($html, 'login');
         $this->assertStringContainsString('Inicia sesión en tu cuenta', $html);
     }
 
@@ -68,6 +80,7 @@ class RedisenoLoginTest extends TestCase
         $html = $this->get(route('password.request'))->assertOk()->getContent();
 
         $this->assertPanelDeMarca($html, 'recuperar');
+        $this->assertLogoEnLaTarjeta($html, 'recuperar');
         $this->assertStringContainsString('Recuperar contraseña', $html);
         $this->assertStringContainsString('wire:submit="sendResetLink"', $html);
         $this->assertStringContainsString('href="'.route('login').'"', $html);
@@ -80,6 +93,7 @@ class RedisenoLoginTest extends TestCase
             ->getContent();
 
         $this->assertPanelDeMarca($html, 'restablecer');
+        $this->assertLogoEnLaTarjeta($html, 'restablecer');
         $this->assertStringContainsString('Nueva contraseña', $html);
         $this->assertStringContainsString('wire:submit="resetPassword"', $html);
         $this->assertStringContainsString('id="reset-password-password"', $html);
@@ -98,6 +112,7 @@ class RedisenoLoginTest extends TestCase
         $html = $this->get($enlace)->assertOk()->getContent();
 
         $this->assertPanelDeMarca($html, 'confirmar correo');
+        $this->assertLogoEnLaTarjeta($html, 'confirmar correo');
         $this->assertStringContainsString('Correo confirmado', $html);
         $this->assertStringContainsString('href="'.route('login').'"', $html);
     }
@@ -114,6 +129,8 @@ class RedisenoLoginTest extends TestCase
             ->assertSee('Cambia tu contraseña')
             ->assertSeeHtml('fp-acceso-tarjeta')
             ->assertSeeHtml('fp-acceso-acento')
+            // Como antes: esta pantalla nunca llevó logo en la tarjeta.
+            ->assertDontSeeHtml('fp-acceso-logo')
             ->assertSeeHtml('id="cambiar-actual"')
             ->assertSeeHtml('id="cambiar-nueva"')
             ->assertSeeHtml('wire:submit="guardar"');
@@ -192,8 +209,8 @@ class RedisenoLoginTest extends TestCase
         $hoja = $this->hoja();
 
         $this->assertMatchesRegularExpression('/\.fp-acceso-tarjeta \{[^}]*animation:\s*fp-acceso-entrada\s*\.35s/s', $hoja);
-        $this->assertMatchesRegularExpression('/\.fp-acceso-panel \{[^}]*animation:\s*fp-acceso-cabecera-entrada\s*\.3s/s', $hoja);
-        $this->assertMatchesRegularExpression('/animation-name:\s*fp-acceso-panel-entrada;\s*animation-duration:\s*\.4s/', $hoja);
+        $this->assertMatchesRegularExpression('/animation:\s*fp-acceso-panel-entrada\s*\.4s/', $hoja);
+        $this->assertMatchesRegularExpression('/\.fp-acceso-logo \{\s*animation:\s*fp-acceso-logo\s*\.4s/', $hoja);
     }
 
     /** Quien pide menos movimiento no ve la entrada, ni las burbujas, ni el panel. */
@@ -205,16 +222,51 @@ class RedisenoLoginTest extends TestCase
         );
     }
 
-    /** En celular el panel es cabecera; a partir de lg, columna lateral. */
-    public function test_el_panel_cambia_de_forma_entre_celular_y_escritorio(): void
+    /**
+     * En celular no sale el panel y el logo va en la tarjeta, como antes; desde
+     * lg aparece el panel y el logo de la tarjeta se esconde (ya está en el panel).
+     */
+    public function test_en_celular_no_sale_el_panel_y_el_logo_va_en_la_tarjeta(): void
     {
-        $this->assertMatchesRegularExpression(
-            '/@media \(min-width: 1024px\) \{\s*\.fp-acceso-marco \{\s*display: grid;/',
-            $this->hoja()
-        );
+        $hoja = $this->hoja();
+        $escritorio = substr($hoja, (int) strpos($hoja, '/* --- Escritorio: panel de marca'));
+        $celular = substr($hoja, 0, (int) strpos($hoja, '/* --- Escritorio: panel de marca'));
+
+        $this->assertMatchesRegularExpression('/\.fp-acceso-panel \{ display: none; \}/', $celular, 'En celular volvió a salir el panel.');
+        $this->assertMatchesRegularExpression('/\.fp-acceso-acento \{\s*display: none;/', $celular, 'En celular sale el trazo de escritorio.');
+        $this->assertStringNotContainsString('.fp-acceso-logo { display: none; }', $celular, 'En celular se escondió el logo de la tarjeta.');
+
+        $this->assertMatchesRegularExpression('/@media \(min-width: 1024px\) \{\s*\.fp-acceso-marco \{\s*display: grid;/', $escritorio);
+        $this->assertMatchesRegularExpression('/\.fp-acceso-panel \{[^}]*display: flex;/s', $escritorio);
+        $this->assertStringContainsString('.fp-acceso-logo { display: none; }', $escritorio);
+
+        // El fondo de celular es el de siempre: claro, sin el marino de escritorio.
+        $this->assertMatchesRegularExpression('/\.fp-acceso-fondo \{[^}]*linear-gradient\(160deg, var\(--color-fp-page\) 0%, #fff 45%, var\(--color-fp-page\) 100%\)/s', $celular);
     }
 
-    /** Liquid glass solo como acento: la placa del logo y los puntos del panel, nunca el formulario. */
+    /** En escritorio la tarjeta es vidrio oscuro, con respaldo casi sólido y texto claro. */
+    public function test_en_escritorio_el_formulario_es_vidrio_oscuro(): void
+    {
+        $hoja = $this->hoja();
+        $vidrio = substr($hoja, (int) strpos($hoja, 'Escritorio: el formulario en vidrio oscuro.'));
+        $vidrio = substr($vidrio, 0, (int) strpos($vidrio, '@media (prefers-reduced-motion: reduce)'));
+
+        $this->assertStringContainsString('backdrop-filter: blur(', $vidrio);
+        $this->assertStringContainsString('background-color: rgb(17 30 56 / .92)', $vidrio, 'Sin soporte de desenfoque la tarjeta tiene que quedar casi sólida.');
+        $this->assertStringContainsString('@supports', $vidrio);
+        // Errores, enlaces y el botón Mostrar de x-ui.campo-password en claro.
+        $this->assertStringContainsString('#FCA5A5', $vidrio);
+        $this->assertStringContainsString('.fp-enlace { color: #BFD4FF; }', $vidrio);
+        $this->assertStringContainsString('.relative > button[type=button]', $vidrio);
+        // Entrar en blanco con texto marino.
+        $this->assertMatchesRegularExpression('/\.fp-btn-oscuro \{[^}]*background-color: #fff;[^}]*color: var\(--color-fp-sidebar\)/s', $vidrio);
+        // Foco visible en claro.
+        $this->assertStringContainsString('outline: 2px solid #fff', $vidrio);
+        // Quien pide menos transparencia la ve sólida.
+        $this->assertMatchesRegularExpression('/prefers-reduced-transparency: reduce\)\s*\{[^}]*\.fp-acceso-tarjeta[^}]*backdrop-filter: none/s', $hoja);
+    }
+
+    /** El vidrio de la tarjeta vive en app.css; en las vistas no hay clases de vidrio sueltas. */
     public function test_el_vidrio_es_solo_un_acento(): void
     {
         $layout = (string) file_get_contents(base_path('resources/views/layouts/guest.blade.php'));
@@ -224,7 +276,7 @@ class RedisenoLoginTest extends TestCase
 
         foreach (['login', 'forgot-password', 'reset-password', 'correo-verificado', 'cambiar-password'] as $pantalla) {
             $vista = (string) file_get_contents(base_path('resources/views/components/auth/⚡'.$pantalla.'.blade.php'));
-            $this->assertStringNotContainsString('fp-vidrio', $vista, "{$pantalla}: el formulario va sólido, sin vidrio.");
+            $this->assertStringNotContainsString('fp-vidrio', $vista, "{$pantalla}: el vidrio de la tarjeta lo pone app.css, no la vista.");
         }
     }
 }

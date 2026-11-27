@@ -20,13 +20,13 @@
 <body class="fp-acceso-fondo min-h-screen text-slate-800 antialiased">
     <div class="fp-acceso-capa" aria-hidden="true"></div>
 
-    {{-- Rediseño del acceso (acordado con Gabriel el 7 nov): formulario limpio
-         junto a un panel con los colores de la marca. En escritorio el panel va
-         a la izquierda y ocupa el alto de la pantalla; en celular se vuelve una
-         cabecera compacta para que el formulario quede arriba y legible.
-
-         El logo vive AQUI, una sola vez, y no en cada pantalla: antes cada
-         tarjeta traia el suyo y con el panel saldria repetido.
+    {{-- Rediseño del acceso (Gabriel, 7 y 27 nov).
+         - Celular y tableta (menos de 1024 px): el diseño de siempre, tarjeta
+           blanca centrada con el logo dentro (x-auth.encabezado). El panel
+           no se muestra.
+         - Escritorio (lg): panel de marca a un lado y el formulario en una
+           tarjeta de vidrio oscuro sobre un fondo marino con manchas.
+         Lo decide app.css; esta vista es la misma para los dos.
 
          El panel sale tambien a clientes (confirmar correo, regreso de Mercado
          Pago): su texto es para todos, sin hablar de revendedores ni mayoreo.

@@ -64,8 +64,9 @@ new #[Layout('layouts.guest')] #[Title('Cambiar contraseña — FootwearPoint')]
 };
 ?>
 
-<div class="fp-acceso-tarjeta p-6 sm:p-8">
-    <x-auth.encabezado class="mb-5" />
+<div class="fp-acceso-tarjeta p-8 lg:p-10">
+    {{-- Sin logo, como siempre en celular; en escritorio solo el trazo de marca. --}}
+    <x-auth.encabezado :logo="false" class="lg:mb-5" />
     <div class="mb-8 text-center">
         <h1 class="text-2xl font-bold text-slate-900">Cambia tu contraseña</h1>
         <p class="mt-1 text-sm text-slate-600">Entraste con una contraseña temporal. Elige una tuya para continuar.</p>

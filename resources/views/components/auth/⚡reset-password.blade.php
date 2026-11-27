@@ -88,11 +88,11 @@ new #[Layout('layouts.guest')] #[Title('Restablecer contraseña — FootwearPoin
 };
 ?>
 
-<div class="fp-acceso-tarjeta p-6 sm:p-8">
-    <x-auth.encabezado class="mb-5" />
+<div class="fp-acceso-tarjeta p-8 lg:p-10">
+    <x-auth.encabezado class="mb-4" />
     <div class="text-center mb-8">
         <h1 class="text-2xl font-bold text-slate-900">Nueva contraseña</h1>
-        <p class="text-sm text-fp-text-muted mt-1">Define tu nueva contraseña de acceso</p>
+        <p class="text-sm text-slate-500 mt-1">Define tu nueva contraseña de acceso</p>
     </div>
 
     @if ($restablecida)
