@@ -155,10 +155,12 @@ class FondoDeMarcaEnAccesoTest extends TestCase
     // --- Un solo encabezado ---------------------------------------------------
 
     /**
-     * Las siete pantallas de acceso usan el mismo logo.
+     * Las siete pantallas de acceso usan el mismo encabezado, y el logo sale
+     * una sola vez.
      *
      * Ya se habían separado solas: el login lo enseñaba a h-28 y las otras seis
-     * a h-16. Nadie lo decidió.
+     * a h-16. Con el rediseño del 7 nov el logo se fue al panel de marca del
+     * layout; el encabezado de cada tarjeta es ahora el trazo de color.
      */
     public function test_todas_las_pantallas_de_acceso_usan_el_mismo_encabezado(): void
     {
@@ -169,16 +171,17 @@ class FondoDeMarcaEnAccesoTest extends TestCase
             $this->assertStringNotContainsString('logo-full-', $vista, "{$pantalla}: volvió a poner su propio logo a mano.");
         }
 
-        // SIN LOS COMENTARIOS: el del componente explica que el login estaba en
-        // h-28 y los demas en h-16. Leyendo el archivo entero, esta prueba
-        // pasaba por el comentario aunque el logo hubiera cambiado de tamano.
-        $encabezado = (string) preg_replace(
-            '/\{\{--.*?--\}\}/s',
-            '',
-            (string) file_get_contents(base_path('resources/views/components/auth/encabezado.blade.php'))
-        );
+        // SIN LOS COMENTARIOS: si no, la prueba pasaría por lo que dice un
+        // comentario aunque el código hubiera cambiado.
+        $sinComentarios = fn (string $ruta) => (string) preg_replace('/\{\{--.*?--\}\}/s', '', (string) file_get_contents(base_path($ruta)));
 
-        $this->assertStringContainsString('h-16', $encabezado, 'El logo de acceso cambió de tamaño.');
+        $encabezado = $sinComentarios('resources/views/components/auth/encabezado.blade.php');
+        $this->assertStringContainsString('fp-acceso-acento', $encabezado);
+        $this->assertStringContainsString('aria-hidden="true"', $encabezado, 'El trazo es decoración: no se lee en voz alta.');
+        $this->assertStringNotContainsString('logo-full-', $encabezado, 'El logo volvió a la tarjeta y sale dos veces con el panel.');
+
+        $layout = $sinComentarios('resources/views/layouts/guest.blade.php');
+        $this->assertSame(1, substr_count($layout, 'logo-full-'), 'El logo de acceso tiene que salir una sola vez, en el panel.');
     }
 
     /**
