@@ -497,6 +497,9 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
             (int) $this->categoriaPorOmision,
             (int) $this->marcaPorOmision,
             (int) Auth::id(),
+            // Desde dónde se pidió: el worker no lo sabe, y su propia IP
+            // (127.0.0.1) mentiría sobre el origen en la auditoría.
+            request()?->ip(),
         );
 
         $this->editandoId = null;

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\ImportacionCatalogo;
+use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Ia\AprobarProductosImportadosAction;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -43,6 +44,8 @@ class AprobarCatalogoImportado implements ShouldQueue
         public int $marcaPorOmision,
         /** Quién presionó el botón. Sin esto la auditoría queda sin dueño. */
         public int $usuarioId,
+        /** Desde dónde lo pidió. Null si se encoló sin petición (consola). */
+        public ?string $ipOrigen = null,
     ) {
     }
 
@@ -65,11 +68,21 @@ class AprobarCatalogoImportado implements ShouldQueue
          */
         Auth::onceUsingId($this->usuarioId);
 
-        $resumen = $accion->ejecutar(
-            $importacion,
-            $this->campanaId,
-            $this->categoriaPorOmision,
-            $this->marcaPorOmision,
+        /*
+         * Y lo mismo con el DESDE DÓNDE. En el worker request()->ip() es
+         * 127.0.0.1 — la del propio servidor —, así que sin esto la
+         * auditoría diría que el catálogo se aprobó desde la máquina que
+         * corre la cola. Se pasa la IP de quien presionó el botón; si no la
+         * hay (encolado desde consola), se guarda vacío, que no miente.
+         */
+        $resumen = RegistrarAuditoriaAction::conIpDeOrigen(
+            $this->ipOrigen,
+            fn (): array => $accion->ejecutar(
+                $importacion,
+                $this->campanaId,
+                $this->categoriaPorOmision,
+                $this->marcaPorOmision,
+            ),
         );
 
         /*
