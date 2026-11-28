@@ -539,24 +539,27 @@ new #[Layout('layouts.admin')] #[Title('Métricas — FootwearPoint')] class ext
 
     {{-- TG-397 (A37). Lo que no se puede medir se dice, no se rellena. La
          misma lista vive en docs/metricas-fase2.md. Solo texto fijo: nada de
-         llaves, tokens ni datos del servidor. --}}
-    <x-panel.tarjeta class="p-5" data-pendientes-metricas>
-        <details>
-            <summary class="cursor-pointer text-sm font-semibold text-slate-700">
-                Lo que todavía no se mide (fase 2)
-            </summary>
-            <p class="mt-2 max-w-prose text-xs text-fp-text-muted">
-                Estas métricas no aparecen arriba porque hoy no hay de dónde sacarlas sin inventar el número.
-            </p>
-            <ul class="mt-3 space-y-3 text-sm">
-                @foreach ($this->pendientes as $p)
-                    <li data-pendiente="{{ $p['clave'] }}">
-                        <p class="font-medium text-slate-700">{{ $p['titulo'] }}</p>
-                        <p class="text-xs text-fp-text-muted">{{ $p['motivo'] }}</p>
-                        <p class="text-xs text-fp-text-muted"><span class="font-medium">Qué haría falta:</span> {{ $p['falta'] }}</p>
-                    </li>
-                @endforeach
-            </ul>
-        </details>
-    </x-panel.tarjeta>
+         llaves, tokens ni datos del servidor. Queda oculto mientras
+         metricas_fase2_visible sea false. --}}
+    @if (config('footwearpoint.metricas_fase2_visible'))
+        <x-panel.tarjeta class="p-5" data-pendientes-metricas>
+            <details>
+                <summary class="cursor-pointer text-sm font-semibold text-slate-700">
+                    Lo que todavía no se mide (fase 2)
+                </summary>
+                <p class="mt-2 max-w-prose text-xs text-fp-text-muted">
+                    Estas métricas no aparecen arriba porque hoy no hay de dónde sacarlas sin inventar el número.
+                </p>
+                <ul class="mt-3 space-y-3 text-sm">
+                    @foreach ($this->pendientes as $p)
+                        <li data-pendiente="{{ $p['clave'] }}">
+                            <p class="font-medium text-slate-700">{{ $p['titulo'] }}</p>
+                            <p class="text-xs text-fp-text-muted">{{ $p['motivo'] }}</p>
+                            <p class="text-xs text-fp-text-muted"><span class="font-medium">Qué haría falta:</span> {{ $p['falta'] }}</p>
+                        </li>
+                    @endforeach
+                </ul>
+            </details>
+        </x-panel.tarjeta>
+    @endif
 </div>

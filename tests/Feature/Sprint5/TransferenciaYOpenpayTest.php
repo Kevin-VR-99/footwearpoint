@@ -185,8 +185,34 @@ class TransferenciaYOpenpayTest extends TestCase
         $this->assertEqualsWithDelta(0, (float) $this->getJson("/api/pedidos/{$pedidoId}")->json('data.saldo'), 0.001);
     }
 
+    public function test_sin_el_interruptor_no_se_ve_openpay_en_metodos_de_pago(): void
+    {
+        $this->comoPanel(self::ADMIN);
+
+        $this->assertFalse(config('footwearpoint.openpay_visible'));
+
+        $this->get(route('distribuidora.configuracion', ['pestana' => 'mercado-pago']))
+            ->assertOk()
+            ->assertSee('Métodos de pago')
+            ->assertDontSee('¿Quieres recibir tus cobros en otro banco?')
+            ->assertDontSee('Conoce Openpay')
+            ->assertDontSee('data-bloque-openpay', false)
+            ->assertDontSee('data-conoce-openpay', false)
+            ->assertDontSee('data-solicitar-openpay', false)
+            ->assertDontSee('¿Qué es Openpay?')
+            ->assertDontSee('pasarela de pagos de BBVA')
+            ->assertDontSee('el contrato es entre tu distribuidora y Openpay', false);
+
+        Livewire::test('distribuidora.mercado-pago')
+            ->assertDontSee('Conoce Openpay')
+            ->call('abrirOpenpay')
+            ->assertStatus(404);
+    }
+
     public function test_la_pestana_se_llama_metodos_de_pago_y_openpay_queda_informativo(): void
     {
+        config(['footwearpoint.openpay_visible' => true]);
+
         $this->comoPanel(self::ADMIN);
 
         $html = $this->get(route('distribuidora.configuracion', ['pestana' => 'mercado-pago']))

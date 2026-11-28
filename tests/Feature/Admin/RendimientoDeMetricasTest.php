@@ -276,8 +276,27 @@ class RendimientoDeMetricasTest extends TestCase
 
     // --- Pendientes de fase 2 ------------------------------------------------
 
+    public function test_sin_el_interruptor_no_se_ve_la_fase_2(): void
+    {
+        $this->comoAdminGeneral();
+
+        $this->assertFalse(config('footwearpoint.metricas_fase2_visible'));
+
+        $this->get('/admin/metricas')
+            ->assertOk()
+            ->assertDontSee('Lo que todavía no se mide (fase 2)')
+            ->assertDontSee('data-pendientes-metricas', false)
+            ->assertDontSee('Salud del servidor')
+            ->assertDontSee('Quién está en línea ahora')
+            ->assertDontSee('Suscripciones por vencer')
+            ->assertDontSee('Volumen de pedidos')
+            ->assertDontSee('Distribuidoras activas a lo largo del tiempo');
+    }
+
     public function test_la_pantalla_enseña_lo_que_todavia_no_se_mide(): void
     {
+        config(['footwearpoint.metricas_fase2_visible' => true]);
+
         $this->comoAdminGeneral();
 
         $respuesta = $this->get('/admin/metricas')
