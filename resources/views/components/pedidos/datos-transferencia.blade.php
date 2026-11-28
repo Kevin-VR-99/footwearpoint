@@ -27,3 +27,14 @@
         @endif
     </div>
 @endif
+
+{{-- Con las transferencias apagadas no se ofrece pagar así, pero un comprobante que ya llegó sigue a la vista. --}}
+@if (! $transferencia && $comprobante)
+    <div class="mb-6 fp-tarjeta p-4 fp-aparecer" data-comprobante-sin-transferencia>
+        <p class="text-sm">
+            Comprobante recibido: {{ $comprobante->nombre_original }}.
+            El archivo no cuenta como pago.
+            <a href="{{ route('pedidos.comprobante-transferencia', $pedido->id) }}" class="fp-enlace">Ver archivo</a>
+        </p>
+    </div>
+@endif

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Sprint5;
 
 use App\Models\ComprobanteTransferencia;
+use App\Models\ConfiguracionDistribuidora;
 use App\Models\Pedido;
 use App\Models\Revendedor;
 use App\Models\Sucursal;
@@ -241,6 +242,15 @@ class ComprobantesEnR2Test extends TestCase
         ])->assertCreated();
 
         $this->postJson("/api/pedidos/{$pedidoId}/enviar")->assertOk();
+
+        ConfiguracionDistribuidora::withoutGlobalScopes()
+            ->where('distribuidora_id', $this->ramirez()->id)
+            ->update([
+                'banco' => 'BBVA',
+                'clabe' => '012180001234567899',
+                'titular_cuenta' => 'Calzados Ramírez',
+                'acepta_transferencias' => true,
+            ]);
 
         return Pedido::withoutGlobalScopes()->findOrFail($pedidoId);
     }

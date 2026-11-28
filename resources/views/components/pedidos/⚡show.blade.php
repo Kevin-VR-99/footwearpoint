@@ -106,6 +106,12 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             ->puede(auth()->user(), \App\Services\Auth\PermisoModuloService::PAGOS_REGISTRAR);
     }
 
+    /** La transferencia se ofrece al cobrar solo con el interruptor encendido y los datos bancarios completos. */
+    public function getAceptaTransferenciasProperty(): bool
+    {
+        return \App\Models\ConfiguracionDistribuidora::aceptaTransferenciasDe((int) $this->pedido->distribuidora_id);
+    }
+
     public function getResumenProperty(): array
     {
         return app(RegistrarPagoPedidoAction::class)->resumen($this->pedido);
@@ -630,7 +636,9 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
                     <span class="block text-slate-500 mb-1">Método</span>
                     <select wire:model="pagoMetodo" class="w-full rounded-lg text-sm">
                         <option value="efectivo">Efectivo</option>
-                        <option value="transferencia">Transferencia</option>
+                        @if ($this->aceptaTransferencias)
+                            <option value="transferencia">Transferencia</option>
+                        @endif
                         <option value="tarjeta">Tarjeta</option>
                         <option value="otro">Otro</option>
                     </select>

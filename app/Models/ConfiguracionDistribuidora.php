@@ -50,6 +50,7 @@ class ConfiguracionDistribuidora extends Model
         'banco',
         'clabe',
         'titular_cuenta',
+        'acepta_transferencias',
     ];
 
     /**
@@ -71,7 +72,36 @@ class ConfiguracionDistribuidora extends Model
         'mp_refresh_token' => 'encrypted',
         'mp_token_expira_en' => 'datetime',
         'mp_aviso_reconexion_at' => 'datetime',
+        'acepta_transferencias' => 'boolean',
     ];
+
+    /** Banco, CLABE y titular están capturados. */
+    public function tieneDatosBancarios(): bool
+    {
+        return filled($this->banco) && filled($this->clabe) && filled($this->titular_cuenta);
+    }
+
+    /**
+     * Se ofrece al cobrar solo si el interruptor está encendido y hay datos
+     * completos. Sin fila, o sin banco, CLABE o titular, no se ofrece.
+     */
+    public function ofreceTransferencias(): bool
+    {
+        return (bool) ($this->acepta_transferencias ?? true) && $this->tieneDatosBancarios();
+    }
+
+    public static function aceptaTransferenciasDe(?int $distribuidoraId): bool
+    {
+        $consulta = static::query();
+
+        if ($distribuidoraId !== null) {
+            $consulta->where('distribuidora_id', $distribuidoraId);
+        }
+
+        $config = $consulta->first();
+
+        return $config !== null && $config->ofreceTransferencias();
+    }
 
     public function getMonedaAttribute(): string
     {

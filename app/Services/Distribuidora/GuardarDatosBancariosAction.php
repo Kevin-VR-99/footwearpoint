@@ -6,6 +6,7 @@ use App\Mail\CambioClabeMail;
 use App\Models\ConfiguracionDistribuidora;
 use App\Models\DistribuidoraStaff;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
+use App\Support\BancosMexico;
 use App\Support\Clabe;
 use App\Support\Tenant;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +16,8 @@ use Spatie\Permission\PermissionRegistrar;
 use Throwable;
 
 /**
- * El admin guarda banco, CLABE y titular. Un cambio de CLABE queda en la
+ * El admin guarda banco (de la lista de bancos de México), CLABE y titular, y
+ * enciende o apaga las transferencias. Un cambio de CLABE queda en la
  * auditoría y se avisa por correo al administrador de la distribuidora.
  */
 class GuardarDatosBancariosAction
@@ -35,11 +37,16 @@ class GuardarDatosBancariosAction
 
         $vacio = $banco === '' && $titular === '' && $clabe === '';
 
+        $config = ConfiguracionDistribuidora::query()->firstOrFail();
+
         if (! $vacio) {
             $errores = [];
 
             if ($banco === '' || mb_strlen($banco) > 80) {
-                $errores['banco'] = 'Escribe el banco, con 80 caracteres como máximo.';
+                $errores['banco'] = 'Elige el banco de la lista.';
+            } elseif (! BancosMexico::existe($banco) && $banco !== (string) $config->banco) {
+                // Un banco escrito a mano antes de que hubiera lista se conserva; uno nuevo sale de la lista.
+                $errores['banco'] = 'Elige el banco de la lista.';
             }
 
             if ($titular === '' || mb_strlen($titular) > 150) {
@@ -55,7 +62,6 @@ class GuardarDatosBancariosAction
             }
         }
 
-        $config = ConfiguracionDistribuidora::query()->firstOrFail();
         $antes = [
             'banco' => $config->banco,
             'clabe' => $config->clabe,
@@ -88,6 +94,36 @@ class GuardarDatosBancariosAction
         if ($antes['clabe'] !== $despues['clabe']) {
             $this->avisarCambioDeClabe($config, $despues['clabe']);
         }
+
+        return $config->fresh();
+    }
+
+    /**
+     * Interruptor «Aceptar transferencias». Apagado: la transferencia no
+     * aparece al cobrar ni al cliente, y el backend la rechaza. Banco, CLABE y
+     * titular se conservan.
+     */
+    public function cambiarDisponibilidad(bool $acepta): ConfiguracionDistribuidora
+    {
+        abort_if(Tenant::id() === null, 403, 'No se pudo determinar la distribuidora.');
+        abort_unless($this->esAdmin(), 403, 'Solo el admin de la distribuidora puede cambiar las transferencias.');
+
+        $config = ConfiguracionDistribuidora::query()->firstOrFail();
+        $antes = (bool) $config->acepta_transferencias;
+
+        if ($antes === $acepta) {
+            return $config;
+        }
+
+        $config->update(['acepta_transferencias' => $acepta]);
+
+        $this->auditoria->ejecutar(
+            'datos_bancarios.disponibilidad',
+            'configuracion_distribuidora',
+            (int) $config->id,
+            ['acepta_transferencias' => $antes],
+            ['acepta_transferencias' => $acepta],
+        );
 
         return $config->fresh();
     }

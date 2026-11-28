@@ -4,10 +4,12 @@ import iniciarMapaConPermiso from './mapa-con-permiso';
 import './editor-recorte';
 import fpHorarioPublico from './horario-publico';
 import fpCampoPassword from './campo-password';
+import fpSelectBanco from './select-banco';
 
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('fpHorarioPublico', fpHorarioPublico);
     window.Alpine.data('fpCampoPassword', fpCampoPassword);
+    window.Alpine.data('fpSelectBanco', fpSelectBanco);
 });
 
 // TG-401 (A38): va de primero. Quien cargue un tercero necesita poder

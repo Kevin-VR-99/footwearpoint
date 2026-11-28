@@ -2,6 +2,7 @@
 
 namespace App\Services\Pedido;
 
+use App\Models\ConfiguracionDistribuidora;
 use App\Models\DistribuidoraStaff;
 use App\Models\Pago;
 use App\Models\Pedido;
@@ -35,6 +36,12 @@ class RegistrarPagoPedidoAction
         if ($monto <= 0) {
             throw ValidationException::withMessages([
                 'monto' => ['El monto debe ser mayor a cero.'],
+            ]);
+        }
+
+        if ($metodo === 'transferencia' && ! ConfiguracionDistribuidora::aceptaTransferenciasDe((int) $pedido->distribuidora_id)) {
+            throw ValidationException::withMessages([
+                'metodo' => [DatosTransferenciaPedido::MENSAJE_NO_DISPONIBLE],
             ]);
         }
 

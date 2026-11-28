@@ -5,6 +5,7 @@ namespace App\Services\VentaDirecta;
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\ClienteDirecto;
 use App\Models\Color;
+use App\Models\ConfiguracionDistribuidora;
 use App\Models\Pago;
 use App\Models\Producto;
 use App\Models\ProductoCampana;
@@ -12,6 +13,7 @@ use App\Models\Talla;
 use App\Models\Variante;
 use App\Services\Auditoria\RegistrarAuditoriaAction;
 use App\Services\Catalogo\PrecioEfectivo;
+use App\Services\Pedido\DatosTransferenciaPedido;
 use App\Services\Vale\BuscarValeParaAplicarAction;
 use App\Models\VentaDirecta;
 use App\Models\VentaDirectaDetalle;
@@ -41,6 +43,10 @@ class RegistrarVentaDirectaService
             $distribuidoraId = $this->contexto->distribuidoraId();
             $sucursalId = (int) $this->contexto->sucursalPrincipal()->id;
             $staffId = (int) $this->contexto->staff()->id;
+
+            if ($metodoPago === 'transferencia' && ! ConfiguracionDistribuidora::aceptaTransferenciasDe($distribuidoraId)) {
+                throw new OperacionInvalidaException(DatosTransferenciaPedido::MENSAJE_NO_DISPONIBLE, 422);
+            }
 
             if ($clienteDirectoId !== null) {
                 $this->verificarClienteDelTenant($clienteDirectoId, $distribuidoraId);

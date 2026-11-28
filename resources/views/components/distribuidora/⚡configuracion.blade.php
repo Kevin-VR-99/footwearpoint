@@ -93,7 +93,7 @@ new #[Layout('layouts.panel')] class extends Component {
             <livewire:distribuidora.general :key="'config-general'" />
         @elseif ($pestanaActiva === 'mercado-pago')
             <livewire:distribuidora.datos-bancarios :key="'config-datos-bancarios'" />
-            <div class="mt-8">
+            <div class="mt-10 sm:mt-12">
                 <livewire:distribuidora.mercado-pago :key="'config-mercado-pago'" />
             </div>
         @elseif ($pestanaActiva === 'suscripcion')
