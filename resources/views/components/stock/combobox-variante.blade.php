@@ -1,5 +1,5 @@
-{{-- Selector de variante con búsqueda: escribe SKU o modelo, o escanea el código
-     (el lector USB teclea el SKU y manda Enter: se elige la coincidencia exacta).
+{{-- Selector de variante con búsqueda: escribe el SKU o el modelo
+     (si el SKU coincide exacto, Enter lo elige).
      Busca en el servidor con buscarVariantes(); guarda el id en la propiedad "modelo". --}}
 @props(['id', 'modelo', 'etiqueta' => 'Variante'])
 
@@ -46,7 +46,7 @@
             @keydown.arrow-up.prevent="if (res.length) { activo = (activo - 1 + res.length) % res.length }"
             @keydown.escape="abierto = false"
             class="w-full rounded-lg text-sm focus:ring-fp-primary pr-8"
-            placeholder="SKU, modelo o escanea el código">
+            placeholder="SKU o modelo">
         <span x-show="buscando" x-cloak class="absolute right-2.5 top-2.5 h-4 w-4 animate-spin rounded-full border-2 border-fp-primary border-r-transparent motion-reduce:animate-none" aria-hidden="true"></span>
         <button type="button" x-show="elegida && !buscando" x-cloak @click="limpiar()" class="absolute right-2 top-2 text-slate-400 hover:text-slate-600" aria-label="Quitar variante">×</button>
     </div>

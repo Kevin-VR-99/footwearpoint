@@ -111,7 +111,7 @@ class HallazgosQaAccesibilidadTest extends TestCase
     {
         $this->actingAs($this->usuario(DemoDistribuidoraSeeder::EMPLEADO));
 
-        $html = Livewire::test('stock.index')->html();
+        $html = Livewire::test('stock.index')->set('tabEntrada', 'variante')->html();
 
         $this->assertStringContainsString('<template x-if="imagenElegida"><img :src="imagenElegida"', $html);
         $this->assertStringContainsString('<template x-if="r.imagen"><img :src="r.imagen"', $html);

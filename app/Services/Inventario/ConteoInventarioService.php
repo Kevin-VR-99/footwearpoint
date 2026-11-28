@@ -52,8 +52,12 @@ class ConteoInventarioService
 
             $existencias = StockLocal::query()->where('sucursal_id', $sucursalId)->pluck('cantidad_disponible', 'variante_id');
 
+            // Por modelo: sus variantes activas MÁS toda variante que tenga existencia
+            // aunque esté marcada inactiva, para que ninguna pieza en stock quede fuera.
             $variantes = $productoId !== null
-                ? Variante::query()->where('producto_id', $productoId)->where('activa', true)->pluck('id')
+                ? Variante::query()->where('producto_id', $productoId)
+                    ->where(fn ($q) => $q->where('activa', true)->orWhereIn('id', $existencias->keys()))
+                    ->pluck('id')
                 : $existencias->keys();
 
             foreach ($variantes as $varianteId) {
