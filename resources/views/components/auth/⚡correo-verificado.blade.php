@@ -53,7 +53,7 @@ new #[Layout('layouts.guest')] #[Title('Confirmar correo — FootwearPoint')] cl
 };
 ?>
 
-<div class="fp-acceso-tarjeta p-8 text-center">
+<div class="fp-acceso-tarjeta p-8 text-center lg:p-10">
     <x-auth.encabezado class="mb-4" />
     {{-- TG-390 (A30) — Los tres estados, con el mismo trato.
 
