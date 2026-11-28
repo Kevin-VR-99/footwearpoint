@@ -17,7 +17,6 @@ use App\Services\Stock\StockService;
 use App\Support\PropietarioActual;
 use App\Support\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -157,8 +156,9 @@ class StockLocalMejorasTest extends TestCase
     public function test_la_pagina_ya_no_trae_el_select_largo_de_variantes(): void
     {
         Livewire::test('stock.index')
+            ->set('tabEntrada', 'variante')
             ->assertSee('data-combobox-variante="entrada_variante_id"', false)
-            ->assertSee('data-combobox-variante="ajuste_variante_id"', false)
+            ->assertDontSee('data-combobox-variante="ajuste_variante_id"', false)
             ->assertDontSee('— Seleccionar variante —');
     }
 
@@ -203,85 +203,7 @@ class StockLocalMejorasTest extends TestCase
         Livewire::test('stock.index')->call('verMovimientos', $ajena->id);
     }
 
-    // 4) Importar
-
-    private function csv(string $contenido, string $nombre = 'entradas.csv'): UploadedFile
-    {
-        return UploadedFile::fake()->createWithContent($nombre, $contenido);
-    }
-
-    public function test_importar_muestra_vista_previa_con_errores_y_no_aplica(): void
-    {
-        $variante = Variante::query()->orderBy('id')->firstOrFail();
-        $antes = $this->existencia($variante->id);
-
-        Livewire::test('stock.index')
-            ->set('tabEntrada', 'importar')
-            ->set('archivo', $this->csv("SKU,cantidad,motivo\n{$variante->sku},3,Compra\nNO-EXISTE,2,\n{$variante->sku},0,\n"))
-            ->assertSee('SKU desconocido.')
-            ->assertSee('La cantidad debe ser un entero mayor que cero.')
-            ->call('aplicarImportacion')
-            ->assertSet('errorImportacion', 'Corrige las filas con error antes de aplicar.');
-
-        $this->assertSame($antes, $this->existencia($variante->id));
-    }
-
-    public function test_importar_suma_duplicados_aplica_en_una_transaccion_y_audita(): void
-    {
-        [$a, $b] = Variante::query()->orderBy('id')->limit(2)->get()->all();
-        $antesA = $this->existencia($a->id);
-        $antesB = $this->existencia($b->id);
-
-        Livewire::test('stock.index')
-            ->set('archivo', $this->csv("sku;Cantidad;Motivo\n{$a->sku};2;Factura 10\n{$b->sku};5;\n".strtolower($a->sku).";3;\n"))
-            ->assertSet('vistaPrevia.errores', 0)
-            ->assertSet('vistaPrevia.lineas.0.cantidad', 5)
-            ->call('aplicarImportacion')
-            ->assertSet('mensaje', 'Importación aplicada: 10 piezas en 2 variantes.')
-            ->assertSet('vistaPrevia', null);
-
-        $this->assertSame($antesA + 5, $this->existencia($a->id));
-        $this->assertSame($antesB + 5, $this->existencia($b->id));
-        $this->assertTrue(MovimientoStock::where('motivo', 'Factura 10')->where('cantidad', 5)->exists());
-        $this->assertTrue(MovimientoStock::where('motivo', 'Importación: entradas.csv')->exists());
-        $this->assertTrue(Auditoria::query()->where('accion', 'stock.importacion')->exists());
-    }
-
-    public function test_importar_acepta_excel(): void
-    {
-        $variante = Variante::query()->orderBy('id')->firstOrFail();
-        $antes = $this->existencia($variante->id);
-
-        $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $libro->getActiveSheet()->fromArray([['SKU', 'cantidad'], [$variante->sku, 7]]);
-        $ruta = tempnam(sys_get_temp_dir(), 'xl').'.xlsx';
-        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save($ruta);
-
-        Livewire::test('stock.index')
-            ->set('archivo', UploadedFile::fake()->createWithContent('entradas.xlsx', file_get_contents($ruta)))
-            ->assertSet('vistaPrevia.errores', 0)
-            ->call('aplicarImportacion');
-
-        $this->assertSame($antes + 7, $this->existencia($variante->id));
-    }
-
-    public function test_importar_valida_columnas_tipo_y_limite_de_filas(): void
-    {
-        $componente = Livewire::test('stock.index');
-
-        $componente->set('archivo', $this->csv("codigo,piezas\nX,1\n"))
-            ->assertSet('errorImportacion', 'El archivo debe tener las columnas SKU y cantidad en la primera fila. Descarga la plantilla.');
-
-        $componente->set('archivo', UploadedFile::fake()->createWithContent('foto.png', 'x'))
-            ->assertSet('errorImportacion', 'Sube un archivo .xlsx, .xls o .csv.');
-
-        $filas = "SKU,cantidad\n".str_repeat("ABC,1\n", 1001);
-        $componente->set('archivo', $this->csv($filas))
-            ->assertSet('errorImportacion', 'El archivo tiene más de 1000 filas. Divídelo en partes.');
-
-        $componente->set('archivo', UploadedFile::fake()->create('grande.csv', 3000))
-            ->assertHasErrors('archivo');
-    }
+    // 4) La importación de archivo ya no se ofrece en pantalla
 
     public function test_la_plantilla_se_descarga_y_solo_para_el_personal(): void
     {

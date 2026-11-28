@@ -38,6 +38,16 @@ class StockService
     }
 
     /**
+     * Existencias de esta distribuidora y su sucursal principal, sin precargas
+     * ni orden: la base que comparten Stock local, Conteo y Venta local, para que
+     * las tres pantallas vean exactamente las mismas piezas.
+     */
+    public function existencias(): Builder
+    {
+        return $this->consultar()->reorder()->setEagerLoads([]);
+    }
+
+    /**
      * E6-01 - Entrada de stock. Crea la fila de stock_local si es la primera
      * entrada de esa variante en la sucursal.
      */
@@ -197,6 +207,68 @@ class StockService
             $this->auditarMovimiento('stock.ajuste', $stock, $movimiento);
 
             return $movimiento;
+        });
+    }
+
+    /**
+     * Salida por modelo: descuenta varias variantes en UNA transacción (ajuste
+     * negativo con motivo obligatorio, un movimiento por variante). Si una talla no
+     * alcanza, no sale ninguna.
+     *
+     * @param  array<int, int>  $cantidades  variante_id => cantidad (> 0)
+     * @return list<MovimientoStock>
+     */
+    public function registrarSalidas(array $cantidades, string $motivo): array
+    {
+        $this->exigirPermisoStock();
+
+        $motivo = trim($motivo);
+        if ($motivo === '') {
+            throw new OperacionInvalidaException('Toda salida necesita un motivo (merma, corrección, etc.).', 422);
+        }
+
+        $cantidades = array_filter(
+            array_map('intval', $cantidades),
+            fn (int $cantidad) => $cantidad !== 0,
+        );
+
+        if ($cantidades === []) {
+            throw new OperacionInvalidaException('Escribe la cantidad de al menos una talla.', 422);
+        }
+
+        foreach ($cantidades as $cantidad) {
+            if ($cantidad < 1) {
+                throw new OperacionInvalidaException('Las cantidades deben ser mayores que cero.', 422);
+            }
+        }
+
+        ksort($cantidades);
+
+        return DB::transaction(function () use ($cantidades, $motivo) {
+            $movimientos = [];
+
+            foreach ($cantidades as $varianteId => $cantidad) {
+                $stock = $this->stockBloqueado((int) $varianteId, permitirCreacion: false);
+                $anterior = (int) $stock->cantidad_disponible;
+                $posterior = $anterior - $cantidad;
+
+                if ($posterior < 0) {
+                    throw new OperacionInvalidaException(
+                        "La salida dejaría la existencia en negativo (variante {$varianteId}). Existencia actual: {$anterior}.",
+                        409,
+                        ['cantidad' => ['No puedes descontar más piezas de las que hay registradas.']]
+                    );
+                }
+
+                $this->guardarExistencia($stock, $posterior);
+
+                $movimiento = $this->registrarMovimiento($stock, 'ajuste_negativo', $cantidad, $anterior, $posterior, $motivo);
+                $this->auditarMovimiento('stock.ajuste', $stock, $movimiento);
+                $movimiento->setRelation('stockLocal', $stock);
+                $movimientos[] = $movimiento;
+            }
+
+            return $movimientos;
         });
     }
 

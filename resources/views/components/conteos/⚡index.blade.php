@@ -16,7 +16,7 @@ use Livewire\Component;
 
 /**
  * Inventario físico: iniciar un conteo (de un modelo o de todo), capturar con
- * el escáner USB (lee el SKU y da Enter) o a mano, ver las diferencias y
+ * busca por SKU o modelo o captura a mano, ver las diferencias y
  * aplicarlas como ajustes de stock en un solo paso.
  */
 new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] class extends Component {
@@ -97,7 +97,7 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
         try {
             $conteo = $servicio->iniciar($this->productoId !== '' && $this->productoId !== null ? (int) $this->productoId : null, $this->notas ?: null);
             $this->conteoId = $conteo->id;
-            $this->mensaje = 'Conteo #'.$conteo->id.' iniciado. Escanea las piezas o captura lo contado.';
+            $this->mensaje = 'Conteo #'.$conteo->id.' iniciado. Busca por SKU o modelo o captura lo contado.';
         } catch (\Throwable $e) {
             $this->errorMsg = MensajeError::paraUsuario($e, 'No se pudo iniciar el conteo.');
         }
@@ -166,7 +166,7 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
 <div class="space-y-4">
     @if (! $embebido)
         <x-panel.encabezado titulo="Inventario físico"
-            subtitulo="Cuenta lo que hay en tu sucursal con el escáner o a mano, revisa las diferencias y aplícalas al stock en un solo paso." />
+            subtitulo="Cuenta lo que hay en tu sucursal: busca por SKU o modelo o captura a mano, revisa las diferencias y aplícalas al stock en un solo paso." />
     @endif
 
     @if ($mensaje)
@@ -253,8 +253,8 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
         @if ($c->estaAbierto())
             <form wire:submit="escanear" class="fp-tarjeta p-4 fp-formulario fp-aparecer flex flex-wrap items-end gap-3"
                 x-data x-init="$refs.codigo.focus()" x-on:conteo-escaneado.window="$nextTick(() => $refs.codigo.focus())" data-escaner>
-                <label class="block flex-1 text-sm text-slate-600">Código (SKU) — escanea y da Enter
-                    <input x-ref="codigo" type="text" wire:model="codigo" autocomplete="off" class="mt-1 w-full rounded-lg font-mono text-sm" placeholder="Escanea la etiqueta">
+                <label class="block flex-1 text-sm text-slate-600">SKU o modelo
+                    <input x-ref="codigo" type="text" wire:model="codigo" autocomplete="off" class="mt-1 w-full rounded-lg font-mono text-sm" placeholder="Busca por SKU o modelo">
                 </label>
                 <label class="block w-24 text-sm text-slate-600">Piezas
                     <input type="number" min="1" max="9999" wire:model="piezas" class="mt-1 w-full rounded-lg text-sm">
@@ -312,7 +312,7 @@ new #[Layout('layouts.panel')] #[Title('Inventario físico — FootwearPoint')] 
                             </td>
                         </tr>
                     @empty
-                        <x-panel.vacio colspan="6" mensaje="Sin renglones. Escanea la primera pieza." />
+                        <x-panel.vacio colspan="6" mensaje="Sin renglones. Busca por SKU o modelo o captura lo contado." />
                     @endforelse
                 </tbody>
             </table>

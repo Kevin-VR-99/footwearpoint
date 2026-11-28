@@ -10,19 +10,22 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use App\Models\StockLocal;
-use App\Services\Stock\ImportarEntradasService;
 use Illuminate\Support\Facades\DB;
 
 new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class extends Component
 {
     use WithPagination;
-    use WithFileUploads;
 
-    /** Pestaña de la tarjeta de entrada: variante, modelo (todas las tallas) o importar. */
-    public string $tabEntrada = 'variante';
+    /**
+     * Movimiento de stock (entrada o salida), una sola tarjeta: por modelo y talla
+     * (todas las tallas de un modelo y color) o por SKU (una variante).
+     */
+    public string $tabEntrada = 'modelo';
+
+    /** 'entrada' suma piezas; 'salida' las descuenta (ajuste negativo, con motivo). */
+    public string $tipoMovimiento = 'entrada';
 
     // Entrada por modelo: producto + color y una cantidad por talla.
     public string $modelo_producto_id = '';
@@ -32,13 +35,8 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     /** @var array<int|string, string> variante_id => cantidad */
     public array $modelo_cantidades = [];
     public string $modelo_motivo = '';
-    /** @var list<array{talla:string, sku:string, cantidad:int, antes:int, despues:int}> */
+    /** @var list<array{talla:string, sku:string, cantidad:int, antes:int, despues:int, tipo:string}> */
     public array $resumenModelo = [];
-
-    // Importar desde Excel/CSV
-    public $archivo = null;
-    public ?array $vistaPrevia = null;
-    public string $errorImportacion = '';
 
     // Tabla agrupada por producto + color
     /** @var list<string> claves "producto-color" abiertas */
@@ -48,16 +46,10 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     public ?int $movimientosStockId = null;
     public int $movimientosPagina = 1;
 
-    // Entrada de mercancía (E6-01)
+    // Movimiento por SKU (entrada E6-01 o salida/ajuste E6-02)
     public string $entrada_variante_id = '';
     public string $entrada_cantidad = '';
     public string $entrada_motivo = '';
-
-    // Ajuste manual (E6-02): el motivo es obligatorio
-    public string $ajuste_variante_id = '';
-    public string $ajuste_tipo = 'ajuste_negativo';
-    public string $ajuste_cantidad = '';
-    public string $ajuste_motivo = '';
 
     #[\Livewire\Attributes\Url(except: '')]
     public string $busqueda = '';
@@ -193,7 +185,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     }
 
     /**
-     * Combobox: busca variantes por SKU (o código escaneado), nombre o modelo.
+     * Combobox: busca variantes por SKU, nombre o modelo.
      * El SKU exacto va primero para que el Enter del lector lo elija.
      *
      * @return list<array{id:int, sku:string, etiqueta:string, detalle:string, imagen:?string}>
@@ -321,23 +313,84 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         $this->modelo_cantidades = [];
     }
 
+        public function updatedTipoMovimiento(): void
+    {
+        if (! in_array($this->tipoMovimiento, ['entrada', 'salida'], true)) {
+            $this->tipoMovimiento = 'entrada';
+        }
+
+        $this->mensaje = '';
+        $this->errorMsg = '';
+        $this->resetErrorBag();
+    }
+
+    private function esSalida(): bool
+    {
+        return $this->tipoMovimiento === 'salida';
+    }
+
+    /** Movimiento de una sola variante (por SKU): entrada, o salida si el tipo es «salida». */
+    public function registrarEntrada(StockService $stock)
+    {
+        $this->mensaje = '';
+        $this->errorMsg = '';
+        $salida = $this->esSalida();
+
+        $this->validate([
+            'entrada_variante_id' => ['required', 'integer', 'min:1'],
+            'entrada_cantidad' => ['required', 'integer', 'min:1'],
+            'entrada_motivo' => [$salida ? 'required' : 'nullable', 'string', 'max:300'],
+        ], [
+            'entrada_variante_id.required' => 'Selecciona una variante.',
+            'entrada_cantidad.required' => $salida ? 'Indica cuántas piezas salen.' : 'Indica cuántas piezas entraron.',
+            'entrada_cantidad.min' => 'La cantidad debe ser mayor que cero.',
+            'entrada_motivo.required' => 'Toda salida necesita un motivo (merma, corrección, etc.).',
+        ]);
+
+        try {
+            $movimiento = $salida
+                ? $stock->registrarAjuste((int) $this->entrada_variante_id, 'ajuste_negativo', (int) $this->entrada_cantidad, $this->entrada_motivo)
+                : $stock->registrarEntrada(
+                    (int) $this->entrada_variante_id,
+                    (int) $this->entrada_cantidad,
+                    $this->entrada_motivo !== '' ? $this->entrada_motivo : null,
+                );
+
+            $this->mensaje = ($salida ? 'Salida registrada' : 'Entrada registrada').'. Existencia: '
+                . $movimiento->existencia_anterior . ' → ' . $movimiento->existencia_posterior . '.';
+
+            $this->reset(['entrada_variante_id', 'entrada_cantidad', 'entrada_motivo']);
+            $this->dispatch('stock-limpiar-variantes');
+        } catch (OperacionInvalidaException $e) {
+            $this->errorMsg = $e->getMessage();
+        } catch (\Throwable $e) {
+            report($e); // TG-224 (G3): el detalle va al log.
+            $this->errorMsg = $salida
+                ? 'No se pudo registrar la salida. Revisa los datos e intenta de nuevo.'
+                : 'No se pudo registrar la entrada. Revisa los datos e intenta de nuevo.';
+        }
+    }
+
+    /** Movimiento por modelo y color: una cantidad por talla, entrada o salida. */
     public function registrarEntradaModelo(StockService $stock): void
     {
         $this->mensaje = '';
         $this->errorMsg = '';
         $this->resumenModelo = [];
+        $salida = $this->esSalida();
 
         $this->validate([
             'modelo_producto_id' => ['required', 'integer'],
             'modelo_color_id' => ['required', 'integer'],
             'modelo_cantidades' => ['array'],
             'modelo_cantidades.*' => ['nullable', 'integer', 'min:0', 'max:100000'],
-            'modelo_motivo' => ['nullable', 'string', 'max:300'],
+            'modelo_motivo' => [$salida ? 'required' : 'nullable', 'string', 'max:300'],
         ], [
             'modelo_producto_id.required' => 'Elige el modelo.',
             'modelo_color_id.required' => 'Elige el color.',
             'modelo_cantidades.*.integer' => 'Las cantidades deben ser números enteros.',
             'modelo_cantidades.*.min' => 'Las cantidades no pueden ser negativas.',
+            'modelo_motivo.required' => 'Toda salida necesita un motivo (merma, corrección, etc.).',
         ]);
 
         // Solo tallas que pertenecen al modelo y color elegidos.
@@ -353,8 +406,12 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
             return;
         }
 
+        $motivo = $this->modelo_motivo !== '' ? $this->modelo_motivo : null;
+
         try {
-            $movimientos = $stock->registrarEntradas($cantidades, $this->modelo_motivo !== '' ? $this->modelo_motivo : null);
+            $movimientos = $salida
+                ? $stock->registrarSalidas($cantidades, (string) $motivo)
+                : $stock->registrarEntradas($cantidades, $motivo);
 
             $this->resumenModelo = collect($movimientos)->map(fn ($m) => [
                 'talla' => $tallas[$m->stockLocal->variante_id]['talla'],
@@ -362,80 +419,23 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 'cantidad' => (int) $m->cantidad,
                 'antes' => (int) $m->existencia_anterior,
                 'despues' => (int) $m->existencia_posterior,
+                'tipo' => $salida ? 'salida' : 'entrada',
             ])->all();
 
             $piezas = array_sum($cantidades);
-            $this->mensaje = 'Entrada registrada: '.$piezas.' '.($piezas === 1 ? 'pieza' : 'piezas').' en '.count($movimientos).' '.(count($movimientos) === 1 ? 'talla' : 'tallas').'.';
+            $this->mensaje = ($salida ? 'Salida registrada: ' : 'Entrada registrada: ')
+                .$piezas.' '.($piezas === 1 ? 'pieza' : 'piezas').' en '.count($movimientos).' '.(count($movimientos) === 1 ? 'talla' : 'tallas').'.';
             $this->modelo_cantidades = [];
             $this->modelo_motivo = '';
+            unset($this->tallasModelo); // que «Hay N» muestre la existencia ya actualizada
         } catch (OperacionInvalidaException $e) {
             $this->errorMsg = $e->getMessage();
         } catch (\Throwable $e) {
             report($e);
-            $this->errorMsg = 'No se pudo registrar la entrada. Revisa los datos e intenta de nuevo.';
+            $this->errorMsg = $salida
+                ? 'No se pudo registrar la salida. Revisa los datos e intenta de nuevo.'
+                : 'No se pudo registrar la entrada. Revisa los datos e intenta de nuevo.';
         }
-    }
-
-    // ---------- Importar desde Excel/CSV ----------
-
-    public function updatedArchivo(): void
-    {
-        $this->vistaPrevia = null;
-        $this->errorImportacion = '';
-        $this->mensaje = '';
-
-        $this->validate(['archivo' => ['required', 'file', 'max:'.ImportarEntradasService::MAX_KB]], [
-            'archivo.max' => 'El archivo pesa más de 2 MB.',
-        ]);
-
-        try {
-            $this->vistaPrevia = app(ImportarEntradasService::class)->previsualizar($this->archivo);
-        } catch (OperacionInvalidaException $e) {
-            $this->errorImportacion = $e->getMessage();
-        }
-    }
-
-    public function aplicarImportacion(): void
-    {
-        $this->mensaje = '';
-        $this->errorMsg = '';
-
-        if ($this->archivo === null) {
-            $this->errorImportacion = 'Sube primero el archivo.';
-
-            return;
-        }
-
-        try {
-            // Se vuelve a leer y validar el archivo en el servidor: la vista
-            // previa del navegador no se toma como verdad.
-            $servicio = app(ImportarEntradasService::class);
-            $previa = $servicio->previsualizar($this->archivo);
-
-            if ($previa['errores'] > 0) {
-                $this->vistaPrevia = $previa;
-                $this->errorImportacion = 'Corrige las filas con error antes de aplicar.';
-
-                return;
-            }
-
-            $movimientos = $servicio->aplicar($previa['lineas'], $this->archivo->getClientOriginalName());
-            $piezas = array_sum(array_column($previa['lineas'], 'cantidad'));
-            $this->mensaje = 'Importación aplicada: '.$piezas.' piezas en '.count($movimientos).' variantes.';
-            $this->cancelarImportacion();
-        } catch (OperacionInvalidaException $e) {
-            $this->errorImportacion = $e->getMessage();
-        } catch (\Throwable $e) {
-            report($e);
-            $this->errorImportacion = 'No se pudo aplicar la importación. No se registró ninguna entrada.';
-        }
-    }
-
-    public function cancelarImportacion(): void
-    {
-        $this->archivo = null;
-        $this->vistaPrevia = null;
-        $this->errorImportacion = '';
     }
 
     // ---------- Movimientos de una variante ----------
@@ -506,28 +506,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     }
 
     /** @return array<string, string> sku en minúsculas => url */
-    public function getFotosImportacionProperty(): array
-    {
-        if ($this->vistaPrevia === null) {
-            return [];
-        }
-
-        $lineas = collect($this->vistaPrevia['lineas'] ?? []);
-        $porVariante = app(ImagenDeProducto::class)->porVariante($lineas->pluck('variante_id'));
-        $mapa = [];
-
-        foreach ($lineas as $linea) {
-            $url = $porVariante[(int) $linea['variante_id']] ?? null;
-
-            if ($url !== null) {
-                $mapa[mb_strtolower((string) $linea['sku'])] = $url;
-            }
-        }
-
-        return $mapa;
-    }
-
-    public function getMinimoGeneralProperty(): int
+        public function getMinimoGeneralProperty(): int
     {
         return (int) (\App\Models\ConfiguracionDistribuidora::query()->value('stock_minimo_general') ?? 0);
     }
@@ -596,86 +575,14 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         $this->dispatch('guardado', mensaje: 'Mínimo actualizado.');
     }
 
-    public function registrarEntrada(StockService $stock)
-    {
-        $this->mensaje = '';
-        $this->errorMsg = '';
-
-        $this->validate([
-            'entrada_variante_id' => ['required', 'integer', 'min:1'],
-            'entrada_cantidad' => ['required', 'integer', 'min:1'],
-            'entrada_motivo' => ['nullable', 'string', 'max:300'],
-        ], [
-            'entrada_variante_id.required' => 'Selecciona una variante.',
-            'entrada_cantidad.required' => 'Indica cuántas piezas entraron.',
-            'entrada_cantidad.min' => 'La cantidad debe ser mayor que cero.',
-        ]);
-
-        try {
-            $movimiento = $stock->registrarEntrada(
-                (int) $this->entrada_variante_id,
-                (int) $this->entrada_cantidad,
-                $this->entrada_motivo !== '' ? $this->entrada_motivo : null,
-            );
-
-            $this->mensaje = 'Entrada registrada. Existencia: '
-                . $movimiento->existencia_anterior . ' → ' . $movimiento->existencia_posterior . '.';
-
-            $this->reset(['entrada_variante_id', 'entrada_cantidad', 'entrada_motivo']);
-            $this->dispatch('stock-limpiar-variantes');
-        } catch (OperacionInvalidaException $e) {
-            $this->errorMsg = $e->getMessage();
-        } catch (\Throwable $e) {
-            report($e); // TG-224 (G3): el detalle va al log.
-            $this->errorMsg = 'No se pudo registrar la entrada. Revisa los datos e intenta de nuevo.';
-        }
-    }
-
-    public function registrarAjuste(StockService $stock)
-    {
-        $this->mensaje = '';
-        $this->errorMsg = '';
-
-        $this->validate([
-            'ajuste_variante_id' => ['required', 'integer', 'min:1'],
-            'ajuste_tipo' => ['required', 'in:ajuste_positivo,ajuste_negativo'],
-            'ajuste_cantidad' => ['required', 'integer', 'min:1'],
-            'ajuste_motivo' => ['required', 'string', 'max:300'],
-        ], [
-            'ajuste_variante_id.required' => 'Selecciona una variante.',
-            'ajuste_cantidad.required' => 'Indica cuántas piezas ajustar.',
-            'ajuste_motivo.required' => 'Todo ajuste manual necesita un motivo (merma, corrección, etc.).',
-        ]);
-
-        try {
-            $movimiento = $stock->registrarAjuste(
-                (int) $this->ajuste_variante_id,
-                $this->ajuste_tipo,
-                (int) $this->ajuste_cantidad,
-                $this->ajuste_motivo,
-            );
-
-            $this->mensaje = 'Ajuste registrado. Existencia: '
-                . $movimiento->existencia_anterior . ' → ' . $movimiento->existencia_posterior . '.';
-
-            $this->reset(['ajuste_variante_id', 'ajuste_cantidad', 'ajuste_motivo']);
-            $this->dispatch('stock-limpiar-variantes');
-            $this->ajuste_tipo = 'ajuste_negativo';
-        } catch (OperacionInvalidaException $e) {
-            $this->errorMsg = $e->getMessage();
-        } catch (\Throwable $e) {
-            report($e); // TG-224 (G3): el detalle va al log.
-            $this->errorMsg = 'No se pudo registrar el ajuste. Revisa los datos e intenta de nuevo.';
-        }
-    }
-};
+        };
 ?>
 
 <div>
     <x-panel.pestanas-tienda activa="stock" />
 
     <x-panel.encabezado titulo="Stock local"
-        subtitulo="Existencias, entradas y ajustes de la sucursal, y el conteo físico." class="mb-6" />
+        subtitulo="Existencias, entradas y salidas de la sucursal, y el conteo físico." class="mb-6" />
 
     <div class="fp-pestanas fp-pestanas-seccion mb-6" role="tablist" aria-label="Stock local">
         <button type="button" role="tab" wire:click="$set('pestana', 'existencias')"
@@ -704,7 +611,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 <ul class="mt-2 flex flex-wrap gap-1.5 text-xs" data-resumen-modelo>
                     @foreach ($resumenModelo as $linea)
                         <li class="rounded-full bg-white/70 px-2 py-0.5 ring-1 ring-fp-success/30">
-                            Talla {{ $linea['talla'] }}: +{{ $linea['cantidad'] }} ({{ $linea['antes'] }} → {{ $linea['despues'] }})
+                            Talla {{ $linea['talla'] }}: {{ ($linea['tipo'] ?? 'entrada') === 'salida' ? '−' : '+' }}{{ $linea['cantidad'] }} ({{ $linea['antes'] }} → {{ $linea['despues'] }})
                         </li>
                     @endforeach
                 </ul>
@@ -720,26 +627,39 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
 
     @if (! $this->puedeAjustarStock)
         <x-panel.alerta tipo="info" class="mb-4">
-            Puedes consultar las existencias. Para registrar entradas o ajustes pídele el permiso al administrador.
+            Puedes consultar las existencias. Para registrar entradas o salidas de stock pídele el permiso al administrador.
         </x-panel.alerta>
     @endif
 
     @if ($this->puedeAjustarStock)
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="mb-6">
 
-        {{-- Entrada de mercancía: por variante, por modelo (todas las tallas) o importando un archivo --}}
-        <div class="relative fp-tarjeta p-5 fp-formulario fp-aparecer">
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-                <h3 class="text-sm font-semibold text-slate-800">Registrar entrada</h3>
-                <div class="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs" role="tablist" aria-label="Forma de registrar la entrada">
-                    @foreach (['variante' => 'Una variante', 'modelo' => 'Por modelo', 'importar' => 'Importar archivo'] as $clave => $texto)
-                        <button type="button" role="tab" data-tab="{{ $clave }}" aria-selected="{{ $tabEntrada === $clave ? 'true' : 'false' }}"
-                            wire:click="$set('tabEntrada', '{{ $clave }}')"
-                            class="rounded-md px-2.5 py-1 font-medium transition {{ $tabEntrada === $clave ? 'bg-white text-fp-sidebar shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">
+        {{-- Un solo movimiento de stock: entrada o salida, por modelo y talla o por SKU --}}
+        <div class="relative fp-tarjeta p-5 fp-formulario fp-aparecer" data-movimiento-stock>
+            <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h3 class="text-sm font-semibold text-slate-800">Registrar movimiento</h3>
+                    <p class="mt-0.5 text-xs text-slate-500">Da entrada a mercancía o descuenta piezas (merma, corrección). Cada movimiento queda en el historial de la talla.</p>
+                </div>
+                <div class="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs" role="group" aria-label="Tipo de movimiento">
+                    @foreach (['entrada' => 'Entrada', 'salida' => 'Salida'] as $clave => $texto)
+                        <button type="button" data-tipo-movimiento="{{ $clave }}" aria-pressed="{{ $tipoMovimiento === $clave ? 'true' : 'false' }}"
+                            wire:click="$set('tipoMovimiento', '{{ $clave }}')"
+                            class="rounded-md px-3 py-1 font-medium transition {{ $tipoMovimiento === $clave ? 'bg-white text-fp-sidebar shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">
                             {{ $texto }}
                         </button>
                     @endforeach
                 </div>
+            </div>
+
+            <div class="mb-4 inline-flex rounded-lg bg-slate-100 p-0.5 text-xs" role="tablist" aria-label="Forma de registrar el movimiento">
+                @foreach (['modelo' => 'Por modelo y talla', 'variante' => 'Por SKU'] as $clave => $texto)
+                    <button type="button" role="tab" data-tab="{{ $clave }}" aria-selected="{{ $tabEntrada === $clave ? 'true' : 'false' }}"
+                        wire:click="$set('tabEntrada', '{{ $clave }}')"
+                        class="rounded-md px-2.5 py-1 font-medium transition {{ $tabEntrada === $clave ? 'bg-white text-fp-sidebar shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">
+                        {{ $texto }}
+                    </button>
+                @endforeach
             </div>
 
             @if ($tabEntrada === 'variante')
@@ -757,17 +677,18 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                     </div>
 
                     <div class="fp-campo">
-                        <label for="index-entrada-motivo" class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional)</label>
+                        <label for="index-entrada-motivo" class="block text-sm font-medium text-slate-700 mb-1">{{ $tipoMovimiento === 'salida' ? 'Motivo (obligatorio)' : 'Motivo (opcional)' }}</label>
                         <input id="index-entrada-motivo" type="text" maxlength="300" wire:model="entrada_motivo"
-                               class="w-full rounded-lg text-sm focus:ring-fp-primary" placeholder="Ej. compra a fábrica">
+                               class="w-full rounded-lg text-sm focus:ring-fp-primary" placeholder="{{ $tipoMovimiento === 'salida' ? 'Ej. merma, corrección de conteo' : 'Ej. compra a fábrica' }}">
+                        @error('entrada_motivo') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                     </div>
 
-                    <button type="submit" class="fp-btn fp-btn-primario" wire:loading.attr="disabled" wire:target="registrarEntrada">
-                        <span wire:loading.delay.remove wire:target="registrarEntrada">Registrar entrada</span>
+                    <button type="submit" class="fp-btn {{ $tipoMovimiento === 'salida' ? 'fp-btn-oscuro' : 'fp-btn-primario' }}" wire:loading.attr="disabled" wire:target="registrarEntrada">
+                        <span wire:loading.delay.remove wire:target="registrarEntrada">{{ $tipoMovimiento === 'salida' ? 'Registrar salida' : 'Registrar entrada' }}</span>
                         <span wire:loading.delay wire:target="registrarEntrada">Registrando…</span>
                     </button>
                 </form>
-            @elseif ($tabEntrada === 'modelo')
+            @else
                 <form wire:submit="registrarEntradaModelo" class="space-y-4 fp-emerger" wire:key="tab-modelo">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="fp-campo">
@@ -801,7 +722,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                     <div class="relative">
                         <x-ui.cargando objetivo="modelo_producto_id,modelo_color_id" />
                         @if ($this->tallasModelo->isNotEmpty())
-                            <p class="mb-2 text-xs text-slate-500">Cantidad que entra por talla (deja vacío o 0 las que no llegaron).</p>
+                            <p class="mb-2 text-xs text-slate-500">{{ $tipoMovimiento === 'salida' ? 'Cantidad que sale por talla (deja vacío o 0 las que no se descuentan).' : 'Cantidad que entra por talla (deja vacío o 0 las que no llegaron).' }}</p>
                             <div class="grid grid-cols-3 sm:grid-cols-4 gap-2" data-rejilla-tallas>
                                 @foreach ($this->tallasModelo as $talla)
                                     <label class="rounded-lg border border-slate-200 p-2 text-center transition focus-within:border-fp-primary" wire:key="talla-{{ $talla['id'] }}">
@@ -821,120 +742,18 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                     </div>
 
                     <div class="fp-campo">
-                        <label for="modelo-motivo" class="block text-sm font-medium text-slate-700 mb-1">Motivo (opcional, para todas las tallas)</label>
+                        <label for="modelo-motivo" class="block text-sm font-medium text-slate-700 mb-1">{{ $tipoMovimiento === 'salida' ? 'Motivo (obligatorio, para todas las tallas)' : 'Motivo (opcional, para todas las tallas)' }}</label>
                         <input id="modelo-motivo" type="text" maxlength="300" wire:model="modelo_motivo"
-                               class="w-full rounded-lg text-sm focus:ring-fp-primary" placeholder="Ej. compra a fábrica">
+                               class="w-full rounded-lg text-sm focus:ring-fp-primary" placeholder="{{ $tipoMovimiento === 'salida' ? 'Ej. merma, corrección de conteo' : 'Ej. compra a fábrica' }}">
+                        @error('modelo_motivo') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                     </div>
 
-                    <button type="submit" class="fp-btn fp-btn-primario" data-registrar-modelo wire:loading.attr="disabled" wire:target="registrarEntradaModelo">
-                        <span wire:loading.delay.remove wire:target="registrarEntradaModelo">Registrar todas las tallas</span>
+                    <button type="submit" class="fp-btn {{ $tipoMovimiento === 'salida' ? 'fp-btn-oscuro' : 'fp-btn-primario' }}" data-registrar-modelo wire:loading.attr="disabled" wire:target="registrarEntradaModelo">
+                        <span wire:loading.delay.remove wire:target="registrarEntradaModelo">{{ $tipoMovimiento === 'salida' ? 'Registrar salida de las tallas' : 'Registrar todas las tallas' }}</span>
                         <span wire:loading.delay wire:target="registrarEntradaModelo">Registrando…</span>
                     </button>
                 </form>
-            @else
-                <div class="space-y-4 fp-emerger" wire:key="tab-importar">
-                    <p class="text-xs text-slate-500">
-                        Sube un Excel (.xlsx) o CSV con las columnas <strong>SKU</strong>, <strong>cantidad</strong> y <strong>motivo</strong> (opcional).
-                        Máximo {{ \App\Services\Stock\ImportarEntradasService::MAX_FILAS }} filas y 2 MB. Los SKU repetidos se suman.
-                        <a href="{{ route('stock.plantilla') }}" class="font-medium text-fp-primary hover:underline" data-descargar-plantilla>Descargar plantilla</a>
-                    </p>
-
-                    <div class="fp-campo">
-                        <label for="importar-archivo" class="block text-sm font-medium text-slate-700 mb-1">Archivo</label>
-                        <input id="importar-archivo" type="file" wire:model="archivo" accept=".xlsx,.xls,.csv,.txt"
-                            class="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-fp-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-fp-primary">
-                        <p wire:loading.delay wire:target="archivo" class="mt-1 text-xs text-slate-500">Leyendo archivo…</p>
-                        @error('archivo') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
-                    </div>
-
-                    @if ($errorImportacion)
-                        <x-panel.alerta tipo="error">{{ $errorImportacion }}</x-panel.alerta>
-                    @endif
-
-                    @if ($vistaPrevia)
-                        <div data-vista-previa>
-                            <p class="mb-2 text-xs text-slate-600">
-                                {{ count($vistaPrevia['filas']) }} filas leídas ·
-                                <span class="text-fp-success">{{ count($vistaPrevia['lineas']) }} variantes válidas ({{ array_sum(array_column($vistaPrevia['lineas'], 'cantidad')) }} piezas)</span>
-                                @if ($vistaPrevia['errores'] > 0)
-                                    · <span class="font-medium text-fp-danger">{{ $vistaPrevia['errores'] }} con error</span>
-                                @endif
-                            </p>
-                            <div class="max-h-64 overflow-auto rounded-lg border border-slate-200">
-                                <table class="min-w-full text-xs">
-                                    <thead class="sticky top-0 bg-fp-page text-left uppercase tracking-wide text-slate-600">
-                                        <tr><th class="px-3 py-2">Fila</th><th class="px-3 py-2">SKU</th><th class="px-3 py-2 text-right">Cantidad</th><th class="px-3 py-2">Motivo</th><th class="px-3 py-2">Estado</th></tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                        @foreach ($vistaPrevia['filas'] as $fila)
-                                            <tr class="{{ $fila['error'] ? 'bg-fp-danger/5' : '' }}">
-                                                <td class="px-3 py-1.5 text-slate-500">{{ $fila['fila'] }}</td>
-                                                <td class="px-3 py-1.5 font-mono">
-                                                    <div class="flex items-center gap-2">
-                                                        <x-ui.imagen-ampliable :url="$this->fotosImportacion[mb_strtolower((string) $fila['sku'])] ?? null" :alt="$fila['sku'] !== '' ? $fila['sku'] : 'Producto'" />
-                                                        <span>{{ $fila['sku'] ?: '—' }}</span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-3 py-1.5 text-right tabular-nums">{{ $fila['cantidad'] }}</td>
-                                                <td class="px-3 py-1.5 text-slate-500">{{ $fila['motivo'] }}</td>
-                                                <td class="px-3 py-1.5 {{ $fila['error'] ? 'text-fp-danger font-medium' : 'text-fp-success' }}">{{ $fila['error'] ?? 'OK' }}</td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="mt-3 flex gap-2">
-                                <button type="button" wire:click="aplicarImportacion" class="fp-btn fp-btn-primario" data-aplicar-importacion
-                                    @disabled($vistaPrevia['errores'] > 0 || $vistaPrevia['lineas'] === []) wire:loading.attr="disabled" wire:target="aplicarImportacion">
-                                    <span wire:loading.delay.remove wire:target="aplicarImportacion">Aplicar entradas</span>
-                                    <span wire:loading.delay wire:target="aplicarImportacion">Aplicando…</span>
-                                </button>
-                                <button type="button" wire:click="cancelarImportacion" class="fp-btn fp-btn-secundario">Cancelar</button>
-                            </div>
-                        </div>
-                    @endif
-                </div>
             @endif
-        </div>
-
-        {{-- Ajuste manual --}}
-        <div class="fp-tarjeta p-5 fp-formulario fp-aparecer">
-            <h3 class="text-sm font-semibold text-slate-800 mb-4">Ajuste manual</h3>
-
-            <form wire:submit="registrarAjuste" class="space-y-4">
-                <div class="fp-campo">
-                    <x-stock.combobox-variante id="index-ajuste-variante-id" modelo="ajuste_variante_id" />
-                    @error('ajuste_variante_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="fp-campo">
-                        <label for="index-ajuste-tipo" class="block text-sm font-medium text-slate-700 mb-1">Tipo</label>
-                        <select id="index-ajuste-tipo" wire:model="ajuste_tipo" class="w-full rounded-lg text-sm focus:ring-fp-primary">
-                            <option value="ajuste_negativo">Descontar</option>
-                            <option value="ajuste_positivo">Agregar</option>
-                        </select>
-                    </div>
-                    <div class="fp-campo">
-                        <label for="index-ajuste-cantidad" class="block text-sm font-medium text-slate-700 mb-1">Cantidad</label>
-                        <input id="index-ajuste-cantidad" type="number" min="1" step="1" wire:model="ajuste_cantidad"
-                               class="w-full rounded-lg text-sm focus:ring-fp-primary" placeholder="1">
-                        @error('ajuste_cantidad') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-
-                <div class="fp-campo">
-                    <label for="index-ajuste-motivo" class="block text-sm font-medium text-slate-700 mb-1">Motivo</label>
-                    <input id="index-ajuste-motivo" type="text" maxlength="300" wire:model="ajuste_motivo"
-                           class="w-full rounded-lg text-sm focus:ring-fp-primary" placeholder="Ej. merma, corrección de conteo">
-                    @error('ajuste_motivo') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
-                </div>
-
-                <button type="submit" class="fp-btn fp-btn-oscuro" wire:loading.attr="disabled" wire:target="registrarAjuste">
-                    <span wire:loading.delay.remove wire:target="registrarAjuste">Registrar ajuste</span>
-                    <span wire:loading.delay wire:target="registrarAjuste">Registrando…</span>
-                </button>
-            </form>
         </div>
     </div>
     @endif

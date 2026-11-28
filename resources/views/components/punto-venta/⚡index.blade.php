@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\OperacionInvalidaException;
 use App\Livewire\Concerns\AltaRapidaDeCliente;
 use App\Models\ClienteDirecto;
 use App\Models\ProductoCampana;
@@ -8,6 +9,7 @@ use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Catalogo\PrecioEfectivo;
 use App\Support\BusquedaDeCliente;
 use App\Models\StockLocal;
+use App\Services\Stock\StockService;
 use App\Services\VentaDirecta\RegistrarVentaDirectaService;
 use App\Support\MensajeError;
 use App\Support\Tenant;
@@ -85,11 +87,17 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
      */
     public function getDisponiblesProperty()
     {
-        $existencias = StockLocal::query()
-            ->with('variante.producto:id,nombre')
-            ->where('cantidad_disponible', '>', 0)
-            ->get()
-            ->filter(fn ($e) => $e->variante !== null);
+        // La misma base que Stock local (distribuidora y sucursal principal): lo que
+        // se ve aquí es lo que ahí se registró.
+        try {
+            $existencias = app(StockService::class)->existencias()
+                ->with('variante.producto:id,nombre')
+                ->where('cantidad_disponible', '>', 0)
+                ->get()
+                ->filter(fn ($e) => $e->variante !== null);
+        } catch (OperacionInvalidaException) {
+            return collect();
+        }
 
         if ($existencias->isEmpty()) {
             return collect();
@@ -115,12 +123,41 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         $tallas = $catalogo->modelosTalla($variantes->pluck('talla_id'));
         $colores = $catalogo->modelosColor($variantes->pluck('color_id'));
 
+        // Existencia de productos que hoy no están en el catálogo vigente de esta
+        // distribuidora (otra temporada, línea apagada o producto oculto): no tienen
+        // precio y no se pueden cobrar, pero SÍ se muestran para que se vea que están.
+        $fotosProducto = app(ImagenDeProducto::class)->porProducto(
+            $variantes->pluck('producto_id')->unique()->reject(fn ($id) => $publicaciones->has($id))->values()
+        );
+
         $termino = mb_strtolower(trim($this->busqueda));
 
         return $existencias
-            ->flatMap(function ($existencia) use ($publicaciones, $tallas, $colores, $precios, $fotos) {
+            ->flatMap(function ($existencia) use ($publicaciones, $tallas, $colores, $precios, $fotos, $fotosProducto) {
                 $variante = $existencia->variante;
                 $delProducto = $publicaciones->get($variante->producto_id, collect());
+
+                if ($delProducto->isEmpty()) {
+                    $talla = $tallas->get($variante->talla_id);
+                    $color = $colores->get($variante->color_id);
+
+                    return collect([[
+                        'clave' => $existencia->variante_id . '-0',
+                        'variante_id' => (int) $existencia->variante_id,
+                        'producto_campana_id' => 0,
+                        'sku' => (string) $variante->sku,
+                        'imagen' => $fotosProducto[(int) $variante->producto_id] ?? '',
+                        'codigo_catalogo' => '',
+                        'linea' => '',
+                        'linea_logotipo' => null,
+                        'nombre' => (string) ($variante->producto?->nombre ?? ''),
+                        'talla' => $talla !== null ? trim($talla->sistema . ' ' . $talla->valor) : '',
+                        'color' => (string) ($variante->nombre_color_comercial ?: ($color->nombre ?? '')),
+                        'precio' => 0.0,
+                        'sin_precio' => true,
+                        'disponible' => (int) $existencia->cantidad_disponible,
+                    ]]);
+                }
 
                 $talla = $tallas->get($variante->talla_id);
                 $color = $colores->get($variante->color_id);
@@ -141,6 +178,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                     'talla' => $textoTalla,
                     'color' => $textoColor,
                     'precio' => $precios->menudeo($publicacion),
+                    'sin_precio' => false,
                     'disponible' => (int) $existencia->cantidad_disponible,
                 ]);
             })
@@ -336,6 +374,12 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
 
         if ($fila === null) {
             $this->errorMsg = 'Ese producto ya no está disponible.';
+
+            return;
+        }
+
+        if ($fila['sin_precio'] ?? false) {
+            $this->errorMsg = 'Ese producto no está en el catálogo vigente de tu distribuidora y no tiene precio; no se puede cobrar.';
 
             return;
         }
@@ -559,7 +603,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                  x-on:keydown.enter.prevent="escanear()"
                  x-on:pos-listo-para-escanear.window="prepararSiguiente()">
                 <x-ui.buscador data-pos-escaner x-bind:value="q"
-                       placeholder="Escanea el SKU o busca modelo, línea, talla o color. Enter agrega si es uno solo."
+                       placeholder="Busca por SKU o modelo, línea, talla o color. Enter agrega si es uno solo."
                        etiqueta="Buscar productos" />
                 <p class="mt-2 text-xs text-slate-500">Enter agrega una pieza cuando el código corresponde a un solo producto.</p>
             </div>
@@ -608,14 +652,22 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                                 <td class="px-4 py-3 text-slate-700">
                                     {{ $fila['color'] !== '' ? $fila['color'] : '—' }}
                                 </td>
-                                <td class="px-4 py-3 text-right">${{ number_format($fila['precio'], 2) }}</td>
-                                <td class="px-4 py-3 text-right text-slate-600">{{ $fila['disponible'] }}</td>
-                                <td class="px-4 py-3 text-right">
-                                    <button type="button" wire:click="agregar('{{ $fila['clave'] }}')"
-                                            class="fp-btn fp-btn-primario fp-btn-sm">
-                                        Agregar
-                                    </button>
-                                </td>
+                                @if ($fila['sin_precio'] ?? false)
+                                    <td class="px-4 py-3 text-right text-xs text-slate-500" data-sin-precio>Sin precio</td>
+                                    <td class="px-4 py-3 text-right text-slate-600">{{ $fila['disponible'] }}</td>
+                                    <td class="px-4 py-3 text-right">
+                                        <span class="text-xs text-slate-500">No está en el catálogo vigente</span>
+                                    </td>
+                                @else
+                                    <td class="px-4 py-3 text-right">${{ number_format($fila['precio'], 2) }}</td>
+                                    <td class="px-4 py-3 text-right text-slate-600">{{ $fila['disponible'] }}</td>
+                                    <td class="px-4 py-3 text-right">
+                                        <button type="button" wire:click="agregar('{{ $fila['clave'] }}')"
+                                                class="fp-btn fp-btn-primario fp-btn-sm">
+                                            Agregar
+                                        </button>
+                                    </td>
+                                @endif
                             </tr>
                         @empty
                             <tr>
