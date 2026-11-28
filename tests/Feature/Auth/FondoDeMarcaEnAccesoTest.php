@@ -90,29 +90,33 @@ class FondoDeMarcaEnAccesoTest extends TestCase
     public function test_el_fondo_de_acceso_no_esta_vacio(): void
     {
         $hoja = $this->hoja();
+        $layout = (string) file_get_contents(base_path('resources/views/layouts/guest.blade.php'));
 
         $this->assertMatchesRegularExpression('/\.fp-acceso-fondo\s*\{[^}]*background:\s*linear-gradient/', $hoja);
-        $this->assertMatchesRegularExpression('/\.fp-acceso-fondo::before[^}]*var\(--color-fp-primary\)/s', $hoja);
-        $this->assertMatchesRegularExpression('/\.fp-acceso-fondo::after[^}]*var\(--color-fp-danger\)/s', $hoja);
-
-        $this->assertStringContainsString('fp-acceso-fondo', (string) file_get_contents(base_path('resources/views/layouts/guest.blade.php')));
+        $this->assertStringContainsString('#111E38', $hoja, 'El fondo de celular tiene que partir del marino de la app.');
+        $this->assertStringContainsString('#1E3A8A', $hoja, 'El panel de escritorio tiene que ser el azul de la marca.');
+        $this->assertStringContainsString('fp-acceso-fondo', $layout);
+        $this->assertStringContainsString('fp-acceso-capa', $layout);
+        $this->assertStringContainsString('fp-acceso-siluetas', $layout);
+        $this->assertStringContainsString('fp-acceso-panel', $layout);
     }
 
     // --- Formulario sólido y legible ------------------------------------------
 
     /**
-     * La tarjeta va sólida, que es la palabra de la tarjeta de Taiga.
-     *
-     * Era blanco al 92% con desenfoque: encima de las manchas de color el
-     * formulario se teñía de lo que tuviera detrás, así que el contraste
-     * cambiaba según dónde cayera la tarjeta.
+     * La tarjeta es vidrio claro: el respaldo es casi sólido (blanco al 92 %)
+     * para que el contraste no dependa del fondo; con desenfoque baja a
+     * translúcida. Quien pide menos transparencia la ve blanca y sólida.
      */
     public function test_la_tarjeta_de_acceso_es_solida(): void
     {
         $bloque = $this->bloqueCss('.fp-acceso-tarjeta');
+        $hoja = $this->hoja();
 
-        $this->assertStringContainsString('background-color: #fff', $bloque, 'La tarjeta volvió a ser semitransparente.');
-        $this->assertStringNotContainsString('backdrop-filter', $bloque, 'Volvió el desenfoque: ya no hace falta y vuelve a teñir el formulario.');
+        $this->assertStringContainsString('background-color: rgb(255 255 255 / .92)', $bloque, 'Sin soporte de desenfoque la tarjeta tiene que quedar casi sólida.');
+        $this->assertStringNotContainsString('backdrop-filter', $bloque, 'El desenfoque tiene que vivir en @supports, no en el respaldo.');
+        $this->assertMatchesRegularExpression('/@supports[^}]*backdrop-filter:\s*blur\(/s', $hoja);
+        $this->assertMatchesRegularExpression('/prefers-reduced-transparency: reduce\)\s*\{[^}]*\.fp-acceso-tarjeta[^}]*background-color: #fff/s', $hoja);
     }
 
     /** El borde de los campos y del botón secundario, visible. */
@@ -155,10 +159,11 @@ class FondoDeMarcaEnAccesoTest extends TestCase
     // --- Un solo encabezado ---------------------------------------------------
 
     /**
-     * Las siete pantallas de acceso usan el mismo logo.
+     * Las siete pantallas de acceso usan el mismo encabezado.
      *
      * Ya se habían separado solas: el login lo enseñaba a h-28 y las otras seis
-     * a h-16. Nadie lo decidió.
+     * a h-16. Nadie lo decidió. En celular el logo sigue en la tarjeta (h-16);
+     * en escritorio sale una vez más, en el panel de marca del layout.
      */
     public function test_todas_las_pantallas_de_acceso_usan_el_mismo_encabezado(): void
     {
@@ -179,6 +184,7 @@ class FondoDeMarcaEnAccesoTest extends TestCase
         );
 
         $this->assertStringContainsString('h-16', $encabezado, 'El logo de acceso cambió de tamaño.');
+        $this->assertStringContainsString('logo-full-160.png', $encabezado, 'El encabezado compartido tiene que seguir trayendo el logo.');
     }
 
     /**
