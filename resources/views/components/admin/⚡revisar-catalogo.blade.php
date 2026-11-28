@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Concerns\ConfirmaAcciones;
 use App\Models\ImportacionCatalogo;
 use App\Models\ProductoImportadoStaging;
 use App\Services\Ia\CambiarEstadoProductoImportadoAction;
@@ -41,6 +42,8 @@ use Livewire\WithFileUploads;
  */
 new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class extends Component
 {
+    use ConfirmaAcciones;
+
     use WithFileUploads;
 
     #[Locked]
@@ -193,9 +196,18 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
         $this->esError = false;
     }
 
-    public function descartar(int $id, CambiarEstadoProductoImportadoAction $accion): void
+    /** Pregunta en el modal; se descarta solo al confirmar. */
+    public function descartar(int $id): void
     {
-        $accion->descartar($this->fila($id));
+        $fila = $this->fila($id);
+
+        $this->preguntar('descartar', [(int) $fila->id], '¿Descartar este producto?',
+            '«'.($fila->nombre ?? 'Producto sin nombre').'» no entrará al catálogo. Puedes recuperarlo desde «Descartados».', 'Descartar', 'Descartando…');
+    }
+
+    protected function ejecutarDescartar(int $id): void
+    {
+        app(CambiarEstadoProductoImportadoAction::class)->descartar($this->fila($id));
 
         $this->editandoId = null;
         $this->mensaje = 'Producto descartado. Puedes recuperarlo desde «Descartados».';
@@ -1113,7 +1125,6 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                         <button type="button" wire:click="editar({{ $producto->id }})"
                             class="fp-accion fp-accion-primaria">Corregir</button>
                         <button type="button" wire:click="descartar({{ $producto->id }})"
-                            wire:confirm="¿Descartar este producto? No entrará al catálogo."
                             class="fp-accion fp-accion-peligro">Descartar</button>
                     @endif
                 </td>
@@ -1243,4 +1254,5 @@ new #[Layout('layouts.admin')] #[Title('Revisar catálogo — Admin')] class ext
                 :mensaje="$filtro === 'por_revisar' ? 'No queda nada por revisar en este catálogo.' : 'No hay productos que mostrar.'" />
         @endforelse
     </x-panel.tabla>
+    <x-ui.confirmar-accion :datos="$accionPorConfirmar" />
 </div>

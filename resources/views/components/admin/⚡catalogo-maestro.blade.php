@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Concerns\ConfirmaAcciones;
 use App\Models\Campana;
 use App\Models\CategoriaProducto;
 use App\Models\Linea;
@@ -31,6 +32,8 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] class extends Component {
+    use ConfirmaAcciones;
+
     use WithFileUploads;
 
     public string $pestana = 'lineas';
@@ -790,7 +793,17 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
         app(GestionarImagenProductoCampanaAction::class)->marcarPrincipal($this->imagenDeLaPublicacion($imagenId));
     }
 
+    /** Pregunta en el modal; la foto solo se borra al confirmar. */
     public function quitarFoto(int $imagenId): void
+    {
+        $this->autorizar();
+        $imagen = $this->imagenDeLaPublicacion($imagenId);
+
+        $this->preguntar('quitarFoto', [(int) $imagen->id], '¿Quitar esta foto?',
+            'Se borra del almacenamiento y deja de verse en el panel y en la app. No se puede deshacer.', 'Quitar foto', 'Quitando…');
+    }
+
+    protected function ejecutarQuitarFoto(int $imagenId): void
     {
         $this->autorizar();
 
@@ -801,6 +814,7 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
 
         try {
             app(GestionarImagenProductoCampanaAction::class)->eliminar($imagen);
+            $this->dispatch('guardado', mensaje: 'Foto quitada del catálogo.');
         } catch (\Throwable $e) {
             report($e);
             // Si el bucket no confirmó el borrado, la fila se queda a
@@ -971,7 +985,17 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     }
 
     /** Deja de ofrecerse en ESTA temporada. La variante y los pedidos no se tocan. */
+    /** Pregunta en el modal; la talla deja de ofrecerse solo al confirmar. */
     public function quitarTalla(int $disponibilidadId): void
+    {
+        $this->autorizar();
+        $disponibilidad = $this->disponibilidadDeLaPublicacion($disponibilidadId);
+
+        $this->preguntar('quitarTalla', [(int) $disponibilidad->id], '¿Quitar esta talla de la temporada?',
+            'Deja de ofrecerse en esta temporada. Los pedidos que ya la tengan no se tocan.', 'Quitar talla', 'Quitando…');
+    }
+
+    protected function ejecutarQuitarTalla(int $disponibilidadId): void
     {
         $this->autorizar();
 
@@ -1130,7 +1154,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                                 <button type="button" wire:click="hacerPrincipal({{ $foto->id }})" class="fp-accion w-full">Hacer principal</button>
                             @endif
                             <button type="button" wire:click="quitarFoto({{ $foto->id }})"
-                                wire:confirm="¿Quitar esta foto? Se borra del almacenamiento y deja de verse en el panel y en la app."
                                 class="fp-accion fp-accion-peligro w-full">Quitar</button>
                         </li>
                     @endforeach
@@ -1407,7 +1430,6 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
                                 <td class="px-3 py-2 whitespace-nowrap">
                                     @if ($disponibilidad->sePuedePedir())
                                         <button type="button" wire:click="quitarTalla({{ $disponibilidad->id }})"
-                                            wire:confirm="Deja de ofrecerse en esta temporada. Los pedidos que ya la tengan no se tocan."
                                             class="fp-accion fp-accion-peligro">Quitar</button>
                                     @else
                                         <button type="button" wire:click="volverAOfrecerTalla({{ $disponibilidad->id }})" class="fp-accion">Volver a ofrecer</button>
@@ -1545,12 +1567,10 @@ new #[Layout('layouts.admin')] #[Title('Catálogo maestro — FootwearPoint')] c
     @endif
 
     @if ($porEliminarId)
-        <x-panel.modal :titulo="$porEliminarTitulo" ancho="max-w-md" cerrar="cancelarEliminar">
-            <p class="text-sm text-slate-600">{{ $porEliminarAviso }}</p>
-            <x-slot:pie>
-                <button type="button" wire:click="cancelarEliminar" class="fp-btn fp-btn-secundario">Cancelar</button>
-                <button type="button" wire:click="confirmarEliminar" class="fp-btn fp-btn-peligro">Eliminar</button>
-            </x-slot:pie>
-        </x-panel.modal>
+        <x-ui.confirmar :titulo="$porEliminarTitulo" confirmar="confirmarEliminar" cancelar="cancelarEliminar"
+            etiqueta="Eliminar" etiqueta-cargando="Eliminando…">
+            <p data-detalle-confirmacion>{{ $porEliminarAviso }}</p>
+        </x-ui.confirmar>
     @endif
+    <x-ui.confirmar-accion :datos="$accionPorConfirmar" />
 </div>

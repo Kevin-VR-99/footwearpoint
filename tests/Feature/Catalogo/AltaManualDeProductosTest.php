@@ -392,7 +392,7 @@ class AltaManualDeProductosTest extends TestCase
 
         $disponibilidad = $publicacion->disponibilidadPorVariante()->firstOrFail();
 
-        $componente->call('quitarTalla', $disponibilidad->id);
+        $componente->call('quitarTalla', $disponibilidad->id)->call('confirmarAccion');
 
         $this->assertTrue(
             Variante::whereKey($disponibilidad->variante_id)->exists(),

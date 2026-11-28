@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Concerns\ConfirmaAcciones;
 use App\Models\ClienteDirecto;
 use App\Models\DistribuidoraLinea;
 use App\Models\Linea;
@@ -26,6 +27,8 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class extends Component {
+    use ConfirmaAcciones;
+
     use WithFileUploads;
 
     public string $tipo = 'cliente_directo';
@@ -419,8 +422,16 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
     }
 
 
-    public function quitarLinea(int $lineaId, QuitarLineaPedidoAction $accion)
+    /** Pregunta en el modal; la línea se quita solo al confirmar. */
+    public function quitarLinea(int $lineaId): void
     {
+        $this->preguntar('quitarLinea', [$lineaId], '¿Quitar esta línea del pedido?',
+            'Se quita del borrador con sus piezas; las demás líneas no cambian.', 'Quitar línea', 'Quitando…');
+    }
+
+    protected function ejecutarQuitarLinea(int $lineaId): void
+    {
+        $accion = app(QuitarLineaPedidoAction::class);
         $this->mensaje = '';
         $this->errorMsg = '';
 
@@ -718,7 +729,6 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                             <td class="px-4 py-3 text-right">
                                 <button type="button"
                                     wire:click="quitarLinea({{ $l->id }})"
-                                    wire:confirm="¿Quitar esta línea del pedido?"
                                     wire:loading.attr="disabled"
                                     class="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50">
                                     Quitar
@@ -734,4 +744,5 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             </table>
         </div>
     @endif
+    <x-ui.confirmar-accion :datos="$accionPorConfirmar" />
 </div>

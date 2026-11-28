@@ -73,12 +73,16 @@ class PulidoUxTest extends TestCase
         $vistas = [
             'admin/⚡planes-index.blade.php' => 'wire:click="desactivar({{ $plan->id }})" wire:confirm=',
             'catalogo/⚡mis-lineas.blade.php' => 'wire:click="desactivar({{ $linea->id }})" wire:confirm=',
-            'catalogo/⚡precios.blade.php' => 'wire:click="quitarPrecio({{ $pc->id }})" wire:confirm=',
         ];
 
         foreach ($vistas as $vista => $fragmento) {
             $this->assertStringContainsString($fragmento, file_get_contents(resource_path('views/components/'.$vista)), $vista);
         }
+
+        // Quitar el precio propio ya no usa el diálogo del navegador: pregunta con el modal.
+        $precios = file_get_contents(resource_path('views/components/catalogo/⚡precios.blade.php'));
+        $this->assertStringContainsString('<x-ui.confirmar-accion :datos="$accionPorConfirmar" />', $precios);
+        $this->assertStringNotContainsString('quitarPrecio({{ $pc->id }})" wire:confirm=', $precios);
     }
 
     public function test_login_tiene_etiquetas_ligadas_un_h1_y_sin_desborde(): void

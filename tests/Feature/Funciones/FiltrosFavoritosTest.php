@@ -66,7 +66,19 @@ class FiltrosFavoritosTest extends TestCase
             ->assertSet('renombrandoFavoritoId', null);
         $this->assertSame('Mes de octubre', $fav->fresh()->nombre);
 
-        $c->call('eliminarFavorito', $fav->id);
+        // Eliminar pregunta en el modal: dice qué se borra y Cancelar no toca nada.
+        $c->call('eliminarFavorito', $fav->id)
+            ->assertSee('data-modal="confirmar"', false)
+            ->assertSee('Mes de octubre')
+            ->assertSeeHtml('wire:click.self="cancelarAccion"')
+            ->assertSeeHtml('fp-btn fp-btn-peligro')
+            ->call('cancelarAccion')
+            ->assertDontSee('data-modal="confirmar"', false);
+        $this->assertDatabaseHas('filtros_favoritos', ['id' => $fav->id]);
+
+        $c->call('eliminarFavorito', $fav->id)->call('confirmarAccion')
+            ->assertDispatched('guardado', mensaje: 'Favorito «Mes de octubre» eliminado.')
+            ->assertDontSee('data-modal="confirmar"', false);
         $this->assertDatabaseMissing('filtros_favoritos', ['id' => $fav->id]);
     }
 

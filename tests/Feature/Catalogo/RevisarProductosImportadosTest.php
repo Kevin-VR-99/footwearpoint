@@ -282,7 +282,7 @@ class RevisarProductosImportadosTest extends TestCase
 
         $pantalla = $this->pantalla();
 
-        $pantalla->call('descartar', $fila->id);
+        $pantalla->call('descartar', $fila->id)->call('confirmarAccion');
         $this->assertSame('descartado', $fila->fresh()->estado);
 
         // No se borra: se puede recuperar si alguien se equivocó.

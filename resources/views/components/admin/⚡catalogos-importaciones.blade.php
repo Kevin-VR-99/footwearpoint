@@ -607,12 +607,9 @@ new #[Layout('layouts.admin')] #[Title('Catálogos para importar — Admin')] cl
 
     @php($quitar = $confirmarQuitarId ? $this->importaciones->firstWhere('id', $confirmarQuitarId) : null)
     @if ($quitar)
-        <x-panel.modal titulo="Quitar catálogo" ancho="max-w-md" cerrar="cancelarConfirmacion">
-            <p class="text-sm text-slate-600">{{ $this->avisoAntesDeQuitar($quitar) }}</p>
-            <x-slot:pie>
-                <button type="button" wire:click="cancelarConfirmacion" class="fp-btn fp-btn-secundario">Cancelar</button>
-                <button type="button" wire:click="confirmarQuitar" class="fp-btn fp-btn-peligro">Quitar</button>
-            </x-slot:pie>
-        </x-panel.modal>
+        <x-ui.confirmar titulo="Quitar catálogo" confirmar="confirmarQuitar" cancelar="cancelarConfirmacion"
+            etiqueta="Quitar" etiqueta-cargando="Quitando…">
+            <p data-detalle-confirmacion>{{ $this->avisoAntesDeQuitar($quitar) }}</p>
+        </x-ui.confirmar>
     @endif
 </div>
