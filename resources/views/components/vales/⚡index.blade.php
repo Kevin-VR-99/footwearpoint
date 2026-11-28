@@ -143,6 +143,47 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
         $this->avisoCliente = '';
     }
 
+    public function seleccionarPropietario(int $id): void
+    {
+        $this->propietario_id = (string) $id;
+        $this->busquedaCliente = '';
+        $this->busquedaMayorista = '';
+        $this->resetErrorBag('propietario_id');
+    }
+
+    public function quitarPropietario(): void
+    {
+        $this->propietario_id = '';
+        $this->busquedaCliente = '';
+        $this->busquedaMayorista = '';
+    }
+
+    public function getPropietarioElegidoProperty(): ?array
+    {
+        if ($this->propietario_id === '') {
+            return null;
+        }
+
+        if ($this->propietario_tipo === 'cliente_directo') {
+            $cliente = $this->clientes->firstWhere('id', (int) $this->propietario_id);
+
+            return $cliente ? BusquedaDeCliente::ficha($cliente) : null;
+        }
+
+        $afiliacion = $this->revendedores->firstWhere('id', (int) $this->propietario_id);
+
+        return $afiliacion ? BusquedaDeCliente::ficha($afiliacion) : null;
+    }
+
+    public function getSugerenciasPropietarioProperty()
+    {
+        $lista = $this->propietario_tipo === 'cliente_directo'
+            ? $this->clientesFiltrados
+            : $this->revendedoresFiltrados;
+
+        return $lista->take(15)->values();
+    }
+
     protected function asignarClienteDirecto(int $id): void
     {
         $this->propietario_tipo = 'cliente_directo';
@@ -229,7 +270,7 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
 
         <form wire:submit="emitir" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="fp-campo">
-                <label for="index-propietario-tipo" class="block text-sm font-medium text-slate-700 mb-1">Tipo de propietario</label>
+                <label for="index-propietario-tipo" class="block text-sm font-medium text-slate-700 mb-1">Tipo de propietario <span class="fp-campo-requerido" aria-label="obligatorio">*</span></label>
                 <select id="index-propietario-tipo" wire:model.live="propietario_tipo"
                         class="w-full rounded-lg text-sm focus:ring-fp-primary">
                     <option value="cliente_directo">Cliente directo</option>
@@ -238,36 +279,36 @@ new #[Layout('layouts.panel')] #[Title('Vales — FootwearPoint')] class extends
             </div>
 
             <div class="fp-campo" data-propietario-vale>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Propietario</label>
                 @if ($propietario_tipo === 'cliente_directo')
                     @include('cliente.selector-alta', [
                         'seleccion' => 'propietario_id',
-                        'opciones' => $this->clientesFiltrados,
+                        'opciones' => $this->sugerenciasPropietario,
+                        'elegido' => $this->propietarioElegido,
                         'vacio' => '— Seleccionar cliente —',
-                        'etiqueta' => 'Propietario del vale',
+                        'etiqueta' => 'Propietario',
+                        'requerido' => true,
+                        'seleccionar' => 'seleccionarPropietario',
+                        'quitar' => 'quitarPropietario',
                     ])
                 @else
-                    <x-ui.buscador wire:model.live.debounce.400ms="busquedaMayorista"
-                        placeholder="Buscar por nombre o teléfono" etiqueta="Buscar cliente mayorista" />
-                    <select wire:model="propietario_id" aria-label="Propietario del vale"
-                            class="mt-2 w-full rounded-lg text-sm focus:ring-fp-primary">
-                        <option value="">— Seleccionar cliente mayorista —</option>
-                        @foreach ($this->revendedoresFiltrados as $r)
-                            <option value="{{ $r->id }}">
-                                {{ $r->revendedor?->nombre ?? 'Cliente mayorista #'.$r->id }}
-                                @if ($r->codigo_interno) ({{ $r->codigo_interno }}) @endif
-                            </option>
-                        @endforeach
-                    </select>
-                    @if (trim($busquedaMayorista) !== '' && $this->revendedoresFiltrados->isEmpty())
-                        <p class="mt-1 text-xs text-slate-500">No hay clientes mayoristas que coincidan con la búsqueda.</p>
-                    @endif
+                    <x-cliente.autocompletado
+                        wire:model.live.debounce.400ms="busquedaMayorista"
+                        :sugerencias="$this->sugerenciasPropietario"
+                        :elegido="$this->propietarioElegido"
+                        :termino="$busquedaMayorista"
+                        seleccionar="seleccionarPropietario"
+                        quitar="quitarPropietario"
+                        etiqueta="Propietario"
+                        :requerido="true"
+                        error-campo="propietario_id"
+                        placeholder="Buscar por nombre o teléfono"
+                        mensaje-vacio="No hay clientes mayoristas que coincidan con la búsqueda."
+                        etiqueta-buscador="Buscar cliente mayorista" />
                 @endif
-                @error('propietario_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div class="fp-campo">
-                <label for="index-monto-original" class="block text-sm font-medium text-slate-700 mb-1">Monto (MXN)</label>
+                <label for="index-monto-original" class="block text-sm font-medium text-slate-700 mb-1">Monto (MXN) <span class="fp-campo-requerido" aria-label="obligatorio">*</span></label>
                 <input id="index-monto-original" type="number" step="0.01" min="0.01" wire:model="monto_original"
                        class="w-full rounded-lg text-sm focus:ring-fp-primary"
                        placeholder="500.00">

@@ -79,10 +79,10 @@ new #[Layout('layouts.panel')] #[Title('Anticipos — FootwearPoint')] class ext
                 PedidosPorRevendedorAction::ESTADOS_EXCLUIDOS_EXTRA,
                 RegistrarPagoPedidoAction::ESTADOS_CERRADOS,
             ))
-            ->when($termino !== '', function ($q) use ($terminoEscapado) {
-                $q->where(function ($sub) use ($terminoEscapado) {
+            ->when($termino !== '', function ($q) use ($terminoEscapado, $termino) {
+                $q->where(function ($sub) use ($terminoEscapado, $termino) {
                     $sub->where('folio', 'like', "%{$terminoEscapado}%")
-                        ->orWhereHas('clienteDirecto', fn ($cq) => $cq->where('nombre', 'like', "%{$terminoEscapado}%"));
+                        ->orWhereHas('clienteDirecto', fn ($cq) => \App\Support\BusquedaDeCliente::acotar($cq, $termino));
                 });
             })
             ->orderByDesc('id');

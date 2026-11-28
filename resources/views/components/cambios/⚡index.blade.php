@@ -137,6 +137,13 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
     public function asignarCliente(int $id): void
     {
         $this->asignarClienteDirecto($id);
+        $this->busquedaCliente = '';
+    }
+
+    public function quitarClienteDeBusqueda(): void
+    {
+        $this->altaClienteDirectoId = '';
+        $this->busquedaCliente = '';
     }
 
     public function updatedAltaClienteDirectoId(string $id): void
@@ -744,8 +751,12 @@ new #[Layout('layouts.panel')] #[Title('Cambios — FootwearPoint')] class exten
                             @include('cliente.selector-alta', [
                                 'seleccion' => 'altaClienteDirectoId',
                                 'opciones' => $this->clientesFiltrados,
+                                'elegido' => null,
                                 'vacio' => '— Seleccionar cliente existente —',
                                 'etiqueta' => 'Asignar cliente a la venta',
+                                'requerido' => true,
+                                'seleccionar' => 'asignarCliente',
+                                'quitar' => 'quitarClienteDeBusqueda',
                             ])
                         </div>
                     @endif

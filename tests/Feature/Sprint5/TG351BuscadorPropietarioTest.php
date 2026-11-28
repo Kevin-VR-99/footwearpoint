@@ -69,31 +69,14 @@ class TG351BuscadorPropietarioTest extends TestCase
         foreach (['cliente_directo', 'revendedor'] as $tipo) {
             $pantalla = Livewire::test('pedidos.create')->set('tipo', $tipo);
             $id = $pantalla->instance()->propietarios->firstOrFail()->id;
-            $pantalla->set('propietario_id', (string) $id)
-                ->set('busquedaPropietario', 'SIN-COINCIDENCIAS-TG351')
+            $pantalla->call('seleccionarPropietario', $id)
                 ->assertSet('propietario_id', (string) $id)
-                ->assertSee('Se conserva el propietario seleccionado.');
-            $this->assertCount(0, $pantalla->instance()->propietariosFiltrados);
-            $this->assertSame([$id], $pantalla->instance()->opcionesPropietario->pluck('id')->all());
+                ->assertSet('busquedaPropietario', '')
+                ->assertSee('data-cliente-elegido', false);
         }
     }
 
-    private function seleccionRenderizada($pantalla): array
-    {
-        $dom = new \DOMDocument;
-        $previo = libxml_use_internal_errors(true);
-        $dom->loadHTML('<?xml encoding="UTF-8">'.$pantalla->html());
-        libxml_clear_errors();
-        libxml_use_internal_errors($previo);
-        $xpath = new \DOMXPath($dom);
-        $select = $xpath->query('//select[@id="create-propietario-id"]')->item(0);
-        $seleccionadas = $xpath->query('./option[@selected]', $select);
-        $this->assertCount(1, $seleccionadas);
-
-        return [$seleccionadas->item(0)->getAttribute('value'), $select->getAttribute('wire:key')];
-    }
-
-    public function test_respuestas_mantienen_opcion_selected_al_filtrar_y_restaurar_en_ambos_tipos(): void
+    public function test_al_elegir_se_muestra_el_recuadro_y_quitar_restaura_el_buscador(): void
     {
         $cliente = ClienteDirecto::create(['distribuidora_id' => Tenant::id(), 'nombre' => 'ZZ Seleccionado TG351']);
         $revendedor = Revendedor::create(['nombre' => 'ZZ Mayorista seleccionado TG351', 'estado' => 'activo']);
@@ -103,22 +86,16 @@ class TG351BuscadorPropietarioTest extends TestCase
         ]);
 
         foreach (['cliente_directo' => $cliente->id, 'revendedor' => $afiliacion->id] as $tipo => $id) {
-            $pantalla = Livewire::test('pedidos.create')->set('tipo', $tipo)->set('propietario_id', (string) $id);
-            [$valorInicial, $keyInicial] = $this->seleccionRenderizada($pantalla);
-            $this->assertSame((string) $id, $valorInicial);
-            $this->assertGreaterThan(1, $pantalla->instance()->opcionesPropietario->count());
+            $pantalla = Livewire::test('pedidos.create')->set('tipo', $tipo)
+                ->call('seleccionarPropietario', $id)
+                ->assertSet('propietario_id', (string) $id)
+                ->assertSee('data-cliente-elegido', false)
+                ->assertDontSee('data-sugerencias-cliente', false);
 
-            $pantalla->set('busquedaPropietario', 'SIN-COINCIDENCIAS-TG351')->assertSet('propietario_id', (string) $id);
-            [$valorFiltrado, $keyFiltrada] = $this->seleccionRenderizada($pantalla);
-            $this->assertSame((string) $id, $valorFiltrado);
-            $this->assertNotSame($keyInicial, $keyFiltrada);
-            $this->assertCount(1, $pantalla->instance()->opcionesPropietario);
-
-            $pantalla->set('busquedaPropietario', '')->assertSet('propietario_id', (string) $id);
-            [$valorRestaurado, $keyRestaurada] = $this->seleccionRenderizada($pantalla);
-            $this->assertSame((string) $id, $valorRestaurado);
-            $this->assertSame($keyInicial, $keyRestaurada);
-            $this->assertGreaterThan(1, $pantalla->instance()->opcionesPropietario->count());
+            $pantalla->call('quitarPropietario')
+                ->assertSet('propietario_id', '')
+                ->assertDontSee('data-cliente-elegido', false)
+                ->assertSee('Buscar propietario del pedido');
         }
     }
 
@@ -135,7 +112,8 @@ class TG351BuscadorPropietarioTest extends TestCase
     public function test_selector_sincroniza_la_seleccion_y_recrea_el_buscador_por_tipo(): void
     {
         Livewire::test('pedidos.create')
-            ->assertSee('wire:model.live="propietario_id"', false)
+            ->assertDontSee('wire:model.live="propietario_id"', false)
+            ->assertDontSee('id="create-propietario-id"', false)
             ->assertSee('wire:key="selector-propietario-cliente_directo"', false)
             ->set('tipo', 'revendedor')
             ->assertSee('wire:key="selector-propietario-revendedor"', false);

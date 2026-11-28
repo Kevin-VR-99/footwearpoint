@@ -16,6 +16,7 @@ use App\Services\Pedido\QuitarLineaPedidoAction;
 use App\Services\Cliente\AltaRapidaClienteDirecto;
 use App\Services\Pedido\CrearPedidoBorradorAction;
 use App\Services\Pedido\EnviarPedidoAction;
+use App\Support\BusquedaDeCliente;
 use App\Support\MensajeError;
 use App\Support\TelefonoCliente;
 use App\Support\Tenant;
@@ -91,6 +92,30 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
         $this->busquedaPropietario = '';
         $this->primeraCompra = 'no';
         $this->clienteExistenteNombre = '';
+    }
+
+    public function seleccionarPropietario(int $id): void
+    {
+        $this->propietario_id = (string) $id;
+        $this->busquedaPropietario = '';
+        $this->resetErrorBag('propietario_id');
+    }
+
+    public function quitarPropietario(): void
+    {
+        $this->propietario_id = '';
+        $this->busquedaPropietario = '';
+    }
+
+    public function getPropietarioElegidoProperty(): ?array
+    {
+        if ($this->propietario_id === '') {
+            return null;
+        }
+
+        $item = $this->propietarios->firstWhere('id', (int) $this->propietario_id);
+
+        return $item ? BusquedaDeCliente::ficha($item) : null;
     }
 
     public function updatedLineaId(): void
@@ -497,7 +522,7 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             <h3 class="font-semibold text-slate-800">1. Datos del pedido</h3>
 
             <div class="fp-campo">
-                <label for="create-tipo" class="block text-sm text-slate-600 mb-1">Tipo</label>
+                <label for="create-tipo" class="block text-sm text-slate-600 mb-1">Tipo <span class="fp-campo-requerido" aria-label="obligatorio">*</span></label>
                 <select id="create-tipo" wire:model.live="tipo" class="w-full rounded-lg text-sm">
                     <option value="cliente_directo">Cliente directo</option>
                     <option value="revendedor">Cliente mayorista</option>
@@ -505,7 +530,6 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
             </div>
 
             <div class="fp-campo" wire:key="selector-propietario-{{ $tipo }}">
-                <label for="create-propietario-id" class="block text-sm text-slate-600 mb-1">Propietario</label>
                 @if ($tipo === 'cliente_directo')
                     <fieldset class="mb-3" data-primera-compra>
                         <legend class="block text-sm text-slate-600 mb-1">¿Primera compra?</legend>
@@ -514,29 +538,19 @@ new #[Layout('layouts.panel')] #[Title('Nuevo pedido — FootwearPoint')] class 
                     </fieldset>
                 @endif
                 @if ($tipo !== 'cliente_directo' || $primeraCompra !== 'si')
-                <x-ui.buscador wire:model.live.debounce.400ms="busquedaPropietario"
-                    placeholder="Buscar por nombre o teléfono" etiqueta="Buscar propietario del pedido" />
-                {{-- Sin diferir la selección: al cambiar de tipo no se debe reenviar un ID del tipo anterior. --}}
-                {{-- Si cambia la lista, reiniciar solo el select: su valor puede seguir igual y Alpine no vuelve a aplicarlo tras el morph de opciones. --}}
-                <select id="create-propietario-id" wire:model.live="propietario_id"
-                    wire:key="propietario-opciones-{{ $tipo }}-{{ md5($this->opcionesPropietario->pluck('id')->implode(',')) }}"
-                    class="w-full rounded-lg text-sm mt-2">
-                    <option value="" wire:key="propietario-vacio-{{ $tipo }}" @selected($propietario_id === '')>— Selecciona —</option>
-                    @foreach ($this->opcionesPropietario as $propietario)
-                        <option value="{{ $propietario->id }}" wire:key="propietario-opcion-{{ $tipo }}-{{ $propietario->id }}"
-                            @selected((string) $propietario->id === $propietario_id)>
-                            {{ $tipo === 'cliente_directo' ? $propietario->nombre : ($propietario->revendedor?->nombre ?? 'Afiliación #'.$propietario->id) }}
-                        </option>
-                    @endforeach
-                </select>
-                @if (trim($busquedaPropietario) !== '' && $this->propietariosFiltrados->isEmpty())
-                    <p role="status" class="text-xs text-slate-500 mt-1">
-                        No hay propietarios que coincidan con la búsqueda.
-                        @if ($propietario_id !== '')
-                            Se conserva el propietario seleccionado.
-                        @endif
-                    </p>
-                @endif
+                <x-cliente.autocompletado
+                    wire:model.live.debounce.400ms="busquedaPropietario"
+                    :sugerencias="$this->propietariosFiltrados"
+                    :elegido="$this->propietarioElegido"
+                    :termino="$busquedaPropietario"
+                    seleccionar="seleccionarPropietario"
+                    quitar="quitarPropietario"
+                    etiqueta="Propietario"
+                    :requerido="true"
+                    error-campo="propietario_id"
+                    placeholder="Buscar por nombre o teléfono"
+                    mensaje-vacio="No hay propietarios que coincidan con la búsqueda."
+                    etiqueta-buscador="Buscar propietario del pedido" />
                 @else
                     <div class="space-y-3" data-alta-rapida>
                         <label class="block text-sm">Nombre
