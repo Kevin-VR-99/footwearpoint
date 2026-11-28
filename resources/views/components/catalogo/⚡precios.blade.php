@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Concerns\ConfirmaAcciones;
 use App\Exceptions\OperacionInvalidaException;
 use App\Models\DistribuidoraLinea;
 use App\Services\Catalogo\CatalogoParaConfigurarPrecios;
@@ -27,6 +28,8 @@ use Livewire\WithPagination;
  * La lógica vive en las Actions; la pantalla solo las llama.
  */
 new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint')] class extends Component {
+    use ConfirmaAcciones;
+
     use WithPagination;
 
     public string $busqueda = '';
@@ -112,7 +115,16 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
         }, 'No se pudo guardar el precio.');
     }
 
+    /** Pregunta en el modal; el precio propio se quita solo al confirmar. */
     public function quitarPrecio(int $productoCampanaId): void
+    {
+        $nombre = \App\Models\ProductoCampana::query()->with('producto:id,nombre')->find($productoCampanaId)?->producto?->nombre;
+
+        $this->preguntar('quitarPrecio', [$productoCampanaId], '¿Quitar tu precio propio?',
+            ($nombre ? '«'.$nombre.'» ' : 'Este producto ').'deja de usar tu precio propio y vuelve a usar el precio del catálogo con el descuento de su línea.', 'Quitar precio', 'Quitando…');
+    }
+
+    protected function ejecutarQuitarPrecio(int $productoCampanaId): void
     {
         $this->ejecutar(function () use ($productoCampanaId) {
             app(GestionarOfertaDistribuidoraAction::class)->quitarPrecioMayorista($productoCampanaId);
@@ -264,7 +276,7 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
                                     class="w-24 rounded-lg text-sm">
                                 <button type="button" wire:click="guardarPrecio({{ $pc->id }})" class="fp-enlace text-sm font-medium">Guardar</button>
                                 @if ($propio !== null)
-                                    <button type="button" wire:click="quitarPrecio({{ $pc->id }})" wire:confirm="¿Quitar tu precio propio? Se usará el precio del catálogo." class="fp-accion fp-accion-neutra">Quitar</button>
+                                    <button type="button" wire:click="quitarPrecio({{ $pc->id }})" class="fp-accion fp-accion-neutra">Quitar</button>
                                 @endif
                             </div>
                         </td>
@@ -290,4 +302,5 @@ new #[Layout('layouts.panel')] #[Title('Precios y publicación — FootwearPoint
     </div>
 
     {{ $this->productos->links() }}
+    <x-ui.confirmar-accion :datos="$accionPorConfirmar" />
 </div>

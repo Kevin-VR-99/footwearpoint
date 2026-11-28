@@ -1785,3 +1785,106 @@ form[data-loading] button[type=submit]:not(:has([wire\:loading]))::before {
     background-color: var(--color-slate-50);
 }
 
+
+/* =====================================================================
+   Liquid glass del sistema (estilo macOS) con los tonos de la marca
+   (#1E3A8A, #2563EB, #3B82F6). Centralizado aquí: tarjetas, pestañas,
+   menús, modales, campos y botones de todos los paneles lo heredan sin
+   tocar vistas. Mismo contrato que el vidrio de acento de arriba:
+   - Las tarjetas son vidrio claro sin desenfoque: así no se vuelven
+     "contenedor" de los modales fijos que viven dentro de ellas.
+   - El desenfoque solo va en lo que flota (menús y modales) y solo dentro
+     de @supports; sin soporte se quedan sólidos.
+   - Translúcido casi blanco (.80 sobre la página clara, .88 en lo que flota
+     sobre cualquier cosa): el texto tenue de la casa sigue en AA.
+   - prefers-reduced-transparency y forced-colors lo vuelven sólido y
+     prefers-reduced-motion quita las animaciones.
+   ===================================================================== */
+@layer components {
+    /* Lienzo: un velo de marca muy tenue para que el vidrio se lea. */
+    body.bg-fp-page {
+        background-image:
+            radial-gradient(60rem 40rem at 105% -10%, rgb(59 130 246 / .11), transparent 60%),
+            radial-gradient(48rem 34rem at -10% 110%, rgb(30 58 138 / .08), transparent 60%);
+        background-attachment: fixed;
+    }
+
+    /* Tarjetas y pestañas: vidrio claro con brillo en el borde superior. */
+    .fp-tarjeta, .fp-tarjeta-interactiva, .fp-pestanas {
+        background-color: rgb(255 255 255 / .8);
+        border-color: rgb(255 255 255 / .8);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 1px 2px rgb(17 30 56 / .04), 0 12px 32px -18px rgb(30 58 138 / .28);
+    }
+    .fp-tarjeta:hover {
+        border-color: rgb(191 219 254 / .9);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 2px 4px rgb(17 30 56 / .04), 0 18px 40px -20px rgb(30 58 138 / .36);
+    }
+    .fp-tarjeta-interactiva:hover, .fp-tarjeta-interactiva:focus-within {
+        border-color: rgb(147 197 253 / .9);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 22px 44px -18px rgb(30 58 138 / .4);
+    }
+
+    /* Selección y acción principal con el degradado de la marca (blanco sobre azul ≥ 4.5:1). */
+    .fp-pestana[aria-selected='true'], .fp-pestana.fp-pestana-activa,
+    .fp-btn-primario {
+        background-image: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), 0 8px 18px -10px rgb(37 99 235 / .7);
+    }
+    .fp-btn-primario:hover:not(:disabled) { background-image: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 100%); }
+    .fp-btn-secundario { background-color: rgb(255 255 255 / .75); border-color: rgb(203 213 225 / .8); }
+
+    /* Campos: bordes suaves y anillo de foco de marca. */
+    :where(.fp-campo, .fp-formulario, .fp-modal) :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]), select, textarea) {
+        transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+    }
+    :where(.fp-campo, .fp-formulario, .fp-modal) :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]), select, textarea):focus {
+        border-color: #3B82F6;
+        box-shadow: 0 0 0 4px rgb(59 130 246 / .18);
+    }
+
+    /* Modal: hoja de vidrio que entra con un leve zoom. */
+    .fp-modal {
+        border-radius: 1.25rem;
+        border-color: rgb(255 255 255 / .75);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 30px 60px -20px rgb(17 30 56 / .5);
+        animation: fp-vidrio-entra .28s cubic-bezier(.22, .8, .36, 1) backwards;
+    }
+    .fp-menu-acciones {
+        border-color: rgb(255 255 255 / .75);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / .9), 0 18px 38px -16px rgb(17 30 56 / .4);
+    }
+
+    @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+        .fp-modal, .fp-menu-acciones {
+            background-color: rgb(255 255 255 / .88);
+            -webkit-backdrop-filter: blur(24px) saturate(1.8);
+            backdrop-filter: blur(24px) saturate(1.8);
+        }
+    }
+}
+
+@keyframes fp-vidrio-entra {
+    from { opacity: 0; transform: translateY(8px) scale(.97); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fp-modal { animation: none !important; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    body.bg-fp-page { background-image: none !important; }
+    .fp-tarjeta, .fp-tarjeta-interactiva, .fp-pestanas, .fp-modal, .fp-menu-acciones, .fp-btn-secundario {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        background-color: #fff !important;
+    }
+}
+
+@media (forced-colors: active) {
+    .fp-tarjeta, .fp-tarjeta-interactiva, .fp-pestanas, .fp-modal, .fp-menu-acciones {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        background-color: Canvas !important;
+    }
+}

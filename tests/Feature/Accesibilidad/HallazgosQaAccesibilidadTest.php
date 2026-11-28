@@ -111,12 +111,15 @@ class HallazgosQaAccesibilidadTest extends TestCase
     {
         $this->actingAs($this->usuario(DemoDistribuidoraSeeder::EMPLEADO));
 
-        $html = Livewire::test('stock.index')->set('tabEntrada', 'variante')->html();
+        $producto = \App\Models\Producto::query()->whereHas('variantes')->firstOrFail();
 
-        $this->assertStringContainsString('<template x-if="imagenElegida"><img :src="imagenElegida"', $html);
-        $this->assertStringContainsString('<template x-if="r.imagen"><img :src="r.imagen"', $html);
+        $html = Livewire::test('stock.index')
+            ->set('buscarModelo', mb_substr($producto->nombre, 0, 4))
+            ->html();
         $this->assertDoesNotMatchRegularExpression('/<img(?![^>]*:src)[^>]*\ssrc=""/', $html);
-        $this->assertDoesNotMatchRegularExpression('/(?<!<template x-if="imagenElegida">)<img :src="imagenElegida"/', $html);
+
+        $html = Livewire::test('stock.index')->call('elegirModelo', $producto->id)->html();
+        $this->assertDoesNotMatchRegularExpression('/<img(?![^>]*:src)[^>]*\ssrc=""/', $html);
     }
 
     public static function rutasDeOtroRol(): array

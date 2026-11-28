@@ -264,15 +264,15 @@ class SinErroresTecnicosTest extends TestCase
         $this->comoPanel(self::EMPLEADO);
 
         $stock = Mockery::mock(StockService::class, [app(ContextoOperativo::class), app(RegistrarAuditoriaAction::class)])->makePartial();
-        $stock->shouldReceive('registrarEntrada')->once()->andThrow($this->errorDeBaseDeDatos());
+        $stock->shouldReceive('registrarEntradas')->once()->andThrow($this->errorDeBaseDeDatos());
         $this->instance(StockService::class, $stock);
 
-        $variante = Variante::withoutGlobalScopes()->firstOrFail();
+        $variante = Variante::query()->firstOrFail();
 
         Livewire::test('stock.index')
-            ->set('entrada_variante_id', (string) $variante->id)
-            ->set('entrada_cantidad', '3')
-            ->call('registrarEntrada')
+            ->call('elegirSku', $variante->id)
+            ->set('modelo_cantidades', [$variante->id => '3'])
+            ->call('registrarEntradaModelo')
             ->assertSet('errorMsg', 'No se pudo registrar la entrada. Revisa los datos e intenta de nuevo.')
             ->assertDontSee('SQLSTATE');
 

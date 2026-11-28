@@ -190,6 +190,7 @@ class DatosTitularMercadoPagoTest extends TestCase
 
         Livewire::test('distribuidora.mercado-pago')
             ->call('desconectar')
+            ->call('confirmarAccion')
             ->assertSet('conectado', false)
             ->assertDontSee(self::TITULAR)
             ->assertDontSee(self::CORREO);

@@ -189,7 +189,8 @@ class FotosDesdeElPanelTest extends TestCase
 
         $this->panel()
             ->call('abrirFotos', $publicacion->id)
-            ->call('quitarFoto', $foto->id);
+            ->call('quitarFoto', $foto->id)
+            ->call('confirmarAccion');
 
         // Antes esto quedaba en 3: solo se borraba la fila.
         $this->assertSame([], $this->archivosEnElBucket());

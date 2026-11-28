@@ -58,7 +58,10 @@ class MovimientoUnificadoTest extends TestCase
             ->assertSee('Registrar movimiento')
             ->assertSee('data-tipo-movimiento="entrada"', false)
             ->assertSee('data-tipo-movimiento="salida"', false)
-            ->assertSee('Por modelo y talla')
+            ->assertSee('data-buscador-modelo', false)
+            ->assertDontSee('Por modelo y talla')
+            ->assertDontSee('Por SKU')
+            ->assertDontSee('— Elegir modelo —')
             ->assertDontSee('Importar archivo')
             ->assertDontSee('Descargar plantilla')
             ->assertDontSee('Ajuste manual')
@@ -66,13 +69,14 @@ class MovimientoUnificadoTest extends TestCase
             ->assertDontSee('data-combobox-variante="ajuste_variante_id"', false);
     }
 
-    public function test_el_selector_de_variante_ya_no_habla_de_escanear_el_codigo(): void
+    public function test_el_buscador_unico_no_habla_de_escanear_el_codigo(): void
     {
-        $html = Livewire::test('stock.index')->set('tabEntrada', 'variante')->html();
+        $html = Livewire::test('stock.index')->html();
 
-        $this->assertStringContainsString('data-combobox-variante="entrada_variante_id"', $html);
+        $this->assertStringContainsString('data-buscador-modelo', $html);
+        $this->assertStringContainsString('modelo, marca, línea, SKU o código', $html);
         $this->assertStringNotContainsString('escanea el código', $html);
-        $this->assertStringContainsString('placeholder="SKU o modelo"', $html);
+        $this->assertStringNotContainsString('data-combobox-variante', $html);
     }
 
     public function test_conteo_y_venta_local_ya_no_hablan_de_escanear(): void
@@ -104,11 +108,11 @@ class MovimientoUnificadoTest extends TestCase
 
         Livewire::test('stock.index')
             ->set('tipoMovimiento', 'salida')
-            ->set('tabEntrada', 'modelo')
             ->set('modelo_producto_id', (string) $producto)
             ->set('modelo_color_id', (string) $color)
-            ->assertSee('Cantidad que sale por talla')
+            ->assertSee('data-talla-chip="'.$a->id.'"', false)
             ->set('modelo_cantidades', [$a->id => '2', $b->id => '1'])
+            ->assertSee('Cantidad que sale de cada talla marcada')
             ->set('modelo_motivo', 'Merma por daño')
             ->call('registrarEntradaModelo')
             ->assertHasNoErrors()
@@ -162,27 +166,29 @@ class MovimientoUnificadoTest extends TestCase
         $this->assertSame($antesB, $this->existencia($b->id));
     }
 
-    public function test_el_movimiento_por_sku_maneja_entrada_y_salida_y_ambos_quedan_en_el_historial(): void
+    public function test_el_movimiento_por_sku_exacto_maneja_entrada_y_salida_y_ambos_quedan_en_el_historial(): void
     {
         $stock = StockLocal::query()->with('variante')->where('cantidad_disponible', '>=', 3)->orderBy('id')->firstOrFail();
         $antes = (int) $stock->cantidad_disponible;
 
         $c = Livewire::test('stock.index')
-            ->set('tabEntrada', 'variante')
-            ->set('entrada_variante_id', (string) $stock->variante_id)
-            ->set('entrada_cantidad', '4')
-            ->set('entrada_motivo', 'Compra a fábrica')
-            ->call('registrarEntrada')
+            ->set('buscarModelo', $stock->variante->sku)
+            ->call('entrarBusqueda')
+            ->assertSet('modelo_producto_id', (string) $stock->variante->producto_id)
+            ->assertSet('modelo_color_id', (string) $stock->variante->color_id)
+            ->set('modelo_cantidades', [$stock->variante_id => '4'])
+            ->set('modelo_motivo', 'Compra a fábrica')
+            ->call('registrarEntradaModelo')
             ->assertHasNoErrors();
         $this->assertSame($antes + 4, $this->existencia($stock->variante_id));
 
         $c->set('tipoMovimiento', 'salida')
-            ->set('entrada_variante_id', (string) $stock->variante_id)
-            ->set('entrada_cantidad', '3')
-            ->call('registrarEntrada')
-            ->assertHasErrors(['entrada_motivo' => 'required'])
-            ->set('entrada_motivo', 'Merma')
-            ->call('registrarEntrada')
+            ->set('modelo_motivo', '')
+            ->set('modelo_cantidades', [$stock->variante_id => '3'])
+            ->call('registrarEntradaModelo')
+            ->assertHasErrors(['modelo_motivo' => 'required'])
+            ->set('modelo_motivo', 'Merma')
+            ->call('registrarEntradaModelo')
             ->assertHasNoErrors();
         $this->assertSame($antes + 1, $this->existencia($stock->variante_id));
 

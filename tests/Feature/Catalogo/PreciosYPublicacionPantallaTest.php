@@ -160,7 +160,7 @@ class PreciosYPublicacionPantallaTest extends TestCase
 
         $this->assertEqualsWithDelta(640, (float) OfertaDistribuidora::where('producto_campana_id', $pc->id)->value('precio_mayorista'), 0.001);
 
-        $this->pantalla()->call('quitarPrecio', $pc->id)->assertSet('errorMsg', '');
+        $this->pantalla()->call('quitarPrecio', $pc->id)->call('confirmarAccion')->assertSet('errorMsg', '');
 
         $this->assertSame(0, OfertaDistribuidora::where('producto_campana_id', $pc->id)->count());
     }

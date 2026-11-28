@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Concerns\ConfirmaAcciones;
 use App\Models\ConfiguracionDistribuidora;
 use App\Services\MercadoPago\DesvincularMercadoPagoAction;
 use App\Services\MercadoPago\MercadoPagoException;
@@ -17,6 +18,8 @@ use Livewire\Component;
 | NUNCA se pone en una propiedad.
 */
 new class extends Component {
+    use ConfirmaAcciones;
+
     public bool $configurado = false;
 
     public bool $modoPrueba = true;
@@ -55,13 +58,28 @@ new class extends Component {
         $this->cargar();
     }
 
-    public function desconectar(DesvincularMercadoPagoAction $accion): void
+    /** Solo pregunta: desconectar pasa siempre por el modal de confirmación. */
+    public function desconectar(): void
+    {
+        $this->preguntar(
+            'desconectar',
+            [],
+            '¿Desconectar tu cuenta de Mercado Pago?',
+            'FootwearPoint borrará el acceso a tu cuenta'.($this->titular ? ' de '.$this->titular : '').' y sus datos (titular, correo, usuario e ID). '
+                .'Desde ese momento ya no podrás cobrar pedidos con Mercado Pago hasta que la vuelvas a conectar. '
+                .'Los cobros que ya recibiste no se tocan: siguen en tu cuenta de Mercado Pago.',
+            'Desconectar',
+            'Desconectando…',
+        );
+    }
+
+    protected function ejecutarDesconectar(): void
     {
         $this->exito = '';
         $this->error = '';
 
         try {
-            $accion->ejecutar($this->configuracion());
+            app(DesvincularMercadoPagoAction::class)->ejecutar($this->configuracion());
         } catch (\Throwable $e) {
             $this->error = MensajeError::paraUsuario($e, 'No se pudo desconectar la cuenta de Mercado Pago. Intenta de nuevo.');
 
@@ -231,8 +249,7 @@ new class extends Component {
         @endif
 
         @if ($conectado || $ilegible)
-            <button type="button" wire:click="desconectar"
-                wire:confirm="¿Desconectar tu cuenta de Mercado Pago? Ya no podrás cobrar con Mercado Pago hasta que la vuelvas a conectar."
+            <button type="button" wire:click="desconectar" data-desconectar-mp
                 wire:loading.attr="disabled"
                 class="fp-btn fp-btn-peligro">
                 Desconectar
@@ -268,4 +285,5 @@ new class extends Component {
             </x-panel.modal>
         @endif
     @endif
+    <x-ui.confirmar-accion :datos="$accionPorConfirmar" />
 </div>

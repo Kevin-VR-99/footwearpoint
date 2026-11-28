@@ -618,6 +618,7 @@ class VincularMercadoPagoTest extends TestCase
         Livewire::test('distribuidora.mercado-pago')
             ->assertSet('conectado', true)
             ->call('desconectar')
+            ->call('confirmarAccion')
             ->assertSet('conectado', false)
             ->assertSet('cuentaId', null)
             ->assertSee('Desconectamos tu cuenta de Mercado Pago de FootwearPoint.')
@@ -627,6 +628,37 @@ class VincularMercadoPagoTest extends TestCase
         $auditoria = Auditoria::where('accion', 'mercado_pago.desconectado')->sole();
         $this->assertEquals(['cuenta_mercado_pago' => self::CUENTA], $auditoria->datos_previos);
         Http::assertNothingSent();
+    }
+
+    public function test_desconectar_pide_confirmacion_en_un_modal_y_cancelar_no_toca_nada(): void
+    {
+        $this->conectarDirecto();
+        $this->actingAs($this->admin());
+
+        $componente = Livewire::test('distribuidora.mercado-pago')
+            ->assertDontSee('data-modal="confirmar"', false)
+            ->call('desconectar')
+            ->assertSee('data-modal="confirmar"', false)
+            ->assertSee('¿Desconectar tu cuenta de Mercado Pago?')
+            ->assertSee('ya no podrás cobrar pedidos con Mercado Pago')
+            ->assertSeeHtml('wire:click.self="cancelarAccion"')
+            ->assertSeeHtml('x-on:keydown.escape.window="$wire.cancelarAccion()"')
+            ->assertSeeHtml('fp-btn fp-btn-peligro')
+            ->assertSet('conectado', true);
+
+        // Sin confirmar, la cuenta sigue conectada.
+        $this->assertNotNull($this->filaConfiguracion()->mp_access_token);
+
+        $componente->call('cancelarAccion')
+            ->assertSet('accionPorConfirmar', null)
+            ->assertDontSee('data-modal="confirmar"', false)
+            ->assertSet('conectado', true);
+        $this->assertNotNull($this->filaConfiguracion()->mp_access_token);
+
+        // Confirmar sin haber preguntado no hace nada.
+        $componente->call('confirmarAccion')->assertSet('conectado', true);
+        $this->assertNotNull($this->filaConfiguracion()->mp_access_token);
+        $this->assertSame(0, Auditoria::where('accion', 'mercado_pago.desconectado')->count());
     }
 
     public function test_avisa_cuando_la_conexion_esta_por_vencer(): void

@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Concerns\ConfirmaAcciones;
 use App\Models\Distribuidora;
 use App\Services\Auth\PermisoModuloService;
 use App\Services\Catalogo\ImagenDeProducto;
@@ -16,6 +17,8 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class extends Component {
+    use ConfirmaAcciones;
+
     public string $desde = '';
     public string $hasta = '';
     public string $estado = '';
@@ -152,7 +155,16 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
         $this->cancelarRenombre();
     }
 
+    /** Pregunta en el modal; el favorito se borra solo al confirmar. */
     public function eliminarFavorito(int $id): void
+    {
+        $favorito = $this->favorito($id);
+
+        $this->preguntar('eliminarFavorito', [(int) $favorito->id], '¿Eliminar este favorito?',
+            'Se borra el filtro favorito «'.$favorito->nombre.'». Los reportes no cambian.', 'Eliminar', 'Eliminando…');
+    }
+
+    protected function ejecutarEliminarFavorito(int $id): void
     {
         $favorito = $this->favorito($id);
         $nombre = $favorito->nombre;
@@ -543,7 +555,7 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
                         <button type="button" wire:click="renombrarFavorito({{ $fav->id }})" class="px-1.5 py-1 text-slate-400 hover:text-fp-primary" aria-label="Renombrar {{ $fav->nombre }}">
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.2 5.2l3.6 3.6M4 20l4.5-1 10.3-10.3a2.5 2.5 0 00-3.5-3.5L5 15.5z"/></svg>
                         </button>
-                        <button type="button" wire:click="eliminarFavorito({{ $fav->id }})" wire:confirm="¿Eliminar el favorito «{{ $fav->nombre }}»?" class="py-1 pl-0.5 pr-2 text-slate-400 hover:text-fp-danger" aria-label="Eliminar {{ $fav->nombre }}">
+                        <button type="button" wire:click="eliminarFavorito({{ $fav->id }})" class="py-1 pl-0.5 pr-2 text-slate-400 hover:text-fp-danger" aria-label="Eliminar {{ $fav->nombre }}">
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg>
                         </button>
                     </span>
@@ -1179,4 +1191,5 @@ new #[Layout('layouts.panel')] #[Title('Reportes — FootwearPoint')] class exte
             </x-slot:pie>
         </x-panel.modal>
     @endif
+    <x-ui.confirmar-accion :datos="$accionPorConfirmar" />
 </div>
