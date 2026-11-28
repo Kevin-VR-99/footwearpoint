@@ -687,6 +687,174 @@ html.fp-js [data-revelar]:not(.revelado) {
     color: rgb(255 255 255 / .95);
 }
 
+/* Navbar pública pegada al borde superior del viewport (inicio, marketplace,
+   planes, solicitar alta y la tienda). Se declara fuera de @layer para que
+   gane a la utilidad sticky de la vista. El alto coincide con el buscador
+   del marketplace (top-[4.125rem]). */
+:root { --fp-navbar-alto: 4.125rem; }
+
+.fp-navbar-publica {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 30;
+}
+body.fp-pagina-publica { padding-top: var(--fp-navbar-alto); }
+
+/* .fp-saltar comparte clase con .fp-btn, cuya position:relative (en @layer)
+   le ganaba a position:fixed y dejaba el enlace en el flujo: era la franja
+   vacía encima de la navbar. Fuera de @layer para que quede fijo y oculto
+   hasta el foco. */
+.fp-saltar {
+    position: fixed;
+    inset-inline-start: 0.75rem;
+    top: -5rem;
+    z-index: 100;
+}
+.fp-saltar:focus { top: 0.75rem; }
+
+html:has(body.fp-pagina-publica) { scroll-padding-top: calc(var(--fp-navbar-alto) + 0.75rem); }
+
+/* Solicitar alta: mismos tonos luminosos del login y la portada, tarjetas
+   de vidrio, entradas suaves y foco visible. Los campos no cambian. */
+.fp-pagina-publica main:has(.fp-alta) {
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    background:
+        radial-gradient(90% 70% at 100% 0%, rgb(255 255 255 / .7) 0%, transparent 55%),
+        radial-gradient(70% 55% at 0% 100%, rgb(186 230 253 / .45) 0%, transparent 60%),
+        linear-gradient(145deg, #DBEAFE 0%, #EEF2FF 38%, #F5F3FF 68%, #FCE7F3 100%);
+}
+.fp-alta {
+    width: min(48rem, calc(100% - 2rem));
+    margin-inline: auto;
+    padding-bottom: 3rem;
+}
+.fp-alta-encabezado {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    padding: 1.75rem 1.5rem 1.85rem;
+    color: #fff;
+    box-shadow: 0 24px 50px -22px rgb(30 58 138 / .45);
+    animation: fp-acceso-entrada .35s cubic-bezier(.22, .8, .36, 1) backwards;
+}
+.fp-alta-encabezado h1 { color: #fff; font-size: 1.75rem; font-weight: 700; letter-spacing: -.025em; line-height: 1.2; }
+.fp-alta-encabezado p { color: rgb(255 255 255 / .95); }
+.fp-alta-volver {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: 1rem;
+    border: 1px solid rgb(255 255 255 / .55);
+    border-radius: 9999px;
+    padding: .4rem .9rem;
+    font-size: .875rem;
+    font-weight: 600;
+    color: #fff;
+    background: rgb(255 255 255 / .16);
+    transition: background-color .2s ease, border-color .2s ease, transform .2s ease;
+}
+.fp-alta-volver:hover { background: rgb(255 255 255 / .28); border-color: #fff; }
+.fp-alta-volver:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.fp-alta-tarjeta {
+    position: relative;
+    isolation: isolate;
+    border-radius: 1.25rem;
+    border: 1px solid rgb(255 255 255 / .9);
+    background-color: rgb(255 255 255 / .92);
+    box-shadow: 0 18px 40px -24px rgb(30 58 138 / .28), 0 2px 8px -2px rgb(30 58 138 / .1), inset 0 1px 0 rgb(255 255 255 / .95);
+    animation: fp-acceso-entrada .35s cubic-bezier(.22, .8, .36, 1) backwards;
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    .fp-alta-tarjeta {
+        background-color: rgb(255 255 255 / .72);
+        -webkit-backdrop-filter: blur(20px) saturate(1.4);
+        backdrop-filter: blur(20px) saturate(1.4);
+    }
+}
+.fp-alta-tarjeta::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgb(255 255 255 / .8) 0%, rgb(255 255 255 / .18) 26%, transparent 48%);
+}
+.fp-alta-formulario > .fp-alta-tarjeta:nth-child(1) { animation-delay: .05s; }
+.fp-alta-formulario > .fp-alta-tarjeta:nth-child(2) { animation-delay: .1s; }
+.fp-alta-formulario > .fp-alta-tarjeta:nth-child(3) { animation-delay: .15s; }
+.fp-alta-formulario > .fp-alta-tarjeta:nth-child(n+4) { animation-delay: .2s; }
+
+.fp-alta-titulo {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: .25rem;
+    color: var(--color-fp-sidebar);
+    font-weight: 700;
+}
+.fp-alta-icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex-shrink: 0;
+    border-radius: .75rem;
+    background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);
+    color: #fff;
+    box-shadow: 0 8px 16px -10px rgb(37 99 235 / .8);
+}
+.fp-alta-icono svg { width: 1.15rem; height: 1.15rem; }
+
+.fp-alta :is(.fp-campo input, input.fp-control, select.fp-control, textarea.fp-control, .fp-alta-tarjeta input:not([type=checkbox]):not([type=radio]), .fp-alta-tarjeta select, .fp-alta-tarjeta textarea) {
+    transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease, transform .2s ease;
+}
+.fp-alta :is(.fp-campo input, input.fp-control, .fp-alta-tarjeta input:not([type=checkbox]):not([type=radio]), .fp-alta-tarjeta select, .fp-alta-tarjeta textarea):hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--color-fp-primary) 60%, white);
+}
+.fp-alta :is(.fp-campo input, input.fp-control, .fp-alta-tarjeta input:not([type=checkbox]):not([type=radio]), .fp-alta-tarjeta select, .fp-alta-tarjeta textarea):focus {
+    border-color: var(--color-fp-primary);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-fp-primary) 22%, transparent);
+    outline: none;
+    transform: translateY(-1px);
+}
+
+.fp-alta-plan {
+    transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.fp-alta-plan:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -18px rgb(30 58 138 / .45); }
+.fp-alta-plan:has(input:checked) {
+    border-color: var(--color-fp-sidebar);
+    background-color: #F8FAFF;
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-fp-sidebar) 20%, transparent);
+}
+
+.fp-alta-enviar { transition: filter .2s ease, transform .2s ease, box-shadow .2s ease; }
+.fp-alta-enviar:hover:not(:disabled) { filter: brightness(1.06); }
+.fp-alta-enviar:focus-visible { outline: 2px solid var(--color-fp-primary); outline-offset: 2px; }
+
+@media (prefers-reduced-transparency: reduce) {
+    .fp-alta-tarjeta { background-color: #fff !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .fp-alta-encabezado, .fp-alta-tarjeta, .fp-alta-volver, .fp-alta-plan, .fp-alta-enviar,
+    .fp-alta :is(.fp-campo input, input.fp-control, .fp-alta-tarjeta input, .fp-alta-tarjeta select, .fp-alta-tarjeta textarea) {
+        animation: none !important;
+        transition: none !important;
+        transform: none !important;
+    }
+}
+
+
+
 /* =====================================================================
    Pantallas de acceso (layouts.guest): login, confirmar correo, recuperar
    y restablecer contraseña, contraseña temporal y las demás que comparten
