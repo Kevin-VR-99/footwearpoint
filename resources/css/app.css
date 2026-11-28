@@ -1469,33 +1469,44 @@ form[data-loading] button[type=submit]:not(:has([wire\:loading]))::before {
 
    El tamaño (44px) no se toca: ya era un objetivo táctil correcto. El
    crecimiento es scale y no margen, para que no empuje a los vecinos. */
-@layer components {
-    .fp-red {
-        transition: background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
-    }
-
-    .fp-red:hover,
-    .fp-red:focus-visible {
-        color: #fff;
-        transform: scale(1.08);
-        box-shadow: 0 6px 16px -6px rgb(0 0 0 / .45);
-    }
-
-    .fp-red:focus-visible {
-        outline: none;
-        box-shadow: 0 0 0 3px rgb(255 255 255 / .85), 0 6px 16px -6px rgb(0 0 0 / .45);
-    }
-
-    /* Los colores oficiales de cada marca. El símbolo va en blanco encima:
-       los tres pasan el 3:1 que pide la norma para elementos gráficos
-       (Instagram 4.4, YouTube 4.0, Facebook 3.1). */
-    .fp-red-instagram:hover, .fp-red-instagram:focus-visible { background-color: #E1306C; }
-    .fp-red-facebook:hover,  .fp-red-facebook:focus-visible  { background-color: #1877F2; }
-    .fp-red-youtube:hover,   .fp-red-youtube:focus-visible   { background-color: #FF0000; }
-
-    /* El correo no es una red con color propio: usa el de la casa. */
-    .fp-red-correo:hover, .fp-red-correo:focus-visible { background-color: var(--color-fp-primary); }
+/* Fuera de @layer: si no, las utilidades de Tailwind (bg-white/10 en el
+   icono) ganan al color de marca en el hover. */
+.fp-red {
+    transition: background-color .22s ease, background-image .22s ease, color .22s ease, box-shadow .22s ease, transform .22s ease;
 }
+
+.fp-red:hover,
+.fp-red:focus-visible {
+    color: #fff;
+    transform: scale(1.12);
+    box-shadow: 0 6px 16px -6px rgb(0 0 0 / .45);
+}
+
+.fp-red:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(255 255 255 / .85), 0 6px 16px -6px rgb(0 0 0 / .45);
+}
+
+/* Colores oficiales de cada marca. El símbolo va en blanco. Solo se pintan
+   las redes que existen en la portada; si más adelante se suma otra, su
+   clase .fp-red-* entra igual. */
+.fp-red-instagram:hover,
+.fp-red-instagram:focus-visible {
+    background-color: #E4405F;
+    background-image: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+}
+.fp-red-facebook:hover,  .fp-red-facebook:focus-visible  { background-color: #1877F2; }
+.fp-red-youtube:hover,   .fp-red-youtube:focus-visible   { background-color: #FF0000; }
+.fp-red-whatsapp:hover,  .fp-red-whatsapp:focus-visible  { background-color: #25D366; }
+.fp-red-x:hover,         .fp-red-x:focus-visible         { background-color: #000000; }
+.fp-red-tiktok:hover,
+.fp-red-tiktok:focus-visible {
+    background-color: #000000;
+    background-image: linear-gradient(135deg, #25F4EE 0%, #000000 42%, #000000 58%, #FE2C55 100%);
+}
+
+/* El correo no es una red con color propio: usa el de la casa. */
+.fp-red-correo:hover, .fp-red-correo:focus-visible { background-color: var(--color-fp-primary); }
 
 @media (prefers-reduced-motion: reduce) {
     .fp-red { transition: none !important; }

@@ -104,7 +104,7 @@ class TransicionesYRedesTest extends TestCase
         $hoja = $this->hoja();
 
         foreach ([
-            'instagram' => '#E1306C',
+            'instagram' => '#E4405F',
             'facebook' => '#1877F2',
             'youtube' => '#FF0000',
         ] as $red => $color) {
@@ -114,6 +114,17 @@ class TransicionesYRedesTest extends TestCase
                 "El icono de {$red} perdió su color de marca."
             );
         }
+
+        $this->assertMatchesRegularExpression(
+            '/\.fp-red-instagram:hover[^}]*background-image:\s*(radial|linear)-gradient/s',
+            $hoja,
+            'Instagram tiene que llevar su degradado de marca.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.fp-red:hover[^}]*transform:\s*scale\(1\.12\)/s',
+            $hoja,
+            'Los iconos tienen que agrandarse un poco al pasar el cursor.'
+        );
     }
 
     /**
