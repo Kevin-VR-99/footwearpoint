@@ -85,17 +85,17 @@ new class extends Component {
     $ofreceTransferencias = $aceptaTransferencias && $tieneDatosBancarios;
 @endphp
 
-<div class="fp-formulario" data-datos-bancarios>
-    <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
+<div class="fp-formulario space-y-6 p-5 sm:p-6" data-datos-bancarios>
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0 max-w-2xl">
             <h2 class="text-lg font-semibold text-slate-900">Transferencia bancaria</h2>
-            <p class="mt-1 max-w-2xl text-sm text-slate-500">
+            <p class="mt-2 text-sm leading-relaxed text-slate-500">
                 Banco, CLABE y titular se muestran en el pedido a quien debe pagarlo. Si los dejas vacíos, no se muestra nada.
                 FootwearPoint no recibe ni custodia estos pagos.
             </p>
         </div>
         <span @class([
-            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
+            'mt-0.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium',
             'border-emerald-200 bg-emerald-50 text-emerald-800' => $ofreceTransferencias,
             'border-amber-200 bg-amber-50 text-amber-800' => ! $ofreceTransferencias,
         ]) data-estado-transferencias>
@@ -111,15 +111,15 @@ new class extends Component {
     </div>
 
     @if (! $tieneDatosBancarios)
-        <p class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" data-aviso-faltan-datos>
+        <p class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-relaxed text-amber-900" data-aviso-faltan-datos>
             Captura tus datos bancarios para aceptar transferencias.
         </p>
     @endif
 
-    <div class="mt-4 flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
-        <div>
+    <div class="flex items-center justify-between gap-5 rounded-xl border border-slate-200 bg-slate-50/60 px-5 py-4 sm:px-6 sm:py-5">
+        <div class="min-w-0">
             <p id="etiqueta-acepta-transferencias" class="text-sm font-medium text-slate-800">Aceptar transferencias</p>
-            <p class="text-xs text-slate-500">
+            <p class="mt-1.5 text-xs leading-relaxed text-slate-500">
                 @if (! $tieneDatosBancarios)
                     Captura tus datos bancarios para aceptar transferencias.
                 @elseif ($aceptaTransferencias)
@@ -153,20 +153,20 @@ new class extends Component {
     </div>
 
     @if ($errorMsg !== '')
-        <p class="mt-3 text-sm text-fp-danger" role="alert" data-error-datos-bancarios>{{ $errorMsg }}</p>
+        <p class="text-sm text-fp-danger" role="alert" data-error-datos-bancarios>{{ $errorMsg }}</p>
     @endif
 
-    <form wire:submit="guardar" class="mt-4 grid gap-4 sm:grid-cols-2">
+    <form wire:submit="guardar" class="grid gap-5 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-6">
         <x-ui.select-banco id="banco-transferencia" modelo="banco" :valor="$banco" clabe-id="clabe-transferencia" />
         <label class="text-sm">
             <span class="block font-medium text-slate-700">CLABE</span>
-            <input type="text" id="clabe-transferencia" inputmode="numeric" wire:model="clabe" maxlength="22" class="mt-1 w-full rounded-lg text-sm" data-clabe>
+            <input type="text" id="clabe-transferencia" inputmode="numeric" wire:model="clabe" maxlength="22" class="mt-2 w-full rounded-lg text-sm" data-clabe>
         </label>
         <label class="text-sm sm:col-span-2">
             <span class="block font-medium text-slate-700">Titular</span>
-            <input type="text" wire:model="titular" maxlength="150" class="mt-1 w-full rounded-lg text-sm" data-titular>
+            <input type="text" wire:model="titular" maxlength="150" class="mt-2 w-full rounded-lg text-sm" data-titular>
         </label>
-        <div>
+        <div class="pt-1 sm:col-span-2">
             <button type="submit" class="fp-btn fp-btn-primario">Guardar datos bancarios</button>
         </div>
     </form>
