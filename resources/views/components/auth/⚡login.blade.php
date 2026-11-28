@@ -166,8 +166,10 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
          Rediseño (Gabriel, 27 nov): en celular se ve como siempre; desde lg
          el titulo crece y sale la linea de ayuda, sobre la tarjeta de vidrio. --}}
     <x-auth.encabezado class="mb-3 lg:mb-5" />
-    <h1 class="mb-8 text-center text-sm font-normal text-slate-500 lg:mb-1 lg:text-2xl lg:font-bold">Inicia sesión en tu cuenta</h1>
-    <p class="mb-7 hidden text-center text-sm text-fp-text-muted lg:block">Entra con tu correo y tu contraseña.</p>
+    <h1 class="mb-8 text-center text-sm font-normal text-slate-500 lg:mb-6 lg:text-base lg:font-medium lg:text-slate-700">
+        <span class="lg:hidden">Inicia sesión en tu cuenta</span>
+        <span class="hidden lg:inline">Inicia sesión para continuar</span>
+    </h1>
 
     {{-- TG-184: a quien no es personal se le explica que entre por la app. --}}
     @if (session('aviso_acceso'))

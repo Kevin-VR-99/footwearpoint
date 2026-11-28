@@ -15,8 +15,9 @@ use Tests\TestCase;
  * Rediseño del login y de las pantallas de acceso (Gabriel, 7 y 27 nov).
  *
  * En celular todo se ve como antes: tarjeta blanca centrada con el logo
- * dentro y sin panel. En escritorio (lg) sale el panel de marca y el
- * formulario va en una tarjeta de vidrio oscuro con los colores del panel.
+ * dentro y sin la escena de la app. En escritorio (lg) se copia el login
+ * de la app (fondo marino, siluetas, línea de marca, logo centrado) y se
+ * mejora con vidrio claro y más luz.
  *
  * Es un cambio de diseño. Lo que estas pruebas cuidan es que con el diseño
  * nuevo nada se haya roto: las pantallas cargan, el formulario y sus enlaces
@@ -45,11 +46,12 @@ class RedisenoLoginTest extends TestCase
     /** El panel de marca: logo, frase y las formas decorativas. */
     private function assertPanelDeMarca(string $html, string $pantalla): void
     {
-        $this->assertStringContainsString('fp-acceso-marco', $html, "{$pantalla}: falta la composición de dos lados.");
-        $this->assertStringContainsString('fp-acceso-panel', $html, "{$pantalla}: falta el panel de marca.");
-        $this->assertStringContainsString('brand/logo-full-160.png', $html, "{$pantalla}: el panel se quedó sin logo.");
-        $this->assertStringContainsString('Calzado, pedidos y entregas en un solo lugar.', $html);
-        $this->assertStringContainsString('fp-acceso-burbuja', $html);
+        $this->assertStringContainsString('fp-acceso-marco', $html, "{$pantalla}: falta la escena de acceso.");
+        $this->assertStringContainsString('fp-acceso-linea', $html, "{$pantalla}: falta la línea de marca.");
+        $this->assertStringContainsString('fp-acceso-siluetas', $html, "{$pantalla}: faltan las siluetas de tenis.");
+        $this->assertStringContainsString('brand/logo-mark-white-192.png', $html, "{$pantalla}: no usa el PNG de la app.");
+        $this->assertStringContainsString('Footwear Point', $html);
+        $this->assertStringContainsString('brand/logo-full-160.png', $html, "{$pantalla}: en celular se quedó sin el logo de la tarjeta.");
         $this->assertStringContainsString('fp-acceso-tarjeta', $html, "{$pantalla}: el formulario ya no va en su tarjeta.");
         $this->assertSame(1, substr_count($html, '<h1'), "{$pantalla}: tiene que haber un solo h1.");
         $this->assertSame(1, substr_count($html, '<main'), "{$pantalla}: falta o sobra la región principal.");
@@ -209,7 +211,7 @@ class RedisenoLoginTest extends TestCase
         $hoja = $this->hoja();
 
         $this->assertMatchesRegularExpression('/\.fp-acceso-tarjeta \{[^}]*animation:\s*fp-acceso-entrada\s*\.35s/s', $hoja);
-        $this->assertMatchesRegularExpression('/animation:\s*fp-acceso-panel-entrada\s*\.4s/', $hoja);
+        $this->assertMatchesRegularExpression('/\.fp-acceso-marca \{[^}]*animation:\s*fp-acceso-entrada\s*\.35s/s', $hoja);
         $this->assertMatchesRegularExpression('/\.fp-acceso-logo \{\s*animation:\s*fp-acceso-logo\s*\.4s/', $hoja);
     }
 
@@ -223,56 +225,70 @@ class RedisenoLoginTest extends TestCase
     }
 
     /**
-     * En celular no sale el panel y el logo va en la tarjeta, como antes; desde
-     * lg aparece el panel y el logo de la tarjeta se esconde (ya está en el panel).
+     * En celular no salen la línea, las siluetas ni la cabecera de la app, y
+     * el logo va en la tarjeta, como antes. Desde lg aparece la escena de la
+     * app y el logo de la tarjeta se esconde (ya está arriba, centrado).
      */
     public function test_en_celular_no_sale_el_panel_y_el_logo_va_en_la_tarjeta(): void
     {
         $hoja = $this->hoja();
-        $escritorio = substr($hoja, (int) strpos($hoja, '/* --- Escritorio: panel de marca'));
-        $celular = substr($hoja, 0, (int) strpos($hoja, '/* --- Escritorio: panel de marca'));
+        $escritorio = substr($hoja, (int) strpos($hoja, '/* --- Escritorio: escena de la app'));
+        $celular = substr($hoja, 0, (int) strpos($hoja, '/* --- Escritorio: escena de la app'));
 
-        $this->assertMatchesRegularExpression('/\.fp-acceso-panel \{ display: none; \}/', $celular, 'En celular volvió a salir el panel.');
-        $this->assertMatchesRegularExpression('/\.fp-acceso-acento \{\s*display: none;/', $celular, 'En celular sale el trazo de escritorio.');
+        $this->assertStringContainsString('.fp-acceso-marca, .fp-acceso-siluetas, .fp-acceso-linea { display: none; }', $celular, 'En celular salió la escena de la app.');
+        $this->assertMatchesRegularExpression('/\.fp-acceso-acento \{\s*display: none;/', $celular);
         $this->assertStringNotContainsString('.fp-acceso-logo { display: none; }', $celular, 'En celular se escondió el logo de la tarjeta.');
 
-        $this->assertMatchesRegularExpression('/@media \(min-width: 1024px\) \{\s*\.fp-acceso-marco \{\s*display: grid;/', $escritorio);
-        $this->assertMatchesRegularExpression('/\.fp-acceso-panel \{[^}]*display: flex;/s', $escritorio);
+        $this->assertMatchesRegularExpression('/\.fp-acceso-marca \{\s*display: flex;/', $escritorio);
+        $this->assertMatchesRegularExpression('/\.fp-acceso-siluetas \{\s*display: block;/', $escritorio);
+        $this->assertStringContainsString('.fp-acceso-linea', $escritorio);
         $this->assertStringContainsString('.fp-acceso-logo { display: none; }', $escritorio);
+        $this->assertStringContainsString('#111E38', $escritorio, 'El fondo de escritorio tiene que partir del marino de la app.');
 
         // El fondo de celular es el de siempre: claro, sin el marino de escritorio.
         $this->assertMatchesRegularExpression('/\.fp-acceso-fondo \{[^}]*linear-gradient\(160deg, var\(--color-fp-page\) 0%, #fff 45%, var\(--color-fp-page\) 100%\)/s', $celular);
     }
 
-    /** En escritorio la tarjeta es vidrio oscuro, con respaldo casi sólido y texto claro. */
-    public function test_en_escritorio_el_formulario_es_vidrio_oscuro(): void
+    /** En escritorio la tarjeta es vidrio claro, con respaldo casi sólido y texto oscuro. */
+    public function test_en_escritorio_el_formulario_es_vidrio_claro(): void
     {
         $hoja = $this->hoja();
-        $vidrio = substr($hoja, (int) strpos($hoja, 'Escritorio: el formulario en vidrio oscuro.'));
+        $vidrio = substr($hoja, (int) strpos($hoja, 'Escritorio: el formulario en vidrio claro'));
         $vidrio = substr($vidrio, 0, (int) strpos($vidrio, '@media (prefers-reduced-motion: reduce)'));
 
         $this->assertStringContainsString('backdrop-filter: blur(', $vidrio);
-        $this->assertStringContainsString('background-color: rgb(17 30 56 / .92)', $vidrio, 'Sin soporte de desenfoque la tarjeta tiene que quedar casi sólida.');
+        $this->assertStringContainsString('background-color: rgb(255 255 255 / .92)', $vidrio, 'Sin soporte de desenfoque la tarjeta tiene que quedar casi sólida y clara.');
+        $this->assertStringContainsString('background-color: rgb(255 255 255 / .65)', $vidrio, 'El vidrio tiene que ser blanco translúcido, no oscuro.');
         $this->assertStringContainsString('@supports', $vidrio);
-        // Errores, enlaces y el botón Mostrar de x-ui.campo-password en claro.
-        $this->assertStringContainsString('#FCA5A5', $vidrio);
-        $this->assertStringContainsString('.fp-enlace { color: #BFD4FF; }', $vidrio);
+        // Campos y errores en oscuro sobre claro; el botón Mostrar también.
+        $this->assertStringContainsString('color: var(--color-slate-800)', $vidrio);
+        $this->assertStringContainsString('color: var(--color-fp-danger)', $vidrio);
         $this->assertStringContainsString('.relative > button[type=button]', $vidrio);
-        // Entrar en blanco con texto marino.
-        $this->assertMatchesRegularExpression('/\.fp-btn-oscuro \{[^}]*background-color: #fff;[^}]*color: var\(--color-fp-sidebar\)/s', $vidrio);
-        // Foco visible en claro.
-        $this->assertStringContainsString('outline: 2px solid #fff', $vidrio);
-        // Quien pide menos transparencia la ve sólida.
-        $this->assertMatchesRegularExpression('/prefers-reduced-transparency: reduce\)\s*\{[^}]*\.fp-acceso-tarjeta[^}]*backdrop-filter: none/s', $hoja);
+        // Entrar: degradado azul de la marca con texto blanco.
+        $this->assertMatchesRegularExpression('/\.fp-btn-oscuro \{[^}]*background-image:\s*linear-gradient\([^}]*#2563EB[^}]*color:\s*#fff/s', $vidrio);
+        // Foco visible en el azul de la marca.
+        $this->assertStringContainsString('outline: 2px solid var(--color-fp-primary)', $vidrio);
+        // Quien pide menos transparencia la ve sólida y blanca.
+        $this->assertMatchesRegularExpression('/prefers-reduced-transparency: reduce\)\s*\{[^}]*\.fp-acceso-tarjeta[^}]*background-color: #fff/s', $hoja);
     }
 
-    /** El vidrio de la tarjeta vive en app.css; en las vistas no hay clases de vidrio sueltas. */
-    public function test_el_vidrio_es_solo_un_acento(): void
+    /** El logo de escritorio es el mismo PNG de la app, centrado y sin placa. */
+    public function test_el_logo_del_panel_es_png_centrado_y_sin_placa(): void
     {
-        $layout = (string) file_get_contents(base_path('resources/views/layouts/guest.blade.php'));
+        $layout = (string) preg_replace('/\{\{--.*?--\}\}/s', '', (string) file_get_contents(base_path('resources/views/layouts/guest.blade.php')));
+        $hoja = $this->hoja();
+        $escritorio = substr($hoja, (int) strpos($hoja, '/* --- Escritorio: escena de la app'));
 
-        $this->assertStringContainsString('fp-acceso-placa-logo fp-vidrio', $layout);
-        $this->assertStringContainsString('fp-vidrio-oscuro', $layout);
+        $this->assertStringContainsString('brand/logo-mark-white-192.png', $layout);
+        $this->assertStringContainsString('Footwear Point', $layout);
+        $this->assertStringContainsString('fp-acceso-siluetas', $layout);
+        $this->assertStringContainsString('silueta-tenis.svg', $hoja);
+        $this->assertStringNotContainsString('fp-acceso-placa-logo', $layout);
+        $this->assertStringNotContainsString('fp-vidrio', $layout, 'El logo ya no va en una placa de vidrio.');
+        $this->assertStringNotContainsString('fp-acceso-panel-contenido', $layout, 'Volvió el panel lateral: se prioriza la composición de la app.');
+
+        $this->assertMatchesRegularExpression('/\.fp-acceso-marca \{[^}]*align-items:\s*center;[^}]*text-align:\s*center;/s', $escritorio);
+        $this->assertMatchesRegularExpression('/\.fp-acceso-linea \{[^}]*--color-fp-primary[^}]*--color-fp-danger/s', $escritorio);
 
         foreach (['login', 'forgot-password', 'reset-password', 'correo-verificado', 'cambiar-password'] as $pantalla) {
             $vista = (string) file_get_contents(base_path('resources/views/components/auth/⚡'.$pantalla.'.blade.php'));

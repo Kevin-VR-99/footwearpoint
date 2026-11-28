@@ -20,51 +20,45 @@
 <body class="fp-acceso-fondo min-h-screen text-slate-800 antialiased">
     <div class="fp-acceso-capa" aria-hidden="true"></div>
 
-    {{-- Rediseño del acceso (Gabriel, 7 y 27 nov).
+    {{-- Rediseño del acceso (Gabriel, 7, 27 y 27 nov, tarde).
          - Celular y tableta (menos de 1024 px): el diseño de siempre, tarjeta
-           blanca centrada con el logo dentro (x-auth.encabezado). El panel
-           no se muestra.
-         - Escritorio (lg): panel de marca a un lado y el formulario en una
-           tarjeta de vidrio oscuro sobre un fondo marino con manchas.
-         Lo decide app.css; esta vista es la misma para los dos.
+           blanca centrada con el logo dentro (x-auth.encabezado). Sin línea
+           de marca, sin siluetas y sin la cabecera de escritorio.
+         - Escritorio (lg): la composición de la app móvil (FondoCalzado,
+           FpLineaMarca, FpLogo): fondo marino iluminado con siluetas de
+           tenis, línea azul-rojo arriba, logo PNG centrado y el formulario
+           en una tarjeta de vidrio claro. El panel lateral ya no se usa:
+           se prioriza parecerse a la app.
 
-         El panel sale tambien a clientes (confirmar correo, regreso de Mercado
+         El fondo sale tambien a clientes (confirmar correo, regreso de Mercado
          Pago): su texto es para todos, sin hablar de revendedores ni mayoreo.
 
          Todo es CSS del bundle (app.css): ni <style> ni <script> en linea, que
          la CSP es script-src 'self'. --}}
     <div class="fp-acceso-marco">
-        <header class="fp-acceso-panel">
-            <div class="fp-acceso-panel-formas" aria-hidden="true">
-                <span class="fp-acceso-burbuja fp-acceso-burbuja-1"></span>
-                <span class="fp-acceso-burbuja fp-acceso-burbuja-2"></span>
-                <span class="fp-acceso-burbuja fp-acceso-burbuja-3"></span>
-                <span class="fp-acceso-burbuja fp-acceso-burbuja-4"></span>
-                <span class="fp-acceso-burbuja fp-acceso-burbuja-5"></span>
-                <span class="fp-acceso-anillo"></span>
-            </div>
+        <div class="fp-acceso-linea" aria-hidden="true"></div>
 
-            <div class="fp-acceso-panel-contenido">
-                {{-- Liquid glass solo aqui, como acento: la placa del logo. --}}
-                <span class="fp-acceso-placa-logo fp-vidrio">
-                    <img src="{{ asset('brand/logo-full-160.png') }}" alt="Footwear Point"
-                        class="fp-acceso-panel-logo" width="175" height="160">
-                </span>
-
-                <div class="fp-acceso-panel-texto">
-                    <p class="fp-acceso-frase">Calzado, pedidos y entregas en un solo lugar.</p>
-                    <p class="fp-acceso-subfrase">FootwearPoint conecta a la distribuidora con sus tiendas y sus clientes.</p>
-                </div>
-
-                <ul class="fp-acceso-puntos" aria-label="Lo que encuentras en FootwearPoint">
-                    <li class="fp-vidrio-oscuro">Catálogo</li>
-                    <li class="fp-vidrio-oscuro">Pedidos</li>
-                    <li class="fp-vidrio-oscuro">Entregas</li>
-                </ul>
-            </div>
-        </header>
+        <div class="fp-acceso-siluetas" aria-hidden="true">
+            <span class="fp-acceso-tenis fp-acceso-tenis-1"></span>
+            <span class="fp-acceso-tenis fp-acceso-tenis-2"></span>
+            <span class="fp-acceso-tenis fp-acceso-tenis-3"></span>
+            <span class="fp-acceso-tenis fp-acceso-tenis-4"></span>
+            <span class="fp-acceso-tenis fp-acceso-tenis-5"></span>
+            <span class="fp-acceso-tenis fp-acceso-tenis-6"></span>
+            <span class="fp-acceso-tenis fp-acceso-tenis-7"></span>
+            <span class="fp-acceso-tenis fp-acceso-tenis-8"></span>
+        </div>
 
         <div class="fp-acceso-lado">
+            {{-- Mismo PNG que la app (assets/brand/logo-mark-white-192.png,
+                 copiado en public/brand). El blanco del círculo va en el PNG.
+                 El texto visible es el nombre; el alt va vacío para no oírlo dos veces. --}}
+            <header class="fp-acceso-marca">
+                <img src="{{ asset('brand/logo-mark-white-192.png') }}" alt=""
+                    class="fp-acceso-marca-logo" width="192" height="192">
+                <p class="fp-acceso-marca-nombre">Footwear Point</p>
+            </header>
+
             {{-- A21: <main> para que haya una region principal, igual que en los
                  demas layouts. Aqui NO va el enlace de salto: esta pantalla es
                  una sola tarjeta y no hay menu que saltarse. --}}
