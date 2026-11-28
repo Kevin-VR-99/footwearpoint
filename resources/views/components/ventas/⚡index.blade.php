@@ -75,10 +75,10 @@ new #[Layout('layouts.panel')] #[Title('Ventas de mostrador — FootwearPoint')]
         $termino = trim($this->buscar);
 
         return VentaDirecta::query()
-            ->with(['clienteDirecto:id,nombre', 'registradaPor.usuario:id,nombre', 'anuladaPor.usuario:id,nombre', 'detalle', 'pagos', 'reembolsosMercadoPago'])
+            ->with(['clienteDirecto:id,nombre,telefono', 'registradaPor.usuario:id,nombre', 'anuladaPor.usuario:id,nombre', 'detalle', 'pagos', 'reembolsosMercadoPago'])
             ->when($termino !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('folio', 'like', '%'.$termino.'%')
-                ->orWhereHas('clienteDirecto', fn ($c) => $c->where('nombre', 'like', '%'.$termino.'%'))))
+                ->orWhereHas('clienteDirecto', fn ($c) => \App\Support\BusquedaDeCliente::acotar($c, $termino))))
             ->when(in_array($this->estado, ['completada', 'anulada'], true), fn ($q) => $q->where('estado', $this->estado))
             ->when($this->desde !== '', fn ($q) => $q->whereDate('fecha_venta', '>=', $this->desde))
             ->when($this->hasta !== '', fn ($q) => $q->whereDate('fecha_venta', '<=', $this->hasta))
