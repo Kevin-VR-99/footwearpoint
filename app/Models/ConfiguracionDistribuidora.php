@@ -75,11 +75,21 @@ class ConfiguracionDistribuidora extends Model
         'acepta_transferencias' => 'boolean',
     ];
 
+    /** Banco, CLABE y titular están capturados. */
+    public function tieneDatosBancarios(): bool
+    {
+        return filled($this->banco) && filled($this->clabe) && filled($this->titular_cuenta);
+    }
+
     /**
-     * Interruptor «Aceptar transferencias». Sin fila de configuración cuenta
-     * como encendido, que es como estaba antes del interruptor. No mira si hay
-     * datos bancarios: eso lo decide DatosTransferenciaPedido.
+     * Se ofrece al cobrar solo si el interruptor está encendido y hay datos
+     * completos. Sin fila, o sin banco, CLABE o titular, no se ofrece.
      */
+    public function ofreceTransferencias(): bool
+    {
+        return (bool) ($this->acepta_transferencias ?? true) && $this->tieneDatosBancarios();
+    }
+
     public static function aceptaTransferenciasDe(?int $distribuidoraId): bool
     {
         $consulta = static::query();
@@ -90,7 +100,7 @@ class ConfiguracionDistribuidora extends Model
 
         $config = $consulta->first();
 
-        return $config === null || (bool) ($config->acepta_transferencias ?? true);
+        return $config !== null && $config->ofreceTransferencias();
     }
 
     public function getMonedaAttribute(): string

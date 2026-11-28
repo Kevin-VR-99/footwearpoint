@@ -80,6 +80,11 @@ new class extends Component {
 };
 ?>
 
+@php
+    $tieneDatosBancarios = $banco !== '' && $clabe !== '' && $titular !== '';
+    $ofreceTransferencias = $aceptaTransferencias && $tieneDatosBancarios;
+@endphp
+
 <div class="fp-formulario" data-datos-bancarios>
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -91,19 +96,33 @@ new class extends Component {
         </div>
         <span @class([
             'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
-            'border-emerald-200 bg-emerald-50 text-emerald-800' => $aceptaTransferencias,
-            'border-amber-200 bg-amber-50 text-amber-800' => ! $aceptaTransferencias,
+            'border-emerald-200 bg-emerald-50 text-emerald-800' => $ofreceTransferencias,
+            'border-amber-200 bg-amber-50 text-amber-800' => ! $ofreceTransferencias,
         ]) data-estado-transferencias>
-            <span @class(['h-1.5 w-1.5 rounded-full', 'bg-emerald-500' => $aceptaTransferencias, 'bg-amber-500' => ! $aceptaTransferencias])></span>
-            {{ $aceptaTransferencias ? 'Disponible' : 'No disponible por el momento' }}
+            <span @class(['h-1.5 w-1.5 rounded-full', 'bg-emerald-500' => $ofreceTransferencias, 'bg-amber-500' => ! $ofreceTransferencias])></span>
+            @if ($ofreceTransferencias)
+                Disponible
+            @elseif (! $tieneDatosBancarios)
+                Faltan datos
+            @else
+                No disponible por el momento
+            @endif
         </span>
     </div>
+
+    @if (! $tieneDatosBancarios)
+        <p class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" data-aviso-faltan-datos>
+            Captura tus datos bancarios para aceptar transferencias.
+        </p>
+    @endif
 
     <div class="mt-4 flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
         <div>
             <p id="etiqueta-acepta-transferencias" class="text-sm font-medium text-slate-800">Aceptar transferencias</p>
             <p class="text-xs text-slate-500">
-                @if ($aceptaTransferencias)
+                @if (! $tieneDatosBancarios)
+                    Captura tus datos bancarios para aceptar transferencias.
+                @elseif ($aceptaTransferencias)
                     Tus clientes y tu equipo pueden pagar por transferencia.
                 @else
                     No disponible por el momento: la transferencia no aparece al cobrar un pedido ni al cliente. Tus datos se conservan.

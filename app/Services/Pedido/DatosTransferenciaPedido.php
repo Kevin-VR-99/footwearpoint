@@ -23,11 +23,7 @@ class DatosTransferenciaPedido
             ->where('distribuidora_id', $pedido->distribuidora_id)
             ->first();
 
-        if ($config === null || blank($config->clabe) || blank($config->banco) || blank($config->titular_cuenta)) {
-            return null;
-        }
-
-        if (! $config->acepta_transferencias) {
+        if ($config === null || ! $config->ofreceTransferencias()) {
             return null;
         }
 

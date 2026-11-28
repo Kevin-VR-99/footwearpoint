@@ -171,7 +171,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         }
     }
 
-    /** Interruptor «Aceptar transferencias» de la distribuidora: apagado, la opción no se ofrece al cobrar. */
+    /** La transferencia se ofrece al cobrar solo con el interruptor encendido y los datos bancarios completos. */
     public function getAceptaTransferenciasProperty(): bool
     {
         return \App\Models\ConfiguracionDistribuidora::aceptaTransferenciasDe(Tenant::id());

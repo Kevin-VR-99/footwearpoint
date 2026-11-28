@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Pedido;
 
+use App\Models\ConfiguracionDistribuidora;
 use App\Models\DisponibilidadVarianteCampana;
 use App\Models\Distribuidora;
 use App\Models\Pago;
@@ -133,6 +134,15 @@ class PedidoShowPagoLivewireTest extends TestCase
         $pedidoId = $this->pedidoEnviadoDeMaria();
         $total = (float) Pedido::withoutGlobalScopes()->findOrFail($pedidoId)->total;
 
+        ConfiguracionDistribuidora::withoutGlobalScopes()
+            ->where('distribuidora_id', $this->distribuidora()->id)
+            ->update([
+                'banco' => 'BBVA',
+                'clabe' => '012180001234567899',
+                'titular_cuenta' => 'Calzados Ramírez',
+                'acepta_transferencias' => true,
+            ]);
+
         $this->comoPanel(self::EMPLEADO);
 
         Livewire::test('pedidos.show', ['id' => $pedidoId])
@@ -183,6 +193,15 @@ class PedidoShowPagoLivewireTest extends TestCase
     {
         $pedidoId = $this->pedidoEnviadoDeMaria();
         $total = (float) Pedido::withoutGlobalScopes()->findOrFail($pedidoId)->total;
+
+        ConfiguracionDistribuidora::withoutGlobalScopes()
+            ->where('distribuidora_id', $this->distribuidora()->id)
+            ->update([
+                'banco' => 'BBVA',
+                'clabe' => '012180001234567899',
+                'titular_cuenta' => 'Calzados Ramírez',
+                'acepta_transferencias' => true,
+            ]);
 
         $this->comoPanel(self::EMPLEADO);
 

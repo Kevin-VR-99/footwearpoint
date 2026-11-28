@@ -423,4 +423,101 @@ class DatosTransferenciaConfiguracionTest extends TestCase
             html_entity_decode(Livewire::test('distribuidora.datos-bancarios')->html())
         );
     }
+    public function test_sin_datos_la_seccion_pide_capturarlos_y_al_guardarlos_la_nota_se_quita(): void
+    {
+        $this->comoPanel(self::ADMIN);
+
+        $this->get(route('distribuidora.configuracion', ['pestana' => 'mercado-pago']))
+            ->assertOk()
+            ->assertSee('Captura tus datos bancarios para aceptar transferencias.')
+            ->assertSee('Faltan datos')
+            ->assertSee('data-aviso-faltan-datos', false);
+
+        $this->guardarCuenta();
+
+        $this->get(route('distribuidora.configuracion', ['pestana' => 'mercado-pago']))
+            ->assertOk()
+            ->assertDontSee('Captura tus datos bancarios para aceptar transferencias.')
+            ->assertDontSee('data-aviso-faltan-datos', false)
+            ->assertSee('Disponible');
+    }
+
+    public function test_sin_datos_la_opcion_no_aparece_al_cobrar_un_pedido_ni_en_el_mostrador(): void
+    {
+        $this->assertTrue($this->config()->acepta_transferencias);
+        $this->assertNull($this->config()->clabe);
+
+        [$pedidoId] = $this->pedidoConSaldo();
+
+        $this->comoPanel(self::ADMIN);
+        Livewire::test('pedidos.show', ['id' => $pedidoId])
+            ->assertSee('<option value="efectivo">', false)
+            ->assertDontSee('<option value="transferencia">', false)
+            ->assertDontSee('data-transferencia-spei', false);
+
+        $renglon = Livewire::test('punto-venta.index')->instance()->disponibles->first();
+        Livewire::test('punto-venta.index')
+            ->call('agregar', $renglon['clave'])
+            ->assertSee('<option value="efectivo">', false)
+            ->assertDontSee('<option value="transferencia">', false);
+
+        $this->comoApi(self::MARIA);
+        $this->getJson("/api/pedidos/{$pedidoId}")->assertOk()->assertJsonPath('data.transferencia', null);
+
+        // Con datos incompletos tampoco.
+        $this->config()->update(['banco' => 'BBVA', 'clabe' => self::CLABE, 'titular_cuenta' => null]);
+
+        $this->comoPanel(self::ADMIN);
+        Livewire::test('pedidos.show', ['id' => $pedidoId])
+            ->assertDontSee('<option value="transferencia">', false);
+        Livewire::test('punto-venta.index')
+            ->call('agregar', $renglon['clave'])
+            ->assertDontSee('<option value="transferencia">', false);
+    }
+
+    public function test_sin_datos_el_backend_rechaza_el_cobro_por_transferencia(): void
+    {
+        [$pedidoId] = $this->pedidoConSaldo();
+
+        $this->comoApi(self::EMPLEADO);
+        $this->postJson("/api/pedidos/{$pedidoId}/pagos", [
+            'tipo' => 'saldo_pedido',
+            'metodo' => 'transferencia',
+            'monto' => 10,
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.metodo.0', 'Esta distribuidora no acepta transferencias por el momento.');
+
+        $this->assertSame(0, Pago::withoutGlobalScopes()->where('pedido_id', $pedidoId)->count());
+
+        $this->comoPanel(self::ADMIN);
+        Livewire::test('pedidos.show', ['id' => $pedidoId])
+            ->set('pagoTipo', 'saldo_pedido')
+            ->set('pagoMetodo', 'transferencia')
+            ->set('pagoMonto', '10')
+            ->call('registrarPago')
+            ->assertSet('errorMsg', 'Esta distribuidora no acepta transferencias por el momento.');
+
+        $renglon = Livewire::test('punto-venta.index')->instance()->disponibles->first();
+        $antes = VentaDirecta::withoutGlobalScopes()->count();
+
+        Livewire::test('punto-venta.index')
+            ->call('agregar', $renglon['clave'])
+            ->set('metodo_pago', 'transferencia')
+            ->call('cobrar')
+            ->assertSet('errorMsg', 'Esta distribuidora no acepta transferencias por el momento.');
+
+        $this->comoApi(self::EMPLEADO);
+        $this->postJson('/api/ventas-directas', [
+            'metodo_pago' => 'transferencia',
+            'lineas' => [[
+                'variante_id' => $renglon['variante_id'],
+                'producto_campana_id' => $renglon['producto_campana_id'],
+                'cantidad' => 1,
+            ]],
+        ])->assertStatus(422);
+
+        $this->assertSame($antes, VentaDirecta::withoutGlobalScopes()->count());
+        $this->assertSame(0, Pago::withoutGlobalScopes()->where('pedido_id', $pedidoId)->count());
+    }
+
 }

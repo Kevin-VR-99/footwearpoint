@@ -106,7 +106,7 @@ new #[Layout('layouts.panel')] #[Title('Detalle pedido — FootwearPoint')] clas
             ->puede(auth()->user(), \App\Services\Auth\PermisoModuloService::PAGOS_REGISTRAR);
     }
 
-    /** Interruptor «Aceptar transferencias» de la distribuidora: apagado, la opción no se ofrece al cobrar. */
+    /** La transferencia se ofrece al cobrar solo con el interruptor encendido y los datos bancarios completos. */
     public function getAceptaTransferenciasProperty(): bool
     {
         return \App\Models\ConfiguracionDistribuidora::aceptaTransferenciasDe((int) $this->pedido->distribuidora_id);
