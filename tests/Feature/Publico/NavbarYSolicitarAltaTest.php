@@ -51,6 +51,8 @@ class NavbarYSolicitarAltaTest extends TestCase
         $this->assertStringContainsString('backdrop-filter', $css);
         $this->assertStringContainsString('prefers-reduced-motion: reduce', $css);
         $this->assertStringContainsString('.fp-alta-encabezado, .fp-alta-tarjeta', $css);
+        $this->assertStringContainsString('.fp-alta-encabezado .fp-campo-requerido', $css);
+        $this->assertMatchesRegularExpression('/\.fp-alta-encabezado \.fp-campo-requerido\s*\{[^}]*font-weight:\s*700/s', $css);
         $this->assertDoesNotMatchRegularExpression('/backdrop-blur/', $vista);
     }
 }
