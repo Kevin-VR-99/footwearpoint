@@ -31,6 +31,7 @@ final class EtiquetasAuditoria
         // Configuración
         'linea_extra.activada'            => 'Línea activada',
         'linea_extra.desactivada'         => 'Línea desactivada',
+        'revendedor_extra.contratado'     => 'Revendedor extra contratado',
         'distribuidora.subdominio_actualizado' => 'Subdominio de la tienda actualizado',
         'distribuidora.datos_actualizados' => 'Datos de la distribuidora modificados',
         'distribuidora.admin_actualizado' => 'Administrador de la distribuidora modificado',
@@ -142,6 +143,7 @@ final class EtiquetasAuditoria
         'sesion'               => 'Sesiones',
         'personal'             => 'Personal',
         'linea_extra'          => 'Configuración',
+        'revendedor_extra'     => 'Suscripción',
         'distribuidora'        => 'Configuración',
         'configuracion'        => 'Configuración',
         'ciclo'                => 'Configuración',

@@ -402,6 +402,12 @@ new class extends Component {
                             <span>${{ number_format($desglose['lineas_extra'] * $desglose['precio_linea_extra'], 2) }}</span>
                         </div>
                     @endif
+                    @if (($desglose['revendedores_extra'] ?? 0) > 0)
+                        <div class="flex justify-between text-slate-600" data-desglose-revendedores>
+                            <span>{{ $desglose['revendedores_extra'] }} {{ $desglose['revendedores_extra'] === 1 ? 'revendedor extra' : 'revendedores extra' }} × ${{ number_format($desglose['precio_revendedor_extra'], 2) }}</span>
+                            <span>${{ number_format($desglose['revendedores_extra'] * $desglose['precio_revendedor_extra'], 2) }}</span>
+                        </div>
+                    @endif
                     <div class="mt-1 flex justify-between font-semibold text-slate-900">
                         <span>Mensualidad</span>
                         <span>${{ number_format($desglose['total'], 2) }} MXN</span>

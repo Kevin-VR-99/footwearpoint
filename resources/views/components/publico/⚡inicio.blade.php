@@ -286,6 +286,10 @@ class extends Component
                                 <svg class="mt-0.5 h-4 w-4 shrink-0 text-fp-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" /></svg>
                                 <span>Línea extra: ${{ number_format((float) $plan->precio_linea_extra, 2) }} MXN al mes</span>
                             </li>
+                            <li class="flex gap-2" data-plan-revendedores>
+                                <svg class="mt-0.5 h-4 w-4 shrink-0 text-fp-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                                <span>Hasta {{ $plan->revendedores_incluidos }} revendedor{{ $plan->revendedores_incluidos == 1 ? '' : 'es' }} incluido{{ $plan->revendedores_incluidos == 1 ? '' : 's' }}; cada extra ${{ number_format((float) $plan->precio_revendedor_extra, 2) }} MXN al mes</span>
+                            </li>
                             <li class="flex gap-2">
                                 <svg class="mt-0.5 h-4 w-4 shrink-0 text-fp-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" /></svg>
                                 <span>Tienda en línea y marketplace</span>
@@ -340,6 +344,18 @@ class extends Component
                                     <th scope="row" class="sticky left-0 bg-white px-4 py-3 text-left font-medium text-slate-700">Cada línea extra, al mes</th>
                                     @foreach ($planes as $plan)
                                         <td class="px-4 py-3 text-center">${{ number_format((float) $plan->precio_linea_extra, 2) }}</td>
+                                    @endforeach
+                                </tr>
+                                <tr data-fila-comparativa="revendedores-incluidos">
+                                    <th scope="row" class="sticky left-0 bg-white px-4 py-3 text-left font-medium text-slate-700">Revendedores incluidos</th>
+                                    @foreach ($planes as $plan)
+                                        <td class="px-4 py-3 text-center">{{ $plan->revendedores_incluidos }}</td>
+                                    @endforeach
+                                </tr>
+                                <tr data-fila-comparativa="revendedor-extra">
+                                    <th scope="row" class="sticky left-0 bg-white px-4 py-3 text-left font-medium text-slate-700">Cada revendedor extra, al mes</th>
+                                    @foreach ($planes as $plan)
+                                        <td class="px-4 py-3 text-center">${{ number_format((float) $plan->precio_revendedor_extra, 2) }}</td>
                                     @endforeach
                                 </tr>
                                 @foreach (['Tienda en línea y lugar en el marketplace', 'Pedidos, anticipos e inventario por sucursal', 'App para tus clientes'] as $incluido)

@@ -14,6 +14,8 @@ class PlanSuscripcion extends Model
         'precio_base_mensual',
         'lineas_incluidas',
         'precio_linea_extra',
+        'revendedores_incluidos',
+        'precio_revendedor_extra',
         'activo',
     ];
 
@@ -21,6 +23,8 @@ class PlanSuscripcion extends Model
         'activo' => 'boolean',
         'precio_base_mensual' => 'decimal:2',
         'precio_linea_extra' => 'decimal:2',
+        'revendedores_incluidos' => 'integer',
+        'precio_revendedor_extra' => 'decimal:2',
     ];
 
     public function suscripciones()

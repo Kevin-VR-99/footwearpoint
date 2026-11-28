@@ -16,6 +16,8 @@ class PlanSuscripcionSeeder extends Seeder
                 'precio_base_mensual' => 299.00,
                 'lineas_incluidas' => 2,
                 'precio_linea_extra' => 150.00,
+                'revendedores_incluidos' => 25,
+                'precio_revendedor_extra' => 10.00,
             ],
             [
                 'nombre' => 'Pro',
@@ -23,6 +25,8 @@ class PlanSuscripcionSeeder extends Seeder
                 'precio_base_mensual' => 599.00,
                 'lineas_incluidas' => 5,
                 'precio_linea_extra' => 150.00,
+                'revendedores_incluidos' => 50,
+                'precio_revendedor_extra' => 10.00,
             ],
             [
                 'nombre' => 'Enterprise',
@@ -30,6 +34,8 @@ class PlanSuscripcionSeeder extends Seeder
                 'precio_base_mensual' => 999.00,
                 'lineas_incluidas' => 10,
                 'precio_linea_extra' => 150.00,
+                'revendedores_incluidos' => 100,
+                'precio_revendedor_extra' => 10.00,
             ],
         ];
 

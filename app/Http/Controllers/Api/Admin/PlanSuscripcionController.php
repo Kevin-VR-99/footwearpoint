@@ -39,6 +39,8 @@ class PlanSuscripcionController extends Controller
             'precio_base_mensual' => $request->precio_base_mensual,
             'lineas_incluidas'    => $request->lineas_incluidas,
             'precio_linea_extra'  => $request->precio_linea_extra,
+            'revendedores_incluidos'  => (int) $request->input('revendedores_incluidos', \App\Services\Distribuidora\CupoRevendedoresDistribuidora::INCLUIDOS_POR_DEFECTO),
+            'precio_revendedor_extra' => $request->input('precio_revendedor_extra', \App\Services\Distribuidora\CupoRevendedoresDistribuidora::PRECIO_EXTRA_POR_DEFECTO),
             'activo'              => $request->boolean('activo', true),
         ]);
 
@@ -58,6 +60,12 @@ class PlanSuscripcionController extends Controller
             'precio_base_mensual' => $request->precio_base_mensual,
             'lineas_incluidas'    => $request->lineas_incluidas,
             'precio_linea_extra'  => $request->precio_linea_extra,
+            'revendedores_incluidos'  => $request->has('revendedores_incluidos')
+                ? (int) $request->input('revendedores_incluidos')
+                : $plan->revendedores_incluidos,
+            'precio_revendedor_extra' => $request->has('precio_revendedor_extra')
+                ? $request->input('precio_revendedor_extra')
+                : $plan->precio_revendedor_extra,
             'activo'              => $request->has('activo')
                 ? $request->boolean('activo')
                 : $plan->activo,

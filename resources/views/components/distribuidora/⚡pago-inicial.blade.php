@@ -292,6 +292,9 @@ new #[Layout('layouts.guest')] #[Title('Paga tu primer mes — FootwearPoint')] 
             @if ($desglose['lineas_extra'] > 0)
                 <p>Líneas extra activas: {{ $desglose['lineas_extra'] }} × {{ $mxn($desglose['precio_linea_extra']) }}</p>
             @endif
+            @if (($desglose['revendedores_extra'] ?? 0) > 0)
+                <p>Revendedores extra: {{ $desglose['revendedores_extra'] }} × {{ $mxn($desglose['precio_revendedor_extra']) }}</p>
+            @endif
             <p class="pt-2 text-lg font-bold text-slate-900">Total a pagar: {{ $mxn($desglose['total']) }}</p>
             <p class="text-xs text-slate-500">
                 @if ($porFaltaDePago)
