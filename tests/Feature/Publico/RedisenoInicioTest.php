@@ -103,4 +103,23 @@ class RedisenoInicioTest extends TestCase
         $this->assertSame(1, substr_count($html, 'href="mailto:mvpla.footwearpoint@gmail.com"'));
         $this->assertStringContainsString('data-red="correo"', $html);
     }
+
+    /** El recuadro grande de la portada usa la misma paleta luminosa que el login. */
+    public function test_el_hero_usa_la_paleta_luminosa_del_login(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+        $vista = (string) file_get_contents(base_path('resources/views/components/publico/⚡inicio.blade.php'));
+        $hoja = (string) file_get_contents(base_path('resources/css/app.css'));
+
+        $this->assertStringContainsString('fp-portada-hero', $html);
+        $this->assertStringContainsString('fp-marca-luminosa', $html);
+        $this->assertStringContainsString('fp-marca-luminosa', $vista);
+        $this->assertStringNotContainsString('from-fp-sidebar via-fp-sidebar to-fp-accent', $vista);
+
+        $this->assertMatchesRegularExpression(
+            '/\.fp-marca-luminosa \{[^}]*linear-gradient\(165deg, #1E3A8A 0%, #2563EB 58%, #3B82F6 100%\)/s',
+            $hoja
+        );
+        $this->assertStringContainsString('class="fp-acceso-panel fp-marca-luminosa"', (string) file_get_contents(base_path('resources/views/layouts/guest.blade.php')));
+    }
 }

@@ -39,7 +39,7 @@
          Todo es CSS del bundle (app.css): ni <style> ni <script> en linea, que
          la CSP es script-src 'self'. --}}
     <div class="fp-acceso-marco">
-        <header class="fp-acceso-panel">
+        <header class="fp-acceso-panel fp-marca-luminosa">
             <div class="fp-acceso-panel-formas" aria-hidden="true">
                 <span class="fp-acceso-burbuja fp-acceso-burbuja-1"></span>
                 <span class="fp-acceso-burbuja fp-acceso-burbuja-2"></span>
@@ -67,7 +67,8 @@
                 <ul class="fp-acceso-puntos" aria-label="Lo que encuentras en FootwearPoint">
                     <li>Catálogo</li>
                     <li>Pedidos</li>
-                    <li>Entregas</li>
+                    <li>Pagos</li>
+                    <li>Stock</li>
                 </ul>
             </div>
         </header>

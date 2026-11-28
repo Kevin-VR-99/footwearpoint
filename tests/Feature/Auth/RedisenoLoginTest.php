@@ -50,7 +50,11 @@ class RedisenoLoginTest extends TestCase
         $this->assertStringContainsString('fp-acceso-marco', $html, "{$pantalla}: falta la escena de acceso.");
         $this->assertStringContainsString('fp-acceso-panel', $html, "{$pantalla}: falta el panel de marca de escritorio.");
         $this->assertStringContainsString('Calzado, pedidos y entregas en un solo lugar.', $html);
-        $this->assertStringContainsString('Catálogo', $html);
+        $this->assertStringContainsString('<li>Catálogo</li>', $html);
+        $this->assertStringContainsString('<li>Pedidos</li>', $html);
+        $this->assertStringContainsString('<li>Pagos</li>', $html);
+        $this->assertStringContainsString('<li>Stock</li>', $html);
+        $this->assertStringNotContainsString('<li>Entregas</li>', $html);
         $this->assertStringContainsString('fp-acceso-linea', $html, "{$pantalla}: falta la línea de marca de celular.");
         $this->assertStringContainsString('fp-acceso-siluetas', $html, "{$pantalla}: faltan las siluetas de tenis de celular.");
         $this->assertStringContainsString('fp-acceso-marca', $html, "{$pantalla}: falta la cabecera de la app en celular.");
@@ -252,8 +256,8 @@ class RedisenoLoginTest extends TestCase
         $this->assertStringContainsString('.fp-acceso-logo, .fp-acceso-acento { display: none; }', $celular);
 
         $this->assertStringContainsString('.fp-acceso-linea, .fp-acceso-siluetas, .fp-acceso-marca { display: none; }', $escritorio, 'En escritorio no se apagó la escena de la app.');
-        $this->assertStringContainsString('#1E3A8A', $escritorio, 'El panel de escritorio tiene que ser el azul vivo de la marca.');
-        $this->assertStringContainsString('#2563EB', $escritorio);
+        $this->assertMatchesRegularExpression('/\.fp-marca-luminosa \{[^}]*#1E3A8A[^}]*#2563EB/s', $hoja, 'El panel de escritorio tiene que usar la paleta luminosa compartida.');
+        $this->assertStringContainsString('fp-marca-luminosa', (string) file_get_contents(base_path('resources/views/layouts/guest.blade.php')));
         $this->assertStringContainsString('#DBEAFE', $escritorio, 'El fondo del formulario en escritorio tiene que ser luminoso.');
         $this->assertStringContainsString('background-image: none', $escritorio, 'En escritorio no van los íconos de campo de la app.');
         $this->assertStringNotContainsString('#111E38', $escritorio, 'El marino de la app no puede ser el fondo de escritorio.');
