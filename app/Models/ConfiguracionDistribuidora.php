@@ -40,6 +40,10 @@ class ConfiguracionDistribuidora extends Model
         'dias_maximos_recoleccion',
         'descuento_mayorista_pct',
         'mercado_pago_account_id',
+        'mp_nombre',
+        'mp_email',
+        'mp_nickname',
+        'mp_identidad_consultada_at',
         'mp_access_token',
         'mp_public_key',
         'mp_conectado_at',
@@ -72,6 +76,7 @@ class ConfiguracionDistribuidora extends Model
         'mp_refresh_token' => 'encrypted',
         'mp_token_expira_en' => 'datetime',
         'mp_aviso_reconexion_at' => 'datetime',
+        'mp_identidad_consultada_at' => 'datetime',
         'acepta_transferencias' => 'boolean',
     ];
 

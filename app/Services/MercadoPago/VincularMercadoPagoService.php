@@ -31,6 +31,7 @@ class VincularMercadoPagoService
     public function __construct(
         private readonly ClienteMercadoPago $cliente,
         private readonly RegistrarAuditoriaAction $auditoria,
+        private readonly SincronizarIdentidadMercadoPagoAction $identidad,
     ) {
     }
 
@@ -116,7 +117,7 @@ class VincularMercadoPagoService
         $publicKey = $datos['public_key'] ?? null;
         $publicKey = is_string($publicKey) && $publicKey !== '' && mb_strlen($publicKey) <= 190 ? $publicKey : null;
 
-        return DB::transaction(function () use ($distribuidoraId, $datos, $cuentaId, $publicKey) {
+        $configuracion = DB::transaction(function () use ($distribuidoraId, $datos, $cuentaId, $publicKey) {
             $configuracion = ConfiguracionDistribuidora::query()
                 ->where('distribuidora_id', $distribuidoraId)
                 ->lockForUpdate()
@@ -125,13 +126,17 @@ class VincularMercadoPagoService
             $cuentaAnterior = $configuracion->mercado_pago_account_id;
 
             $configuracion->update([
-                'mp_access_token'         => $datos['access_token'],
-                'mp_public_key'           => $publicKey,
-                'mercado_pago_account_id' => $cuentaId,
-                'mp_conectado_at'         => now(),
-                'mp_refresh_token'        => self::textoONull($datos['refresh_token'] ?? null),
-                'mp_token_expira_en'      => self::expiraEn($datos['expires_in'] ?? null),
-                'mp_aviso_reconexion_at'  => null,
+                'mp_access_token'            => $datos['access_token'],
+                'mp_public_key'              => $publicKey,
+                'mercado_pago_account_id'    => $cuentaId,
+                'mp_conectado_at'            => now(),
+                'mp_refresh_token'           => self::textoONull($datos['refresh_token'] ?? null),
+                'mp_token_expira_en'         => self::expiraEn($datos['expires_in'] ?? null),
+                'mp_aviso_reconexion_at'     => null,
+                'mp_nombre'                  => null,
+                'mp_email'                   => null,
+                'mp_nickname'                => null,
+                'mp_identidad_consultada_at' => null,
             ]);
 
             // Sin tokens en la bitácora: solo qué cuenta se conectó.
@@ -148,13 +153,18 @@ class VincularMercadoPagoService
 
             return $configuracion;
         });
+
+        $this->identidad->ejecutar($configuracion, forzar: true);
+
+        return $configuracion->fresh() ?? $configuracion;
     }
 
     /**
      * Estado de la conexión para mostrarlo en pantalla. Nunca incluye el token.
      *
      * @return array{configurado: bool, modo_prueba: bool, conectado: bool, ilegible: bool,
-     *               cuenta_id: ?string, conectado_at: ?\Illuminate\Support\Carbon,
+     *               cuenta_id: ?string, titular: ?string, correo: ?string, usuario: ?string,
+     *               conectado_at: ?\Illuminate\Support\Carbon,
      *               vence_aprox: ?\Illuminate\Support\Carbon, por_vencer: bool, vencido: bool}
      */
     public function estado(ConfiguracionDistribuidora $configuracion): array
@@ -169,6 +179,9 @@ class VincularMercadoPagoService
             'conectado'    => $conectado,
             'ilegible'     => ! $conectado && $configuracion->mp_conectado_at !== null,
             'cuenta_id'    => $conectado ? $configuracion->mercado_pago_account_id : null,
+            'titular'      => $conectado ? $configuracion->mp_nombre : null,
+            'correo'       => $conectado ? $configuracion->mp_email : null,
+            'usuario'      => $conectado ? $configuracion->mp_nickname : null,
             'conectado_at' => $conectado ? $configuracion->mp_conectado_at : null,
             'vence_aprox'  => $vence,
             'vencido'      => $vencido,

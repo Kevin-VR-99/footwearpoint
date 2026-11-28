@@ -25,10 +25,14 @@ class DesvincularMercadoPagoAction
             $cuentaAnterior = $configuracion->mercado_pago_account_id;
 
             $configuracion->update([
-                'mp_access_token'         => null,
-                'mp_public_key'           => null,
-                'mercado_pago_account_id' => null,
-                'mp_conectado_at'         => null,
+                'mp_access_token'            => null,
+                'mp_public_key'              => null,
+                'mercado_pago_account_id'    => null,
+                'mp_conectado_at'            => null,
+                'mp_nombre'                  => null,
+                'mp_email'                   => null,
+                'mp_nickname'                => null,
+                'mp_identidad_consultada_at' => null,
             ]);
 
             $this->auditoria->ejecutar(
