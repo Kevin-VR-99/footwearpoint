@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\OperacionInvalidaException;
+use App\Models\Producto;
 use App\Models\Variante;
 use App\Services\Catalogo\ImagenDeProducto;
 use App\Services\Stock\StockService;
@@ -19,20 +20,20 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     use WithPagination;
 
     /**
-     * Movimiento de stock (entrada o salida), una sola tarjeta: por modelo y talla
-     * (todas las tallas de un modelo y color) o por SKU (una variante).
+     * Movimiento de stock (entrada o salida), una sola tarjeta con un solo buscador:
+     * se escribe modelo, marca, línea, SKU o código, se elige el modelo y su color y
+     * se marcan las tallas (recuadros) con la cantidad de cada una.
      */
-    public string $tabEntrada = 'modelo';
 
     /** 'entrada' suma piezas; 'salida' las descuenta (ajuste negativo, con motivo). */
     public string $tipoMovimiento = 'entrada';
 
-    // Entrada por modelo: producto + color y una cantidad por talla.
+    // Movimiento por modelo: producto + color y una cantidad por talla marcada.
     public string $modelo_producto_id = '';
     public string $modelo_color_id = '';
-    /** Filtra el selector de modelo por nombre, modelo, marca, línea, SKU o código de catálogo. */
+    /** Texto del buscador único: nombre, modelo, marca, línea, SKU o código de catálogo. */
     public string $buscarModelo = '';
-    /** @var array<int|string, string> variante_id => cantidad */
+    /** @var array<int|string, string> variante_id => cantidad; estar en la lista = talla marcada */
     public array $modelo_cantidades = [];
     public string $modelo_motivo = '';
     /** @var list<array{talla:string, sku:string, cantidad:int, antes:int, despues:int, tipo:string}> */
@@ -45,11 +46,6 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     // Modal de movimientos
     public ?int $movimientosStockId = null;
     public int $movimientosPagina = 1;
-
-    // Movimiento por SKU (entrada E6-01 o salida/ajuste E6-02)
-    public string $entrada_variante_id = '';
-    public string $entrada_cantidad = '';
-    public string $entrada_motivo = '';
 
     #[\Livewire\Attributes\Url(except: '')]
     public string $busqueda = '';
@@ -184,73 +180,178 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
             : [...$this->expandidos, $clave];
     }
 
-    /**
-     * Combobox: busca variantes por SKU, nombre o modelo.
-     * El SKU exacto va primero para que el Enter del lector lo elija.
-     *
-     * @return list<array{id:int, sku:string, etiqueta:string, detalle:string, imagen:?string}>
-     */
-    public function buscarVariantes(string $termino): array
+    // ---------- Entrada por modelo ----------
+
+    /** Mínimo de letras para sugerir modelos. */
+    private const MIN_LETRAS_BUSQUEDA = 2;
+
+    /** Texto limpio del buscador; vacío si todavía es muy corto para sugerir. */
+    public function getTerminoModeloProperty(): string
     {
-        $termino = trim(mb_substr($termino, 0, 80));
+        $termino = trim(mb_substr($this->buscarModelo, 0, 80));
+
+        return mb_strlen($termino) >= self::MIN_LETRAS_BUSQUEDA ? $termino : '';
+    }
+
+    /**
+     * Modelos sugeridos al escribir: por nombre, modelo, marca, línea, SKU o código
+     * de catálogo. Los que empiezan igual que lo escrito salen primero.
+     */
+    public function getProductosModeloProperty()
+    {
+        $termino = $this->terminoModelo;
 
         if ($termino === '') {
-            return [];
+            return collect();
         }
 
         $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $termino).'%';
 
-        $variantes = Variante::query()
-            ->with('talla:id,sistema,valor', 'color:id,nombre', 'producto:id,nombre,modelo')
-            ->where(fn ($q) => $q->where('sku', 'like', $like)
-                ->orWhereHas('producto', fn ($p) => $p->where('nombre', 'like', $like)->orWhere('modelo', 'like', $like)))
-            ->orderByRaw('CASE WHEN sku = ? THEN 0 WHEN sku LIKE ? THEN 1 ELSE 2 END', [$termino, $termino.'%'])
-            ->orderBy('sku')
-            ->limit(20)
-            ->get();
-
-        $fotos = app(ImagenDeProducto::class)->porProducto($variantes->pluck('producto_id'));
-
-        return $variantes->map(fn (Variante $v) => [
-            'id' => (int) $v->id,
-            'sku' => (string) $v->sku,
-            'etiqueta' => $v->sku.' — '.$this->descripcionVariante($v),
-            'detalle' => $this->descripcionVariante($v),
-            'imagen' => $fotos[(int) $v->producto_id] ?? null,
-        ])->all();
-    }
-
-    private function descripcionVariante(Variante $v): string
-    {
-        return implode(' · ', array_filter([
-            $v->producto?->nombre,
-            $v->talla ? 'Talla '.$v->talla->valor : null,
-            $v->nombre_color_comercial ?: $v->color?->nombre,
-        ]));
-    }
-
-    // ---------- Entrada por modelo ----------
-
-    /** Productos que tienen variantes, para el selector de modelo. */
-    public function getProductosModeloProperty()
-    {
-        $termino = trim($this->buscarModelo);
-        $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $termino).'%';
-
-        return \App\Models\Producto::query()
+        return Producto::query()
             ->whereHas('variantes')
-            ->when($termino !== '', fn ($q) => $q->where(fn ($w) => $w
+            ->where(fn ($w) => $w
                 ->where('nombre', 'like', $like)
                 ->orWhere('modelo', 'like', $like)
                 ->orWhereHas('marca', fn ($m) => $m->where('nombre', 'like', $like))
                 ->orWhereHas('variantes', fn ($v) => $v->where('sku', 'like', $like))
                 ->orWhereHas('publicacionesCampana', fn ($p) => $p->where('codigo_catalogo', 'like', $like)
-                    ->orWhereHas('campana.linea', fn ($l) => $l->where('nombre', 'like', $like)))
-                // El modelo ya elegido no desaparece del selector al seguir escribiendo.
-                ->when($this->modelo_producto_id !== '', fn ($o) => $o->orWhere('id', (int) $this->modelo_producto_id))))
-            ->with('marca:id,nombre')
+                    ->orWhereHas('campana.linea', fn ($l) => $l->where('nombre', 'like', $like))))
+            ->with(['marca:id,nombre', 'publicacionesCampana.campana.linea:id,nombre'])
+            ->orderByRaw('CASE WHEN modelo = ? THEN 0 WHEN nombre LIKE ? THEN 1 ELSE 2 END', [$termino, $termino.'%'])
             ->orderBy('nombre')
+            ->limit(8)
             ->get(['id', 'nombre', 'modelo', 'marca_id']);
+    }
+
+    /** Variante cuyo SKU es exactamente lo escrito (pre-elige modelo, color y talla). */
+    public function getVarianteExactaProperty(): ?Variante
+    {
+        $termino = $this->terminoModelo;
+
+        if ($termino === '') {
+            return null;
+        }
+
+        return Variante::query()
+            ->with('talla:id,sistema,valor', 'color:id,nombre', 'producto:id,nombre,modelo')
+            ->where('sku', $termino)
+            ->first();
+    }
+
+    /** Fotos de los modelos sugeridos: producto_id => url. */
+    public function getFotosSugerenciasProperty(): array
+    {
+        return app(ImagenDeProducto::class)->porProducto($this->productosModelo->pluck('id'));
+    }
+
+    /** Modelo ya elegido, para mostrarlo en lugar del buscador. */
+    public function getProductoElegidoProperty(): ?Producto
+    {
+        if ($this->modelo_producto_id === '') {
+            return null;
+        }
+
+        return Producto::query()->with('marca:id,nombre')->find((int) $this->modelo_producto_id, ['id', 'nombre', 'modelo', 'marca_id']);
+    }
+
+    /** Elige un modelo de las sugerencias; el color se pre-elige si solo tiene uno. */
+    public function elegirModelo(int $productoId): void
+    {
+        if (! Producto::query()->whereHas('variantes')->whereKey($productoId)->exists()) {
+            return;
+        }
+
+        $this->modelo_producto_id = (string) $productoId;
+        $this->buscarModelo = '';
+        $this->errorMsg = '';
+        $this->resetErrorBag();
+        $this->updatedModeloProductoId();
+    }
+
+    /** Elige una variante por SKU exacto: deja listo su modelo, color y talla. */
+    public function elegirSku(int $varianteId): void
+    {
+        $variante = Variante::query()->find($varianteId, ['id', 'producto_id', 'color_id']);
+
+        if (! $variante) {
+            return;
+        }
+
+        $this->modelo_producto_id = (string) $variante->producto_id;
+        $this->modelo_color_id = (string) $variante->color_id;
+        $this->modelo_cantidades = [(int) $variante->id => ''];
+        $this->buscarModelo = '';
+        $this->errorMsg = '';
+        $this->resetErrorBag();
+    }
+
+    /** Enter en el buscador: un SKU exacto, o el único modelo que coincide. */
+    public function entrarBusqueda(): void
+    {
+        if ($this->modelo_producto_id !== '') {
+            return;
+        }
+
+        if ($exacta = $this->varianteExacta) {
+            $this->elegirSku((int) $exacta->id);
+
+            return;
+        }
+
+        $sugeridos = $this->productosModelo;
+
+        if ($sugeridos->count() === 1) {
+            $this->elegirModelo((int) $sugeridos->first()->id);
+        }
+    }
+
+    public function limpiarModelo(): void
+    {
+        $this->modelo_producto_id = '';
+        $this->modelo_color_id = '';
+        $this->modelo_cantidades = [];
+        $this->buscarModelo = '';
+        $this->resetErrorBag();
+    }
+
+    public function elegirColor(int $colorId): void
+    {
+        if (! $this->coloresModelo->contains('id', $colorId)) {
+            return;
+        }
+
+        $this->modelo_color_id = (string) $colorId;
+        $this->modelo_cantidades = [];
+        $this->resetErrorBag();
+    }
+
+    /** Marca o desmarca una talla (recuadro); al marcarla aparece su cantidad. */
+    public function alternarTalla(int $varianteId): void
+    {
+        if (! $this->tallasModelo->contains('id', $varianteId)) {
+            return;
+        }
+
+        if (array_key_exists($varianteId, $this->modelo_cantidades)) {
+            unset($this->modelo_cantidades[$varianteId]);
+        } else {
+            $this->modelo_cantidades[$varianteId] = '';
+        }
+
+        $this->resetErrorBag();
+    }
+
+    public function marcarTodasLasTallas(): void
+    {
+        foreach ($this->tallasModelo as $talla) {
+            $this->modelo_cantidades[$talla['id']] ??= '';
+        }
+    }
+
+    public function quitarTallas(): void
+    {
+        $this->modelo_cantidades = [];
+        $this->resetErrorBag();
     }
 
     public function getColoresModeloProperty()
@@ -329,48 +430,6 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
         return $this->tipoMovimiento === 'salida';
     }
 
-    /** Movimiento de una sola variante (por SKU): entrada, o salida si el tipo es «salida». */
-    public function registrarEntrada(StockService $stock)
-    {
-        $this->mensaje = '';
-        $this->errorMsg = '';
-        $salida = $this->esSalida();
-
-        $this->validate([
-            'entrada_variante_id' => ['required', 'integer', 'min:1'],
-            'entrada_cantidad' => ['required', 'integer', 'min:1'],
-            'entrada_motivo' => [$salida ? 'required' : 'nullable', 'string', 'max:300'],
-        ], [
-            'entrada_variante_id.required' => 'Selecciona una variante.',
-            'entrada_cantidad.required' => $salida ? 'Indica cuántas piezas salen.' : 'Indica cuántas piezas entraron.',
-            'entrada_cantidad.min' => 'La cantidad debe ser mayor que cero.',
-            'entrada_motivo.required' => 'Toda salida necesita un motivo (merma, corrección, etc.).',
-        ]);
-
-        try {
-            $movimiento = $salida
-                ? $stock->registrarAjuste((int) $this->entrada_variante_id, 'ajuste_negativo', (int) $this->entrada_cantidad, $this->entrada_motivo)
-                : $stock->registrarEntrada(
-                    (int) $this->entrada_variante_id,
-                    (int) $this->entrada_cantidad,
-                    $this->entrada_motivo !== '' ? $this->entrada_motivo : null,
-                );
-
-            $this->mensaje = ($salida ? 'Salida registrada' : 'Entrada registrada').'. Existencia: '
-                . $movimiento->existencia_anterior . ' → ' . $movimiento->existencia_posterior . '.';
-
-            $this->reset(['entrada_variante_id', 'entrada_cantidad', 'entrada_motivo']);
-            $this->dispatch('stock-limpiar-variantes');
-        } catch (OperacionInvalidaException $e) {
-            $this->errorMsg = $e->getMessage();
-        } catch (\Throwable $e) {
-            report($e); // TG-224 (G3): el detalle va al log.
-            $this->errorMsg = $salida
-                ? 'No se pudo registrar la salida. Revisa los datos e intenta de nuevo.'
-                : 'No se pudo registrar la entrada. Revisa los datos e intenta de nuevo.';
-        }
-    }
-
     /** Movimiento por modelo y color: una cantidad por talla, entrada o salida. */
     public function registrarEntradaModelo(StockService $stock): void
     {
@@ -386,25 +445,30 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
             'modelo_cantidades.*' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'modelo_motivo' => [$salida ? 'required' : 'nullable', 'string', 'max:300'],
         ], [
-            'modelo_producto_id.required' => 'Elige el modelo.',
+            'modelo_producto_id.required' => 'Busca y elige el modelo.',
             'modelo_color_id.required' => 'Elige el color.',
             'modelo_cantidades.*.integer' => 'Las cantidades deben ser números enteros.',
             'modelo_cantidades.*.min' => 'Las cantidades no pueden ser negativas.',
             'modelo_motivo.required' => 'Toda salida necesita un motivo (merma, corrección, etc.).',
         ]);
 
-        // Solo tallas que pertenecen al modelo y color elegidos.
+        // Solo tallas marcadas que pertenecen al modelo y color elegidos.
         $tallas = $this->tallasModelo->keyBy('id');
-        $cantidades = collect($this->modelo_cantidades)
-            ->filter(fn ($c, $id) => $tallas->has((int) $id) && (int) $c > 0)
-            ->mapWithKeys(fn ($c, $id) => [(int) $id => (int) $c])
-            ->all();
+        $marcadas = collect($this->modelo_cantidades)->filter(fn ($c, $id) => $tallas->has((int) $id));
 
-        if ($cantidades === []) {
-            $this->addError('modelo_cantidades', 'Escribe la cantidad de al menos una talla.');
+        if ($marcadas->isEmpty()) {
+            $this->addError('modelo_cantidades', 'Marca al menos una talla y escribe su cantidad.');
 
             return;
         }
+
+        if ($marcadas->contains(fn ($c) => (int) $c < 1)) {
+            $this->addError('modelo_cantidades', 'Escribe la cantidad (mínimo 1) de cada talla marcada, o quita la talla.');
+
+            return;
+        }
+
+        $cantidades = $marcadas->mapWithKeys(fn ($c, $id) => [(int) $id => (int) $c])->all();
 
         $motivo = $this->modelo_motivo !== '' ? $this->modelo_motivo : null;
 
@@ -634,7 +698,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     @if ($this->puedeAjustarStock)
     <div class="mb-6">
 
-        {{-- Un solo movimiento de stock: entrada o salida, por modelo y talla o por SKU --}}
+        {{-- Un solo movimiento de stock: entrada o salida, con un solo buscador (modelo, marca, línea, SKU o código) --}}
         <div class="relative fp-tarjeta p-5 fp-formulario fp-aparecer" data-movimiento-stock>
             <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -652,108 +716,172 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
                 </div>
             </div>
 
-            <div class="mb-4 inline-flex rounded-lg bg-slate-100 p-0.5 text-xs" role="tablist" aria-label="Forma de registrar el movimiento">
-                @foreach (['modelo' => 'Por modelo y talla', 'variante' => 'Por SKU'] as $clave => $texto)
-                    <button type="button" role="tab" data-tab="{{ $clave }}" aria-selected="{{ $tabEntrada === $clave ? 'true' : 'false' }}"
-                        wire:click="$set('tabEntrada', '{{ $clave }}')"
-                        class="rounded-md px-2.5 py-1 font-medium transition {{ $tabEntrada === $clave ? 'bg-white text-fp-sidebar shadow-sm' : 'text-slate-500 hover:text-slate-700' }}">
-                        {{ $texto }}
-                    </button>
-                @endforeach
-            </div>
+            @php
+                $salida = $tipoMovimiento === 'salida';
+                $terminoBusqueda = $this->terminoModelo;
+                $elegido = $this->productoElegido;
+                $tallasDelModelo = $this->tallasModelo;
+                $marcadas = $tallasDelModelo->filter(fn ($t) => array_key_exists($t['id'], $modelo_cantidades));
+                $chip = 'rounded-lg border px-3 py-1.5 text-sm font-semibold transition';
+                $chipActivo = 'border-fp-primary bg-fp-primary text-white';
+                $chipLibre = 'border-slate-300 bg-white text-slate-700 hover:border-fp-primary';
+            @endphp
 
-            @if ($tabEntrada === 'variante')
-                <form wire:submit="registrarEntrada" class="space-y-4 fp-emerger" wire:key="tab-variante">
-                    <div class="fp-campo">
-                        <x-stock.combobox-variante id="index-entrada-variante-id" modelo="entrada_variante_id" />
-                        @error('entrada_variante_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
-                    </div>
+            <form wire:submit="registrarEntradaModelo" class="space-y-4" data-formulario-movimiento>
+                <p class="text-xs text-slate-500">Los campos con <span class="fp-campo-requerido">*</span> son obligatorios.</p>
 
-                    <div class="fp-campo">
-                        <label for="index-entrada-cantidad" class="block text-sm font-medium text-slate-700 mb-1">Cantidad</label>
-                        <input id="index-entrada-cantidad" type="number" min="1" step="1" wire:model="entrada_cantidad"
-                               class="w-full rounded-lg text-sm focus:ring-fp-primary" placeholder="10">
-                        @error('entrada_cantidad') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
-                    </div>
+                {{-- 1. Modelo: un solo buscador (modelo, marca, línea, SKU o código) --}}
+                <div class="fp-campo">
+                    <label for="movimiento-buscar" class="block text-sm font-medium text-slate-700 mb-1">Modelo <span class="fp-campo-requerido" aria-label="obligatorio">*</span></label>
 
-                    <div class="fp-campo">
-                        <label for="index-entrada-motivo" class="block text-sm font-medium text-slate-700 mb-1">{{ $tipoMovimiento === 'salida' ? 'Motivo (obligatorio)' : 'Motivo (opcional)' }}</label>
-                        <input id="index-entrada-motivo" type="text" maxlength="300" wire:model="entrada_motivo"
-                               class="w-full rounded-lg text-sm focus:ring-fp-primary" placeholder="{{ $tipoMovimiento === 'salida' ? 'Ej. merma, corrección de conteo' : 'Ej. compra a fábrica' }}">
-                        @error('entrada_motivo') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
-                    </div>
-
-                    <button type="submit" class="fp-btn {{ $tipoMovimiento === 'salida' ? 'fp-btn-oscuro' : 'fp-btn-primario' }}" wire:loading.attr="disabled" wire:target="registrarEntrada">
-                        <span wire:loading.delay.remove wire:target="registrarEntrada">{{ $tipoMovimiento === 'salida' ? 'Registrar salida' : 'Registrar entrada' }}</span>
-                        <span wire:loading.delay wire:target="registrarEntrada">Registrando…</span>
-                    </button>
-                </form>
-            @else
-                <form wire:submit="registrarEntradaModelo" class="space-y-4 fp-emerger" wire:key="tab-modelo">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div class="fp-campo">
-                            <label for="modelo-producto" class="block text-sm font-medium text-slate-700 mb-1">Modelo</label>
-                            <x-ui.buscador wire:model.live.debounce.300ms="buscarModelo" placeholder="Modelo, marca, línea, SKU o código…" etiqueta="Buscar modelo por nombre, marca, línea, SKU o código" class="mb-2 w-full" data-buscador-modelo />
-                            <div class="flex items-center gap-2">
-                                @if ($modelo_producto_id !== '')
-                                    <x-ui.imagen-ampliable :url="$this->fotoModelo" :alt="$this->productosModelo->firstWhere('id', (int) $modelo_producto_id)?->nombre ?? 'Producto'" />
-                                @endif
-                            <select id="modelo-producto" wire:model.live="modelo_producto_id" class="w-full rounded-lg text-sm focus:ring-fp-primary">
-                                <option value="">— Elegir modelo —</option>
-                                @foreach ($this->productosModelo as $producto)
-                                    <option value="{{ $producto->id }}">{{ $producto->nombre }}{{ $producto->modelo ? ' ('.$producto->modelo.')' : '' }}{{ $producto->marca ? ' - '.$producto->marca->nombre : '' }}</option>
-                                @endforeach
-                            </select>
+                    @if ($elegido)
+                        <div class="flex items-center gap-3 rounded-xl border border-fp-primary/30 bg-white p-2" data-modelo-elegido>
+                            <x-ui.imagen-ampliable :url="$this->fotoModelo" :alt="$elegido->nombre" />
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-semibold text-fp-sidebar">{{ $elegido->nombre }}</p>
+                                <p class="truncate text-xs text-slate-500">{{ collect([$elegido->modelo, $elegido->marca?->nombre])->filter()->implode(' · ') }}</p>
                             </div>
-                            @error('modelo_producto_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
+                            <button type="button" wire:click="limpiarModelo" class="fp-enlace text-xs" data-cambiar-modelo>Cambiar modelo</button>
                         </div>
-                        <div class="fp-campo">
-                            <label for="modelo-color" class="block text-sm font-medium text-slate-700 mb-1">Color</label>
-                            <select id="modelo-color" wire:model.live="modelo_color_id" class="w-full rounded-lg text-sm focus:ring-fp-primary" @disabled($modelo_producto_id === '')>
-                                <option value="">— Elegir color —</option>
-                                @foreach ($this->coloresModelo as $color)
-                                    <option value="{{ $color['id'] }}">{{ $color['nombre'] }}</option>
-                                @endforeach
-                            </select>
-                            @error('modelo_color_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
-                        </div>
-                    </div>
+                    @else
+                        <div class="relative" x-data="{ abierto: false }" @click.outside="abierto = false" @keydown.escape="abierto = false">
+                            <x-ui.buscador id="movimiento-buscar" wire:model.live.debounce.250ms="buscarModelo" wire:keydown.enter.prevent="entrarBusqueda"
+                                @focus="abierto = true" @input="abierto = true"
+                                placeholder="Escribe unas letras: modelo, marca, línea, SKU o código…"
+                                etiqueta="Buscar modelo por nombre, marca, línea, SKU o código" class="w-full" data-buscador-modelo />
 
-                    <div class="relative">
-                        <x-ui.cargando objetivo="modelo_producto_id,modelo_color_id" />
-                        @if ($this->tallasModelo->isNotEmpty())
-                            <p class="mb-2 text-xs text-slate-500">{{ $tipoMovimiento === 'salida' ? 'Cantidad que sale por talla (deja vacío o 0 las que no se descuentan).' : 'Cantidad que entra por talla (deja vacío o 0 las que no llegaron).' }}</p>
-                            <div class="grid grid-cols-3 sm:grid-cols-4 gap-2" data-rejilla-tallas>
-                                @foreach ($this->tallasModelo as $talla)
-                                    <label class="rounded-lg border border-slate-200 p-2 text-center transition focus-within:border-fp-primary" wire:key="talla-{{ $talla['id'] }}">
-                                        <span class="block text-sm font-semibold text-fp-sidebar">{{ $talla['talla'] }}</span>
-                                        <span class="block text-[11px] text-slate-500">Hay {{ $talla['existencia'] }}</span>
-                                        <input type="number" min="0" step="1" inputmode="numeric" data-cantidad-talla
-                                            wire:model="modelo_cantidades.{{ $talla['id'] }}" aria-label="Cantidad talla {{ $talla['talla'] }}"
-                                            class="mt-1 w-full rounded-md py-1 text-center text-sm focus:ring-fp-primary" placeholder="0">
-                                    </label>
+                            @if ($terminoBusqueda !== '')
+                                @php
+                                    $sugeridos = $this->productosModelo;
+                                    $exacta = $this->varianteExacta;
+                                    $fotosSugeridas = $this->fotosSugerencias;
+                                @endphp
+                                <div x-show="abierto" x-cloak role="listbox" aria-label="Modelos sugeridos" data-sugerencias-modelo
+                                    class="mt-2 max-h-72 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+                                    @if ($exacta)
+                                        <button type="button" role="option" wire:key="sug-sku-{{ $exacta->id }}" wire:click="elegirSku({{ $exacta->id }})" data-sugerencia-sku
+                                            class="flex w-full items-center gap-3 rounded-lg bg-fp-primary/5 px-3 py-2 text-left transition hover:bg-fp-primary/10">
+                                            <span class="rounded-md bg-fp-primary px-1.5 py-0.5 text-[11px] font-semibold text-white">SKU</span>
+                                            <span class="min-w-0 flex-1">
+                                                <span class="block truncate text-sm font-semibold text-fp-sidebar">{{ $exacta->producto?->nombre }}</span>
+                                                <span class="block truncate text-xs text-slate-500">{{ $exacta->sku }} · Talla {{ $exacta->talla?->valor ?? '—' }} · {{ $exacta->nombre_color_comercial ?: ($exacta->color?->nombre ?? 'Sin color') }}</span>
+                                            </span>
+                                        </button>
+                                    @endif
+                                    @foreach ($sugeridos as $sugerido)
+                                        @php
+                                            $lineas = $sugerido->publicacionesCampana->map(fn ($p) => $p->campana?->linea?->nombre)->filter()->unique()->take(2)->implode(', ');
+                                            $detalle = collect([$sugerido->modelo, $sugerido->marca?->nombre, $lineas])->filter()->implode(' · ');
+                                        @endphp
+                                        <button type="button" role="option" wire:key="sug-{{ $sugerido->id }}" wire:click="elegirModelo({{ $sugerido->id }})" data-sugerencia-modelo
+                                            class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-slate-50 focus:bg-slate-50 focus:outline-none">
+                                            @if (! empty($fotosSugeridas[$sugerido->id]))
+                                                <img src="{{ $fotosSugeridas[$sugerido->id] }}" alt="" loading="lazy" width="40" height="40" class="h-10 w-10 shrink-0 rounded-lg border border-slate-200 bg-white object-contain">
+                                            @else
+                                                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-fp-page text-slate-400" aria-hidden="true">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.6-4.6a2 2 0 012.8 0L16 16m-2-2l1.6-1.6a2 2 0 012.8 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                </span>
+                                            @endif
+                                            <span class="min-w-0 flex-1">
+                                                <span class="block truncate text-sm font-semibold text-fp-sidebar">{{ $sugerido->nombre }}</span>
+                                                <span class="block truncate text-xs text-slate-500">{{ $detalle }}</span>
+                                            </span>
+                                        </button>
+                                    @endforeach
+                                    @if (! $exacta && $sugeridos->isEmpty())
+                                        <p class="px-3 py-3 text-sm text-slate-500" data-sin-sugerencias>No encontramos modelos con «{{ $terminoBusqueda }}». Prueba con otras letras o con el SKU.</p>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500">Escribe al menos 2 letras. Si escribes un SKU exacto, se marcan solos su color y su talla.</p>
+                    @endif
+                    @error('modelo_producto_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
+                </div>
+
+                {{-- 2. Color (recuadros, uno a la vez) --}}
+                @if ($elegido)
+                    <div class="fp-campo" data-colores-modelo>
+                        <p class="block text-sm font-medium text-slate-700 mb-1" id="movimiento-color-etiqueta">Color <span class="fp-campo-requerido" aria-label="obligatorio">*</span></p>
+                        <div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="movimiento-color-etiqueta">
+                            @foreach ($this->coloresModelo as $color)
+                                <button type="button" wire:key="color-{{ $color['id'] }}" wire:click="elegirColor({{ $color['id'] }})" data-color-chip="{{ $color['id'] }}"
+                                    aria-pressed="{{ (string) $color['id'] === $modelo_color_id ? 'true' : 'false' }}"
+                                    class="{{ $chip }} {{ (string) $color['id'] === $modelo_color_id ? $chipActivo : $chipLibre }}">
+                                    {{ $color['nombre'] }}
+                                </button>
+                            @endforeach
+                        </div>
+                        @error('modelo_color_id') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
+                    </div>
+                @endif
+
+                {{-- 3. Tallas (recuadros, selección múltiple) y cantidad de cada una --}}
+                @if ($elegido && $modelo_color_id !== '')
+                    <div class="fp-campo relative" data-tallas-modelo>
+                        <x-ui.cargando objetivo="elegirModelo,elegirSku,elegirColor,limpiarModelo" />
+                        @if ($tallasDelModelo->isNotEmpty())
+                            <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                <p class="text-sm font-medium text-slate-700" id="movimiento-tallas-etiqueta">Tallas <span class="fp-campo-requerido" aria-label="obligatorio">*</span> <span class="text-xs font-normal text-slate-500">(marca una o varias)</span></p>
+                                <span class="flex items-center gap-3 text-xs">
+                                    <button type="button" class="fp-enlace" wire:click="marcarTodasLasTallas" data-marcar-todas>Marcar todas</button>
+                                    @if ($marcadas->isNotEmpty())
+                                        <button type="button" class="fp-enlace" wire:click="quitarTallas" data-quitar-tallas>Quitar selección</button>
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="movimiento-tallas-etiqueta" data-selector-tallas>
+                                @foreach ($tallasDelModelo as $talla)
+                                    @php $marcada = array_key_exists($talla['id'], $modelo_cantidades); @endphp
+                                    <button type="button" wire:key="chip-talla-{{ $talla['id'] }}" wire:click="alternarTalla({{ $talla['id'] }})" data-talla-chip="{{ $talla['id'] }}"
+                                        aria-pressed="{{ $marcada ? 'true' : 'false' }}" aria-label="Talla {{ $talla['talla'] }}, hay {{ $talla['existencia'] }}"
+                                        class="min-w-14 rounded-lg border px-2.5 py-1.5 text-center transition {{ $marcada ? $chipActivo : $chipLibre }}">
+                                        <span class="block text-sm font-semibold leading-tight">{{ $talla['talla'] }}</span>
+                                        <span class="block text-[10px] leading-tight {{ $marcada ? 'text-white/80' : 'text-slate-500' }}">Hay {{ $talla['existencia'] }}</span>
+                                    </button>
                                 @endforeach
                             </div>
-                        @elseif ($modelo_producto_id !== '' && $modelo_color_id !== '')
+
+                            @if ($marcadas->isNotEmpty())
+                                <p class="mb-2 mt-4 text-xs text-slate-500">{{ $salida ? 'Cantidad que sale de cada talla marcada.' : 'Cantidad que entra de cada talla marcada.' }}</p>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" data-rejilla-tallas>
+                                    @foreach ($marcadas as $talla)
+                                        <label class="rounded-lg border border-fp-primary/40 bg-white p-2 text-center transition focus-within:border-fp-primary" wire:key="talla-{{ $talla['id'] }}">
+                                            <span class="block text-sm font-semibold text-fp-sidebar">Talla {{ $talla['talla'] }}</span>
+                                            <span class="block text-[11px] text-slate-500">Hay {{ $talla['existencia'] }}</span>
+                                            <input type="number" min="1" step="1" inputmode="numeric" data-cantidad-talla
+                                                wire:model="modelo_cantidades.{{ $talla['id'] }}" aria-label="Cantidad talla {{ $talla['talla'] }}"
+                                                class="mt-1 w-full rounded-md py-1 text-center text-sm focus:ring-fp-primary" placeholder="0">
+                                        </label>
+                                    @endforeach
+                                </div>
+                            @endif
+                        @else
                             <p class="text-xs text-slate-500">Este modelo y color no tiene tallas registradas.</p>
                         @endif
                         @error('modelo_cantidades') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                         @error('modelo_cantidades.*') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
                     </div>
+                @endif
 
-                    <div class="fp-campo">
-                        <label for="modelo-motivo" class="block text-sm font-medium text-slate-700 mb-1">{{ $tipoMovimiento === 'salida' ? 'Motivo (obligatorio, para todas las tallas)' : 'Motivo (opcional, para todas las tallas)' }}</label>
-                        <input id="modelo-motivo" type="text" maxlength="300" wire:model="modelo_motivo"
-                               class="w-full rounded-lg text-sm focus:ring-fp-primary" placeholder="{{ $tipoMovimiento === 'salida' ? 'Ej. merma, corrección de conteo' : 'Ej. compra a fábrica' }}">
-                        @error('modelo_motivo') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
-                    </div>
+                <div class="fp-campo">
+                    <label for="modelo-motivo" class="block text-sm font-medium text-slate-700 mb-1">
+                        @if ($salida)
+                            Motivo <span class="fp-campo-requerido" aria-label="obligatorio">*</span> <span class="text-xs font-normal text-slate-500">(para todas las tallas)</span>
+                        @else
+                            Motivo (opcional, para todas las tallas)
+                        @endif
+                    </label>
+                    <input id="modelo-motivo" type="text" maxlength="300" wire:model="modelo_motivo"
+                           class="w-full rounded-lg text-sm focus:ring-fp-primary" placeholder="{{ $salida ? 'Ej. merma, corrección de conteo' : 'Ej. compra a fábrica' }}">
+                    @error('modelo_motivo') <p class="text-xs text-fp-danger mt-1">{{ $message }}</p> @enderror
+                </div>
 
-                    <button type="submit" class="fp-btn {{ $tipoMovimiento === 'salida' ? 'fp-btn-oscuro' : 'fp-btn-primario' }}" data-registrar-modelo wire:loading.attr="disabled" wire:target="registrarEntradaModelo">
-                        <span wire:loading.delay.remove wire:target="registrarEntradaModelo">{{ $tipoMovimiento === 'salida' ? 'Registrar salida de las tallas' : 'Registrar todas las tallas' }}</span>
-                        <span wire:loading.delay wire:target="registrarEntradaModelo">Registrando…</span>
-                    </button>
-                </form>
-            @endif
+                <button type="submit" class="fp-btn {{ $salida ? 'fp-btn-oscuro' : 'fp-btn-primario' }}" data-registrar-modelo wire:loading.attr="disabled" wire:target="registrarEntradaModelo">
+                    <span wire:loading.delay.remove wire:target="registrarEntradaModelo">{{ $salida ? 'Registrar salida de las tallas' : 'Registrar todas las tallas' }}</span>
+                    <span wire:loading.delay wire:target="registrarEntradaModelo">Registrando…</span>
+                </button>
+            </form>
         </div>
     </div>
     @endif

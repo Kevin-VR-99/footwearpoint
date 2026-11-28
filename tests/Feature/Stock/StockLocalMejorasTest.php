@@ -73,11 +73,10 @@ class StockLocalMejorasTest extends TestCase
         $movimientosAntes = MovimientoStock::count();
 
         Livewire::test('stock.index')
-            ->set('tabEntrada', 'modelo')
             ->set('modelo_producto_id', (string) $producto)
             ->set('modelo_color_id', (string) $color)
             ->assertSee('Hay '.$antesA)
-            ->set('modelo_cantidades', [$a->id => '4', $b->id => '2', ($variantes[2]->id ?? 0) => ''])
+            ->set('modelo_cantidades', [$a->id => '4', $b->id => '2'])
             ->set('modelo_motivo', 'Compra a fábrica')
             ->call('registrarEntradaModelo')
             ->assertHasNoErrors()
@@ -120,45 +119,29 @@ class StockLocalMejorasTest extends TestCase
         $this->assertSame($antes, $this->existencia($variantes[0]->id));
     }
 
-    public function test_la_entrada_de_una_sola_variante_sigue_funcionando(): void
+    public function test_la_entrada_de_una_sola_variante_por_sku_sigue_funcionando(): void
     {
         $variante = Variante::query()->orderBy('id')->firstOrFail();
         $antes = $this->existencia($variante->id);
 
         Livewire::test('stock.index')
-            ->set('entrada_variante_id', (string) $variante->id)
-            ->set('entrada_cantidad', '3')
-            ->call('registrarEntrada')
-            ->assertHasNoErrors()
-            ->assertDispatched('stock-limpiar-variantes');
+            ->call('elegirSku', $variante->id)
+            ->assertSet('modelo_producto_id', (string) $variante->producto_id)
+            ->set('modelo_cantidades', [$variante->id => '3'])
+            ->call('registrarEntradaModelo')
+            ->assertHasNoErrors();
 
         $this->assertSame($antes + 3, $this->existencia($variante->id));
     }
 
-    // 2) Combobox
+    // 2) Buscador único
 
-    public function test_el_combobox_busca_por_sku_y_pone_primero_la_coincidencia_exacta(): void
-    {
-        $variante = Variante::query()->with('producto')->orderBy('id')->firstOrFail();
-        $componente = Livewire::test('stock.index');
-
-        $exacto = $componente->instance()->buscarVariantes($variante->sku);
-        $this->assertSame($variante->id, $exacto[0]['id']);
-
-        $porNombre = $componente->instance()->buscarVariantes(mb_substr($variante->producto->nombre, 0, 6));
-        $this->assertNotEmpty($porNombre);
-        $this->assertLessThanOrEqual(20, count($porNombre));
-
-        $this->assertSame([], $componente->instance()->buscarVariantes('   '));
-        $this->assertSame([], $componente->instance()->buscarVariantes('NO-EXISTE-XYZ'));
-    }
-
-    public function test_la_pagina_ya_no_trae_el_select_largo_de_variantes(): void
+    public function test_la_pagina_ya_no_trae_selects_largos_ni_combobox_aparte(): void
     {
         Livewire::test('stock.index')
-            ->set('tabEntrada', 'variante')
-            ->assertSee('data-combobox-variante="entrada_variante_id"', false)
-            ->assertDontSee('data-combobox-variante="ajuste_variante_id"', false)
+            ->assertSee('data-buscador-modelo', false)
+            ->assertDontSee('data-combobox-variante', false)
+            ->assertDontSee('— Elegir modelo —')
             ->assertDontSee('— Seleccionar variante —');
     }
 

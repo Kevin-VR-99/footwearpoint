@@ -95,26 +95,25 @@ class BuscadoresPanelesTest extends TestCase
         $this->assertLessThan(Marca::count(), count($ids));
     }
 
-    public function test_stock_por_modelo_filtra_el_selector_por_nombre_marca_y_sku(): void
+    public function test_stock_sugiere_modelos_por_nombre_marca_y_sku(): void
     {
         $this->comoDistribuidora('empleado@calzadosramirez.test');
         $variante = Variante::query()->with('producto.marca')->whereNotNull('sku')->firstOrFail();
         $producto = $variante->producto;
-        $total = Livewire::test('stock.index')->set('tabEntrada', 'modelo')->instance()->productosModelo->count();
 
-        $c = Livewire::test('stock.index')->set('tabEntrada', 'modelo')->set('buscarModelo', $variante->sku);
+        // Con menos de dos letras no sugiere nada.
+        $c = Livewire::test('stock.index')->set('buscarModelo', 'a');
+        $this->assertCount(0, $c->instance()->productosModelo);
+
+        $c->set('buscarModelo', $variante->sku);
         $this->assertTrue($c->instance()->productosModelo->contains('id', $producto->id));
-        $this->assertLessThanOrEqual($total, $c->instance()->productosModelo->count());
 
         $c->set('buscarModelo', $producto->marca->nombre);
         $this->assertTrue($c->instance()->productosModelo->contains('id', $producto->id));
+        $this->assertLessThanOrEqual(8, $c->instance()->productosModelo->count());
 
         $c->set('buscarModelo', 'zzz-sin-coincidencia-zzz');
         $this->assertCount(0, $c->instance()->productosModelo);
-
-        // Con un modelo elegido, sigue en la lista aunque el texto ya no coincida.
-        $c->set('buscarModelo', '')->set('modelo_producto_id', (string) $producto->id)->set('buscarModelo', 'zzz-sin-coincidencia-zzz');
-        $this->assertSame([$producto->id], $c->instance()->productosModelo->pluck('id')->all());
     }
 
     public function test_admin_general_busca_distribuidoras(): void
