@@ -84,4 +84,17 @@ return [
 
     'openpay_visible' => filter_var(env('OPENPAY_VISIBLE', false), FILTER_VALIDATE_BOOL),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Métricas: pendientes de fase 2
+    |--------------------------------------------------------------------------
+    |
+    | Si es true, en /admin/metricas se muestra el bloque desplegable
+    | «Lo que todavía no se mide (fase 2)». El código se queda en el
+    | proyecto; por defecto está oculto.
+    |
+    */
+
+    'metricas_fase2_visible' => filter_var(env('METRICAS_FASE2_VISIBLE', false), FILTER_VALIDATE_BOOL),
+
 ];
