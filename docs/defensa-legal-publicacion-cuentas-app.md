@@ -4,6 +4,8 @@ TG-398 (K44). Es la aportación de esta área a tres cosas que arma el equipo:
 el guion de la demo (K16), el banco de preguntas de defensa (K29) y las
 evidencias de cierre.
 
+Actualizado el 27/11/2026, con el cierre del sprint adelantado al 30/11.
+
 ---
 
 ## 1. Filas para el guion de la demo
@@ -23,8 +25,8 @@ CLABE de prueba. Nada de esto debe ser de una persona real.
 | Mostrar el permiso de notificaciones | «De sus 6 permisos, este es el único que le pregunta a la persona. No pide cámara, ubicación, micrófono ni contactos» |
 
 **Si Uptodown ya publicó la ficha,** enseñarla aquí. Si no, decir que está en
-revisión: el enlace público que pide la rúbrica ya funciona sin depender de
-eso.
+revisión y enseñar el release v1.3.4 de GitHub, que trae el mismo APK. El
+enlace público que pide la rúbrica ya funciona sin depender de ninguna tienda.
 
 ### Bloque 2 — Los documentos legales tienen versión (≈2 min)
 
@@ -49,18 +51,17 @@ cumplen la ley.
 
 ### Bloque 4 — El admin general ve a su personal (≈1 min)
 
-Este bloque depende de que TG-335 (K37) ya esté en main.
-
 | Qué se hace | Qué se dice |
 |---|---|
 | Abrir /admin/usuarios y filtrar por rol o distribuidora | «Aquí está el personal de toda la plataforma. Los clientes no aparecen» |
-| Abrir una ficha | «Roles por distribuidora, último inicio de sesión y movimientos. Es de solo lectura, y ninguna pantalla muestra contraseñas» |
+| Abrir una ficha | «Roles por distribuidora, último inicio de sesión y movimientos» |
+| Señalar los botones de la ficha, sin usarlos | «Desde aquí se cambia el correo o el rol, se restablece la contraseña y se desactiva o borra a alguien. Cada cambio pide la contraseña del admin general y queda en la auditoría. Ninguna pantalla muestra contraseñas» |
 
 ---
 
 ## 2. Preguntas de defensa
 
-Ocho, con lo que hay que contestar. La tarjeta pide cuatro como mínimo; las
+Nueve, con lo que hay que contestar. La tarjeta pide cuatro como mínimo; las
 otras son margen por si el jurado se mete por otro lado.
 
 **1. ¿Por qué firmar la app con una llave propia?**
@@ -91,10 +92,9 @@ cambia el texto sin subir la versión, la prueba falla.
 
 No lo afirmamos. Son un borrador que describe lo que el sistema hace de verdad,
 tomando como referencia la LFPDPPP publicada el 20/03/2025 y, para la
-mensualidad, el artículo 76 Bis de la LFPC. Faltan la revisión jurídica y
-definir el domicilio del responsable, quién atiende las solicitudes ARCO y los
-tribunales competentes. Mientras tanto, los textos remiten al correo de
-contacto y no inventan esos datos.
+mensualidad, el artículo 76 Bis de la LFPC. Desde el 27/11 ya muestran el
+domicilio del responsable en Ocosingo, quién atiende las solicitudes ARCO y los
+tribunales competentes. Lo que falta es la revisión jurídica.
 
 **5. ¿Por qué licencia propietaria y no MIT?**
 
@@ -120,9 +120,20 @@ cambió, no el registro completo.
 
 **8. ¿Por qué no está en Google Play?**
 
-Hoy se distribuye como APK firmado, con descarga directa desde la página y con
-Uptodown. Google Play queda como siguiente paso. No hay versión para iPhone: el
-proyecto móvil solo tiene Android.
+Hoy se distribuye como APK firmado, con descarga directa desde la página y en
+el release v1.3.4 de GitHub. Uptodown la tiene en revisión después de dos
+rechazos genéricos, y Aptoide solo revisa apps nuevas con una suscripción de
+pago, que no se contrató. Google Play queda como siguiente paso. No hay versión
+para iPhone: el proyecto móvil solo tiene Android.
+
+**9. ¿Dónde se guardan los comprobantes de transferencia?**
+
+En un bucket privado de Cloudflare R2, bajo una carpeta por distribuidora y por
+pedido. No tienen URL pública: el archivo lo entrega el servidor y solo a quien
+puede ver ese pedido. Antes se guardaban en el disco del servidor y se perdían
+en cada despliegue. Lo probamos en producción el 27/11: el comprobante de un
+pedido de prueba siguió abriendo después de volver a desplegar. Subirlo no
+registra el pago; el pago cuenta cuando la distribuidora lo confirma.
 
 ---
 
@@ -142,7 +153,13 @@ proyecto móvil solo tiene Android.
 | Legal | Términos y condiciones | [PR #325](https://github.com/Kevin-VR-99/footwearpoint/pull/325) y [PR #330](https://github.com/Kevin-VR-99/footwearpoint/pull/330) |
 | Auditoría | Inicios y cierres de sesión | [PR #331](https://github.com/Kevin-VR-99/footwearpoint/pull/331) |
 | Auditoría | Acciones que no se registraban | [PR #332](https://github.com/Kevin-VR-99/footwearpoint/pull/332) |
+| Legal | Aviso de privacidad 1.4 | [PR #347](https://github.com/Kevin-VR-99/footwearpoint/pull/347) |
+| Legal | Domicilio, ARCO y tribunales en producción | /aviso-privacidad y /terminos en footwearpoint.app |
 | Cuentas | Listado y ficha del personal | [PR #337](https://github.com/Kevin-VR-99/footwearpoint/pull/337) |
+| Cuentas | Correo, rol y contraseña desde la ficha | [PR #340](https://github.com/Kevin-VR-99/footwearpoint/pull/340) |
+| Cuentas | Desactivar, reactivar y borrar personal | [PR #345](https://github.com/Kevin-VR-99/footwearpoint/pull/345) |
+| Pagos | Comprobantes de transferencia en R2 | [PR #346](https://github.com/Kevin-VR-99/footwearpoint/pull/346) |
+| Publicación | APK 1.3.4 en GitHub | [Release v1.3.4](https://github.com/Kevin-VR-99/footwearpoint/releases/tag/v1.3.4) |
 | Publicación | Documento de Publicación del Software v3 | Carpeta Sprint_5 del Drive |
 
 ### Capturas que faltan tomar
@@ -156,8 +173,10 @@ Conviene tomarlas **en producción** y con cuentas de prueba:
 5. Un registro con su valor anterior y el nuevo.
 6. Un registro de datos bancarios con la CLABE enmascarada.
 7. El listado de usuarios del admin general y una ficha.
-8. La ficha de Uptodown, cuando esté publicada.
+8. El release v1.3.4 de GitHub, y la ficha de Uptodown si ya está publicada.
+9. Un pedido con su comprobante de transferencia y la descarga desde el panel.
 
 ### Pendiente de esta área
 
-Las 5 cuentas de admin general (K27) esperan los correos de cada integrante.
+Las 5 cuentas de admin general (K27): cada integrante da de alta la suya y
+comprueba que entra al panel.
