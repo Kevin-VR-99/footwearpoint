@@ -3,6 +3,7 @@
 use App\Models\ConfiguracionDistribuidora;
 use App\Services\MercadoPago\DesvincularMercadoPagoAction;
 use App\Services\MercadoPago\MercadoPagoException;
+use App\Services\MercadoPago\SincronizarIdentidadMercadoPagoAction;
 use App\Services\MercadoPago\VincularMercadoPagoService;
 use App\Support\MensajeError;
 use App\Support\Tenant;
@@ -12,7 +13,8 @@ use Livewire\Component;
 | TG-225 (G6) — Pestaña "Mercado Pago" de Configuración.
 |
 | Las propiedades públicas viajan al navegador: aquí solo hay datos para
-| mostrar (ID de la cuenta, fechas). El token NUNCA se pone en una propiedad.
+| mostrar (titular, correo, usuario, ID de la cuenta, fechas). El token
+| NUNCA se pone en una propiedad.
 */
 new class extends Component {
     public bool $configurado = false;
@@ -28,6 +30,12 @@ new class extends Component {
     public bool $vencido = false;
 
     public ?string $cuentaId = null;
+
+    public ?string $titular = null;
+
+    public ?string $correo = null;
+
+    public ?string $usuario = null;
 
     public ?string $conectadoEl = null;
 
@@ -78,7 +86,14 @@ new class extends Component {
 
     private function cargar(): void
     {
-        $estado = app(VincularMercadoPagoService::class)->estado($this->configuracion());
+        $configuracion = $this->configuracion();
+
+        if ($configuracion->tieneMercadoPago() && $configuracion->mp_identidad_consultada_at === null) {
+            app(SincronizarIdentidadMercadoPagoAction::class)->ejecutar($configuracion);
+            $configuracion->refresh();
+        }
+
+        $estado = app(VincularMercadoPagoService::class)->estado($configuracion);
 
         $this->configurado = $estado['configurado'];
         $this->modoPrueba = $estado['modo_prueba'];
@@ -87,6 +102,9 @@ new class extends Component {
         $this->porVencer = $estado['por_vencer'];
         $this->vencido = $estado['vencido'];
         $this->cuentaId = $estado['cuenta_id'];
+        $this->titular = $estado['titular'];
+        $this->correo = $estado['correo'];
+        $this->usuario = $estado['usuario'];
         $this->conectadoEl = $estado['conectado_at']?->format('d/m/Y');
         $this->venceEl = $estado['vence_aprox']?->format('d/m/Y');
     }
@@ -145,23 +163,35 @@ new class extends Component {
     @endif
 
     @if ($conectado)
-        <div class="fp-tarjeta fp-tarjeta-interactiva fp-aparecer p-4">
+        <div class="fp-tarjeta fp-tarjeta-interactiva fp-aparecer p-5 sm:p-6" data-tarjeta-cuenta-mp>
             <div class="flex items-center gap-2">
                 <span class="fp-insignia-viva inline-flex"><span class="fp-insignia-punto text-fp-badge-success-fg"></span></span>
                 <span class="text-sm font-semibold text-slate-900">Cuenta conectada</span>
             </div>
-            <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+            <dl class="mt-5 grid grid-cols-1 gap-x-8 gap-y-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                <div>
+                    <dt class="text-slate-500">Titular</dt>
+                    <dd @class(['mt-1 break-words font-medium', 'text-slate-900' => filled($titular), 'text-slate-500' => ! filled($titular)]) data-mp-titular>{{ filled($titular) ? $titular : 'No disponible' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-slate-500">Correo</dt>
+                    <dd @class(['mt-1 break-all font-medium', 'text-slate-900' => filled($correo), 'text-slate-500' => ! filled($correo)]) data-mp-correo>{{ filled($correo) ? $correo : 'No disponible' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-slate-500">Usuario</dt>
+                    <dd @class(['mt-1 break-words font-medium', 'text-slate-900' => filled($usuario), 'text-slate-500' => ! filled($usuario)]) data-mp-usuario>{{ filled($usuario) ? $usuario : 'No disponible' }}</dd>
+                </div>
                 <div>
                     <dt class="text-slate-500">ID de la cuenta</dt>
-                    <dd class="font-medium text-slate-900">{{ $cuentaId }}</dd>
+                    <dd @class(['mt-1 break-words font-medium', 'text-slate-900' => filled($cuentaId), 'text-slate-500' => ! filled($cuentaId)]) data-mp-id>{{ filled($cuentaId) ? $cuentaId : 'No disponible' }}</dd>
                 </div>
                 <div>
                     <dt class="text-slate-500">Conectada el</dt>
-                    <dd class="font-medium text-slate-900">{{ $conectadoEl }}</dd>
+                    <dd class="mt-1 font-medium text-slate-900">{{ $conectadoEl }}</dd>
                 </div>
                 <div>
                     <dt class="text-slate-500">La conexión vence aprox. el</dt>
-                    <dd class="font-medium text-slate-900">{{ $venceEl }}</dd>
+                    <dd class="mt-1 font-medium text-slate-900">{{ $venceEl }}</dd>
                 </div>
             </dl>
         </div>

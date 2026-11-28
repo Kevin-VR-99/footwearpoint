@@ -50,6 +50,8 @@ class VincularMercadoPagoTest extends TestCase
 
     private const URL_TOKEN = 'https://api.mercadopago.com/oauth/token';
 
+    private const URL_USUARIOS = 'https://api.mercadopago.com/users/me';
+
     private const TOKEN = 'TEST-1111111111111111-100726-abcdefabcdefabcdefabcdefabcdef12-987654321';
 
     private const PUBLIC_KEY = 'TEST-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
@@ -129,9 +131,23 @@ class VincularMercadoPagoTest extends TestCase
         ], $cambios);
     }
 
+    private function respuestaIdentidad(array $cambios = []): array
+    {
+        return array_merge([
+            'id'         => (int) self::CUENTA,
+            'first_name' => 'Maria',
+            'last_name'  => 'Ramirez',
+            'email'      => 'maria.ramirez@example.com',
+            'nickname'   => 'MARIARAMIREZ',
+        ], $cambios);
+    }
+
     private function fingirToken(array $cambios = [], int $estado = 200): void
     {
-        Http::fake([self::URL_TOKEN => Http::response($this->respuestaToken($cambios), $estado)]);
+        Http::fake([
+            self::URL_TOKEN => Http::response($this->respuestaToken($cambios), $estado),
+            self::URL_USUARIOS => Http::response($this->respuestaIdentidad(), 200),
+        ]);
     }
 
     private function volverDeMercadoPago(array $query = ['code' => 'TG-codigo-de-prueba', 'state' => self::STATE], ?array $solicitud = null)
@@ -164,6 +180,10 @@ class VincularMercadoPagoTest extends TestCase
         $this->assertNull($fila->mp_public_key);
         $this->assertNull($fila->mercado_pago_account_id);
         $this->assertNull($fila->mp_conectado_at);
+        $this->assertNull($fila->mp_nombre);
+        $this->assertNull($fila->mp_email);
+        $this->assertNull($fila->mp_nickname);
+        $this->assertNull($fila->mp_identidad_consultada_at);
     }
 
     private function assertError(\Illuminate\Testing\TestResponse $respuesta, string $mensaje): void
@@ -225,7 +245,7 @@ class VincularMercadoPagoTest extends TestCase
         $this->volverDeMercadoPago(solicitud: $this->solicitud(['verifier' => null]))
             ->assertSessionHas('mercado_pago_exito');
 
-        Http::assertSent(fn (PeticionHttp $peticion) => ! isset($peticion->data()['code_verifier']));
+        Http::assertSent(fn (PeticionHttp $peticion) => $peticion->url() === self::URL_TOKEN && ! isset($peticion->data()['code_verifier']));
     }
 
     public function test_si_falta_configurar_la_aplicacion_avisa_sin_salir_a_mercado_pago(): void
@@ -261,7 +281,7 @@ class VincularMercadoPagoTest extends TestCase
             ->assertSessionHas('mercado_pago_exito', 'Listo: tu cuenta de Mercado Pago quedó conectada.')
             ->assertSessionMissing(VincularMercadoPagoService::CLAVE_SESION);
 
-        Http::assertSentCount(1);
+        Http::assertSentCount(2);
         Http::assertSent(function (PeticionHttp $peticion) {
             $datos = $peticion->data();
 
@@ -319,7 +339,7 @@ class VincularMercadoPagoTest extends TestCase
         $this->volverDeMercadoPago(['code' => 'TG-otro-codigo', 'state' => $solicitud['state']], $solicitud)
             ->assertSessionHas('mercado_pago_exito');
 
-        Http::assertSent(fn (PeticionHttp $peticion) => $peticion->data()['code_verifier'] === $solicitud['verifier']);
+        Http::assertSent(fn (PeticionHttp $peticion) => $peticion->url() === self::URL_TOKEN && $peticion->data()['code_verifier'] === $solicitud['verifier']);
         $this->assertSame(self::CUENTA, $this->filaConfiguracion()->mercado_pago_account_id);
     }
 
@@ -391,7 +411,7 @@ class VincularMercadoPagoTest extends TestCase
 
         $this->volverDeMercadoPago()->assertSessionHas('mercado_pago_exito');
 
-        Http::assertSent(fn (PeticionHttp $peticion) => $peticion->data()['test_token'] === false);
+        Http::assertSent(fn (PeticionHttp $peticion) => $peticion->url() === self::URL_TOKEN && $peticion->data()['test_token'] === false);
     }
 
     // ---------------------------------------------------------------
@@ -455,7 +475,7 @@ class VincularMercadoPagoTest extends TestCase
             $this->actingAs($this->admin())->get(route('mercado-pago.callback', ['code' => 'TG-codigo-de-prueba', 'state' => self::STATE])),
             MercadoPagoException::SOLICITUD_INVALIDA
         );
-        Http::assertSentCount(1);
+        Http::assertSentCount(2);
     }
 
     public function test_si_la_distribuidora_cancela_en_mercado_pago_lo_explica(): void

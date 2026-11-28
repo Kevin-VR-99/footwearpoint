@@ -34,8 +34,10 @@ class RenovarTokensMercadoPagoAction
 
     public const TIPO_NOTIFICACION = 'mercado_pago_reconectar';
 
-    public function __construct(private readonly ClienteMercadoPago $cliente)
-    {
+    public function __construct(
+        private readonly ClienteMercadoPago $cliente,
+        private readonly SincronizarIdentidadMercadoPagoAction $identidad,
+    ) {
     }
 
     /**
@@ -104,6 +106,8 @@ class RenovarTokensMercadoPagoAction
                     ?? now()->addDays(ConfiguracionDistribuidora::DIAS_VIGENCIA_TOKEN_MP),
                 'mp_aviso_reconexion_at' => null,
             ])->save();
+
+            $this->identidad->ejecutar($configuracion, forzar: true);
 
             $resultado['renovadas']++;
 
