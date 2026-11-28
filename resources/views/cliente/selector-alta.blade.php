@@ -1,22 +1,30 @@
 {{-- Buscador y alta rápida. Se incluye en una pantalla Livewire. --}}
+@php
+    $requerido = $requerido ?? false;
+    $seleccionar = $seleccionar ?? 'seleccionarPropietario';
+    $quitar = $quitar ?? 'quitarPropietario';
+    $mensajeVacio = $mensajeVacio ?? 'No hay clientes que coincidan con la búsqueda.';
+    $elegido = $elegido ?? null;
+@endphp
 <fieldset class="mb-2" data-primera-compra>
     <legend class="block text-sm text-slate-600 mb-1">¿Primera compra?</legend>
     <label class="mr-4 text-sm"><input type="radio" wire:model.live="primeraCompra" value="si"> Sí</label>
     <label class="text-sm"><input type="radio" wire:model.live="primeraCompra" value="no"> No</label>
 </fieldset>
 @if ($primeraCompra !== 'si')
-    <x-ui.buscador wire:model.live.debounce.400ms="busquedaCliente"
-        placeholder="Buscar por nombre o teléfono" etiqueta="Buscar cliente" />
-    <select wire:model.live="{{ $seleccion }}" aria-label="{{ $etiqueta }}"
-        class="mt-2 w-full rounded-lg text-sm focus:ring-fp-primary">
-        <option value="">{{ $vacio }}</option>
-        @foreach ($opciones as $opcion)
-            <option value="{{ $opcion->id }}">{{ $opcion->nombre }}</option>
-        @endforeach
-    </select>
-    @if (trim($busquedaCliente) !== '' && $opciones->isEmpty())
-        <p class="mt-1 text-xs text-slate-500">No hay clientes que coincidan con la búsqueda.</p>
-    @endif
+    <x-cliente.autocompletado
+        wire:model.live.debounce.400ms="busquedaCliente"
+        :sugerencias="$opciones"
+        :elegido="$elegido"
+        :termino="$busquedaCliente"
+        :seleccionar="$seleccionar"
+        :quitar="$quitar"
+        :etiqueta="$etiqueta"
+        :requerido="$requerido"
+        :error-campo="$seleccion"
+        placeholder="Buscar por nombre o teléfono"
+        :mensaje-vacio="$mensajeVacio"
+        etiqueta-buscador="Buscar por nombre o teléfono" />
 @else
     <div class="space-y-2" data-alta-rapida>
         <label class="block text-sm">Nombre

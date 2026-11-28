@@ -230,6 +230,29 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
             ->values();
     }
 
+    public function seleccionarClienteDeBusqueda(int $id): void
+    {
+        $this->cliente_directo_id = (string) $id;
+        $this->busquedaCliente = '';
+    }
+
+    public function quitarClienteDeBusqueda(): void
+    {
+        $this->cliente_directo_id = '';
+        $this->busquedaCliente = '';
+    }
+
+    public function getClienteElegidoProperty(): ?array
+    {
+        if ($this->cliente_directo_id === '') {
+            return null;
+        }
+
+        $cliente = $this->clientes->firstWhere('id', (int) $this->cliente_directo_id);
+
+        return $cliente ? BusquedaDeCliente::ficha($cliente) : null;
+    }
+
     protected function asignarClienteDirecto(int $id): void
     {
         $this->cliente_directo_id = (string) $id;
@@ -788,8 +811,12 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                         @include('cliente.selector-alta', [
                             'seleccion' => 'cliente_directo_id',
                             'opciones' => $this->clientesFiltrados,
+                            'elegido' => $this->clienteElegido,
                             'vacio' => '— Venta de mostrador —',
                             'etiqueta' => 'Cliente (opcional)',
+                            'requerido' => false,
+                            'seleccionar' => 'seleccionarClienteDeBusqueda',
+                            'quitar' => 'quitarClienteDeBusqueda',
                         ])
                     </div>
 
