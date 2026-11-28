@@ -159,17 +159,19 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
 };
 ?>
 
-<div class="fp-acceso-tarjeta p-8 lg:p-10">
-    {{-- TG-390 (A30): el logo bajo de h-28 a h-16, que es lo que usan las otras
-         seis pantallas de acceso. Quien carga la marca aqui es el fondo, no el
-         tamano del logo.
-         Rediseño (Gabriel, 27 nov): en celular se ve como siempre; desde lg
-         el titulo crece y sale la linea de ayuda, sobre la tarjeta de vidrio. --}}
+<div class="fp-acceso-bloque">
+    <div class="fp-acceso-titulos">
+        <h1>
+            <span class="lg:hidden">Inicia sesión para continuar</span>
+            <span class="hidden lg:inline">Inicia sesión en tu cuenta</span>
+        </h1>
+        <p>Entra con tu correo y tu contraseña.</p>
+    </div>
+    <div class="fp-acceso-tarjeta p-8 lg:p-0">
+    {{-- El logo de la tarjeta se esconde: en celular sale en la cabecera de
+         la app y en escritorio, en el panel. Sigue en el HTML para las
+         demás pantallas que comparten el encabezado. --}}
     <x-auth.encabezado class="mb-3 lg:mb-5" />
-    <h1 class="mb-8 text-center text-sm font-normal text-slate-500 lg:mb-6 lg:text-base lg:font-medium lg:text-slate-700">
-        <span class="lg:hidden">Inicia sesión en tu cuenta</span>
-        <span class="hidden lg:inline">Inicia sesión para continuar</span>
-    </h1>
 
     {{-- TG-184: a quien no es personal se le explica que entre por la app. --}}
     @if (session('aviso_acceso'))
@@ -225,4 +227,5 @@ new #[Layout('layouts.guest')] #[Title('Iniciar sesión — FootwearPoint')] cla
             Volver al inicio
         </a>
     </form>
+</div>
 </div>

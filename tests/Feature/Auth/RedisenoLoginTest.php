@@ -14,10 +14,11 @@ use Tests\TestCase;
 /**
  * Rediseño del login y de las pantallas de acceso (Gabriel, 7 y 27 nov).
  *
- * En celular todo se ve como antes: tarjeta blanca centrada con el logo
- * dentro y sin la escena de la app. En escritorio (lg) se copia el login
- * de la app (fondo marino, siluetas, línea de marca, logo centrado) y se
- * mejora con vidrio claro y más luz.
+ * En celular (menos de 1024 px) se copia el login de la app Flutter
+ * (fondo marino, siluetas, línea de marca, logo centrado) y se mejora
+ * con vidrio claro. En escritorio (lg) vuelve la composición de la ronda
+ * 2, aclarada: panel de marca a la izquierda y formulario de vidrio a
+ * la derecha, sin las siluetas ni la escena centrada de la app.
  *
  * Es un cambio de diseño. Lo que estas pruebas cuidan es que con el diseño
  * nuevo nada se haya roto: las pantallas cargan, el formulario y sus enlaces
@@ -43,27 +44,29 @@ class RedisenoLoginTest extends TestCase
         return (string) file_get_contents(base_path('resources/css/app.css'));
     }
 
-    /** El panel de marca: logo, frase y las formas decorativas. */
+    /** Las dos caras del acceso: panel de escritorio y escena de la app en celular. */
     private function assertPanelDeMarca(string $html, string $pantalla): void
     {
         $this->assertStringContainsString('fp-acceso-marco', $html, "{$pantalla}: falta la escena de acceso.");
-        $this->assertStringContainsString('fp-acceso-linea', $html, "{$pantalla}: falta la línea de marca.");
-        $this->assertStringContainsString('fp-acceso-siluetas', $html, "{$pantalla}: faltan las siluetas de tenis.");
+        $this->assertStringContainsString('fp-acceso-panel', $html, "{$pantalla}: falta el panel de marca de escritorio.");
+        $this->assertStringContainsString('Calzado, pedidos y entregas en un solo lugar.', $html);
+        $this->assertStringContainsString('Catálogo', $html);
+        $this->assertStringContainsString('fp-acceso-linea', $html, "{$pantalla}: falta la línea de marca de celular.");
+        $this->assertStringContainsString('fp-acceso-siluetas', $html, "{$pantalla}: faltan las siluetas de tenis de celular.");
+        $this->assertStringContainsString('fp-acceso-marca', $html, "{$pantalla}: falta la cabecera de la app en celular.");
         $this->assertStringContainsString('brand/logo-mark-white-192.png', $html, "{$pantalla}: no usa el PNG de la app.");
         $this->assertStringContainsString('Footwear Point', $html);
-        $this->assertStringContainsString('brand/logo-full-160.png', $html, "{$pantalla}: en celular se quedó sin el logo de la tarjeta.");
+        $this->assertStringContainsString('brand/logo-full-160.png', $html, "{$pantalla}: el encabezado compartido ya no trae el logo.");
         $this->assertStringContainsString('fp-acceso-tarjeta', $html, "{$pantalla}: el formulario ya no va en su tarjeta.");
         $this->assertSame(1, substr_count($html, '<h1'), "{$pantalla}: tiene que haber un solo h1.");
         $this->assertSame(1, substr_count($html, '<main'), "{$pantalla}: falta o sobra la región principal.");
     }
 
-    /** El logo dentro de la tarjeta, que es el que se ve en celular. */
+    /** El encabezado compartido sigue en el HTML (en pantalla se esconde: el logo ya está arriba o en el panel). */
     private function assertLogoEnLaTarjeta(string $html, string $pantalla): void
     {
-        $tarjeta = substr($html, (int) strpos($html, 'fp-acceso-tarjeta'));
-
-        $this->assertStringContainsString('fp-acceso-logo', $tarjeta, "{$pantalla}: en celular se quedó sin logo.");
-        $this->assertStringContainsString('brand/logo-full-160.png', $tarjeta, "{$pantalla}: en celular se quedó sin logo.");
+        $this->assertStringContainsString('fp-acceso-logo', $html, "{$pantalla}: desapareció el encabezado compartido.");
+        $this->assertStringContainsString('brand/logo-full-160.png', $html, "{$pantalla}: desapareció el encabezado compartido.");
     }
 
     // --- Las vistas cargan -------------------------------------------------
@@ -75,6 +78,7 @@ class RedisenoLoginTest extends TestCase
         $this->assertPanelDeMarca($html, 'login');
         $this->assertLogoEnLaTarjeta($html, 'login');
         $this->assertStringContainsString('Inicia sesión en tu cuenta', $html);
+        $this->assertStringContainsString('Inicia sesión para continuar', $html);
     }
 
     public function test_recuperar_contrasena_carga_con_el_panel(): void
@@ -225,28 +229,34 @@ class RedisenoLoginTest extends TestCase
     }
 
     /**
-     * En celular no salen la línea, las siluetas ni la cabecera de la app, y
-     * el logo va en la tarjeta, como antes. Desde lg aparece la escena de la
-     * app y el logo de la tarjeta se esconde (ya está arriba, centrado).
+     * En celular sale la escena de la app (línea, siluetas, cabecera) y el
+     * panel de escritorio se esconde. Desde lg vuelve el panel, se apagan
+     * las siluetas y el fondo del formulario es claro.
      */
-    public function test_en_celular_no_sale_el_panel_y_el_logo_va_en_la_tarjeta(): void
+    public function test_en_celular_sale_la_escena_de_la_app_y_en_escritorio_el_panel(): void
     {
         $hoja = $this->hoja();
-        $escritorio = substr($hoja, (int) strpos($hoja, '/* --- Escritorio: escena de la app'));
-        $celular = substr($hoja, 0, (int) strpos($hoja, '/* --- Escritorio: escena de la app'));
+        $corte = '/* --- Escritorio: panel de marca';
+        $this->assertNotFalse(strpos($hoja, $corte), 'Falta el bloque de escritorio en app.css.');
+        $escritorio = substr($hoja, (int) strpos($hoja, $corte));
+        $celular = substr($hoja, 0, (int) strpos($hoja, $corte));
 
-        $this->assertStringContainsString('.fp-acceso-marca, .fp-acceso-siluetas, .fp-acceso-linea { display: none; }', $celular, 'En celular salió la escena de la app.');
-        $this->assertMatchesRegularExpression('/\.fp-acceso-acento \{\s*display: none;/', $celular);
-        $this->assertStringNotContainsString('.fp-acceso-logo { display: none; }', $celular, 'En celular se escondió el logo de la tarjeta.');
+        $this->assertStringContainsString('.fp-acceso-panel { display: none; }', $celular, 'En celular salió el panel de escritorio.');
+        $this->assertMatchesRegularExpression('/\.fp-acceso-linea \{[^}]*display:\s*block;/s', $celular);
+        $this->assertMatchesRegularExpression('/\.fp-acceso-siluetas \{[^}]*display:\s*block;/s', $celular);
+        $this->assertMatchesRegularExpression('/\.fp-acceso-marca \{[^}]*display:\s*flex;/s', $celular);
+        $this->assertStringContainsString('#111E38', $celular, 'El fondo de celular tiene que partir del marino de la app.');
+        $this->assertStringContainsString('silueta-tenis.svg', $celular);
+        $this->assertStringContainsString('icono-correo.svg', $celular);
+        $this->assertStringContainsString('icono-candado.svg', $celular);
+        $this->assertStringContainsString('.fp-acceso-logo, .fp-acceso-acento { display: none; }', $celular);
 
-        $this->assertMatchesRegularExpression('/\.fp-acceso-marca \{\s*display: flex;/', $escritorio);
-        $this->assertMatchesRegularExpression('/\.fp-acceso-siluetas \{\s*display: block;/', $escritorio);
-        $this->assertStringContainsString('.fp-acceso-linea', $escritorio);
-        $this->assertStringContainsString('.fp-acceso-logo { display: none; }', $escritorio);
-        $this->assertStringContainsString('#111E38', $escritorio, 'El fondo de escritorio tiene que partir del marino de la app.');
-
-        // El fondo de celular es el de siempre: claro, sin el marino de escritorio.
-        $this->assertMatchesRegularExpression('/\.fp-acceso-fondo \{[^}]*linear-gradient\(160deg, var\(--color-fp-page\) 0%, #fff 45%, var\(--color-fp-page\) 100%\)/s', $celular);
+        $this->assertStringContainsString('.fp-acceso-linea, .fp-acceso-siluetas, .fp-acceso-marca { display: none; }', $escritorio, 'En escritorio no se apagó la escena de la app.');
+        $this->assertStringContainsString('#1E3A8A', $escritorio, 'El panel de escritorio tiene que ser el azul vivo de la marca.');
+        $this->assertStringContainsString('#2563EB', $escritorio);
+        $this->assertStringContainsString('#DBEAFE', $escritorio, 'El fondo del formulario en escritorio tiene que ser luminoso.');
+        $this->assertStringContainsString('background-image: none', $escritorio, 'En escritorio no van los íconos de campo de la app.');
+        $this->assertStringNotContainsString('#111E38', $escritorio, 'El marino de la app no puede ser el fondo de escritorio.');
     }
 
     /** En escritorio la tarjeta es vidrio claro, con respaldo casi sólido y texto oscuro. */
@@ -272,23 +282,25 @@ class RedisenoLoginTest extends TestCase
         $this->assertMatchesRegularExpression('/prefers-reduced-transparency: reduce\)\s*\{[^}]*\.fp-acceso-tarjeta[^}]*background-color: #fff/s', $hoja);
     }
 
-    /** El logo de escritorio es el mismo PNG de la app, centrado y sin placa. */
+    /** El logo (panel y celular) es el mismo PNG de la app, centrado y sin placa. */
     public function test_el_logo_del_panel_es_png_centrado_y_sin_placa(): void
     {
         $layout = (string) preg_replace('/\{\{--.*?--\}\}/s', '', (string) file_get_contents(base_path('resources/views/layouts/guest.blade.php')));
         $hoja = $this->hoja();
-        $escritorio = substr($hoja, (int) strpos($hoja, '/* --- Escritorio: escena de la app'));
+        $escritorio = substr($hoja, (int) strpos($hoja, '/* --- Escritorio: panel de marca'));
+        $celular = substr($hoja, 0, (int) strpos($hoja, '/* --- Escritorio: panel de marca'));
 
         $this->assertStringContainsString('brand/logo-mark-white-192.png', $layout);
         $this->assertStringContainsString('Footwear Point', $layout);
+        $this->assertStringContainsString('fp-acceso-panel-contenido', $layout, 'Falta el panel lateral de escritorio.');
         $this->assertStringContainsString('fp-acceso-siluetas', $layout);
         $this->assertStringContainsString('silueta-tenis.svg', $hoja);
         $this->assertStringNotContainsString('fp-acceso-placa-logo', $layout);
         $this->assertStringNotContainsString('fp-vidrio', $layout, 'El logo ya no va en una placa de vidrio.');
-        $this->assertStringNotContainsString('fp-acceso-panel-contenido', $layout, 'Volvió el panel lateral: se prioriza la composición de la app.');
 
-        $this->assertMatchesRegularExpression('/\.fp-acceso-marca \{[^}]*align-items:\s*center;[^}]*text-align:\s*center;/s', $escritorio);
-        $this->assertMatchesRegularExpression('/\.fp-acceso-linea \{[^}]*--color-fp-primary[^}]*--color-fp-danger/s', $escritorio);
+        $this->assertMatchesRegularExpression('/\.fp-acceso-panel-contenido \{[^}]*align-items:\s*center;[^}]*text-align:\s*center;/s', $escritorio);
+        $this->assertMatchesRegularExpression('/\.fp-acceso-marca \{[^}]*align-items:\s*center;[^}]*text-align:\s*center;/s', $celular);
+        $this->assertMatchesRegularExpression('/\.fp-acceso-linea \{[^}]*--color-fp-primary[^}]*--color-fp-danger/s', $celular);
 
         foreach (['login', 'forgot-password', 'reset-password', 'correo-verificado', 'cambiar-password'] as $pantalla) {
             $vista = (string) file_get_contents(base_path('resources/views/components/auth/⚡'.$pantalla.'.blade.php'));
