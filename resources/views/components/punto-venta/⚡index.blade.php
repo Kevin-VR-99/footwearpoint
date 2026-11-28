@@ -171,6 +171,12 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
         }
     }
 
+    /** Interruptor «Aceptar transferencias» de la distribuidora: apagado, la opción no se ofrece al cobrar. */
+    public function getAceptaTransferenciasProperty(): bool
+    {
+        return \App\Models\ConfiguracionDistribuidora::aceptaTransferenciasDe(Tenant::id());
+    }
+
     public function getClientesProperty()
     {
         return ClienteDirecto::query()
@@ -702,7 +708,9 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                         <select id="index-metodo-pago" wire:model.live="metodo_pago"
                                 class="w-full rounded-lg text-sm focus:ring-fp-primary">
                             <option value="efectivo">Efectivo</option>
-                            <option value="transferencia">Transferencia</option>
+                            @if ($this->aceptaTransferencias)
+                                <option value="transferencia">Transferencia</option>
+                            @endif
                             <option value="tarjeta">Tarjeta</option>
                             <option value="otro">Otro</option>
                         </select>

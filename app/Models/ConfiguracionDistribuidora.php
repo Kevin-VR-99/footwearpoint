@@ -50,6 +50,7 @@ class ConfiguracionDistribuidora extends Model
         'banco',
         'clabe',
         'titular_cuenta',
+        'acepta_transferencias',
     ];
 
     /**
@@ -71,7 +72,26 @@ class ConfiguracionDistribuidora extends Model
         'mp_refresh_token' => 'encrypted',
         'mp_token_expira_en' => 'datetime',
         'mp_aviso_reconexion_at' => 'datetime',
+        'acepta_transferencias' => 'boolean',
     ];
+
+    /**
+     * Interruptor «Aceptar transferencias». Sin fila de configuración cuenta
+     * como encendido, que es como estaba antes del interruptor. No mira si hay
+     * datos bancarios: eso lo decide DatosTransferenciaPedido.
+     */
+    public static function aceptaTransferenciasDe(?int $distribuidoraId): bool
+    {
+        $consulta = static::query();
+
+        if ($distribuidoraId !== null) {
+            $consulta->where('distribuidora_id', $distribuidoraId);
+        }
+
+        $config = $consulta->first();
+
+        return $config === null || (bool) ($config->acepta_transferencias ?? true);
+    }
 
     public function getMonedaAttribute(): string
     {

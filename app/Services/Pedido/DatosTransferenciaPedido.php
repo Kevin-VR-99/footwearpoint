@@ -7,11 +7,14 @@ use App\Models\Pedido;
 
 /**
  * Lo que ve quien debe pagar el pedido, si la distribuidora guardó su cuenta.
- * Sin datos, no hay nada que mostrar.
+ * Sin datos, o con el interruptor «Aceptar transferencias» apagado, no hay nada
+ * que mostrar (los datos se conservan).
  */
 class DatosTransferenciaPedido
 {
     public const AVISO = 'FootwearPoint no recibe ni custodia estos pagos';
+
+    public const MENSAJE_NO_DISPONIBLE = 'Esta distribuidora no acepta transferencias por el momento.';
 
     /** @return array{banco: string, clabe: string, titular: string, monto: float, concepto: string, aviso: string}|null */
     public function para(Pedido $pedido): ?array
@@ -21,6 +24,10 @@ class DatosTransferenciaPedido
             ->first();
 
         if ($config === null || blank($config->clabe) || blank($config->banco) || blank($config->titular_cuenta)) {
+            return null;
+        }
+
+        if (! $config->acepta_transferencias) {
             return null;
         }
 

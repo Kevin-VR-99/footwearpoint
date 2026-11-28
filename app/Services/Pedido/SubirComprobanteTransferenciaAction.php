@@ -3,6 +3,7 @@
 namespace App\Services\Pedido;
 
 use App\Models\ComprobanteTransferencia;
+use App\Models\ConfiguracionDistribuidora;
 use App\Models\Pedido;
 use App\Support\PropietarioActual;
 use Illuminate\Http\UploadedFile;
@@ -25,6 +26,12 @@ class SubirComprobanteTransferenciaAction
     public function ejecutar(Pedido $pedido, UploadedFile $archivo): ComprobanteTransferencia
     {
         abort_if(PropietarioActual::esDeLaCasa(), 403, 'El comprobante lo sube el cliente del pedido.');
+
+        if (! ConfiguracionDistribuidora::aceptaTransferenciasDe((int) $pedido->distribuidora_id)) {
+            throw ValidationException::withMessages([
+                'comprobante' => [DatosTransferenciaPedido::MENSAJE_NO_DISPONIBLE],
+            ]);
+        }
 
         $extension = strtolower($archivo->getClientOriginalExtension() ?: $archivo->extension() ?: '');
 
