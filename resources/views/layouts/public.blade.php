@@ -19,7 +19,7 @@
 </head>
 
 {{-- TG-234: paleta fp-* del admin general y barra con la estructura del panel de distribuidora. --}}
-<body class="flex min-h-screen flex-col bg-fp-page text-slate-800 antialiased">
+<body class="fp-pagina-publica flex min-h-screen flex-col bg-fp-page text-slate-800 antialiased">
     <x-ui.saltar-al-contenido />
     {{-- TG-282: el inicio se puede ver sin internet, desde una copia
          guardada. Decirlo evita que alguien tome por vigente un precio o un
@@ -40,7 +40,7 @@
         })();
     </script>
     <header
-        class="sticky top-0 z-30 border-b border-slate-200/80 fp-vidrio shadow-sm">
+        class="fp-navbar-publica sticky top-0 z-30 border-b border-slate-200/80 fp-vidrio shadow-sm">
         <div class="h-0.5 w-full bg-gradient-to-r from-fp-primary via-fp-sidebar to-fp-danger"></div>
         <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 sm:px-5">
             <a href="{{ route('marketplace') }}" class="group flex min-w-0 items-center gap-2.5 rounded-xl py-1 pr-2.5 pl-1 transition hover:bg-fp-page">

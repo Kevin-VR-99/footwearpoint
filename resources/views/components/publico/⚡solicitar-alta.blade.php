@@ -265,10 +265,10 @@ class extends Component
 };
 ?>
 
-<div class="max-w-3xl mx-auto">
+<div class="fp-alta max-w-3xl mx-auto">
     @if ($enviada)
         {{-- Pantalla de confirmación: qué sigue --}}
-        <div class="fp-tarjeta p-8 text-center">
+        <div class="fp-alta-tarjeta p-8 text-center">
             <h1 class="text-2xl font-bold text-slate-900">Recibimos tu solicitud</h1>
 
             <div class="mt-4 text-slate-600 space-y-3 text-left max-w-xl mx-auto">
@@ -290,23 +290,22 @@ class extends Component
             </div>
         </div>
     @else
-        <div class="mb-8">
-            <a href="{{ route('inicio') }}"
-                class="mb-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
+        <header class="fp-alta-encabezado fp-marca-luminosa mb-8">
+            <a href="{{ route('inicio') }}" class="fp-alta-volver">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
                 Volver al inicio
             </a>
-            <h1 class="text-2xl font-bold text-slate-900">Solicitar mi alta</h1>
-            <p class="mt-1 text-sm text-slate-500">
+            <h1>Solicitar mi alta</h1>
+            <p class="mt-2 text-sm">
                 Cuéntanos de tu distribuidora. Revisamos tu solicitud y te avisamos por correo.
             </p>
-            <p class="mt-2 text-sm text-slate-600">
+            <p class="mt-2 text-sm">
                 Los campos con <span class="fp-campo-requerido">*</span> son obligatorios:
                 nombre comercial, el plan que te gustaría, tu nombre, tu correo, la contraseña y aceptar los documentos.
             </p>
-        </div>
+        </header>
 
         @if ($errors->any())
             <div id="errores-solicitud" tabindex="-1" x-init="$nextTick(() => $el.focus())"
@@ -326,7 +325,7 @@ class extends Component
             </div>
         @endif
 
-        <form wire:submit="enviar" class="space-y-8">
+        <form wire:submit="enviar" class="fp-alta-formulario space-y-8">
             {{-- Campo trampa: invisible para una persona, tentador para un robot. --}}
             <div aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;" tabindex="-1">
                 <label for="sitio_web">No llenes este campo</label>
@@ -334,8 +333,13 @@ class extends Component
             </div>
 
             {{-- Tu distribuidora --}}
-            <section class="fp-tarjeta p-6 space-y-4">
-                <h2 class="font-semibold text-slate-900">Tu distribuidora</h2>
+            <section class="fp-alta-tarjeta p-6 space-y-4">
+                <h2 class="fp-alta-titulo">
+                    <span class="fp-alta-icono" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 10h.01M15 10h.01"/></svg>
+                    </span>
+                    Tu distribuidora
+                </h2>
 
                 {{-- A18, pantalla piloto. Estos campos pintaban el error con
                      text-red-600, que ni siquiera es el rojo de la casa: era
@@ -370,8 +374,13 @@ class extends Component
             </section>
 
             {{-- Preferencia de plan: no se cobra ni se activa hasta que la solicitud se acepte. --}}
-            <section class="fp-tarjeta p-6">
-                <h2 class="font-semibold text-slate-900">Plan que te gustaría si te aceptamos <span class="fp-campo-requerido" aria-label="obligatorio">*</span></h2>
+            <section class="fp-alta-tarjeta p-6">
+                <h2 class="fp-alta-titulo">
+                    <span class="fp-alta-icono" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h10"/></svg>
+                    </span>
+                    <span>Plan que te gustaría si te aceptamos <span class="fp-campo-requerido" aria-label="obligatorio">*</span></span>
+                </h2>
                 <p class="mt-1 text-sm text-slate-500">Todavía no se cobra ni queda activo. Si aceptamos tu solicitud, este es el plan con el que te gustaría empezar. Después se puede cambiar. Precios en pesos mexicanos, por mes.</p>
 
                 @if ($this->planes->isEmpty())
@@ -381,7 +390,7 @@ class extends Component
                 @else
                     <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
                         @foreach ($this->planes as $plan)
-                            <label class="block cursor-pointer rounded-xl border p-4 transition
+                            <label class="fp-alta-plan block cursor-pointer rounded-xl border p-4 transition
                                 {{ (string) $plan->id === $plan_id ? 'border-[#111E38] ring-2 ring-[#111E38]/20 bg-[#F8FAFF]' : 'border-slate-200 hover:bg-slate-50' }}">
                                 <span class="flex items-start gap-2">
                                     <input type="radio" name="plan_id" wire:model.live="plan_id" value="{{ $plan->id }}" required
@@ -406,8 +415,13 @@ class extends Component
             </section>
 
             {{-- Tu cuenta --}}
-            <section class="fp-tarjeta p-6 space-y-4">
-                <h2 class="font-semibold text-slate-900">Tu cuenta de administrador</h2>
+            <section class="fp-alta-tarjeta p-6 space-y-4">
+                <h2 class="fp-alta-titulo">
+                    <span class="fp-alta-icono" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM4 21a8 8 0 1116 0"/></svg>
+                    </span>
+                    Tu cuenta de administrador
+                </h2>
                 <p class="text-sm text-slate-500">Con esto entrarás al panel cuando aprobemos tu solicitud.</p>
 
                 <x-ui.campo etiqueta="Tu nombre" para="admin_nombre" error="admin_nombre" requerido>
@@ -433,7 +447,13 @@ class extends Component
             </section>
 
             {{-- Legales --}}
-            <div class="space-y-3">
+            <div class="fp-alta-tarjeta space-y-3 p-6">
+                <h2 class="fp-alta-titulo">
+                    <span class="fp-alta-icono" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3h8l4 4v14H7V3zM15 3v4h4M9 13h6M9 17h6"/></svg>
+                    </span>
+                    Documentos
+                </h2>
                 <label class="flex items-start gap-3 cursor-pointer">
                     <input type="checkbox" wire:model="acepta_aviso" required
                         class="mt-1 rounded text-[#111E38] focus:ring-[#111E38]">
@@ -458,7 +478,7 @@ class extends Component
             </div>
 
             <button type="submit"
-                class="fp-btn fp-btn-oscuro w-full py-3"
+                class="fp-btn fp-btn-oscuro fp-alta-enviar w-full py-3"
                 wire:loading.attr="disabled">
                 <span wire:loading.remove wire:target="enviar">Enviar mi solicitud</span>
                 <span wire:loading wire:target="enviar">Enviando...</span>
