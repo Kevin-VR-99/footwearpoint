@@ -71,4 +71,17 @@ return [
         'intentos_por_ip' => (int) env('FOOTWEARPOINT_INTENTOS_SOLICITUD', 10),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Openpay (informativo)
+    |--------------------------------------------------------------------------
+    |
+    | Si es true, en Métodos de pago se muestra el bloque de Openpay
+    | («¿Quieres recibir tus cobros en otro banco?»). El código se queda
+    | en el proyecto; por defecto está oculto.
+    |
+    */
+
+    'openpay_visible' => filter_var(env('OPENPAY_VISIBLE', false), FILTER_VALIDATE_BOOL),
+
 ];

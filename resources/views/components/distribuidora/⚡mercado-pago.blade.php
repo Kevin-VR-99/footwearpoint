@@ -66,6 +66,8 @@ new class extends Component {
 
     public function abrirOpenpay(): void
     {
+        abort_unless((bool) config('footwearpoint.openpay_visible'), 404);
+
         $this->mostrarOpenpay = true;
     }
 
@@ -214,24 +216,26 @@ new class extends Component {
         configuración de tu cuenta de Mercado Pago.
     </p>
 
-    <div class="rounded-xl border border-slate-200 p-4" data-bloque-openpay>
-        <h2 class="text-base font-semibold text-slate-900">¿Quieres recibir tus cobros en otro banco?</h2>
-        <div class="mt-3 flex flex-wrap gap-2">
-            <button type="button" wire:click="abrirOpenpay" class="fp-btn fp-btn-secundario" data-conoce-openpay>
-                Conoce Openpay
-            </button>
-            <button type="button" disabled aria-disabled="true" class="fp-btn fp-btn-primario opacity-60" data-solicitar-openpay>
-                Próximamente
-            </button>
+    @if (config('footwearpoint.openpay_visible'))
+        <div class="rounded-xl border border-slate-200 p-4" data-bloque-openpay>
+            <h2 class="text-base font-semibold text-slate-900">¿Quieres recibir tus cobros en otro banco?</h2>
+            <div class="mt-3 flex flex-wrap gap-2">
+                <button type="button" wire:click="abrirOpenpay" class="fp-btn fp-btn-secundario" data-conoce-openpay>
+                    Conoce Openpay
+                </button>
+                <button type="button" disabled aria-disabled="true" class="fp-btn fp-btn-primario opacity-60" data-solicitar-openpay>
+                    Próximamente
+                </button>
+            </div>
         </div>
-    </div>
 
-    @if ($mostrarOpenpay)
-        <x-panel.modal titulo="Conoce Openpay" cerrar="cerrarOpenpay" ancho="max-w-2xl">
-            <x-distribuidora.conoce-openpay />
-            <x-slot:pie>
-                <button type="button" wire:click="cerrarOpenpay" class="fp-btn fp-btn-secundario">Cerrar</button>
-            </x-slot:pie>
-        </x-panel.modal>
+        @if ($mostrarOpenpay)
+            <x-panel.modal titulo="Conoce Openpay" cerrar="cerrarOpenpay" ancho="max-w-2xl">
+                <x-distribuidora.conoce-openpay />
+                <x-slot:pie>
+                    <button type="button" wire:click="cerrarOpenpay" class="fp-btn fp-btn-secundario">Cerrar</button>
+                </x-slot:pie>
+            </x-panel.modal>
+        @endif
     @endif
 </div>
