@@ -75,6 +75,25 @@ class MovimientoUnificadoTest extends TestCase
         $this->assertStringContainsString('placeholder="SKU o modelo"', $html);
     }
 
+    public function test_conteo_y_venta_local_ya_no_hablan_de_escanear(): void
+    {
+        $conteo = Livewire::test('conteos.index');
+        $conteo->assertSee('busca por SKU o modelo', false)
+            ->assertDontSee('Código (SKU) — escanea y da Enter')
+            ->assertDontSee('Escanea la etiqueta')
+            ->assertDontSee('con el escáner')
+            ->assertDontSee('Escanea las piezas');
+
+        $conteo->call('iniciar')->assertSet('errorMsg', '')
+            ->assertSee('Busca por SKU o modelo o captura lo contado.')
+            ->assertDontSee('Escanea las piezas')
+            ->assertDontSee('Escanea la primera pieza');
+
+        Livewire::test('punto-venta.index')
+            ->assertSee('Busca por SKU o modelo, línea, talla o color')
+            ->assertDontSee('Escanea el SKU');
+    }
+
     public function test_la_salida_por_modelo_pide_talla_y_descuenta_cada_una_con_su_movimiento(): void
     {
         [$producto, $color, $variantes] = $this->grupo();

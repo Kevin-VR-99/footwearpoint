@@ -185,7 +185,7 @@ new #[Layout('layouts.panel')] #[Title('Stock local — FootwearPoint')] class e
     }
 
     /**
-     * Combobox: busca variantes por SKU (o código escaneado), nombre o modelo.
+     * Combobox: busca variantes por SKU, nombre o modelo.
      * El SKU exacto va primero para que el Enter del lector lo elija.
      *
      * @return list<array{id:int, sku:string, etiqueta:string, detalle:string, imagen:?string}>

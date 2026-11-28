@@ -603,7 +603,7 @@ new #[Layout('layouts.panel')] #[Title('Venta local — FootwearPoint')] class e
                  x-on:keydown.enter.prevent="escanear()"
                  x-on:pos-listo-para-escanear.window="prepararSiguiente()">
                 <x-ui.buscador data-pos-escaner x-bind:value="q"
-                       placeholder="Escanea el SKU o busca modelo, línea, talla o color. Enter agrega si es uno solo."
+                       placeholder="Busca por SKU o modelo, línea, talla o color. Enter agrega si es uno solo."
                        etiqueta="Buscar productos" />
                 <p class="mt-2 text-xs text-slate-500">Enter agrega una pieza cuando el código corresponde a un solo producto.</p>
             </div>
