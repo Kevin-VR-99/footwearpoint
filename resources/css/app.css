@@ -664,6 +664,29 @@ html.fp-js [data-revelar]:not(.revelado) {
     .fp-temblor:hover, .fp-temblor.fp-temblor-activo { animation: none !important; }
 }
 
+
+/* Paleta luminosa del panel de marca: la misma en el login de escritorio
+   y en el recuadro grande de la portada, para no repetir el degradado. */
+.fp-marca-luminosa {
+    background:
+        radial-gradient(90% 70% at 100% 0%, rgb(255 255 255 / .55) 0%, transparent 55%),
+        radial-gradient(70% 55% at 0% 100%, rgb(186 230 253 / .55) 0%, transparent 60%),
+        radial-gradient(50% 40% at 92% 72%, color-mix(in oklab, var(--color-fp-danger) 28%, transparent) 0%, transparent 70%),
+        radial-gradient(45% 35% at 18% 22%, rgb(147 197 253 / .45) 0%, transparent 70%),
+        linear-gradient(165deg, #1E3A8A 0%, #2563EB 58%, #3B82F6 100%);
+}
+
+/* El hero de la portada reutiliza esa paleta. El texto va casi blanco para
+   cumplir contraste AA sobre el azul vivo. */
+.fp-portada-hero {
+    box-shadow: 0 24px 50px -22px rgb(30 58 138 / .45);
+}
+.fp-portada-hero h1 { color: #fff; }
+.fp-portada-hero p,
+.fp-portada-hero nav a {
+    color: rgb(255 255 255 / .95);
+}
+
 /* =====================================================================
    Pantallas de acceso (layouts.guest): login, confirmar correo, recuperar
    y restablecer contraseña, contraseña temporal y las demás que comparten
@@ -991,12 +1014,7 @@ html.fp-js [data-revelar]:not(.revelado) {
             border-radius: 0 2rem 2rem 0;
             border-right: 1px solid rgb(255 255 255 / .28);
             box-shadow: 12px 0 40px -24px rgb(30 58 138 / .45);
-            background:
-                radial-gradient(90% 70% at 100% 0%, rgb(255 255 255 / .55) 0%, transparent 55%),
-                radial-gradient(70% 55% at 0% 100%, rgb(186 230 253 / .55) 0%, transparent 60%),
-                radial-gradient(50% 40% at 92% 72%, color-mix(in oklab, var(--color-fp-danger) 28%, transparent) 0%, transparent 70%),
-                radial-gradient(45% 35% at 18% 22%, rgb(147 197 253 / .45) 0%, transparent 70%),
-                linear-gradient(165deg, #1E3A8A 0%, #2563EB 58%, #3B82F6 100%);
+            /* El fondo lo aporta .fp-marca-luminosa, compartido con la portada. */
             animation: fp-acceso-panel-entrada .4s cubic-bezier(.22, .8, .36, 1) backwards;
         }
         .fp-acceso-panel-contenido {

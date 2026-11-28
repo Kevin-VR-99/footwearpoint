@@ -66,7 +66,7 @@ class extends Component
 
 <div class="space-y-20">
     {{-- Qué es (hero) --}}
-    <section class="relative -mt-2 overflow-hidden rounded-3xl bg-gradient-to-br from-fp-sidebar via-fp-sidebar to-fp-accent px-6 py-14 text-center text-white shadow-2xl shadow-fp-sidebar/25 sm:px-12 sm:py-20" data-revelar>
+    <section class="fp-portada-hero fp-marca-luminosa relative -mt-2 overflow-hidden rounded-3xl px-6 py-14 text-center text-white shadow-2xl sm:px-12 sm:py-20" data-revelar>
         <div class="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-fp-primary via-white/40 to-fp-danger"></div>
         <div class="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-fp-primary/20 blur-3xl"></div>
         <div class="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-fp-danger/10 blur-3xl"></div>
